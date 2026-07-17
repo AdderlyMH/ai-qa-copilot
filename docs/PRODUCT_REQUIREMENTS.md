@@ -1,7 +1,7 @@
 # Product Requirements — AI Quality Engineering Copilot
 
 **Document status:** Approved working baseline  
-**Version:** 0.1  
+**Version:** 0.2  
 **Last updated:** 2026-07-17  
 **Target release:** 2026-11-15
 
@@ -97,14 +97,18 @@ flowchart LR
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
-| FR-ING-001 | Owner shall upload `.md`, `.txt`, `.pdf`, `.yaml`, `.yml`, `.json`, and JUnit-style `.xml`. | Supported valid files are accepted; unsupported files are rejected before storage. |
-| FR-ING-002 | The system shall enforce configurable file-count, size, and page limits. | Oversized input receives a clear error and does not start AI processing. |
-| FR-ING-003 | The system shall validate declared type, extension, content signature where feasible, and parser success. | Mismatches and malformed files are rejected or quarantined. |
+| FR-ING-001 | Owner shall upload `.md`, `.txt`, `.pdf`, `.yaml`, `.yml`, and `.json` files. | Supported valid files enter private quarantine; unsupported files are rejected before an active document version or AI processing exists. |
+| FR-ING-002 | The system shall enforce configurable file-count, size, and page limits. | Oversized input receives a safe error and does not start AI processing. |
+| FR-ING-003 | The system shall validate declared type, extension, content signature where feasible, strict decoding, and parser success. | Type mismatches and malformed files are rejected or remain quarantined. |
 | FR-ING-004 | The system shall calculate a content hash and assign an immutable document version. | Re-uploaded identical content is detected; every processed artifact links to an exact version. |
-| FR-ING-005 | The system shall validate OpenAPI syntax and expose validation errors. | Invalid contract cannot enter executable state; parser errors include source location where available. |
+| FR-ING-005 | The system shall validate OpenAPI syntax and expose safe validation errors. | Invalid contracts cannot enter retrieval or executable state; errors include a safe source location where available. |
 | FR-ING-006 | The system shall parse source locations. | Requirements preserve heading/line or page references; OpenAPI preserves path, method, and JSON Pointer. |
-| FR-ING-007 | The system shall treat all document text and metadata as untrusted. | Embedded instructions cannot grant permissions, change system rules, or trigger tools. |
+| FR-ING-007 | The system shall treat all document text, filenames, metadata, retrieved chunks, OpenAPI descriptions, examples, servers, extensions, model output, and tool output as untrusted data. | Untrusted content cannot grant permissions, change system or developer rules, define tools, alter schemas, create targets, add headers or credentials, approve execution, or change evaluation thresholds. |
 | FR-ING-008 | The owner shall delete uploaded documents and derived data. | Raw object, chunks, embeddings, and derived artifacts are removed or tombstoned according to retention policy. |
+| FR-ING-009 | The system shall use quarantine-first document admission. | A file becomes active only after isolated parser acceptance. A rejected file creates zero chunks, embeddings, model calls, execution plans, public links, DNS calls, or HTTP sends. |
+| FR-ING-010 | The system shall enforce the format-specific parser profiles and hard limits in §10. | Boundary tests verify every byte, depth, node, alias, reference, decompression, timeout, and malformed-input limit fails closed. |
+| FR-ING-011 | The system shall resolve OpenAPI references only within the uploaded document. | Only root-local `#/...` references are accepted; external, relative, encoded, file, data, and network references are rejected without resolver network or filesystem access. |
+| FR-ING-012 | The system shall fail closed on parser-policy, malformed-input, external-reference, timeout, and resource-limit failures. | The system returns a stable sanitized error code, does not retry the rejected parser job, and never passes raw rejected content or stack traces to retrieval or a model. |
 
 ### 6.4 Retrieval and evidence
 
@@ -116,6 +120,7 @@ flowchart LR
 | FR-RAG-004 | User shall open the cited source passage from a finding or test. | UI highlights or displays the referenced excerpt and location. |
 | FR-RAG-005 | The system shall record retrieved chunks and scores for each AI run. | Trace allows later reproduction and retrieval-error analysis. |
 | FR-RAG-006 | The system shall refuse to invent an answer when relevant evidence is absent. | Unsupported-question fixtures produce an explicit evidence-gap result. |
+| FR-RAG-007 | The system shall preserve trust and provenance boundaries for retrieved evidence. | Retrieved evidence is passed only as data with immutable source IDs, project/version ownership, and source locations; it cannot alter prompts, policy, schemas, tools, targets, headers, credentials, approvals, or evaluation configuration. |
 
 ### 6.5 Requirement and contract analysis
 
@@ -174,6 +179,7 @@ flowchart LR
 | FR-EXEC-008 | Every execution shall preserve immutable request, response, assertion, timing, error, approval, and configuration evidence. | Result can be reproduced or explained from stored evidence. |
 | FR-EXEC-009 | System shall support cancellation of queued or running batches where technically feasible. | Cancelled state is recorded; no new requests begin after cancellation. |
 | FR-EXEC-010 | The LLM shall never receive unrestricted network access. | Only the deterministic executor performs HTTP calls. |
+| FR-EXEC-011 | OpenAPI `servers`, descriptions, examples, callbacks, `externalDocs`, `externalValue`, URLs, and `x-*` extensions shall be treated as untrusted metadata only. | Metadata cannot register or alter a target, invoke a validation URL, create an execution plan, or cause DNS or HTTP activity. Executable tests use only server-side target IDs and approved operation IDs. |
 
 ### 6.10 Failure analysis
 
@@ -350,19 +356,54 @@ All derived entities must reference the exact source and configuration versions 
 
 ## 10. Initial operational limits
 
-These values are starting controls and may change through measured decisions:
+These values are hard maximums. They may be lowered through configuration. Raising them requires an ADR and a passing parser-security regression suite.
+
+### 10.1 Upload and parser limits
 
 | Limit | Initial value |
 |---|---:|
-| File size | 10 MB per file |
+| Raw upload size | 10 MiB (10,485,760 bytes) per file |
 | Files per project | 20 |
-| PDF pages | 100 per file |
+| Total active raw input | 50 MiB per project |
+| Upload content encoding | `identity` only |
+| Archives and compressed wrappers | Rejected |
+| Accepted normalized text | 2 MiB and 500,000 Unicode code points per document |
+| Markdown/text size | 2 MiB |
+| Markdown/text line count | 100,000 |
+| Markdown/text line length | 16 KiB |
+| Markdown/text parser limit | 2 seconds and 128 MiB |
+| JSON/YAML/OpenAPI size | 5 MiB |
+| JSON/YAML/OpenAPI maximum depth | 40 |
+| JSON/YAML/OpenAPI maximum nodes | 25,000 |
+| JSON/YAML/OpenAPI maximum collection members | 10,000 |
+| JSON/YAML/OpenAPI maximum scalar length | 64 KiB |
+| JSON/YAML/OpenAPI parser limit | 5 seconds and 256 MiB |
+| YAML anchors and aliases | 0; all anchors and aliases rejected |
+| OpenAPI references | 500 maximum; root-local `#/...` only |
+| OpenAPI reference depth | 20; cyclic references rejected in MVP |
+| OpenAPI operations | 500 maximum |
+| OpenAPI components | 5,000 maximum |
+| PDF size | 10 MiB |
+| PDF pages | 100 |
+| PDF objects | 10,000 |
+| PDF decoded stream | 8 MiB maximum per stream |
+| PDF total decoded streams | 32 MiB |
+| PDF decompression expansion ratio | 100:1 maximum |
+| PDF parser limit | 15 seconds and 512 MiB |
+| PDF active content, encryption, attachments, OCR, rendering, or conversion | Rejected or unsupported in MVP |
+
+All parsers run as non-root isolated workers with no network egress, no model or cloud credentials, a read-only filesystem, bounded temporary storage, and OS-enforced resource limits.
+
+### 10.2 Execution and workflow limits
+
+| Limit | Initial value |
+|---|---:|
 | Generated tests per run | 50 |
 | Approved requests per batch | 25 |
 | Executor concurrency | 3 |
 | Request timeout | 10 seconds |
-| Response body retained | 1 MB maximum |
-| Request body | 256 KB maximum |
+| Response body retained | 1 MiB maximum |
+| Request body | 256 KiB maximum |
 | Approval lifetime | 15 minutes |
 | Redirects | Disabled |
 | Demo upload retention | 30 days |
@@ -406,8 +447,8 @@ The MVP is releasable only when:
 1. A new developer can start the local environment from documented commands.
 2. The preloaded demonstration completes the full workflow.
 3. CI passes formatting, linting, type checks, unit tests, integration tests, and one end-to-end smoke flow.
-4. The 100-case evaluation suite meets every hard threshold in `EVALUATION_PLAN.md`.
-5. All critical execution-abuse and prompt-injection fixtures are blocked.
+4. Every versioned Security Gate (`SG-*`) and Evaluation Gate (`EG-*`) defined in `EVALUATION_PLAN.md` passes with its required denominator, evidence, and CI exit result.
+5. No critical parser, prompt-injection, authorization, execution-abuse, approval-integrity, redaction, or cross-project-isolation fixture is skipped, marked expected-failure, or accepted as inconclusive.
 6. No secret is present in repository history, image layers, logs, traces, or public reports.
 7. Terraform can create the documented production environment from a clean account with required inputs.
 8. Deployment, database migration, rollback, and incident procedures are documented and exercised at least once.
