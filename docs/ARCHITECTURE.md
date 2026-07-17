@@ -1,7 +1,7 @@
 # Architecture — AI Quality Engineering Copilot
 
 **Document status:** Approved working baseline  
-**Version:** 0.1  
+**Version:** 0.2  
 **Last updated:** 2026-07-17  
 **Architecture style:** Modular monolith with isolated execution boundary
 
@@ -176,11 +176,19 @@ ai-quality-engineering-copilot/
 
 ### Ingestion
 
-- Validates file policy.
-- Stores immutable raw document versions.
-- Parses source structure.
-- Produces normalized sections and source locations.
-- Never interprets embedded document instructions as system commands.
+- Applies authorization, streamed byte limits, declared-type checks, and content-signature checks before parser work.
+- Stores accepted upload bytes only in private quarantine under generated object keys; a quarantined object is not an active document version.
+- Enqueues an opaque document identifier for a restricted parser worker rather than exposing raw input to application, model, or executor processes.
+- Promotes a document only after isolated parser acceptance and then stores immutable normalized sections, source locations, content hash, and parser provenance.
+- Emits a sanitized rejection audit record for parser-policy, malformed-input, external-reference, timeout, and resource-limit failures.
+- Never interprets embedded document instructions as system commands or allows a rejected document to reach retrieval, embeddings, model calls, reports, or execution eligibility.
+
+### Quarantine parser-worker boundary
+
+- The parser worker runs non-root with no network egress, no model, cloud, or executor credentials, a read-only filesystem, bounded temporary storage, and OS-enforced time and memory limits.
+- It reads only the quarantined object identified by its job and may write only a bounded normalized result or sanitized rejection outcome.
+- Parser workers do not resolve external references, fetch URLs, execute active PDF content, render documents, run OCR, or invoke converters.
+- Parser acceptance is the only transition that permits chunking, embedding, and retrieval.
 
 ### Retrieval
 
@@ -233,27 +241,32 @@ ai-quality-engineering-copilot/
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant A as API
-    participant S as Object storage
-    participant Q as Queue
-    participant W as Worker
+    participant U as Owner
+    participant A as API and quarantine
+    participant Q as Ingestion queue
+    participant P as Restricted parser
     participant D as PostgreSQL
 
     U->>A: Upload file
-    A->>A: Authorize and validate limits
-    A->>S: Store immutable raw object
-    A->>D: Create document version + queued job
-    A->>Q: Enqueue ingestion job
-    A-->>U: 202 Accepted + job ID
-    Q->>W: Deliver job
-    W->>S: Read object
-    W->>W: Parse and normalize
-    W->>D: Store sections and locations
-    W->>W: Chunk and embed
-    W->>D: Store chunks, vectors, indexes, provenance
-    W->>D: Mark completed or failed
+    A->>A: Authorize and stream preflight checks
+    A->>A: Store private quarantine object
+    A->>D: Record pending document and hash
+    A->>Q: Enqueue opaque document identifier
+    A-->>U: 202 Accepted plus job ID
+    Q->>P: Deliver parser job
+    P->>P: Isolated parse with no egress
+    alt Parser accepted
+        P->>D: Store normalized sections, locations, and provenance
+        P->>D: Mark accepted and enqueue retrieval work
+    else Parser rejected
+        P->>D: Store sanitized rejection audit only
+        P->>D: Mark rejected; no retrieval work
+    end
 ```
+
+The API performs only bounded preflight checks. It does not parse untrusted content. The restricted parser worker promotes only accepted normalized output. Retrieval, chunking, embeddings, and model calls begin only after the accepted state is persisted.
+
+A parser-policy failure, malformed input, unsupported type, external reference, timeout, or resource limit is terminal for that document version. It produces no chunks, vectors, model calls, execution candidates, or automatic parser retry.
 
 ### 7.2 Grounded analysis and test generation
 
@@ -351,8 +364,13 @@ Validation policy:
 - Each template has an immutable semantic version.
 - The database records template version and content hash.
 - Prompt changes require an evaluation comparison.
-- System instructions, evidence, and untrusted document content use distinct delimiters.
-- Document content is never interpolated into privileged instructions.
+- Immutable application policy, task instructions, schemas, model configuration, target registry, approval state, and evaluation thresholds are created only by server-side code.
+- Every evidence object carries immutable source ID, project ID, document version ID, source location, content hash, and `trust_level=untrusted`.
+- Untrusted evidence is serialized only as data. It cannot create system or developer messages, tool definitions, schemas, targets, headers, credentials, approvals, feature flags, or evaluation configuration.
+- Retrieval occurs before the model call. The model never receives a network, filesystem, shell, approval, administration, credential, or unrestricted HTTP capability.
+- Model citations are restricted to the retrieved immutable candidate IDs for the current project and source version; fabricated or foreign citations fail post-validation.
+- OpenAPI `servers`, descriptions, examples, callbacks, `externalDocs`, `externalValue`, URLs, and `x-*` extensions are untrusted evidence only and cannot register or alter an execution target.
+- Distinct delimiters improve model behavior but are not the security control. Deterministic policy validation remains authoritative even when prompt-injection detection misses an attack.
 
 ### 8.5 Model routing
 
@@ -379,7 +397,11 @@ Each source unit stores:
 - Parser version.
 - Chunking version.
 - Embedding model/version.
-- Security labels and retention state.
+- `trust_level`, initially `untrusted`, and a security-label set.
+- Parser admission state: `quarantined`, `accepted`, or `rejected`.
+- Retention state.
+
+Only accepted normalized source units can be chunked or embedded. Rejected documents retain only the private quarantine object, content hash, sanitized failure code, timestamp, and safe source-location metadata required for audit and deletion workflows.
 
 ### 9.2 Chunking
 
@@ -649,7 +671,7 @@ Logs are structured JSON and include correlation IDs. They exclude:
 | Model timeout or rate limit | Bounded retry with jitter; record attempt; preserve job state |
 | Invalid structured output | One bounded repair attempt; then explicit failure |
 | Embedding failure | Retry batch safely; do not mark document fully indexed |
-| Parser failure | Preserve raw file; expose safe source-specific error |
+| Parser-policy failure, malformed input, unsupported type, external reference, timeout, or resource limit | Keep raw bytes private in quarantine; persist only a sanitized rejection code, timestamp, and safe location metadata. Do not retry. Create zero chunks, embeddings, model calls, execution candidates, or reports. |
 | Queue duplicate | Idempotency key prevents duplicate side effects |
 | Worker crash | Visibility timeout and retry; dead-letter after bounded attempts |
 | Database unavailable | Fail safely; do not execute from stale approval state |
@@ -679,7 +701,7 @@ Logs are structured JSON and include correlation IDs. They exclude:
 | Unit | URL policy, schema validation, state transitions, rank fusion, cost calculations |
 | Integration | PostgreSQL repositories, pgvector retrieval, S3 adapter, queue idempotency |
 | Contract | Frontend/API schemas, OpenAI gateway adapter, mock API/OpenAPI consistency |
-| Security | SSRF, DNS rebinding, approval replay, prompt injection, XSS, file abuse |
+| Security | Parser-profile boundaries for size, nesting, nodes, aliases, references, decompression, timeouts, and malformed input; parser no-egress/isolation checks; SSRF, DNS rebinding, approval replay, untrusted-document and retrieved-content prompt injection, fabricated citations, metadata URL/target mutation, XSS, and redaction |
 | AI evaluation | Findings, tests, citations, tool planning, failure analysis |
 | End-to-end | Upload → analysis → test generation → approval → sandbox execution → report |
 | Infrastructure | Terraform validation, policy scanning, container scanning, deployment smoke test |
