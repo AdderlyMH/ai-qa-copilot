@@ -1,0 +1,87 @@
+{
+  "pack_version": "0.1",
+  "prepared": "2026-07-17",
+  "validation": {
+    "status": "passed",
+    "openapi_paths": 11,
+    "openapi_operations": 14,
+    "checks": [
+      "required files present and non-empty",
+      "README relative links resolve",
+      "requirement identifiers are unique",
+      "OpenAPI 3.1 YAML parses",
+      "OpenAPI local references resolve",
+      "OpenAPI path parameters and operation identifiers validate",
+      "controlled adversarial seeds are present",
+      "no unresolved TODO/TBD/FIXME placeholders"
+    ]
+  },
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3507,
+      "words_approx": 428,
+      "sha256": "0efd4376c8f4454fb586ebc0543c38c83d7efe8fc48099bfda7475a57799d711"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "bytes": 24975,
+      "words_approx": 2919,
+      "sha256": "2c4635a361220ef0cba84566fa0d47c99759ff9f8bfb008239fd40473846ebf5"
+    },
+    {
+      "path": "docs/BACKLOG.md",
+      "bytes": 25897,
+      "words_approx": 2954,
+      "sha256": "49ac283051e844d718afabe301bf31c9caa44c96c6c5954f649359d1174095e8"
+    },
+    {
+      "path": "docs/EVALUATION_PLAN.md",
+      "bytes": 18470,
+      "words_approx": 2236,
+      "sha256": "d90eada385854e1147f3a12d52c7836f9598d920a87de9aab407dbcb52c844f6"
+    },
+    {
+      "path": "docs/PRODUCT_REQUIREMENTS.md",
+      "bytes": 23487,
+      "words_approx": 2826,
+      "sha256": "8d413483b4d2635f7fc73744acb520ab9b8995a605b52cd3d20c4ea047ed23b7"
+    },
+    {
+      "path": "docs/PROJECT_CHARTER.md",
+      "bytes": 12592,
+      "words_approx": 1566,
+      "sha256": "a053f321f60494d1276decf43910c7d59e7b0302e9baad023dc1a57f07ecd8b0"
+    },
+    {
+      "path": "docs/PROJECT_STATUS.md",
+      "bytes": 8247,
+      "words_approx": 1022,
+      "sha256": "8c4328dd4ec65cc67a21505d0f27444b5837d17c7e864a8493874f520d750f0e"
+    },
+    {
+      "path": "docs/SKILLS_PROFILE.md",
+      "bytes": 9473,
+      "words_approx": 1102,
+      "sha256": "f95262352dfbb2beb1ff6f54968df31d856dc46022d200dca8d8db6d698eee62"
+    },
+    {
+      "path": "docs/THREAT_MODEL.md",
+      "bytes": 22448,
+      "words_approx": 2795,
+      "sha256": "f5f940a8b1eb2254253026d4ea5a01f3dc578f7bbb1bfab7b81716b3d49bbd17"
+    },
+    {
+      "path": "fixtures/sample-openapi.yaml",
+      "bytes": 25400,
+      "words_approx": 1976,
+      "sha256": "8ad187ba3f758707c685f8e7f21aaac613254acd78bd139260a64fd8c2c345ce"
+    },
+    {
+      "path": "fixtures/sample-requirements.md",
+      "bytes": 12587,
+      "words_approx": 1711,
+      "sha256": "414635e6c030d9a2a6ec6857128697a29514d49698f2b63d72649f191db36e4a"
+    }
+  ]
+}

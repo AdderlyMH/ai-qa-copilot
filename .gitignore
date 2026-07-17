@@ -1,0 +1,73 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.venv/
+venv/
+
+# JavaScript and Next.js
+node_modules/
+.next/
+out/
+dist/
+coverage/
+*.tsbuildinfo
+
+# PyCharm and JetBrains
+.idea/
+*.iml
+
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+!*.example.tfvars
+
+# Local databases and temporary files
+*.db
+*.sqlite
+*.sqlite3
+tmp/
+temp/
+
+# Test and build artifacts
+test-results/
+playwright-report/
+blob-report/
+allure-results/
+allure-report/
+
+# Uploaded or generated application data
+uploads/
+generated/
+artifacts/
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
