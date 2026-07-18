@@ -1,8 +1,8 @@
 # Product Requirements — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline
-**Version:** 0.2
-**Last updated:** 2026-07-17
+**Document status:** Approved working baseline  
+**Version:** 0.1  
+**Last updated:** 2026-07-17  
 **Target release:** 2026-11-15
 
 ## 1. Purpose
@@ -77,32 +77,12 @@ flowchart LR
 
 ### 6.1 Identity and access
 
-The MVP has exactly two application principals:
-
-- `owner`: one server-configured human owner authenticated through Amazon Cognito OIDC.
-- `guest`: an anonymous visitor limited to one explicitly published, immutable, sanitized demo snapshot.
-
-No request may select its own role or owner. The server derives identity only from verified authentication context and server-side policy. Public sign-up, invitations, project sharing, teams, role administration, and enterprise RBAC are out of scope.
-
-| Capability | Owner | Guest |
-|---|---:|---:|
-| View an owned private project and authorized artifacts | Allowed | Denied |
-| View the explicitly published sanitized demo report, traceability, and redacted citation excerpts | Allowed | Allowed |
-| Create, upload, analyze, generate, edit, review, archive, or delete | Allowed for owned projects | Denied |
-| Create, approve, reject, cancel, or execute an execution plan | Allowed for owned projects | Denied |
-| Read raw private documents, raw object URLs, secrets, or unredacted evidence | Allowed only through authorized, redacted paths | Denied |
-| Trigger model use, background jobs, or HTTP execution | Allowed within quotas | Denied |
-
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
-| FR-AUTH-001 | Production owner actions shall require a validated Cognito OIDC access token. Validation shall require expected issuer, client/audience, approved signing algorithm, signature, expiry, not-before time where present, token use, and immutable subject. | Missing, expired, malformed, wrong-issuer, wrong-audience, or invalid-signature credentials return `401` before business logic. |
-| FR-AUTH-002 | Exactly one owner shall be mapped by a server-side configured immutable `(issuer, subject)` pair. Privilege shall not derive from email, display name, client-provided roles, or mutable profile claims. | A valid non-owner identity receives `403`; changing email or a client-supplied role field cannot obtain owner permission. |
-| FR-AUTH-003 | Authorization shall be enforced server-side for every project-owned route, query, object-access request, background job, report lookup, approval, and execution. | Cross-project read, update, delete, download, report, and job-trigger tests fail closed. A foreign or unpublished resource returns `404` when revealing existence would be unsafe. |
-| FR-AUTH-004 | Guest access shall be limited to a server-configured `DemoPublication` containing explicitly selected immutable, sanitized artifact revisions from one preloaded project. | Guest can read only published demo routes. Raw documents, generic project routes, object URLs, exports containing raw evidence, queues, and unpublished artifacts return `404`. |
-| FR-AUTH-005 | Owner-only mutations, uploads, model invocations, plan approvals, execution, cancellation, deletion, and report regeneration shall require owner authentication. | Owner-only routes without a valid token return `401`; forbidden methods on demo routes return `403`; no guest action enqueues a job, consumes quota, or sends HTTP traffic. |
-| FR-AUTH-006 | The browser shall use Cognito Authorization Code with PKCE, validate OIDC `state` and `nonce`, and not persist bearer credentials in local storage or session storage. CORS shall allow only configured first-party origins and never wildcard credentials. | Browser-security tests find no persistent bearer token in client storage, logs, reports, or bundles. |
-| FR-AUTH-007 | Every authorization-sensitive mutation, approval, execution, deletion, denied action, and demo-publication change shall be audited. | Audit records include actor/principal type, actor ID where applicable, action, result, resource/version, timestamp, and correlation ID. |
-| FR-AUTH-008 | Parser, general-worker, and executor identities shall be separate workload principals. Local authentication bypass is allowed only under `APP_ENV=local`; preview and production must reject it. | Negative-permission checks prove role separation; production/preview startup fails when a local bypass is enabled. |
+| FR-AUTH-001 | The system shall support an authenticated owner account. | Owner can sign in and access owned projects; unauthenticated write operations return `401`. |
+| FR-AUTH-002 | The system shall expose a read-only public demonstration project. | Guest can view preloaded artifacts and reports but cannot upload, approve, execute, delete, or modify. |
+| FR-AUTH-003 | The system shall enforce project ownership on every mutable resource. | Cross-project and cross-user access tests fail closed with `403` or `404`. |
+| FR-AUTH-004 | The system shall record the authenticated actor for approvals, executions, and deletions. | Audit records contain actor ID, action, timestamp, resource ID, and result. |
 
 ### 6.2 Project management
 
@@ -117,18 +97,14 @@ No request may select its own role or owner. The server derives identity only fr
 
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
-| FR-ING-001 | Owner shall upload `.md`, `.txt`, `.pdf`, `.yaml`, `.yml`, and `.json` files. | Supported valid files enter private quarantine; unsupported files are rejected before an active document version or AI processing exists. |
-| FR-ING-002 | The system shall enforce configurable file-count, size, and page limits. | Oversized input receives a safe error and does not start AI processing. |
-| FR-ING-003 | The system shall validate declared type, extension, content signature where feasible, strict decoding, and parser success. | Type mismatches and malformed files are rejected or remain quarantined. |
+| FR-ING-001 | Owner shall upload `.md`, `.txt`, `.pdf`, `.yaml`, `.yml`, `.json`, and JUnit-style `.xml`. | Supported valid files are accepted; unsupported files are rejected before storage. |
+| FR-ING-002 | The system shall enforce configurable file-count, size, and page limits. | Oversized input receives a clear error and does not start AI processing. |
+| FR-ING-003 | The system shall validate declared type, extension, content signature where feasible, and parser success. | Mismatches and malformed files are rejected or quarantined. |
 | FR-ING-004 | The system shall calculate a content hash and assign an immutable document version. | Re-uploaded identical content is detected; every processed artifact links to an exact version. |
-| FR-ING-005 | The system shall validate OpenAPI syntax and expose safe validation errors. | Invalid contracts cannot enter retrieval or executable state; errors include a safe source location where available. |
+| FR-ING-005 | The system shall validate OpenAPI syntax and expose validation errors. | Invalid contract cannot enter executable state; parser errors include source location where available. |
 | FR-ING-006 | The system shall parse source locations. | Requirements preserve heading/line or page references; OpenAPI preserves path, method, and JSON Pointer. |
-| FR-ING-007 | The system shall treat all document text, filenames, metadata, retrieved chunks, OpenAPI descriptions, examples, servers, extensions, model output, and tool output as untrusted data. | Untrusted content cannot grant permissions, change system or developer rules, define tools, alter schemas, create targets, add headers or credentials, approve execution, or change evaluation thresholds. |
+| FR-ING-007 | The system shall treat all document text and metadata as untrusted. | Embedded instructions cannot grant permissions, change system rules, or trigger tools. |
 | FR-ING-008 | The owner shall delete uploaded documents and derived data. | Raw object, chunks, embeddings, and derived artifacts are removed or tombstoned according to retention policy. |
-| FR-ING-009 | The system shall use quarantine-first document admission. | A file becomes active only after isolated parser acceptance. A rejected file creates zero chunks, embeddings, model calls, execution plans, public links, DNS calls, or HTTP sends. |
-| FR-ING-010 | The system shall enforce the format-specific parser profiles and hard limits in §10. | Boundary tests verify every byte, depth, node, alias, reference, decompression, timeout, and malformed-input limit fails closed. |
-| FR-ING-011 | The system shall resolve OpenAPI references only within the uploaded document. | Only root-local `#/...` references are accepted; external, relative, encoded, file, data, and network references are rejected without resolver network or filesystem access. |
-| FR-ING-012 | The system shall fail closed on parser-policy, malformed-input, external-reference, timeout, and resource-limit failures. | The system returns a stable sanitized error code, does not retry the rejected parser job, and never passes raw rejected content or stack traces to retrieval or a model. |
 
 ### 6.4 Retrieval and evidence
 
@@ -140,7 +116,6 @@ No request may select its own role or owner. The server derives identity only fr
 | FR-RAG-004 | User shall open the cited source passage from a finding or test. | UI highlights or displays the referenced excerpt and location. |
 | FR-RAG-005 | The system shall record retrieved chunks and scores for each AI run. | Trace allows later reproduction and retrieval-error analysis. |
 | FR-RAG-006 | The system shall refuse to invent an answer when relevant evidence is absent. | Unsupported-question fixtures produce an explicit evidence-gap result. |
-| FR-RAG-007 | The system shall preserve trust and provenance boundaries for retrieved evidence. | Retrieved evidence is passed only as data with immutable source IDs, project/version ownership, and source locations; it cannot alter prompts, policy, schemas, tools, targets, headers, credentials, approvals, or evaluation configuration. |
 
 ### 6.5 Requirement and contract analysis
 
@@ -199,7 +174,6 @@ No request may select its own role or owner. The server derives identity only fr
 | FR-EXEC-008 | Every execution shall preserve immutable request, response, assertion, timing, error, approval, and configuration evidence. | Result can be reproduced or explained from stored evidence. |
 | FR-EXEC-009 | System shall support cancellation of queued or running batches where technically feasible. | Cancelled state is recorded; no new requests begin after cancellation. |
 | FR-EXEC-010 | The LLM shall never receive unrestricted network access. | Only the deterministic executor performs HTTP calls. |
-| FR-EXEC-011 | OpenAPI `servers`, descriptions, examples, callbacks, `externalDocs`, `externalValue`, URLs, and `x-*` extensions shall be treated as untrusted metadata only. | Metadata cannot register or alter a target, invoke a validation URL, create an execution plan, or cause DNS or HTTP activity. Executable tests use only server-side target IDs and approved operation IDs. |
 
 ### 6.10 Failure analysis
 
@@ -212,21 +186,13 @@ No request may select its own role or owner. The server derives identity only fr
 
 ### 6.11 Reporting
 
-A `ReportRevision` is an immutable point-in-time QA evidence snapshot. It does not autonomously approve a release. Missing, failed, omitted, or unsupported work must be displayed explicitly and never as a pass.
-
 | ID | Requirement | Acceptance criteria |
 |---|---|---|
-| FR-REP-001 | The system shall create an immutable `QualityReportV1` revision from a frozen set of project, document, analysis, test, traceability, execution, imported-result, and configuration versions. | The canonical JSON includes a report ID, version, SHA-256 hash, creation time, actor, and immutable provenance references. Regeneration creates a new revision. |
-| FR-REP-002 | Every report shall contain scope, source inventory and validation status, findings, generated/reviewed tests, traceability, execution/imported-result evidence, failure analysis, metrics, provenance, and limitations. | Each required section is populated or marked `not_run`, `failed`, `not_available`, `not_applicable`, or `unsupported`. |
-| FR-REP-003 | Every material finding, test rationale, failure-analysis claim, recommendation, and narrative claim shall cite validated evidence or be labelled `unsupported`. | Foreign-project, nonexistent, stale, malformed, or fabricated evidence references are rejected. |
-| FR-REP-004 | The executive summary shall show severity/category counts, unresolved findings, traceability state, execution state, evidence gaps, and the limitation that the report is not an autonomous release decision. | Summary totals reconcile with detailed records and do not equate traceability coverage with behavioral adequacy. |
-| FR-REP-005 | The report shall include requirement-to-test and operation-to-test matrices, uncovered and partially covered items, stale links, and test category/priority distribution. | Each matrix row resolves to exact source and test revisions; source revision makes affected links visibly stale. |
-| FR-REP-006 | Execution reporting shall distinguish product-controlled HTTP execution from imported JSON/JUnit evidence. | Imported evidence is labelled `imported`; unexecuted tests are not counted as passed; execution details include plan/approval IDs and hashes, environment label, deterministic assertions, timing, redacted evidence references, and errors. |
-| FR-REP-007 | Failure analysis shall separate observed facts, hypotheses, alternatives, confidence, and recommended next checks. | A fixture with insufficient evidence cannot produce an asserted root cause. |
-| FR-REP-008 | The report shall expose reproducibility provenance: document/parser/chunking/embedding versions, retrieval run, model/prompt/schema versions, plan/approval versions, build identifier, latency, token use, estimated cost, retries, and errors. | Every identifier resolves to stored evidence or an explicit safe `not_available` state. |
-| FR-REP-009 | Web and Markdown reports shall render from the same validated canonical JSON revision; JSON export shall validate against `QualityReportV1`. | Rendering-parity checks show the same report ID, version, hash, and required sections across all formats. |
-| FR-REP-010 | Reports shall be redacted before persistence, rendering, export, telemetry, and public publication. | Canary secrets, cookies, authorization headers, tokens, and configured sensitive fields are absent from storage, views, exports, logs, traces, and public routes. |
-| FR-REP-011 | Guest access shall be limited to explicitly published sanitized report revisions. | Guest access to private or unpublished reports returns `404`; guests cannot regenerate reports or access raw evidence. |
+| FR-REP-001 | System shall generate a project quality report in web and Markdown form. | Report contains scope, sources, findings, traceability, execution results, risks, evidence, metrics, and limitations. |
+| FR-REP-002 | System shall export structured JSON. | Export validates against a versioned report schema. |
+| FR-REP-003 | Report shall include AI configuration and run provenance. | Model, prompt, retrieval, schema, document, and execution versions are visible. |
+| FR-REP-004 | Report shall distinguish generated content from deterministic results. | Sections and labels make the distinction explicit. |
+| FR-REP-005 | Public demo reports shall contain only synthetic or public data. | Release check scans for secrets and prohibited data. |
 
 ### 6.12 Evaluation and observability
 
@@ -268,10 +234,6 @@ Primary entities:
 - `EvaluationRun`
 - `EvaluationResult`
 - `AuditEvent`
-- `ReportRevision`
-- `DemoPublication`
-- `TargetConfiguration`
-- `TargetConfigurationSnapshot`
 
 All derived entities must reference the exact source and configuration versions that created them.
 
@@ -388,54 +350,19 @@ All derived entities must reference the exact source and configuration versions 
 
 ## 10. Initial operational limits
 
-These values are hard maximums. They may be lowered through configuration. Raising them requires an ADR and a passing parser-security regression suite.
-
-### 10.1 Upload and parser limits
+These values are starting controls and may change through measured decisions:
 
 | Limit | Initial value |
 |---|---:|
-| Raw upload size | 10 MiB (10,485,760 bytes) per file |
+| File size | 10 MB per file |
 | Files per project | 20 |
-| Total active raw input | 50 MiB per project |
-| Upload content encoding | `identity` only |
-| Archives and compressed wrappers | Rejected |
-| Accepted normalized text | 2 MiB and 500,000 Unicode code points per document |
-| Markdown/text size | 2 MiB |
-| Markdown/text line count | 100,000 |
-| Markdown/text line length | 16 KiB |
-| Markdown/text parser limit | 2 seconds and 128 MiB |
-| JSON/YAML/OpenAPI size | 5 MiB |
-| JSON/YAML/OpenAPI maximum depth | 40 |
-| JSON/YAML/OpenAPI maximum nodes | 25,000 |
-| JSON/YAML/OpenAPI maximum collection members | 10,000 |
-| JSON/YAML/OpenAPI maximum scalar length | 64 KiB |
-| JSON/YAML/OpenAPI parser limit | 5 seconds and 256 MiB |
-| YAML anchors and aliases | 0; all anchors and aliases rejected |
-| OpenAPI references | 500 maximum; root-local `#/...` only |
-| OpenAPI reference depth | 20; cyclic references rejected in MVP |
-| OpenAPI operations | 500 maximum |
-| OpenAPI components | 5,000 maximum |
-| PDF size | 10 MiB |
-| PDF pages | 100 |
-| PDF objects | 10,000 |
-| PDF decoded stream | 8 MiB maximum per stream |
-| PDF total decoded streams | 32 MiB |
-| PDF decompression expansion ratio | 100:1 maximum |
-| PDF parser limit | 15 seconds and 512 MiB |
-| PDF active content, encryption, attachments, OCR, rendering, or conversion | Rejected or unsupported in MVP |
-
-All parsers run as non-root isolated workers with no network egress, no model or cloud credentials, a read-only filesystem, bounded temporary storage, and OS-enforced resource limits.
-
-### 10.2 Execution and workflow limits
-
-| Limit | Initial value |
-|---|---:|
+| PDF pages | 100 per file |
 | Generated tests per run | 50 |
 | Approved requests per batch | 25 |
 | Executor concurrency | 3 |
 | Request timeout | 10 seconds |
-| Response body retained | 1 MiB maximum |
-| Request body | 256 KiB maximum |
+| Response body retained | 1 MB maximum |
+| Request body | 256 KB maximum |
 | Approval lifetime | 15 minutes |
 | Redirects | Disabled |
 | Demo upload retention | 30 days |
@@ -479,8 +406,8 @@ The MVP is releasable only when:
 1. A new developer can start the local environment from documented commands.
 2. The preloaded demonstration completes the full workflow.
 3. CI passes formatting, linting, type checks, unit tests, integration tests, and one end-to-end smoke flow.
-4. Every versioned Security Gate (`SG-*`) and Evaluation Gate (`EG-*`) defined in `EVALUATION_PLAN.md` passes with its required denominator, evidence, and CI exit result.
-5. No critical parser, prompt-injection, authorization, execution-abuse, approval-integrity, redaction, or cross-project-isolation fixture is skipped, marked expected-failure, or accepted as inconclusive.
+4. The 100-case evaluation suite meets every hard threshold in `EVALUATION_PLAN.md`.
+5. All critical execution-abuse and prompt-injection fixtures are blocked.
 6. No secret is present in repository history, image layers, logs, traces, or public reports.
 7. Terraform can create the documented production environment from a clean account with required inputs.
 8. Deployment, database migration, rollback, and incident procedures are documented and exercised at least once.

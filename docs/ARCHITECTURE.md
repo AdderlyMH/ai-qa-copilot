@@ -1,8 +1,8 @@
 # Architecture — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline
-**Version:** 0.2
-**Last updated:** 2026-07-17
+**Document status:** Approved working baseline  
+**Version:** 0.1  
+**Last updated:** 2026-07-17  
 **Architecture style:** Modular monolith with isolated execution boundary
 
 ## 1. Architecture objectives
@@ -26,12 +26,11 @@ The architecture must demonstrate production AI-engineering skill without becomi
 | Agents | No multi-agent system in MVP | Multiple agents require measured benefit, not architectural theater |
 | Model output | Strict versioned schemas validated with Pydantic | Converts stochastic output into explicit contracts |
 | Retrieval | PostgreSQL full-text search plus pgvector, combined through rank fusion | Handles exact requirement identifiers and semantic matches |
-| Side effects | Model proposes; deterministic code validates; owner approves; a restricted execution worker revalidates and invokes the executor | Prevents the API, model, and general worker from gaining target-network authority |
+| Side effects | Model proposes; deterministic code validates; human approves; isolated executor acts | Prevents the model from having unrestricted network authority |
 | Production cloud | AWS-first, Terraform-managed | Aligns with existing experience and demonstrates infrastructure ownership |
 | Data | PostgreSQL plus S3-compatible object storage | Strong relational provenance with vector retrieval and durable raw files |
-| Background work | Durable database-backed job state plus separate parser, general-job, and approved-execution queues with private worker roles | Keeps untrusted parsing, AI work, and outbound HTTP execution independently least-privileged without introducing domain microservices |
+| Background work | Database-backed job state plus SQS worker in production | Supports retries and asynchronous progress without introducing a workflow platform initially |
 | Public access | Authenticated owner plus read-only guest demo | Demonstrates a usable product while minimizing public attack surface |
-| Document ingestion | Quarantine-first object storage and isolated parsing of every uploaded file | Treats file bytes, metadata, parsed text, and OpenAPI content as untrusted before retrieval or model use |
 
 ## 3. System context
 
@@ -227,16 +226,6 @@ ai-quality-engineering-copilot/
 - Runs deterministic and model-based scorers.
 - Compares candidate configurations against baselines.
 - Produces release-gate results.
-
-### Ingestion and parser trust boundary
-
-All uploaded bytes, filenames, MIME declarations, document metadata, parsed text, OpenAPI fields, XML, YAML, JSON, PDF contents, descriptions, examples, server URLs, and test-result fields are untrusted input.
-
-The API performs only bounded streaming checks: authentication, project authorization, extension/media-type allowlisting, content-signature checks where feasible, and configured size/count/page limits. Eligible bytes are stored with generated object keys in a private quarantine namespace. The request path does not invoke complex parsers.
-
-A restricted parser worker reads a queued document identifier and the corresponding quarantined object. It runs non-root, with a read-only root filesystem, bounded temporary storage, CPU, memory, wall-clock, nesting, and retry limits. It has no public Internet, model-provider, executor-target, or infrastructure egress; it may access only the private storage, queue, database, and telemetry endpoints needed for its role.
-
-Only a successful parse may create normalized sections, source locations, parser provenance, and a follow-on indexing job. Parsed content remains untrusted evidence. Rejected or failed files create no chunks, embeddings, model calls, reports, or execution candidates.
 
 ## 7. Core processing flows
 
@@ -493,9 +482,14 @@ Validation includes:
 
 ### 11.3 Executor isolation
 
-The restricted execution worker is the only runtime role allowed to instantiate `RestrictedHttpExecutor` and consume approved-execution messages. It has read access only to immutable plans, unconsumed approvals, target-configuration snapshots, and target-specific secrets required for an approved run. It can write only execution evidence, state, and append-only audit events.
+The executor runs as a distinct worker entry point with:
 
-It cannot create or modify identities, projects, plans, approvals, target allowlists, or infrastructure. It has no model-provider credential, raw-document access, parser capability, or public inbound endpoint. It retains deterministic URL, DNS/IP, method, header, body, response, timeout, concurrency, and redirect validation immediately before connection.
+- A minimal IAM role.
+- No permission to modify user identity or infrastructure.
+- Read access only to approved execution state and necessary encrypted secrets.
+- Write access only to execution evidence and audit state.
+- No ability to create new allowlisted hosts at runtime.
+- Separate telemetry labels and alarms.
 
 ## 12. Production deployment
 
@@ -707,11 +701,15 @@ Examples:
 - Add a second model provider only when resilience or cost evidence justifies it.
 - Add browser execution only after API execution and safety gates are complete.
 
-## 19. Architecture decision records
+## 19. Initial architecture decision records to create
 
-See [ADR index](adr/README.md).
-
-The MVP requires ADR-001 through ADR-010. ADR-004, ADR-008, ADR-009, and ADR-010 are Phase 0 security and product-boundary gates and must be proposed before implementation begins.
+- ADR-001: Modular monolith instead of microservices.
+- ADR-002: Direct Responses API orchestration instead of a multi-agent framework.
+- ADR-003: PostgreSQL full-text plus pgvector hybrid retrieval.
+- ADR-004: Model-proposes / code-validates / human-approves / executor-acts security pattern.
+- ADR-005: AWS serverless application tier and production database selection.
+- ADR-006: Synthetic/public data and read-only guest demonstration.
+- ADR-007: Three-level evaluation strategy in CI.
 
 ## 20. Current external references
 
