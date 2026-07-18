@@ -1,8 +1,8 @@
 # Architecture — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline  
-**Version:** 0.1  
-**Last updated:** 2026-07-17  
+**Document status:** Approved working baseline
+**Version:** 0.2
+**Last updated:** 2026-07-17
 **Architecture style:** Modular monolith with isolated execution boundary
 
 ## 1. Architecture objectives
@@ -26,11 +26,12 @@ The architecture must demonstrate production AI-engineering skill without becomi
 | Agents | No multi-agent system in MVP | Multiple agents require measured benefit, not architectural theater |
 | Model output | Strict versioned schemas validated with Pydantic | Converts stochastic output into explicit contracts |
 | Retrieval | PostgreSQL full-text search plus pgvector, combined through rank fusion | Handles exact requirement identifiers and semantic matches |
-| Side effects | Model proposes; deterministic code validates; human approves; isolated executor acts | Prevents the model from having unrestricted network authority |
+| Side effects | Model proposes; deterministic code validates; owner approves; a restricted execution worker revalidates and invokes the executor | Prevents the API, model, and general worker from gaining target-network authority |
 | Production cloud | AWS-first, Terraform-managed | Aligns with existing experience and demonstrates infrastructure ownership |
 | Data | PostgreSQL plus S3-compatible object storage | Strong relational provenance with vector retrieval and durable raw files |
-| Background work | Database-backed job state plus SQS worker in production | Supports retries and asynchronous progress without introducing a workflow platform initially |
+| Background work | Durable database-backed job state plus separate parser, general-job, and approved-execution queues with private worker roles | Keeps untrusted parsing, AI work, and outbound HTTP execution independently least-privileged without introducing domain microservices |
 | Public access | Authenticated owner plus read-only guest demo | Demonstrates a usable product while minimizing public attack surface |
+| Document ingestion | Quarantine-first object storage and isolated parsing of every uploaded file | Treats file bytes, metadata, parsed text, and OpenAPI content as untrusted before retrieval or model use |
 
 ## 3. System context
 
@@ -39,18 +40,27 @@ flowchart LR
     Owner[Authenticated owner] --> Web[Web application]
     Guest[Read-only guest] --> Web
     Web --> API[Application API]
-    API --> Model[OpenAI API]
     API --> DB[(PostgreSQL + pgvector)]
-    API --> Objects[(Object storage)]
-    API --> Queue[Job queue]
-    Queue --> Worker[Background worker]
-    Worker --> Model
-    Worker --> DB
-    Worker --> Objects
-    Worker --> Executor[Isolated HTTP executor]
+    API --> Quarantine[(Private quarantine storage)]
+    API --> ParserQueue[Parser queue]
+    ParserQueue --> Parser[Restricted parser worker]
+    Quarantine -->|read-only bytes| Parser
+    Parser --> DB
+    Parser --> GeneralQueue[General-job queue]
+    API --> GeneralQueue
+    GeneralQueue --> General[General analysis worker]
+    General --> DB
+    General --> Objects[(Accepted artifacts and sanitized exports)]
+    General --> Model[OpenAI API]
+    API --> ExecutionQueue[Approved-execution queue]
+    ExecutionQueue --> Executor[Restricted execution worker]
+    Executor --> DB
+    Executor --> Secrets[Target-specific secret store]
     Executor --> Sandbox[Allowlisted mock/sandbox API]
+    API --> DemoPublication[(Immutable sanitized DemoPublication)]
     API --> Telemetry[Logs, traces, metrics]
-    Worker --> Telemetry
+    Parser --> Telemetry
+    General --> Telemetry
     Executor --> Telemetry
 ```
 
@@ -79,27 +89,39 @@ flowchart TB
         Audit[Audit module]
     end
 
-    subgraph Worker[Worker deployment from same codebase]
-        JobRunner[Job runner]
+    subgraph Workloads[Separate worker deployment profiles]
+        ParserQueue[Parser queue]
+        ParserWorker[Restricted parser worker]
+        GeneralQueue[General-job queue]
+        GeneralWorker[General analysis worker]
+        ExecutionQueue[Approved-execution queue]
+        ExecutorWorker[Restricted execution worker]
         HttpExecutor[Restricted HTTP executor]
     end
 
     UI --> Backend
     ApprovalUI --> Plans
     ReportUI --> Reporting
-    Ingestion --> Retrieval
-    Analysis --> Retrieval
-    Analysis --> ModelGateway
-    Tests --> ModelGateway
-    Reporting --> ModelGateway
-    Plans --> JobRunner
-    JobRunner --> HttpExecutor
-    Eval --> Analysis
-    Eval --> Tests
-    Eval --> Reporting
+    Ingestion --> ParserQueue
+    ParserQueue --> ParserWorker
+    ParserWorker --> Ingestion
+    Ingestion --> GeneralQueue
+    Analysis --> GeneralQueue
+    Tests --> GeneralQueue
+    Reporting --> GeneralQueue
+    GeneralQueue --> GeneralWorker
+    GeneralWorker --> Retrieval
+    GeneralWorker --> Analysis
+    GeneralWorker --> Tests
+    GeneralWorker --> Reporting
+    GeneralWorker --> ModelGateway
+    Plans --> ExecutionQueue
+    ExecutionQueue --> ExecutorWorker
+    ExecutorWorker --> HttpExecutor
+    Eval --> GeneralQueue
 ```
 
-The API and worker are separate deployment units but share the same repository, domain models, migrations, validation rules, and observability libraries.
+The API, parser worker, general worker, and restricted executor are separate deployment profiles that share the same repository, domain models, migrations, validation rules, and observability libraries. Shared code must not imply shared credentials, queue permissions, database roles, object-store access, or network egress.
 
 ## 5. Repository structure
 
@@ -128,7 +150,10 @@ ai-quality-engineering-copilot/
 │   │   └── evaluation/
 │   ├── prompts/                   # Versioned prompt templates
 │   ├── schemas/                   # Pydantic and generated JSON Schemas
-│   └── worker.py
+│   └── workers/
+│       ├── parser_worker.py        # Quarantine-only parser entry point
+│       ├── general_worker.py       # AI, indexing, reporting, and evaluation work
+│       └── executor_worker.py      # Approved-execution-only entry point
 ├── evaluation/
 │   ├── datasets/
 │   ├── rubrics/
@@ -176,15 +201,16 @@ ai-quality-engineering-copilot/
 
 ### Ingestion
 
-- Validates file policy.
-- Stores immutable raw document versions.
-- Parses source structure.
-- Produces normalized sections and source locations.
+- Performs only bounded preflight checks in the API.
+- Stores eligible bytes under generated private quarantine keys.
+- Sends opaque document identifiers to the restricted parser queue.
+- Promotes only parser-accepted normalized sections and source locations.
 - Never interprets embedded document instructions as system commands.
 
 ### Retrieval
 
-- Chunks normalized content.
+- Receives only accepted normalized content.
+- Chunks normalized content through the general worker.
 - Computes embeddings.
 - Maintains PostgreSQL full-text indexes and pgvector indexes.
 - Executes project-scoped hybrid retrieval.
@@ -211,21 +237,44 @@ ai-quality-engineering-copilot/
 - Creates immutable plans.
 - Records approval.
 - Performs network policy validation.
-- Executes deterministic HTTP requests and assertions.
+- Sends an approved execution ID only to the restricted execution queue.
+- Executes deterministic HTTP requests and assertions only in the restricted executor.
 - Stores redacted evidence.
 
 ### Reporting
 
 - Aggregates deterministic facts and AI analysis.
 - Generates web, Markdown, and JSON reports.
-- Clearly labels provenance and limitations.
+- Uses immutable canonical report revisions with validated citations and provenance.
+- Renders source, model, and target-response content only as escaped text or a strict sanitized Markdown subset; raw model HTML is prohibited.
+- Clearly labels provenance, limitations, and unsupported/not-run states.
 
 ### Evaluation
 
-- Executes versioned benchmark cases.
+- Executes versioned benchmark cases from the fixture manifest and ground-truth registry.
 - Runs deterministic and model-based scorers.
-- Compares candidate configurations against baselines.
+- Compares named B0/B1/B2 configurations according to the evaluation plan.
 - Produces release-gate results.
+- Uses fake resolver and transport adapters for policy fixtures; evaluation does not grant a real target-side-effect capability.
+
+### Public demo
+
+- Resolves guest reads only through the server-selected immutable sanitized `DemoPublication`.
+- Does not expose generic project, object, export, report-regeneration, job, or execution routes to guests.
+
+### Ingestion and parser trust boundary
+
+All uploaded bytes, filenames, MIME declarations, document metadata, parsed text, OpenAPI fields, XML, YAML, JSON, PDF contents, descriptions, examples, server URLs, and test-result fields are untrusted input. The MVP admission policy supports only Markdown, text, PDF, and OpenAPI YAML/JSON; XML, JUnit, generic JSON result files, archives, Office files, executables, and macros are rejected before parsing.
+
+The API performs only bounded streaming checks: authentication, project authorization, extension/media-type allowlisting, content-signature checks where feasible, and configured size/count/page limits. Eligible bytes are stored with generated object keys in a private quarantine namespace. The request path does not invoke complex parsers.
+
+A restricted parser worker reads an opaque queued document identifier and the corresponding quarantined object. It runs non-root, with a read-only root filesystem, bounded temporary storage, CPU, memory, wall-clock, nesting, and retry limits. It has no public Internet, model-provider credential, executor-target, target-secret, or general-worker capability; it may access only the private storage, parser queue, restricted database role, and telemetry endpoints needed for its role.
+
+Its workload identity permits only those named data-plane endpoints; it has no cloud control-plane or unrelated cloud credentials.
+
+Only a successful parse may create bounded normalized sections, source locations, parser provenance, and a follow-on general indexing job. Raw bytes remain private quarantine objects regardless of acceptance; acceptance promotes only the normalized representation and active database state, and the general worker has no quarantine access. Parsed content remains untrusted evidence. Policy and malformed-input rejection is terminal: it produces a stable sanitized rejection record, no retry, and no chunks, embeddings, model calls, reports, execution candidates, DNS calls, or HTTP sends.
+
+The OpenAPI profile accepts only root-local `#/...` `$ref` values. It rejects `$dynamicRef`, cycles, external, relative, encoded, `file:`, `data:`, and network references, and its resolver has no network or filesystem access. The hard numerical parser limits in [Product Requirements §10](PRODUCT_REQUIREMENTS.md#10-initial-operational-limits) are normative.
 
 ## 7. Core processing flows
 
@@ -235,24 +284,32 @@ ai-quality-engineering-copilot/
 sequenceDiagram
     participant U as User
     participant A as API
-    participant S as Object storage
-    participant Q as Queue
-    participant W as Worker
+    participant S as Private quarantine storage
+    participant PQ as Parser queue
+    participant P as Restricted parser worker
+    participant GQ as General-job queue
+    participant G as General analysis worker
     participant D as PostgreSQL
 
     U->>A: Upload file
-    A->>A: Authorize and validate limits
-    A->>S: Store immutable raw object
-    A->>D: Create document version + queued job
-    A->>Q: Enqueue ingestion job
+    A->>A: Authorize and perform bounded preflight
+    A->>S: Store bytes under generated quarantine key
+    A->>D: Create quarantined candidate + parser job
+    A->>PQ: Enqueue opaque document ID
     A-->>U: 202 Accepted + job ID
-    Q->>W: Deliver job
-    W->>S: Read object
-    W->>W: Parse and normalize
-    W->>D: Store sections and locations
-    W->>W: Chunk and embed
-    W->>D: Store chunks, vectors, indexes, provenance
-    W->>D: Mark completed or failed
+    PQ->>P: Deliver opaque document ID
+    P->>S: Read quarantined object
+    P->>P: Parse and normalize within limits
+    alt accepted
+        P->>D: Store bounded sections, locations, provenance, accepted version
+        P->>GQ: Enqueue accepted indexing job
+        GQ->>G: Deliver accepted version ID
+        G->>G: Chunk and embed accepted content
+        G->>D: Store chunks, vectors, indexes, provenance
+        G->>D: Mark indexing completed or failed
+    else policy, malformed, timeout, or resource rejection
+        P->>D: Store sanitized terminal rejection only
+    end
 ```
 
 ### 7.2 Grounded analysis and test generation
@@ -280,20 +337,24 @@ sequenceDiagram
     participant U as Owner
     participant A as API
     participant D as Database
-    participant Q as Queue
-    participant E as Executor
+    participant Q as Approved-execution queue
+    participant E as Restricted executor
+    participant C as Target configuration snapshot
     participant T as Sandbox target
 
     U->>A: Select executable tests
-    A->>A: Resolve target and validate policy
-    A->>D: Store canonical plan and SHA-256 hash
+    A->>A: Resolve configured target and validate policy
+    A->>C: Load immutable target ID, version, and configuration hash
+    A->>D: Store canonical plan with target snapshot and SHA-256 hash
     A-->>U: Display exact plan
     U->>A: Approve plan hash
     A->>D: Store actor, expiry, plan hash, one-time approval
     A->>Q: Enqueue approved execution
     Q->>E: Deliver execution ID
-    E->>D: Load plan and unconsumed approval
-    E->>E: Revalidate host, DNS, IP, method, limits, expiry
+    E->>D: Load immutable plan and unconsumed approval
+    E->>E: Verify plan hash, approval actor/project binding, expiry, and one-time status
+    E->>C: Load and match immutable target snapshot
+    E->>E: Revalidate target, host, DNS, IP, method, and limits
     E->>D: Atomically consume approval
     E->>T: Send bounded request
     T-->>E: Response
@@ -302,7 +363,13 @@ sequenceDiagram
     E->>D: Complete or fail batch
 ```
 
-The model cannot bypass this sequence. It may propose test definitions, but it cannot create a valid approval or invoke an unrestricted network client.
+The model cannot bypass this sequence. It may propose test definitions, but it cannot create a valid approval or invoke an unrestricted network client. A target configuration mutation creates a new immutable version and invalidates any pending approval whose canonical plan references the prior snapshot.
+
+### 7.4 Offline evaluation
+
+The evaluation runner consumes versioned fixture-manifest and ground-truth inputs, records the selected base/candidate configuration and scorer versions, and writes immutable run provenance. It compares B0/B1/B2 configurations only as defined in [the evaluation plan](EVALUATION_PLAN.md); it does not create live execution plans or receive target credentials.
+
+Security and execution-policy fixtures use deterministic fake resolver and transport adapters. A fixture's expected model, DNS, HTTP, target-mutation, approval-mutation, and redaction side effects are asserted explicitly; an unexpected side effect fails the case.
 
 ## 8. AI interaction design
 
@@ -320,6 +387,8 @@ A small `ModelGateway` interface shall own:
 - Error normalization.
 
 No domain module calls the provider SDK directly.
+
+Only the general analysis worker receives the ModelGateway invocation credential. The API, parser worker, and restricted executor have neither provider credentials nor a route that can proxy arbitrary model calls.
 
 ### 8.2 Workflow strategy
 
@@ -363,6 +432,10 @@ Initial routing is deterministic:
 - No dynamic self-selected model routing in MVP.
 
 Routing changes require comparison on task success, cost, and latency.
+
+### 8.6 Rendering untrusted content
+
+Source text, filenames, parser output, model output, report narratives, citations, and sandbox responses remain data at the rendering boundary. Web views render them as escaped text or a strict sanitized Markdown subset, never raw model-provided HTML. Content-security policy, safe download headers, and stored/reflected-XSS regression fixtures are required for every report and public-demo surface.
 
 ## 9. Retrieval architecture
 
@@ -422,6 +495,8 @@ Key integrity rules:
 - Foreign keys preserve source and configuration provenance.
 - Immutable artifacts use append-only revisions rather than in-place mutation.
 - Approvals and audit events are append-only.
+- Canonical plans reference immutable target-configuration snapshots by target ID, version, and configuration hash; a new configuration creates a new snapshot rather than mutating an approved plan.
+- Public reads resolve through immutable sanitized `DemoPublication` revisions, never a generic project lookup.
 - Project-scope checks are applied in application queries and reinforced with row-level security if feasible.
 - Migration scripts are versioned and tested against realistic fixtures.
 
@@ -429,18 +504,20 @@ Key integrity rules:
 
 Object storage contains:
 
-- Raw uploaded files.
-- Optional sanitized exports.
+- Private quarantined raw uploads.
+- Accepted derived artifacts and sanitized exports.
 - Large generated reports or evaluation artifacts.
 
 Controls:
 
 - Server-side encryption.
 - Private buckets.
-- Short-lived signed access through the API.
+- Separate quarantine, accepted-derived-artifact, and sanitized-publication prefixes with role-specific access; acceptance promotes normalized state, not raw bytes.
+- Short-lived signed access only after server-side authorization; guests receive no generic object access.
 - Content-type and download-disposition headers.
 - Lifecycle expiration for demo uploads.
 - Object keys based on non-guessable IDs, not user filenames.
+- Document deletion cascades to raw objects, normalized data, chunks, embeddings, caches, reports, exports, and execution evidence; a durable tombstone, deletion audit, and backup-expiry schedule provide the retention record.
 
 ### 10.3 Cache
 
@@ -452,6 +529,8 @@ No distributed cache is required initially. Application-level caching may be int
 
 Caching must not weaken project isolation or hide configuration changes.
 
+Cache keys include project and source/configuration versions. A deletion or retention transition invalidates every affected cache entry.
+
 ## 11. HTTP execution security architecture
 
 ### 11.1 Security invariants
@@ -459,7 +538,7 @@ Caching must not weaken project isolation or hide configuration changes.
 - The model never controls a general-purpose HTTP client.
 - Targets are selected from server-side environment definitions, not arbitrary model URLs.
 - OpenAPI `servers`, examples, descriptions, and extensions are untrusted suggestions.
-- Every plan is canonicalized and hashed.
+- Every plan is canonicalized and hashed, including target ID, immutable target-configuration version, and configuration hash.
 - Every approval is one-time, actor-bound, plan-bound, and time-bound.
 - Network policy is validated at plan creation and immediately before connection.
 - Assertions are deterministic code.
@@ -470,7 +549,7 @@ Caching must not weaken project isolation or hide configuration changes.
 Validation includes:
 
 1. Parse and normalize scheme, host, port, path, and query.
-2. Require configured target ID and allowed base URL.
+2. Require a configured target ID, allowed base URL, and exact immutable target-configuration snapshot referenced by the canonical plan.
 3. Require HTTPS except explicit local development.
 4. Resolve all addresses.
 5. Reject loopback, private, link-local, multicast, unspecified, reserved, and cloud-metadata addresses.
@@ -482,14 +561,9 @@ Validation includes:
 
 ### 11.3 Executor isolation
 
-The executor runs as a distinct worker entry point with:
+The restricted execution worker is the only runtime role allowed to instantiate `RestrictedHttpExecutor` and consume approved-execution messages. It has read access only to immutable plans, unconsumed approvals, target-configuration snapshots, and target-specific secrets required for an approved run. It can write only execution evidence, state, and append-only audit events.
 
-- A minimal IAM role.
-- No permission to modify user identity or infrastructure.
-- Read access only to approved execution state and necessary encrypted secrets.
-- Write access only to execution evidence and audit state.
-- No ability to create new allowlisted hosts at runtime.
-- Separate telemetry labels and alarms.
+It cannot create or modify identities, projects, plans, approvals, target allowlists, or infrastructure. It has no model-provider credential, raw-document access, parser capability, or public inbound endpoint. It retains deterministic URL, DNS/IP, method, header, body, response, timeout, concurrency, and redirect validation immediately before connection.
 
 ## 12. Production deployment
 
@@ -502,19 +576,44 @@ flowchart TB
     Web --> APIGW[API Gateway HTTP API]
     APIGW --> Auth[Cognito JWT authorizer]
     APIGW --> LambdaAPI[FastAPI Lambda container]
-    LambdaAPI --> S3[(S3 private bucket)]
-    LambdaAPI --> SQS[SQS queue]
     LambdaAPI --> DB[(PostgreSQL + pgvector)]
-    SQS --> LambdaWorker[Worker Lambda container]
-    LambdaWorker --> DB
-    LambdaWorker --> S3
-    LambdaWorker --> OpenAI[OpenAI API]
-    LambdaWorker --> MockAPI[Allowlisted mock API]
+    LambdaAPI --> Quarantine[(S3 private quarantine prefix)]
+    LambdaAPI --> ParserSQS[Parser SQS queue]
+    LambdaAPI --> GeneralSQS[General-job SQS queue]
+    LambdaAPI --> ExecutionSQS[Approved-execution SQS queue]
+    LambdaAPI --> DemoPublication[(Sanitized DemoPublication revisions)]
+    ParserSQS --> ParserWorker[Restricted parser worker]
+    Quarantine -->|read-only bytes| ParserWorker
+    ParserWorker --> DB
+    ParserWorker --> GeneralSQS
+    GeneralSQS --> GeneralWorker[General analysis worker]
+    GeneralWorker --> DB
+    GeneralWorker --> ActiveObjects[(Accepted artifacts and sanitized exports)]
+    GeneralWorker --> OpenAI[OpenAI API]
+    ExecutionSQS --> ExecutorWorker[Restricted execution worker]
+    ExecutorWorker --> DB
+    ExecutorWorker --> Secrets[Target-specific secret store]
+    ExecutorWorker --> MockAPI[Allowlisted mock API]
     LambdaAPI --> CW[CloudWatch / telemetry]
-    LambdaWorker --> CW
+    ParserWorker --> CW
+    GeneralWorker --> CW
+    ExecutorWorker --> CW
 ```
 
-### 12.2 Database deployment decision
+### 12.2 Workload identity and network boundaries
+
+The following deployment roles are separate IAM identities, queue policies, database roles, object-store prefixes, network policies, and telemetry namespaces. A shared code repository or container base image must not merge these permissions.
+
+| Runtime role | Queue / trigger | Permitted data and egress | Explicitly excluded |
+|---|---|---|---|
+| API | Authenticated HTTP request | Project/identity state, quarantine write, job enqueue, sanitized demo lookup; private telemetry endpoints | Complex parsing, model credentials, target secrets, target-network egress, execution-queue consumption |
+| Restricted parser worker | Parser queue only | Read quarantined object; write bounded accepted normalization or sanitized rejection; enqueue accepted general job; private storage/database/telemetry endpoints | Public Internet, model provider, executor queue, target secrets, target network, generic filesystem or infrastructure access |
+| General analysis worker | General-job queue only | Accepted project content, retrieval/indexing state, model gateway, reports/evaluation provenance, private telemetry endpoints | Quarantine parsing, approved-execution queue, target secrets, target-network egress, target configuration mutation |
+| Restricted execution worker | Approved-execution queue only | Immutable plan, unconsumed approval, immutable target snapshot, target-specific secret; write execution evidence/state/audit; egress only to configured sandbox target and private telemetry endpoints | Model credential, raw documents, parser capability, public ingress, plan/approval/target mutation, general job consumption |
+
+Guest reads are a distinct API policy: they resolve only a server-selected immutable sanitized `DemoPublication` revision. They cannot access generic project/object/export/report-regeneration routes or cause model, queue, or target work.
+
+### 12.3 Database deployment decision
 
 Logical code depends only on a PostgreSQL connection and pgvector support.
 
@@ -526,7 +625,7 @@ Preferred all-AWS candidate:
 
 The final production selection is a cost-gate decision. If the all-AWS baseline cannot stay within the monthly limit, an external serverless PostgreSQL provider with pgvector may be used while AWS remains the application and object-storage platform. This trade-off must be documented rather than hidden.
 
-### 12.3 Infrastructure modules
+### 12.4 Infrastructure modules
 
 Terraform modules should cover:
 
@@ -534,12 +633,12 @@ Terraform modules should cover:
 - Frontend hosting.
 - API Gateway.
 - Cognito.
-- Lambda API and worker.
-- SQS and dead-letter queue.
-- S3 and lifecycle rules.
+- Lambda API, restricted parser, general worker, and restricted executor deployments.
+- Separate SQS parser, general-job, and approved-execution queues with role-specific dead-letter queues and policies.
+- S3 quarantine, accepted-artifact, and sanitized-publication prefixes with lifecycle rules.
 - Database and secret management.
 - CloudWatch logs, dashboards, alarms, and budgets.
-- IAM roles and policies.
+- IAM roles, database roles, queue policies, and network-egress policies for each workload.
 - Mock sandbox API.
 
 Environments:
@@ -571,7 +670,9 @@ Local services:
 
 - Next.js frontend.
 - FastAPI backend.
-- Worker.
+- Restricted parser worker.
+- General analysis worker.
+- Restricted execution worker.
 - PostgreSQL with pgvector.
 - Local S3-compatible object storage or filesystem adapter.
 - Synthetic mock order API.
@@ -630,6 +731,9 @@ Security:
 - Prompt-injection detections.
 - Authentication failures.
 - File-policy rejections.
+- Parser isolation violations and unexpected egress attempts.
+- Queue-routing, workload-permission, and target-snapshot mismatch denials.
+- Guest-route and public-demo authorization denials.
 - Rate-limit and quota enforcement.
 
 ### 14.3 Logging
@@ -649,7 +753,7 @@ Logs are structured JSON and include correlation IDs. They exclude:
 | Model timeout or rate limit | Bounded retry with jitter; record attempt; preserve job state |
 | Invalid structured output | One bounded repair attempt; then explicit failure |
 | Embedding failure | Retry batch safely; do not mark document fully indexed |
-| Parser failure | Preserve raw file; expose safe source-specific error |
+| Parser policy, malformed-input, timeout, or resource-limit failure | Preserve only required private quarantine/audit material; record a stable sanitized terminal rejection; do not retry or create downstream chunks, embeddings, model calls, reports, execution candidates, DNS calls, or HTTP sends |
 | Queue duplicate | Idempotency key prevents duplicate side effects |
 | Worker crash | Visibility timeout and retry; dead-letter after bounded attempts |
 | Database unavailable | Fail safely; do not execute from stale approval state |
@@ -679,8 +783,8 @@ Logs are structured JSON and include correlation IDs. They exclude:
 | Unit | URL policy, schema validation, state transitions, rank fusion, cost calculations |
 | Integration | PostgreSQL repositories, pgvector retrieval, S3 adapter, queue idempotency |
 | Contract | Frontend/API schemas, OpenAI gateway adapter, mock API/OpenAPI consistency |
-| Security | SSRF, DNS rebinding, approval replay, prompt injection, XSS, file abuse |
-| AI evaluation | Findings, tests, citations, tool planning, failure analysis |
+| Security | SSRF, DNS rebinding, approval replay, target-snapshot mutation, prompt injection, XSS, file abuse, parser isolation, workload-permission, and guest-route abuse |
+| AI evaluation | Versioned fixture-manifest and ground-truth cases for findings, tests, citations, tool planning, failure analysis, and zero-unexpected-side-effect policy behavior |
 | End-to-end | Upload → analysis → test generation → approval → sandbox execution → report |
 | Infrastructure | Terraform validation, policy scanning, container scanning, deployment smoke test |
 
@@ -701,15 +805,11 @@ Examples:
 - Add a second model provider only when resilience or cost evidence justifies it.
 - Add browser execution only after API execution and safety gates are complete.
 
-## 19. Initial architecture decision records to create
+## 19. Architecture decision records
 
-- ADR-001: Modular monolith instead of microservices.
-- ADR-002: Direct Responses API orchestration instead of a multi-agent framework.
-- ADR-003: PostgreSQL full-text plus pgvector hybrid retrieval.
-- ADR-004: Model-proposes / code-validates / human-approves / executor-acts security pattern.
-- ADR-005: AWS serverless application tier and production database selection.
-- ADR-006: Synthetic/public data and read-only guest demonstration.
-- ADR-007: Three-level evaluation strategy in CI.
+See [ADR index](adr/README.md).
+
+The MVP requires ADR-001 through ADR-010. ADR-004, ADR-008, ADR-009, and ADR-010 are Phase 0 security and product-boundary gates and must be proposed before implementation begins.
 
 ## 20. Current external references
 
