@@ -1,6 +1,6 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-07-17  
+**Status date:** 2026-07-18<br>
 **Overall state:** Foundation in progress  
 **Current phase:** Phase 0 — Foundation  
 **Target release:** 2026-11-15  
@@ -174,7 +174,8 @@ No product metric has a valid baseline yet.
 - [x] Evaluation plan drafted.
 - [x] Delivery backlog drafted.
 - [x] OpenAPI fixture validates syntactically.
-- [x] Document pack validation passes.
+- [x] Initial document pack validation passed before the current Phase 0 corrections.
+- [ ] Final documentation validation after Phase 0 corrections.
 - [ ] Files committed to repository.
 - [ ] Initial ADRs committed.
 - [ ] Linear milestones and P0 issues created.
@@ -182,11 +183,34 @@ No product metric has a valid baseline yet.
 
 ## 12. Next concrete action
 
-**Create the public GitHub repository, commit this validated document pack as the initial baseline, and enable required status checks on the default branch.**
+**Complete the required ADRs.**
 
-Do not begin model integration before the source-of-truth documents and initial ADRs are version controlled.
+Do not begin model integration before the source-of-truth documents, initial ADRs, and final Phase 0 validation are version controlled.
 
-## 13. Update template
+## 13. Session log
+
+### 2026-07-18 — MVP ingestion scope reconciled
+
+- Implemented:
+  - Removed generic JSON test-result and JUnit XML ingestion from the fixed MVP.
+  - Explicitly deferred generic JSON and XML/JUnit test-result ingestion.
+  - Preserved OpenAPI JSON input and JSON report output.
+  - Removed deferred result-normalization effort from MVP planning references.
+
+- Verified:
+  - Repository search found no remaining positive MVP claim for JUnit/XML or generic JSON test-result ingestion.
+  - `git diff --check` passed.
+
+- Not yet verified:
+  - Final manifest freshness.
+  - Documentation validation workflow.
+  - Complete Phase 0 closeout.
+  - `MANIFEST.json` remains intentionally pending final Phase 0 regeneration.
+
+- Exactly one next action:
+  - Complete the required ADRs.
+
+## 14. Update template
 
 Use this section structure after each meaningful work session:
 

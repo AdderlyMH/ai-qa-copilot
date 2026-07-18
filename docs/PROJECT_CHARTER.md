@@ -84,7 +84,7 @@ The product user and portfolio audience are deliberately separate. Product behav
 ### In scope
 
 - Project creation and history.
-- Upload of Markdown, text, PDF, OpenAPI YAML/JSON, JSON test results, and JUnit XML.
+- Upload of Markdown (`.md`), plain text (`.txt`), bounded PDF (`.pdf`), and OpenAPI 3.0.x/3.1.x documents in YAML (`.yaml`, `.yml`) or JSON (`.json`) form.
 - Safe file validation and document storage.
 - Requirement and OpenAPI parsing.
 - Chunking, embeddings, indexing, retrieval, and source citations.
@@ -118,6 +118,9 @@ The product user and portfolio audience are deliberately separate. Product behav
 - Large multi-agent hierarchies.
 - Automatic defect creation.
 - Support for every file format.
+- Generic JSON test-result ingestion.
+- JUnit XML and other XML test-result ingestion.
+- Broad test-report normalization across third-party formats.
 
 Post-MVP work must not begin until all MVP release gates pass.
 

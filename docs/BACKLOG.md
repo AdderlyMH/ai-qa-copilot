@@ -108,7 +108,7 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Estimate:** 2 h
 - **Dependencies:** FND-002, FND-003
 - **Deliverable:** Revised effort estimate, weekly-capacity plan, release-date assessment, monthly-budget plan, and documented decision on any P1 deferrals.
-- **Planning note:** Existing explicit backlog estimates total 212 h. IAM adds 6 h, JSON/JUnit result normalization adds 3 h, and the REP epic adds 9 h, giving at least 230 h before re-estimating the enlarged parser, executor, and ADR work.
+- **Planning note:** Generic JSON test-result and JUnit/XML ingestion are deferred to the post-MVP backlog and are excluded from MVP effort totals. The MVP supports JSON only when it is an OpenAPI document or a generated application output. Recalculate the delivery total from the remaining explicit MVP issues after all Phase 0 corrections are complete.
 - **Acceptance:** The owner explicitly selects additional capacity, a revised release date, and/or specific P1 deferrals. P0 authentication, parser isolation, executor isolation, reporting, and security validation remain in scope. The resulting changes are propagated to the charter, backlog, and project status.
 
 #### FND-007 — Freeze parser and untrusted-content security contract
@@ -761,6 +761,14 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 | PMVP-008 | Flaky-test or defect-priority ML model | P2 | Suitable labeled dataset exists |
 | PMVP-009 | Fine-tuning | P2 | Prompt/retrieval baselines plateau and data quality is sufficient |
 | PMVP-010 | Kubernetes | P2 | Operational scale, not portfolio breadth, justifies it |
+
+### Post-MVP — Test-result ingestion and normalization
+
+- Generic JSON test-result ingestion.
+- JUnit XML and other XML test-result ingestion.
+- Versioned normalization schemas for supported test-report formats.
+- Parser-security fixtures and provenance requirements for each added format.
+- Integration with failure analysis only after evaluation demonstrates value.
 
 ## 12. Definition of Ready
 
