@@ -1,10 +1,10 @@
 # Delivery Backlog — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline  
-**Version:** 0.1  
-**Planning date:** 2026-07-17  
-**Target release:** 2026-11-15  
-**Capacity assumption:** 12 hours/week; approximately 200–210 total hours  
+**Document status:** Approved working baseline
+**Version:** 0.2
+**Planning date:** 2026-07-17
+**Target release:** 2026-11-15
+**Capacity assumption:** 12 hours/week; at least 230 planned hours before re-estimating expanded parser, executor, and ADR work
 **Issue tracker:** Linear
 
 ## 1. Delivery strategy
@@ -45,18 +45,18 @@ Work proceeds through complete vertical slices. A phase is complete only when it
 ## 2. Milestone calendar
 
 | Phase | Dates | Planned effort | Exit result |
-|---|---|---:|---|
-| 0. Foundation | Jul 17–Jul 26 | 14 h | Approved baseline docs and repository plan |
-| 1. Walking skeleton | Jul 27–Aug 9 | 24 h | UI → API → model → persistence → CI |
-| 2. Ingestion and retrieval | Aug 10–Aug 30 | 31 h | Versioned documents, hybrid retrieval, citations |
-| 3. Analysis and test design | Aug 31–Sep 20 | 34 h | Findings, structured tests, traceability |
-| 4. Controlled execution | Sep 21–Oct 4 | 30 h | Approval, sandbox execution, evidence |
-| 5. Evaluation and observability | Oct 5–Oct 25 | 37 h | 100-case benchmark, traces, cost/latency gates |
-| 6. Security and deployment | Oct 26–Nov 8 | 24 h | Terraform, live deployment, hardening, rollback |
-| 7. Portfolio release | Nov 9–Nov 15 | 18 h | Public repo, demo, video, case study |
-| **Total** | | **212 h** | |
+|---|---|---------------:|---|
+| 0. Foundation | Jul 17–Jul 26 |           22 h | Approved baseline docs and repository plan |
+| 1. Walking skeleton | Jul 27–Aug 9 |           28 h | UI → API → model → persistence → CI |
+| 2. Ingestion and retrieval | Aug 10–Aug 30 |           34 h | Versioned documents, hybrid retrieval, citations |
+| 3. Analysis and test design | Aug 31–Sep 20 |           34 h | Findings, structured tests, traceability |
+| 4. Controlled execution | Sep 21–Oct 4 |           34 h | Approval, sandbox execution, evidence |
+| 5. Evaluation and observability | Oct 5–Oct 25 |           37 h | 100-case benchmark, traces, cost/latency gates |
+| 6. Security and deployment | Oct 26–Nov 8 |           24 h | Terraform, live deployment, hardening, rollback |
+| 7. Portfolio release | Nov 9–Nov 15 |           18 h | Public repo, demo, video, case study |
+| **Total** | |      **231 h** | |
 
-The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is created by deferring P1 polish before reducing quality or security work.
+The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 must record a revised schedule, capacity, scope, or release-date decision before implementation begins. P1 polish may be deferred, but parser, approval, SSRF, evaluation, and provenance gates may not be removed.
 
 ## 3. Phase 0 — Foundation
 
@@ -83,7 +83,7 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 - **Priority:** P0
 - **Estimate:** 2 h
 - **Dependencies:** FND-001
-- **Deliverable:** `docs/adr/README.md` and ADR-001 through ADR-004.
+- **Deliverable:** `docs/adr/README.md` and ADR-001 through ADR-010 in Proposed or Accepted state.
 - **Acceptance:** Decisions cover modular monolith, direct orchestration, hybrid retrieval, and safe execution pattern.
 
 #### FND-004 — Create public repository controls
@@ -102,15 +102,40 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 - **Deliverable:** `AGENTS.md`, `CONTRIBUTING.md`, Makefile/task runner contract.
 - **Acceptance:** Formatting, lint, type-check, test, and dev commands have stable names.
 
-#### FND-006 — Validate schedule and budget assumptions
+#### FND-006 — Re-estimate schedule, capacity, and budget after mandatory P0 additions
 
-- **Priority:** P1
+- **Priority:** P0
 - **Estimate:** 2 h
-- **Dependencies:** FND-002
-- **Deliverable:** Recorded availability, monthly limit, target date, and budget alerts plan.
-- **Acceptance:** Any change is propagated to charter, backlog, and status.
+- **Dependencies:** FND-002, FND-003
+- **Deliverable:** Revised effort estimate, weekly-capacity plan, release-date assessment, monthly-budget plan, and documented decision on any P1 deferrals.
+- **Planning note:** Existing explicit backlog estimates total 212 h. IAM adds 6 h, JSON/JUnit result normalization adds 3 h, and the REP epic adds 9 h, giving at least 230 h before re-estimating the enlarged parser, executor, and ADR work.
+- **Acceptance:** The owner explicitly selects additional capacity, a revised release date, and/or specific P1 deferrals. P0 authentication, parser isolation, executor isolation, reporting, and security validation remain in scope. The resulting changes are propagated to the charter, backlog, and project status.
 
-**Phase 0 exit:** Canonical documents, repository governance, Linear plan, and initial ADRs are committed.
+#### FND-007 — Freeze parser and untrusted-content security contract
+
+- **Priority:** P0
+- **Estimate:** 3 h
+- **Dependencies:** FND-001, FND-003
+- **Deliverable:** Approved parser-policy table, rejection taxonomy, quarantine-first boundary, untrusted-content contract, and links among product requirements, architecture, threat model, ADRs, and evaluation plan.
+- **Acceptance:** Every supported format has explicit size, structure, alias, reference, decompression, timeout, isolation, and failure behavior. Unsupported XML/JUnit scope is explicitly deferred. No unresolved parser-security decision blocks safe implementation.
+
+#### FND-008 — Seed adversarial security fixture catalog and expected outcomes
+
+- **Priority:** P0
+- **Estimate:** 3 h
+- **Dependencies:** FND-007
+- **Deliverable:** Versioned fixture catalog for parser, prompt-injection, SSRF, approval, redaction, and isolation cases, including threat ID, expected boundary, expected side effects, and CI lane.
+- **Acceptance:** Every Critical or High threat has at least one fixture ID, expected deterministic outcome, source reference where applicable, and planned CI execution. Deny cases explicitly require zero unexpected model, DNS, HTTP, target-mutation, approval-mutation, or secret-exposure side effects.
+
+#### FND-009 — Define objective security release-gate matrix
+
+- **Priority:** P0
+- **Estimate:** 2 h
+- **Dependencies:** FND-007, FND-008
+- **Deliverable:** Gate-to-threat-to-fixture matrix for SG-01 through SG-08, with fixed denominators, evidence requirements, and CI/release exit behavior.
+- **Acceptance:** No hard gate relies solely on LLM judgment, manual interpretation, or a selected-pull-request workflow.
+
+**Phase 0 exit:** Canonical documents, repository governance, Linear plan, ADRs, parser/untrusted-content contract, adversarial fixture catalog, and objective security release-gate matrix are committed. No parser or HTTP-execution implementation may start before FND-007 through FND-009 are complete.
 
 ## 4. Phase 1 — Walking skeleton
 
@@ -136,7 +161,7 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 
 - **Priority:** P0
 - **Estimate:** 4 h
-- **Dependencies:** SKEL-002
+- **Dependencies:** SKEL-002, IAM-002
 - **Deliverable:** Project entity, repository, API, and basic UI.
 - **Acceptance:** Create/list/view/archive works with integration tests.
 
@@ -162,7 +187,15 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 - **Estimate:** 4 h
 - **Dependencies:** SKEL-001
 - **Deliverable:** GitHub Actions for formatting, lint, frontend/backend type checks, unit tests, migration check.
-- **Acceptance:** Deliberate failures block merge; clean branch passes.
+- **Acceptance:** Deliberate failures block merge; clean branch passes; secret/SCA/SAST checks and the deterministic security harness run on every pull request.
+
+#### SEC-001 — Build deterministic security regression harness
+
+- **Priority:** P0
+- **Estimate:** 4 h
+- **Dependencies:** SKEL-001, SKEL-006, FND-008
+- **Deliverable:** Fixture-manifest runner with fake resolver, transport, model, and storage adapters that can assert expected boundaries and downstream side effects.
+- **Acceptance:** The harness proves zero model, DNS, HTTP, target-mutation, approval-mutation, and secret-exposure side effects for deny cases. It produces stable machine-readable results in pull-request CI with zero AI spend.
 
 #### SKEL-007 — Add one Playwright end-to-end smoke test
 
@@ -172,7 +205,25 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 - **Deliverable:** Create project and run fake-model analysis.
 - **Acceptance:** Test runs locally and in CI without paid model calls.
 
-**Phase 1 exit:** A reviewer can trace UI → API → typed model adapter → database → UI, with CI evidence.
+### Epic IAM — Owner and guest access foundation
+
+#### IAM-001 — Implement Cognito owner identity and local-development guard
+
+- **Priority:** P0
+- **Estimate:** 3 h
+- **Dependencies:** SKEL-001
+- **Deliverable:** Cognito identity validation, server-side configured owner `(issuer, subject)` mapping, and a local-only authentication guard.
+- **Acceptance:** Invalid credentials return `401`; valid non-owner identity returns `403`; production rejects a local auth bypass.
+
+#### IAM-002 — Implement project authorization, demo publication, and audit policy
+
+- **Priority:** P0
+- **Estimate:** 3 h
+- **Dependencies:** IAM-001, SKEL-002
+- **Deliverable:** Central project-scoped authorization, immutable demo-publication allowlist, and authorization-sensitive audit events.
+- **Acceptance:** Cross-project, guest-write, guest-spend, and raw-object access fail closed; only selected sanitized demo revisions are public.
+
+**Phase 1 exit:** A reviewer can trace UI → authenticated API → typed model adapter → database → UI, with CI evidence. Owner-only routes are authorized server-side, guest access is limited to the configured read-only demo publication, and production rejects the local authentication bypass.
 
 ## 5. Phase 2 — Ingestion and retrieval
 
@@ -186,37 +237,45 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 - **Deliverable:** Document, version, section, chunk, parser-version models.
 - **Acceptance:** Migrations and schema tests cover provenance and project ownership.
 
-#### ING-002 — Implement upload policy and object-storage adapter
+#### ING-002 — Implement quarantine-first upload policy and object-storage adapter
 
 - **Priority:** P0
 - **Estimate:** 4 h
-- **Dependencies:** ING-001
-- **Deliverable:** Local storage adapter, size/type limits, hashes, immutable versions.
-- **Acceptance:** Unsupported/mismatched/oversized files fail before processing; deletion is tested.
+- **Dependencies:** ING-001, FND-007, SEC-001
+- **Deliverable:** Private quarantine storage adapter, streamed size/type limits, generated object keys, hashes, immutable accepted versions, and sanitized rejection outcomes.
+- **Acceptance:** Unsupported, mismatched, oversized, malformed, and policy-rejected files fail before processing; reject paths prove zero chunks, embeddings, model calls, execution candidates, DNS, HTTP, and parser retries; deletion is tested.
 
 #### ING-003 — Parse Markdown and text requirements
 
 - **Priority:** P0
 - **Estimate:** 3 h
-- **Dependencies:** ING-002
+- **Dependencies:** ING-002, SEC-001
 - **Deliverable:** Heading, requirement-ID, and line-location parser.
-- **Acceptance:** Sample requirements produce stable normalized units and locations.
+- **Acceptance:** Markdown/text parser passes applicable SEC-PARSE-* fixtures and produces stable normalized units/locations only for accepted inputs.
 
 #### ING-004 — Parse and validate OpenAPI YAML/JSON
 
 - **Priority:** P0
 - **Estimate:** 4 h
-- **Dependencies:** ING-002
+- **Dependencies:** ING-002, SEC-001
 - **Deliverable:** Contract validation and normalized operations/schemas/security.
-- **Acceptance:** Malformed specs fail safely; sample intentional semantic defects remain ingestible.
+- **Acceptance:** malformed and external-reference specs fail safely; schema-valid synthetic semantic defects remain ingestible; all applicable OpenAPI parser/security fixtures pass.
 
 #### ING-005 — Parse bounded PDF input
 
-- **Priority:** P1
+- **Priority:** P0
 - **Estimate:** 4 h
-- **Dependencies:** ING-002
+- **Dependencies:** ING-002, SEC-001
 - **Deliverable:** Page-aware text extraction with page and size limits.
-- **Acceptance:** Normal, encrypted, oversized, and malformed fixtures are handled explicitly.
+- **Acceptance:** normal, encrypted, active-content, oversized, malformed, and decompression-abuse fixtures receive explicit expected outcomes with zero downstream side effects on rejection.
+
+#### ING-006 — Complete parser-adversarial regression matrix
+
+- **Priority:** P0
+- **Estimate:** 3 h
+- **Dependencies:** ING-002, FND-008, SEC-001
+- **Deliverable:** Deterministic parser-security suite for Markdown/text, JSON, YAML, OpenAPI, and PDF fixtures.
+- **Acceptance:** Every `SEC-PARSE-*` case passes with the expected accept/reject boundary. Rejected cases prove zero chunks, embeddings, model calls, execution candidates, DNS calls, HTTP sends, and automatic retries.
 
 ### Epic RAG — Hybrid retrieval and citations
 
@@ -224,7 +283,7 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 
 - **Priority:** P0
 - **Estimate:** 4 h
-- **Dependencies:** ING-003, ING-004
+- **Dependencies:** ING-003, ING-004, ING-006
 - **Deliverable:** Versioned chunking and embedding jobs with cache by content hash.
 - **Acceptance:** Reprocessing identical content avoids duplicate embedding cost.
 
@@ -354,11 +413,19 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 
 ### Epic EXEC — Human-approved HTTP execution
 
+#### EXEC-000 — Establish execution-policy adversarial suite before network capability
+
+- **Priority:** P0
+- **Estimate:** 4 h
+- **Dependencies:** FND-008, SEC-001, TST-001
+- **Deliverable:** Versioned SSRF, redirect, DNS-rebinding, malformed URL, forbidden-header, approval-mutation, approval-replay, response-bomb, and metadata-target fixtures using fake resolver and transport adapters.
+- **Acceptance:** Default-deny behavior is verified without a reachable executor. Every deny case proves zero transport sends and records its expected blocking boundary.
+
 #### EXEC-001 — Build synthetic mock order API
 
 - **Priority:** P0
 - **Estimate:** 5 h
-- **Dependencies:** ING-004
+- **Dependencies:** ING-004, EXEC-000
 - **Deliverable:** Local and deployable mock service with seeded behaviors.
 - **Acceptance:** Service matches intended contract except controlled runtime defect fixtures; contract tests pass.
 
@@ -366,7 +433,7 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 
 - **Priority:** P0
 - **Estimate:** 5 h
-- **Dependencies:** TST-001
+- **Dependencies:** TST-001, EXEC-000
 - **Deliverable:** Server-side target IDs, scheme/host/port/IP validation, redirects disabled.
 - **Acceptance:** SSRF matrix covers IPv4, IPv6, metadata, private, loopback, alternate notation, and rebinding simulation.
 
@@ -386,13 +453,13 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 - **Deliverable:** Actor-bound, expiring, one-time approval.
 - **Acceptance:** Missing, expired, altered, replayed, and concurrent approvals fail closed.
 
-#### EXEC-005 — Implement restricted HTTP executor
+#### EXEC-005 — Implement restricted execution worker and outbound HTTP client
 
 - **Priority:** P0
 - **Estimate:** 5 h
-- **Dependencies:** EXEC-004
-- **Deliverable:** Bounded `httpx` executor, deterministic assertions, cancellation, evidence.
-- **Acceptance:** Only approved requests execute; limits and TLS policy are tested.
+- **Dependencies:** EXEC-000, EXEC-002, EXEC-003, EXEC-004
+- **Deliverable:** Approved-execution queue consumer, restricted worker entry point, bounded outbound HTTP client, deterministic assertions, cancellation, redacted evidence, and audit records.
+- **Acceptance:** This is the first issue permitted to introduce an outbound HTTP client. The worker executes only a valid, unexpired, one-time-approved immutable plan against a server-side allowlisted target. All `SEC-NET-*` and approval-integrity fixtures pass at 100% before the route or worker is enabled.
 
 #### EXEC-006 — Implement redaction and evidence viewer
 
@@ -404,7 +471,7 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 
 #### EXEC-007 — Implement grounded failure analysis
 
-- **Priority:** P1
+- **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** EXEC-006, RAG-004
 - **Deliverable:** Observations, hypotheses, alternatives, and next checks.
@@ -414,11 +481,41 @@ The 212-hour plan is slightly above 12 hours/week. A minimum release buffer is c
 
 - **Priority:** P0
 - **Estimate:** 2 h
-- **Dependencies:** EXEC-007
+- **Dependencies:** EXEC-007, REP-004
 - **Deliverable:** Upload → analyze → generate → approve → execute → report.
-- **Acceptance:** Runs in CI with fake model or deterministic fixture and local mock API.
+- **Acceptance:** Runs in CI with a fake model or deterministic fixture and local mock API; it produces a schema-valid, cited, immutable, redacted report revision.
 
-**Phase 4 exit:** The core product workflow is complete with deterministic side-effect controls and evidence.
+### Epic REP — Cited, immutable QA reporting
+
+#### REP-001 — Define canonical QA report contract
+
+- **Priority:** P0
+- **Estimate:** 2 h
+- **Dependencies:** ANA-003, TST-004
+- **Acceptance:** `QualityReportV1` validates; every material claim has valid evidence or an explicit unsupported state.
+
+#### REP-002 — Assemble immutable QA evidence snapshots
+
+- **Priority:** P0
+- **Estimate:** 3 h
+- **Dependencies:** REP-001, EXEC-006, EXEC-007, ING-006
+- **Acceptance:** Summary counts reconcile with detailed records; no-execution and insufficient-evidence states are explicit.
+
+#### REP-003 — Render and publish safe reports
+
+- **Priority:** P0
+- **Estimate:** 2 h
+- **Dependencies:** REP-002, IAM-002
+- **Acceptance:** Web, Markdown, and JSON derive from canonical JSON; guests see only published sanitized revisions.
+
+#### REP-004 — Verify report integrity, citations, and redaction
+
+- **Priority:** P0
+- **Estimate:** 2 h
+- **Dependencies:** REP-003
+- **Acceptance:** Tampering, foreign citations, stale evidence, guest access, and canary-secret tests fail closed.
+
+**Phase 4 exit:** The core product workflow produces controlled execution evidence and a schema-valid, cited, immutable, redacted QA report.
 
 ## 8. Phase 5 — Evaluation and observability
 
@@ -700,7 +797,8 @@ If the schedule slips:
 3. Reduce public UI surface while retaining the preloaded workflow.
 4. Defer optional model routing or ablations after preserving one baseline comparison.
 5. Do not remove approval, SSRF protection, evaluation hard gates, provenance, or reproducible deployment.
+6. Do not merge a user-reachable HTTP execution route, worker, queue consumer, UI control, or outbound HTTP client until FND-007 through FND-009, SEC-001, EXEC-000, EXEC-002, EXEC-003, and EXEC-004 are complete and green in pull-request CI.
 
 ## 15. Immediate next issue
 
-**SKEL-001 — Initialize monorepo** becomes the first implementation issue after the document pack, repository controls, and initial ADRs are committed.
+**FND-007 — Freeze parser and untrusted-content security contract** becomes the next security prerequisite after the ADR process is established. No parser or execution implementation may begin until FND-007, FND-008, and FND-009 are complete.

@@ -1,10 +1,10 @@
 # Project Charter — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline  
-**Version:** 0.1  
-**Start date:** 2026-07-17  
-**Target portfolio release:** 2026-11-15  
-**Owner:** Project owner  
+**Document status:** Approved working baseline
+**Version:** 0.2
+**Start date:** 2026-07-17
+**Target portfolio release:** 2026-11-15
+**Owner:** Project owner
 **Issue tracker:** Linear
 
 ## 1. Mission
@@ -96,7 +96,8 @@ The product user and portfolio audience are deliberately separate. Product behav
 - Request, response, assertion, timing, and error evidence.
 - Failure analysis that separates facts from hypotheses.
 - Web, Markdown, and JSON reporting.
-- Authentication for owner actions and read-only guest demo.
+- Amazon Cognito-backed authentication for one configured owner and anonymous, read-only access to one explicitly published synthetic/public demonstration snapshot.
+- The MVP has no public sign-up, project sharing, invitations, team management, or additional roles.
 - Versioned evaluations, tracing, cost, latency, and reliability metrics.
 - Docker-based local environment, GitHub Actions, Terraform, and live AWS deployment.
 
