@@ -57,7 +57,7 @@ The project is appropriately scoped for an experienced SDET transitioning toward
 | Seeded requirement/OpenAPI fixtures | Completed locally | OpenAPI 3.1 YAML parsed; 11 paths, 14 operations, and local references validated |
 | Phase 0 repository setup | Not started | No repository evidence yet |
 | Linear project setup | Not started | No Linear evidence yet |
-| Initial ADRs | Not started | Listed in architecture but not created as files |
+| Initial ADRs | Completed locally | ADR-001 through ADR-010 are substantive, linked, and structurally validated; production database provider remains Proposed |
 
 ## 4. Not started
 
@@ -183,9 +183,9 @@ No product metric has a valid baseline yet.
 
 ## 12. Next concrete action
 
-**Complete the required ADRs.**
+**Create the control traceability matrix.**
 
-Do not begin model integration before the source-of-truth documents, initial ADRs, and final Phase 0 validation are version controlled.
+Do not begin model integration before the source-of-truth documents, initial ADRs, control traceability matrix, and final Phase 0 validation are version controlled.
 
 ## 13. Session log
 
@@ -209,6 +209,33 @@ Do not begin model integration before the source-of-truth documents, initial ADR
 
 - Exactly one next action:
   - Complete the required ADRs.
+
+### 2026-07-18 — Architecture decisions completed
+
+- Implemented:
+  - Completed ADR-001 through ADR-008 and ADR-010.
+  - Preserved and reviewed substantive ADR-009.
+  - Recorded Accepted and Proposed statuses based on actual project decisions.
+  - Added alternatives, consequences, impacts, validation, rollback criteria,
+    and traceability links.
+
+- Verified:
+  - ADR structural validation passed.
+  - Placeholder search returned no matches.
+  - git diff --check passed.
+  - Product and architecture review status: pending.
+
+- Not yet verified:
+  - Runtime implementation of any ADR.
+  - Full control traceability.
+  - Evaluation dependency closure.
+  - Final manifest and GitHub Actions validation.
+
+- Remaining Phase 0 blockers:
+  - 4
+
+- Exactly one next action:
+  - Create the control traceability matrix.
 
 ## 14. Update template
 
