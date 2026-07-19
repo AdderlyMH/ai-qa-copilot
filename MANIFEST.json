@@ -1,87 +1,164 @@
 {
-  "pack_version": "0.1",
-  "prepared": "2026-07-17",
-  "validation": {
-    "status": "passed",
-    "openapi_paths": 11,
-    "openapi_operations": 14,
-    "checks": [
-      "required files present and non-empty",
-      "README relative links resolve",
-      "requirement identifiers are unique",
-      "OpenAPI 3.1 YAML parses",
-      "OpenAPI local references resolve",
-      "OpenAPI path parameters and operation identifiers validate",
-      "controlled adversarial seeds are present",
-      "no unresolved TODO/TBD/FIXME placeholders"
-    ]
+  "schema_version": "docs-manifest/v2",
+  "inclusion_policy": {
+    "description": "Canonical Phase 0 documents, fixtures, ADRs, validation scripts, dependency lock, and documentation workflow",
+    "self_hash_policy": "MANIFEST.json is excluded to prevent circular hashing"
   },
   "files": [
     {
+      "path": ".github/workflows/docs-validation.yml",
+      "bytes": 1441,
+      "sha256": "b0e82492c7cdd6d72ed080112f0045dd1afb699b5a25e55862d1dd53749beb12"
+    },
+    {
       "path": "README.md",
-      "bytes": 3507,
-      "words_approx": 428,
-      "sha256": "0efd4376c8f4454fb586ebc0543c38c83d7efe8fc48099bfda7475a57799d711"
+      "bytes": 1316,
+      "sha256": "d4bd4a497ed20f96850a7f00dfeb17d50a838e25c7d35a89f39d0e4229302e0c"
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 24975,
-      "words_approx": 2919,
-      "sha256": "2c4635a361220ef0cba84566fa0d47c99759ff9f8bfb008239fd40473846ebf5"
+      "bytes": 38125,
+      "sha256": "6549a29b542179dde98d235712798d8ea898dd6c50643d9788e5284758e0f884"
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 25897,
-      "words_approx": 2954,
-      "sha256": "49ac283051e844d718afabe301bf31c9caa44c96c6c5954f649359d1174095e8"
+      "bytes": 39299,
+      "sha256": "e6531cb792d180cd7e2ed66cdae58ce680c6ac90132bd0701ea7baf43343fdcc"
+    },
+    {
+      "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
+      "bytes": 17985,
+      "sha256": "0600a5af8432364b7e36cdae199736ed0f02a405d1a5fd84a177d533282c7cd9"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 18470,
-      "words_approx": 2236,
-      "sha256": "d90eada385854e1147f3a12d52c7836f9598d920a87de9aab407dbcb52c844f6"
+      "bytes": 35287,
+      "sha256": "e581709139a0d7bdf131d4ed9690372e8a9f0e870125e334b0670904733503e9"
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
-      "bytes": 23487,
-      "words_approx": 2826,
-      "sha256": "8d413483b4d2635f7fc73744acb520ab9b8995a605b52cd3d20c4ea047ed23b7"
+      "bytes": 36019,
+      "sha256": "5290ad019e865fa2d65968436d98e5346c39eb52445f0257a42f0ea556f12e44"
     },
     {
       "path": "docs/PROJECT_CHARTER.md",
-      "bytes": 12592,
-      "words_approx": 1566,
-      "sha256": "a053f321f60494d1276decf43910c7d59e7b0302e9baad023dc1a57f07ecd8b0"
+      "bytes": 13274,
+      "sha256": "701e7fb3a7212db843b24ef736155a6c59640bb538267b996be8a94767476b97"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 8247,
-      "words_approx": 1022,
-      "sha256": "8c4328dd4ec65cc67a21505d0f27444b5837d17c7e864a8493874f520d750f0e"
+      "bytes": 1714,
+      "sha256": "17d9b84d53164bbf5ba61492fe8304c0a476ccb7ced07873615853fbf02b94d8"
     },
     {
       "path": "docs/SKILLS_PROFILE.md",
-      "bytes": 9473,
-      "words_approx": 1102,
-      "sha256": "f95262352dfbb2beb1ff6f54968df31d856dc46022d200dca8d8db6d698eee62"
+      "bytes": 11274,
+      "sha256": "947c848e03e68359f8d894c7e34513fb28cd6281bf4b95f1771002c1035802ae"
     },
     {
       "path": "docs/THREAT_MODEL.md",
-      "bytes": 22448,
-      "words_approx": 2795,
-      "sha256": "f5f940a8b1eb2254253026d4ea5a01f3dc578f7bbb1bfab7b81716b3d49bbd17"
+      "bytes": 41082,
+      "sha256": "4be161f7706f76ef5dc67f034c7d7cc8bc1644bc1c979dc185dafab130ee8fed"
+    },
+    {
+      "path": "docs/adr/ADR-001-modular-monolith.md",
+      "bytes": 5851,
+      "sha256": "261a017380fa41dc6d982a15899d57e4dc684ff9afed810e439e277f03fc7e60"
+    },
+    {
+      "path": "docs/adr/ADR-002-direct-responses-orchestration.md",
+      "bytes": 5515,
+      "sha256": "67c41b148ed24c58bb27fcc9648c661a20d1b97a1527be7f3478be8361b7e33f"
+    },
+    {
+      "path": "docs/adr/ADR-003-hybrid-retrieval.md",
+      "bytes": 5514,
+      "sha256": "cdf800d395aac428ef6dfb71b7a48259dc1b64fa9537064cbadcc9617f274909"
+    },
+    {
+      "path": "docs/adr/ADR-004-safe-http-execution-topology.md",
+      "bytes": 7520,
+      "sha256": "6d64c4b62890f499cb0e84c9d6a1456697ef4c32f36a2b07d0a00ee422154dfd"
+    },
+    {
+      "path": "docs/adr/ADR-005-aws-serverless-and-database.md",
+      "bytes": 6595,
+      "sha256": "03796e4c78c75e396aaa80d3f91e3d9d30715f7d66d039b719d513797ac1b9bd"
+    },
+    {
+      "path": "docs/adr/ADR-006-public-demo-data-policy.md",
+      "bytes": 5846,
+      "sha256": "7776cd7d1a42f15a68312750dfec8ba0250c4b0beb8d86553825208c3f657c35"
+    },
+    {
+      "path": "docs/adr/ADR-007-three-level-evaluation.md",
+      "bytes": 6990,
+      "sha256": "c861e676abcc31a2dd7dff42f92391dcc25a65964841ef01d956bade108b04d7"
+    },
+    {
+      "path": "docs/adr/ADR-008-cognito-owner-guest-authorization.md",
+      "bytes": 6552,
+      "sha256": "c8fdf5f650652429ceae85661eae6aad566c7f7852739fb992687793e00b7eb3"
+    },
+    {
+      "path": "docs/adr/ADR-009-parser-isolation.md",
+      "bytes": 8528,
+      "sha256": "4c9ff08fbe1c752daee347b42226871b34bb9d7b7f38f85b4bafc4b5029ae6dc"
+    },
+    {
+      "path": "docs/adr/ADR-010-canonical-report-revisions.md",
+      "bytes": 6636,
+      "sha256": "36abb7fc084edd4aaf1d4b5435209b9f1efa3388565424cadc36efd50f88fe9f"
+    },
+    {
+      "path": "docs/adr/README.md",
+      "bytes": 2277,
+      "sha256": "83100eccb8f51685cb821eb6e55c58f5be5c366e37cc6863933124fcd15186a1"
+    },
+    {
+      "path": "fixtures/benchmark/README.md",
+      "bytes": 6076,
+      "sha256": "0accf823fc315f6f56d8ed2c709c1a1f8e62d756da4d8f8442291d989085aad2"
+    },
+    {
+      "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
+      "bytes": 9651,
+      "sha256": "984f07c12817688d0324955d0ca7680e83b5804d1e47166ff09490ed2cd5a3b5"
+    },
+    {
+      "path": "fixtures/benchmark/ground-truth.v1.yaml",
+      "bytes": 13709,
+      "sha256": "8533772978e0a8b26d6d1f449c38dde02adbb012d8810718a944bb17a2a1e78a"
     },
     {
       "path": "fixtures/sample-openapi.yaml",
       "bytes": 25400,
-      "words_approx": 1976,
       "sha256": "8ad187ba3f758707c685f8e7f21aaac613254acd78bd139260a64fd8c2c345ce"
     },
     {
       "path": "fixtures/sample-requirements.md",
       "bytes": 12587,
-      "words_approx": 1711,
       "sha256": "414635e6c030d9a2a6ec6857128697a29514d49698f2b63d72649f191db36e4a"
+    },
+    {
+      "path": "requirements-docs.txt",
+      "bytes": 14,
+      "sha256": "0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a"
+    },
+    {
+      "path": "scripts/docs_integrity.py",
+      "bytes": 3873,
+      "sha256": "e1ff4ae654f9978919b157f95af82f23f0cda6559888fbbc44827adf39f9eedf"
+    },
+    {
+      "path": "scripts/generate_manifest.py",
+      "bytes": 7732,
+      "sha256": "d6fe709891e7eecfe5dffa33d1786255f5df2bea4f84f998b373c26ddc280e89"
+    },
+    {
+      "path": "scripts/validate_docs.py",
+      "bytes": 47791,
+      "sha256": "1cf37915a861954f67c83c2c667c1ebe30c363021fd112d1c9e9810d6ebbb4b3"
     }
   ]
 }
