@@ -212,7 +212,7 @@ findings:
     must_find: true
     required_explanation_elements:
       - Only a customer’s own orders or support-case-scoped orders are permitted.
-      - The list operation declares security: [].
+      - "The list operation declares security: []."
     prohibited_conclusions:
       - The OpenAPI global security requirement still applies to this operation.
     scorer: finding_concept_and_citation_v1
