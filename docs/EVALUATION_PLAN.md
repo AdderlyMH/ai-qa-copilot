@@ -9,6 +9,10 @@
 
 This plan defines how the project will determine whether the AI Quality Engineering Copilot is useful, grounded, safe, reliable, and economical enough for a public portfolio release.
 
+See the [Control Traceability Matrix](CONTROL_TRACEABILITY_MATRIX.md) for the
+mapping from requirements and threats to architecture decisions, fixtures,
+scorers, release gates, and backlog items.
+
 The evaluation program is part of the product, not an appendix. Every material change to prompts, models, schemas, retrieval, workflow logic, or execution policy must be measurable against a versioned baseline.
 
 ## 2. Primary evaluation questions
@@ -407,6 +411,23 @@ Primary metric:
 ```text
 cost per successful workflow = total workflow AI cost / workflows meeting success criteria
 ```
+
+### Scorer and validator registry
+
+| ID | Purpose | Type | Implementation status |
+|---|---|---|---|
+| `finding_concept_and_citation_v1` | Match finding concept, category, and citations | Hybrid deterministic/human | Planned |
+| `exact_policy_boundary_v1` | Verify exact blocking boundary and zero prohibited side effects | Deterministic | Planned |
+| `benchmark_integrity_v1` | Validate case count, split, hashes, labels, and scorer references | Deterministic | Planned |
+| `schema_validity_v1` | Validate model output against the versioned schema | Deterministic | Planned |
+| `retrieval_and_citation_v1` | Calculate retrieval and citation metrics | Deterministic/human | Planned |
+| `test_acceptance_and_coverage_v1` | Apply the test rubric and coverage-concept scoring | Human-assisted | Planned |
+| `traceability_and_unsupported_claim_v1` | Score source links and unsupported claims | Deterministic/human | Planned |
+| `core_workflow_success_v1` | Verify required stages, expected boundary, and side effects | Deterministic | Planned |
+| `operational_evidence_v1` | Calculate latency, cost, provenance, and budget compliance | Deterministic | Planned |
+| `label_completeness_and_adjudication_v1` | Verify labeling and second-review records | Deterministic | Planned |
+| `security_scanner_exit_status_v1` | Aggregate required scanner results | Deterministic | Planned |
+| `deployment_policy_v1` | Verify IaC and live exposure policy | Deterministic | Planned |
 
 ## 10. Evaluation release gates
 

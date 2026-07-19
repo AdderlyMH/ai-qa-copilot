@@ -2,6 +2,10 @@
 
 This directory records consequential architecture and product decisions for the AI Quality Engineering Copilot.
 
+See the [Control Traceability Matrix](../CONTROL_TRACEABILITY_MATRIX.md) for
+the mapping from requirements and threats to architecture decisions, fixtures,
+scorers, release gates, and backlog items.
+
 ## Status meanings
 
 - **Proposed:** Decision is documented but not yet approved for implementation.

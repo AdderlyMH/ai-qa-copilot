@@ -237,6 +237,34 @@ Do not begin model integration before the source-of-truth documents, initial ADR
 - Exactly one next action:
   - Create the control traceability matrix.
 
+### 2026-07-18 — Control traceability baseline completed
+
+- Implemented:
+  - Added `docs/CONTROL_TRACEABILITY_MATRIX.md`.
+  - Mapped SG-01 through SG-08.
+  - Mapped EG-01 through EG-09.
+  - Added Critical/High threat coverage.
+  - Added scorer and validator identifiers.
+  - Linked the matrix from canonical documents.
+
+- Verified:
+  - Traceability validation passed locally.
+  - Every referenced existing identifier resolved.
+  - No SG or EG gate was claimed as executed.
+  - Evaluation/security review status: pending.
+
+- Not yet verified:
+  - Executable fixture harness.
+  - Complete 100-case corpus.
+  - Runtime scorer implementation.
+  - Release-gate execution.
+
+- Remaining Phase 0 blockers:
+  - 3
+
+- Exactly one next action:
+  - Correct evaluation and hardening dependencies.
+
 ## 14. Update template
 
 Use this section structure after each meaningful work session:

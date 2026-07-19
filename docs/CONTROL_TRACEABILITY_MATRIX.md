@@ -1,0 +1,140 @@
+# Control Traceability Matrix — AI Quality Engineering Copilot
+
+**Document status:** Approved working baseline  
+**Version:** 0.1  
+**Last updated:** 2026-07-18  
+**Scope:** Phase 0 control, security, and evaluation traceability
+
+## 1. Purpose
+
+This matrix maps product requirements and security threats to architecture
+controls, architecture decisions, planned verification evidence, release
+gates, and delivery backlog items.
+
+The matrix describes required evidence. It does not claim that application
+controls, fixtures, scorers, evaluations, or release gates have executed or
+passed.
+
+## 2. Evidence-status meanings
+
+| Status | Meaning |
+|---|---|
+| Contract defined | Required behavior and identifiers are documented |
+| Fixture cataloged | Fixture ID exists, but its executable harness may not exist |
+| Planned | Backlog item exists, but implementation has not started |
+| Locally validated | A deterministic local check has direct evidence |
+| CI verified | A named CI run has direct successful evidence |
+| Release verified | The complete release gate has executed and passed |
+| Not applicable | The row explains why the evidence type does not apply |
+
+The Phase 0 rows below primarily use Contract defined, Fixture cataloged, and
+Planned. They do not assert CI or release verification.
+
+## 3. Traceability rules
+
+1. Every `SG-01` through `SG-08` gate has exactly one primary matrix row.
+2. Every `EG-01` through `EG-09` gate has exactly one primary matrix row.
+3. Every Critical or High threat appears in at least one security-control row.
+4. A row may reference multiple related requirements, threats, fixtures, and
+   backlog items.
+5. A fixture reference does not mean the fixture runner is implemented.
+6. An expected-result source may be:
+   - a `GT-FIND-*` or `GT-POL-*` record;
+   - a deterministic fixture-manifest policy;
+   - a repository scanner or infrastructure-policy result.
+7. `Not applicable` requires a written justification.
+8. Missing implementation evidence is recorded as `Planned`, not left blank.
+9. No security or evaluation gate is marked passed in this Phase 0 matrix.
+
+## 4. Security control traceability
+
+| Matrix ID | Requirements | Threats | Architecture control | ADR | Fixtures/cases | Expected-result source | Scorer/validator | Gate | Backlog | Evidence status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| <a id="ct-sg-01"></a>CT-SG-01 | FR-ING-001; FR-ING-002; FR-ING-003; FR-ING-005; FR-ING-009; FR-ING-010; FR-ING-011; FR-ING-012; NFR-SEC-002; NFR-REL-003 | TM-FILE-001; TM-FILE-002; TM-FILE-003; TM-FILE-005; TM-FILE-006; TM-FILE-007; TM-FILE-008; TM-FILE-009; TM-FILE-010; TM-FILE-011; TM-FILE-012 | [Ingestion and parser trust boundary](ARCHITECTURE.md#ingestion-and-parser-trust-boundary); [Ingestion flow](ARCHITECTURE.md#71-ingestion) | [ADR-009](adr/ADR-009-parser-isolation.md) | VF-PARSER-ABUSE-001; SEC-PARSE-MD-*; SEC-PARSE-JSON-*; SEC-PARSE-YAML-*; SEC-PARSE-OAS-*; SEC-PARSE-PDF-*; SEC-ISO-001; SEC-REJECT-001 | BENCHMARK-FIXTURES-V1 `parser_fixtures.expected_rejection_side_effects`; Not applicable — no separate semantic GT record is required because the outcome is deterministic. | `exact_policy_boundary_v1` | SG-01 | FND-007; FND-008; FND-009; SEC-001; ING-002; ING-003; ING-004; ING-005; ING-006 | Contract defined; fixtures cataloged; executable harness planned |
+| <a id="ct-sg-02"></a>CT-SG-02 | FR-ING-007; FR-RAG-003; FR-RAG-007; FR-EXEC-010; FR-EXEC-011; FR-REP-003; NFR-SEC-002 | TM-FILE-009; TM-AI-001; TM-AI-002; TM-AI-003; TM-AI-005; TM-AI-006; TM-AI-009; TM-DATA-004; TM-DATA-010 | [Untrusted evidence envelope](THREAT_MODEL.md#91-untrusted-content-handling); [model-output validation](ARCHITECTURE.md#83-structured-outputs); [rendering untrusted content](ARCHITECTURE.md#86-rendering-untrusted-content); [metadata never creating targets](ARCHITECTURE.md#111-security-invariants) | [ADR-002](adr/ADR-002-direct-responses-orchestration.md); [ADR-004](adr/ADR-004-safe-http-execution-topology.md); [ADR-009](adr/ADR-009-parser-isolation.md); [ADR-010](adr/ADR-010-canonical-report-revisions.md) | VF-PROMPT-INJECTION-001; SEC-PI-001; SEC-PI-002; SEC-PI-003; SEC-PI-004 | GT-POL-001; GT-POL-002; GT-POL-003 — zero-network and zero-authority-change expectations for prompt injection and hostile OpenAPI metadata | `exact_policy_boundary_v1` | SG-02 | FND-008; FND-009; SEC-001; ANA-003; ANA-004; EXEC-000; REP-004 | Contract defined; fixtures cataloged; executable harness planned |
+| <a id="ct-sg-03"></a>CT-SG-03 | FR-APP-006; FR-EXEC-001; FR-EXEC-002; FR-EXEC-003; FR-EXEC-004; FR-EXEC-005; FR-EXEC-010; FR-EXEC-011; NFR-SEC-001 | TM-EXEC-001; TM-EXEC-002; TM-EXEC-003; TM-EXEC-007; TM-EXEC-008; TM-EXEC-009; TM-EXEC-011; TM-EXEC-013; TM-EXEC-014; TM-AVAIL-001; TM-AVAIL-002; TM-AVAIL-003 | [HTTP execution security invariants](ARCHITECTURE.md#111-security-invariants); [target validation](ARCHITECTURE.md#112-target-validation); [executor isolation](ARCHITECTURE.md#113-executor-isolation) | [ADR-004](adr/ADR-004-safe-http-execution-topology.md) | VF-EXECUTION-POLICY-001; SEC-NET-001; SEC-NET-002; SEC-NET-003; SEC-NET-004; SEC-NET-005; EXEC-POL-001; EXEC-POL-002 | BENCHMARK-FIXTURES-V1 `security_fixtures.network_and_ssrf` and `expected_behavior.forbidden_network_activity` | `exact_policy_boundary_v1` | SG-03 | EXEC-000; EXEC-002; EXEC-005; HARD-002; INFRA-004 | Contract defined; fixtures cataloged; executable harness planned |
+| <a id="ct-sg-04"></a>CT-SG-04 | FR-APP-001; FR-APP-002; FR-APP-003; FR-APP-004; FR-APP-005; FR-APP-006 | TM-EXEC-004; TM-EXEC-005; TM-EXEC-012; TM-EXEC-013 | [Approval security design](THREAT_MODEL.md#10-approval-security-design); [HTTP execution security invariants](ARCHITECTURE.md#111-security-invariants) | [ADR-004](adr/ADR-004-safe-http-execution-topology.md) | SEC-APP-001; SEC-APP-002; SEC-APP-003; SEC-APP-004 | BENCHMARK-FIXTURES-V1 `security_fixtures.approval_and_execution`; deterministic policy boundary | `exact_policy_boundary_v1` | SG-04 | EXEC-000; EXEC-003; EXEC-004; EXEC-005; HARD-002 | Contract defined; fixtures cataloged; executable harness planned |
+| <a id="ct-sg-05"></a>CT-SG-05 | FR-AUTH-001; FR-AUTH-002; FR-AUTH-003; FR-AUTH-004; FR-AUTH-005; FR-AUTH-006; FR-AUTH-007; FR-AUTH-008; NFR-SEC-001 | TM-IAM-001; TM-IAM-002; TM-IAM-003; TM-IAM-004; TM-IAM-005; TM-IAM-006; TM-IAM-007; TM-IAM-008; TM-DATA-001 | [Identity boundary](ARCHITECTURE.md#identity); [project-scoped data integrity](ARCHITECTURE.md#101-postgresql); [workload identity and network boundaries](ARCHITECTURE.md#122-workload-identity-and-network-boundaries) | [ADR-006](adr/ADR-006-public-demo-data-policy.md); [ADR-008](adr/ADR-008-cognito-owner-guest-authorization.md); [ADR-009](adr/ADR-009-parser-isolation.md) | SEC-AUTH-001; SEC-AUTH-002; SEC-ISO-001 | BENCHMARK-FIXTURES-V1 `security_fixtures.isolation_and_redaction`; deterministic authorization and workload-isolation boundary | `exact_policy_boundary_v1` | SG-05 | IAM-001; IAM-002; SEC-001; HARD-002 | Contract defined; fixtures cataloged; executable harness planned |
+| <a id="ct-sg-06"></a>CT-SG-06 | FR-EXEC-007; FR-REP-010; FR-REP-011; FR-EVAL-005; NFR-SEC-003; NFR-SEC-004; NFR-PRIV-004 | TM-AI-008; TM-EXEC-006; TM-DATA-003; TM-DATA-006; TM-DATA-009 | [Model gateway redaction policy](ARCHITECTURE.md#81-model-gateway); [rendering untrusted content](ARCHITECTURE.md#86-rendering-untrusted-content); [data storage controls](ARCHITECTURE.md#102-object-storage) | [ADR-006](adr/ADR-006-public-demo-data-policy.md); [ADR-008](adr/ADR-008-cognito-owner-guest-authorization.md); [ADR-010](adr/ADR-010-canonical-report-revisions.md) | SEC-RED-001 | BENCHMARK-FIXTURES-V1 `expected_behavior.secrets=redact` | `exact_policy_boundary_v1` | SG-06 | EXEC-006; REP-003; REP-004; OBS-001; HARD-001; HARD-002 | Contract defined; fixtures cataloged; executable harness planned |
+| <a id="ct-sg-07"></a>CT-SG-07 | NFR-SEC-005; NFR-SEC-006; NFR-MAINT-003 | TM-IAM-005; TM-DATA-005; TM-DATA-006; TM-DATA-007 | [CI security scanning](THREAT_MODEL.md#13-security-verification-plan); [pinned dependencies and actions](THREAT_MODEL.md#85-data-reports-telemetry-and-supply-chain); [least-privilege deployment identity](ARCHITECTURE.md#122-workload-identity-and-network-boundaries); [container and infrastructure scanning](THREAT_MODEL.md#13-security-verification-plan) | [ADR-001](adr/ADR-001-modular-monolith.md); [ADR-005](adr/ADR-005-aws-serverless-and-database.md); [ADR-006](adr/ADR-006-public-demo-data-policy.md) | Not applicable — this gate is evaluated through repository, dependency, container, secret, SAST, and IaC scanner outputs rather than semantic benchmark ground truth. | Not applicable — scanner outputs, not semantic benchmark ground truth, provide the required deterministic result. | `security_scanner_exit_status_v1` | SG-07 | SKEL-006; HARD-001; HARD-002 | Contract defined; scanner integration planned |
+| <a id="ct-sg-08"></a>CT-SG-08 | FR-AUTH-008; FR-EXEC-001; FR-EXEC-002; FR-EXEC-003; FR-EXEC-010; NFR-SEC-001; NFR-SEC-003; NFR-SEC-005; NFR-REL-005 | TM-IAM-004; TM-IAM-005; TM-IAM-008; TM-EXEC-001; TM-EXEC-009; TM-EXEC-010; TM-EXEC-014; TM-DATA-002; TM-DATA-007 | [Production deployment](ARCHITECTURE.md#12-production-deployment); [workload identity and network boundaries](ARCHITECTURE.md#122-workload-identity-and-network-boundaries); [target validation](ARCHITECTURE.md#112-target-validation) | [ADR-004](adr/ADR-004-safe-http-execution-topology.md); [ADR-005](adr/ADR-005-aws-serverless-and-database.md); [ADR-008](adr/ADR-008-cognito-owner-guest-authorization.md); [ADR-009](adr/ADR-009-parser-isolation.md) | SEC-ISO-001; SEC-NET-001 through SEC-NET-005 | Deterministic IaC policy, live exposure, workload-permission, and network tests; Not applicable — no separate semantic GT record is required. | `deployment_policy_v1` | SG-08 | INFRA-001; INFRA-002; INFRA-003; INFRA-004; HARD-002; HARD-004 | Contract defined; fixtures cataloged; deployment-policy implementation planned |
+
+Additional related threats are named in the control rows where the documented
+deterministic control also owns their required security boundary. This preserves
+one primary gate row while ensuring Critical and High pre-control threats are
+not left unmapped.
+
+## 5. Evaluation gate traceability
+
+| Matrix ID | Requirements | Relevant threats | Evaluation control | ADR | Cases/fixtures | Expected-result source | Scorer/validator | Gate | Backlog | Evidence status |
+|---|---|---|---|---|---|---|---|---|---|---|
+| CT-EG-01 | FR-EVAL-001; FR-EVAL-006; NFR-MAINT-002 | TM-AI-007; TM-DATA-008 | Benchmark manifest integrity and split validation | [ADR-007](adr/ADR-007-three-level-evaluation.md) | BENCHMARK-FIXTURES-V1; 100 cases; 60/20/20 split | Fixture-manifest benchmark contract | `benchmark_integrity_v1` | EG-01 | EVAL-001; EVAL-005; EVAL-006; EVAL-007 | Contract defined; fixture cataloged; executable harness planned |
+| CT-EG-02 | FR-TEST-001; FR-EVAL-006 | TM-AI-006 | Versioned schema validation for all material model outputs | [ADR-002](adr/ADR-002-direct-responses-orchestration.md); [ADR-007](adr/ADR-007-three-level-evaluation.md) | All model-output cases | Schema version in each case | `schema_validity_v1` | EG-02 | TST-001; TST-002; EVAL-002; EVAL-007 | Contract defined; fixture cataloged; executable harness planned |
+| CT-EG-03 | FR-ANA-001 through FR-ANA-007 | TM-AI-003; TM-AI-007 | Finding concept, category, and citation evaluation | [ADR-002](adr/ADR-002-direct-responses-orchestration.md); [ADR-003](adr/ADR-003-hybrid-retrieval.md); [ADR-007](adr/ADR-007-three-level-evaluation.md) | Requirement-quality and requirement/OpenAPI-consistency categories | GT-FIND-001 through GT-FIND-016 | `finding_concept_and_citation_v1` | EG-03 | ANA-001 through ANA-005; EVAL-001 through EVAL-007 | Contract defined; fixture cataloged; executable harness planned |
+| CT-EG-04 | FR-RAG-001 through FR-RAG-007; FR-REP-003 | TM-AI-002; TM-AI-003; TM-AI-004; TM-AI-009 | Retrieval, citation, and no-answer evaluation | [ADR-003](adr/ADR-003-hybrid-retrieval.md); [ADR-007](adr/ADR-007-three-level-evaluation.md); [ADR-010](adr/ADR-010-canonical-report-revisions.md) | VF-RETRIEVAL-DISTRACTOR-001; VF-NO-EVIDENCE-001; base artifacts | Applicable GT-FIND-* records and case-level no-answer expectations | `retrieval_and_citation_v1` | EG-04 | RAG-001 through RAG-005; EVAL-002; EVAL-005; EVAL-006; EVAL-007; REP-004 | Contract defined; fixture cataloged; executable harness planned |
+| CT-EG-05 | FR-TEST-001 through FR-TEST-007 | TM-AI-006; TM-EXEC-012 | Generated-test acceptance and coverage-concept rubric | [ADR-002](adr/ADR-002-direct-responses-orchestration.md); [ADR-007](adr/ADR-007-three-level-evaluation.md) | `test_generation` case category | Case-specific coverage concepts created under EVAL-005 and EVAL-006 | `test_acceptance_and_coverage_v1` | EG-05 | TST-001 through TST-005; EVAL-002; EVAL-003; EVAL-005; EVAL-006; EVAL-007 | Contract defined; concrete case labels planned |
+| CT-EG-06 | FR-TRACE-001 through FR-TRACE-004; FR-RAG-003; FR-REP-003; FR-REP-005 | TM-AI-003; TM-DATA-004; TM-DATA-010 | Source-link, provenance, and unsupported-claim evaluation | [ADR-003](adr/ADR-003-hybrid-retrieval.md); [ADR-010](adr/ADR-010-canonical-report-revisions.md) | Base artifacts; no-evidence controls; retrieval distractors | Applicable GT-FIND-* records | `traceability_and_unsupported_claim_v1` | EG-06 | TST-004; REP-001; REP-002; REP-004; EVAL-002; EVAL-007 | Contract defined; fixture cataloged; executable harness planned |
+| CT-EG-07 | Principal requirements across ingestion, retrieval, analysis, testing, approval, execution, and reporting | All threats whose expected outcome is part of an eligible workflow | End-to-end workflow stage, boundary, and side-effect evaluation | [ADR-001](adr/ADR-001-modular-monolith.md) through [ADR-010](adr/ADR-010-canonical-report-revisions.md), as applicable | Full eligible benchmark | Case-specific expected boundary and side effects | `core_workflow_success_v1` | EG-07 | EXEC-008; REP-004; EVAL-001; EVAL-007 | Contract defined; fixture cataloged; executable harness planned |
+| CT-EG-08 | FR-EVAL-004; NFR-PERF-003; NFR-COST-001; NFR-COST-002; NFR-COST-004 | TM-AVAIL-001; TM-AVAIL-002; TM-AVAIL-003 | Latency, cost, provenance, and budget evidence | [ADR-005](adr/ADR-005-aws-serverless-and-database.md); [ADR-007](adr/ADR-007-three-level-evaluation.md) | Standard workflow and full 100-case release run | Operational run provenance, latency, cost, and budget records | `operational_evidence_v1` | EG-08 | OBS-001; OBS-002; EVAL-007; HARD-003 | Contract defined; fixture cataloged; executable release run planned |
+| CT-EG-09 | FR-EVAL-001; FR-EVAL-003; FR-EVAL-006 | TM-AI-007 | Label completeness and independent-review/adjudication control | [ADR-007](adr/ADR-007-three-level-evaluation.md) | All 100 benchmark cases | Complete labels plus independent review/adjudication records | `label_completeness_and_adjudication_v1` | EG-09 | EVAL-003; EVAL-005; EVAL-006; EVAL-007 | Contract defined; independent-review wording still requires blocker 5 correction |
+
+## 6. Critical and High threat coverage index
+
+This index proves that every pre-control Critical or High threat in
+`THREAT_MODEL.md` appears in at least one security-control row. Linked gate
+labels identify the designated primary matrix row.
+
+| Threat ID | Severity | Primary matrix row |
+|---|---|---|
+| TM-IAM-001 | High | [SG-05](#ct-sg-05) |
+| TM-IAM-002 | Critical | [SG-05](#ct-sg-05) |
+| TM-IAM-003 | High | [SG-05](#ct-sg-05) |
+| TM-IAM-004 | High | [SG-08](#ct-sg-08) |
+| TM-IAM-005 | High | [SG-08](#ct-sg-08) |
+| TM-IAM-006 | High | [SG-05](#ct-sg-05) |
+| TM-IAM-007 | Critical | [SG-05](#ct-sg-05) |
+| TM-IAM-008 | High | [SG-08](#ct-sg-08) |
+| TM-FILE-001 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-002 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-003 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-005 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-006 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-007 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-008 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-009 | Critical | [SG-01](#ct-sg-01) |
+| TM-FILE-010 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-011 | High | [SG-01](#ct-sg-01) |
+| TM-FILE-012 | Critical | [SG-01](#ct-sg-01) |
+| TM-AI-001 | Critical | [SG-02](#ct-sg-02) |
+| TM-AI-002 | Critical | [SG-02](#ct-sg-02) |
+| TM-AI-003 | High | [SG-02](#ct-sg-02) |
+| TM-AI-005 | High | [SG-02](#ct-sg-02) |
+| TM-AI-006 | High | [SG-02](#ct-sg-02) |
+| TM-AI-008 | High | [SG-06](#ct-sg-06) |
+| TM-AI-009 | Critical | [SG-02](#ct-sg-02) |
+| TM-EXEC-001 | Critical | [SG-03](#ct-sg-03) |
+| TM-EXEC-002 | High | [SG-03](#ct-sg-03) |
+| TM-EXEC-003 | Critical | [SG-03](#ct-sg-03) |
+| TM-EXEC-004 | Critical | [SG-04](#ct-sg-04) |
+| TM-EXEC-005 | High | [SG-04](#ct-sg-04) |
+| TM-EXEC-006 | High | [SG-06](#ct-sg-06) |
+| TM-EXEC-007 | High | [SG-03](#ct-sg-03) |
+| TM-EXEC-008 | High | [SG-03](#ct-sg-03) |
+| TM-EXEC-009 | High | [SG-03](#ct-sg-03) |
+| TM-EXEC-010 | High | [SG-08](#ct-sg-08) |
+| TM-EXEC-011 | Critical | [SG-03](#ct-sg-03) |
+| TM-EXEC-012 | High | [SG-04](#ct-sg-04) |
+| TM-EXEC-013 | High | [SG-04](#ct-sg-04) |
+| TM-EXEC-014 | High | [SG-03](#ct-sg-03) |
+| TM-DATA-001 | High | [SG-05](#ct-sg-05) |
+| TM-DATA-002 | High | [SG-08](#ct-sg-08) |
+| TM-DATA-003 | Critical | [SG-06](#ct-sg-06) |
+| TM-DATA-004 | High | [SG-02](#ct-sg-02) |
+| TM-DATA-005 | High | [SG-07](#ct-sg-07) |
+| TM-DATA-006 | High | [SG-06](#ct-sg-06) |
+| TM-DATA-007 | High | [SG-07](#ct-sg-07) |
+| TM-DATA-009 | Critical | [SG-06](#ct-sg-06) |
+| TM-DATA-010 | High | [SG-02](#ct-sg-02) |
+| TM-AVAIL-001 | High | [SG-03](#ct-sg-03) |
+| TM-AVAIL-002 | High | [SG-03](#ct-sg-03) |
+| TM-AVAIL-003 | High | [SG-03](#ct-sg-03) |

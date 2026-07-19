@@ -5,6 +5,10 @@
 **Last updated:** 2026-07-17
 **Architecture style:** Modular monolith with isolated execution boundary
 
+See the [Control Traceability Matrix](CONTROL_TRACEABILITY_MATRIX.md) for the
+mapping from requirements and threats to architecture decisions, fixtures,
+scorers, release gates, and backlog items.
+
 ## 1. Architecture objectives
 
 The architecture must demonstrate production AI-engineering skill without becoming a distributed-systems exercise. It prioritizes:

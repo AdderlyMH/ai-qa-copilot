@@ -5,6 +5,10 @@
 **Last updated:** 2026-07-17
 **Method:** STRIDE-informed analysis plus AI-specific abuse cases
 
+See the [Control Traceability Matrix](CONTROL_TRACEABILITY_MATRIX.md) for the
+mapping from requirements and threats to architecture decisions, fixtures,
+scorers, release gates, and backlog items.
+
 ## 1. Scope
 
 This threat model covers the public portfolio deployment and local development workflow for:

@@ -22,6 +22,10 @@ This pack defines a production-style portfolio project for an experienced Softwa
 | [`fixtures/sample-requirements.md`](fixtures/sample-requirements.md) | Synthetic order-management requirements containing controlled ambiguities and contradictions |
 | [`fixtures/sample-openapi.yaml`](fixtures/sample-openapi.yaml) | Synthetic OpenAPI contract containing controlled inconsistencies and adversarial content |
 
+See the [Control Traceability Matrix](docs/CONTROL_TRACEABILITY_MATRIX.md) for
+the mapping from requirements and threats to architecture decisions, fixtures,
+scorers, release gates, and backlog items.
+
 ## Document precedence
 
 When documents conflict, use this order:
