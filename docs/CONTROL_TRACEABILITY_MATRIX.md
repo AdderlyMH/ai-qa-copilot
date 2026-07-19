@@ -46,6 +46,10 @@ Planned. They do not assert CI or release verification.
 8. Missing implementation evidence is recorded as `Planned`, not left blank.
 9. No security or evaluation gate is marked passed in this Phase 0 matrix.
 
+A corpus, fixture catalog, scorer definition, or workflow configuration is
+planned evidence only. A release gate becomes verified only when the required
+workflow executes against the pinned artifacts and archives a passing result.
+
 ## 4. Security control traceability
 
 | Matrix ID | Requirements | Threats | Architecture control | ADR | Fixtures/cases | Expected-result source | Scorer/validator | Gate | Backlog | Evidence status |

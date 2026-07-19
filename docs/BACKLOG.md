@@ -11,6 +11,18 @@
 
 Work proceeds through complete vertical slices. A phase is complete only when its acceptance criteria are verified. New feature ideas go to the post-MVP backlog unless they are necessary for a release gate.
 
+### Dependency semantics
+
+A dependency is satisfied only when its acceptance criteria have been verified
+with recorded evidence. Creating a file, workflow, fixture catalog, scanner
+configuration, or dataset definition does not satisfy a dependency that
+requires execution results.
+
+Transitive dependencies need not be repeated unless the direct dependency does
+not guarantee the required evidence. Release and hardening tasks must depend
+on the workflow that produces the evidence, not only on the input corpus or
+configuration consumed by that workflow.
+
 ### Priority definitions
 
 - **P0:** Required for MVP safety or end-to-end completion.
@@ -573,9 +585,13 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 
 - **Priority:** P0
 - **Estimate:** 3 h
-- **Dependencies:** EVAL-002
-- **Deliverable:** GitHub Actions for 5–10 case smoke and protected full evaluation.
-- **Acceptance:** Spend caps and hard-gate exit codes work.
+- **Dependencies:** EVAL-002, EVAL-004, EVAL-006
+- **Deliverable:** GitHub Actions workflows for a 5–10 case AI smoke evaluation and a protected full release evaluation over the pinned baseline, complete versioned 100-case corpus, scorer versions, and configuration revisions.
+- **Acceptance:**
+  - The smoke workflow runs only the configured representative subset under its documented cost ceiling.
+  - The full release workflow refuses to start when the B0 baseline, complete 60/20/20 corpus, ground-truth registry, scorer versions, or immutable artifact hashes are missing or inconsistent.
+  - The release workflow executes the complete versioned corpus, preserves holdout isolation, records commit and configuration provenance, enforces spend caps, and returns nonzero exit codes when any mandatory EG or SG gate fails.
+  - Workflow creation alone is not evidence that any evaluation gate has executed or passed.
 
 ### Epic OBS — Trace, cost, and reliability evidence
 
@@ -655,9 +671,15 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 
 - **Priority:** P0
 - **Estimate:** 3 h
-- **Dependencies:** EXEC-006, INFRA-004, EVAL-006
-- **Deliverable:** Evidence for every critical threat control.
-- **Acceptance:** All critical security gates pass.
+- **Dependencies:** EXEC-006, INFRA-004, HARD-001, EVAL-007
+- **Deliverable:** Execute and archive the complete threat-model verification matrix using the finished release-evaluation workflow, deterministic security fixtures, scanner outputs, deployed sandbox evidence, and redacted execution evidence.
+- **Acceptance:**
+  - SG-01 through SG-08 are evaluated against the exact commit, fixture-manifest version, scorer or validator version, target configuration, and deployment revision under review.
+  - Every gate records its fixed numerator, denominator, expected boundary, actual boundary, side-effect assertions, evidence artifact, and pass/fail exit result.
+  - All mandatory security gates pass; no Critical case is skipped, marked expected-failure, or accepted as inconclusive.
+  - `SG-07` uses completed `HARD-001` scanner evidence.
+  - The evaluation uses the completed `EVAL-007` release workflow rather than treating corpus existence as execution evidence.
+  - A completed corpus, workflow definition, or scanner configuration is not itself evidence that the gate passed.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 

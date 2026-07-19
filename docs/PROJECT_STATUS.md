@@ -265,6 +265,35 @@ Do not begin model integration before the source-of-truth documents, initial ADR
 - Exactly one next action:
   - Correct evaluation and hardening dependencies.
 
+### 2026-07-18 — Evaluation dependency sequencing corrected
+
+- Implemented:
+  - Made EVAL-007 depend on deterministic scorers, the B0 baseline, and the
+    complete 100-case corpus.
+  - Made HARD-002 depend on the completed release-evaluation workflow,
+    security scanner evidence, execution evidence, and deployed sandbox.
+  - Added explicit dependency-evidence semantics.
+  - Removed the implication that corpus or workflow existence proves a gate
+    passed.
+
+- Verified:
+  - Focused dependency validation passed.
+  - Backlog dependency graph contains no unknown IDs or cycles.
+  - Evaluation/security review status: pending.
+
+- Not yet verified:
+  - Evaluator implementation.
+  - Complete benchmark implementation.
+  - Release workflow execution.
+  - Security-gate execution.
+
+- Remaining Phase 0 blockers:
+  - 2
+
+- Exactly one next action:
+  - Make the independent second-review requirement mandatory and
+    unambiguous.
+
 ## 14. Update template
 
 Use this section structure after each meaningful work session:
