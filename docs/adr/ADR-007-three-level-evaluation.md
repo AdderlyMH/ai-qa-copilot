@@ -41,7 +41,12 @@ Run manually for release candidates:
 - Complete versioned 100-case corpus.
 - B0, B1, and B2 comparison.
 - Holdout isolation.
-- Human review.
+- The Level 3 release evaluation requires complete label provenance and the
+  mandatory independent second-review process defined by EG-09.
+- At least 10 eligible non-security validation cases and 10 eligible
+  non-security holdout cases require blind independent review.
+- Incomplete review, reviewer ineligibility, unresolved disagreement, or
+  holdout-process violation blocks release.
 - Cost and latency reporting.
 - EG and SG release-gate assessment.
 
@@ -98,6 +103,7 @@ The following are planned acceptance conditions; this ADR records no executed va
 | Fixed budget ceilings | Level 2 and Level 3 stop or fail safely when configured spend ceilings are exceeded. |
 | Versioned scorers | Every score records its scorer and rubric version with explicit denominator and failure category. |
 | Release report provenance | Each release report includes commit, dataset, configuration, model, prompt, retrieval, latency, cost, gate, and reviewer provenance. |
+| Independent label review | `label_completeness_and_adjudication_v1` verifies selected-case counts, reviewer eligibility, review blindness, immutable revisions, disagreement resolution, and candidate-freeze provenance. |
 
 ## Rollback criteria
 
@@ -105,6 +111,11 @@ The following are planned acceptance conditions; this ADR records no executed va
 - Restore the last validated configuration while preserving evaluation results, budget records, scorer versions, and holdout-access audit information.
 - Do not replace the three-level program with manual-only evaluation or production telemetry as a rollback action.
 - Re-enable a changed configuration only after the required deterministic checks, smoke evaluation, release assessment, and gate evidence meet the documented criteria.
+- A release candidate shall be withdrawn when independent-review evidence is
+  incomplete or holdout isolation is violated.
+- A materially corrected holdout label requires a new dataset version and a
+  new frozen release candidate; the same holdout shall not be reused for
+  tuning and rescoring.
 
 ## Links
 

@@ -251,11 +251,155 @@ Gold behavior is exact:
 
 No partial credit is given for critical policy violations.
 
-## 8. Human annotation process
+## 8. Human annotation and independent-review process
 
 The project owner performs primary labeling using QA domain expertise.
 
-For at least 20 release cases, obtain an independent second review from another software engineer or QA professional if practical. Disagreements are resolved and documented.
+### 8.1 Mandatory independent second review
+
+Before a portfolio release, a qualified independent reviewer shall complete a
+blind second review of at least 20 non-security release cases:
+
+- At least 10 cases from the validation split.
+- At least 10 cases from the holdout split.
+- Every non-security benchmark category containing validation or holdout cases
+  shall be represented where the split permits it.
+- Remaining review slots shall be allocated proportionally across the eligible
+  categories.
+- Security-policy cases do not count toward the 20-case minimum because their
+  expected boundaries and prohibited side effects are evaluated
+  deterministically under SG-01 through SG-08.
+
+The case-selection rule, random or deterministic seed, benchmark-manifest
+version, selected case IDs, and selection timestamp shall be recorded before
+the release candidate is evaluated. Selected cases shall not be replaced
+because they are difficult, produce disagreement, or reduce reported quality.
+
+The independent review is mandatory. It is not optional, best-effort, or
+subject to availability. Failure to complete it blocks EG-09 and the portfolio release.
+
+### 8.2 Reviewer eligibility and independence
+
+The independent reviewer shall:
+
+- Be someone other than the project owner and primary label author.
+- Have relevant experience in software testing, API testing, requirements
+  analysis, software engineering, or another documented qualification
+  appropriate to the reviewed cases.
+- Review the current rubric and label schema before beginning.
+- Not have participated in prompt design, model selection, retrieval tuning,
+  scorer tuning, or release-candidate configuration.
+- Receive the source artifacts, case objective, rubric, and label schema, but
+  not the primary labels, candidate outputs, aggregate scores, or previous
+  adjudication results before submitting the independent labels.
+
+A public evidence record may use a stable pseudonymous reviewer ID. Personal
+contact information is not required in the repository. The eligibility and
+independence attestation shall still be preserved.
+
+### 8.3 Review records
+
+Every independently reviewed case shall preserve:
+
+- Case ID and immutable version.
+- Dataset split and category.
+- Benchmark and ground-truth catalog versions.
+- Primary reviewer ID and label revision.
+- Independent reviewer ID and label revision.
+- Reviewer eligibility and independence attestation.
+- Review timestamps.
+- Rubric and scorer versions.
+- Fields or concepts on which the reviewers agreed.
+- Fields or concepts on which they disagreed.
+- Adjudication status.
+- Adjudicated label revision, when resolved.
+- Adjudication rationale.
+- Identity of the adjudicator or third reviewer, when applicable.
+
+Primary and independent labels shall remain immutable. Adjudication creates a
+new label revision rather than overwriting either original review.
+
+### 8.4 Adjudication
+
+After both reviews are locked:
+
+1. The primary and independent labels are compared.
+2. Every material disagreement is recorded.
+3. Reviewers attempt to reach a documented consensus using the source
+   evidence and published rubric.
+4. If consensus is not reached, a third qualified reviewer performs an
+   independent adjudication.
+5. If no qualified third reviewer is available or the disagreement remains
+   unresolved, the case remains unresolved and EG-09 fails.
+
+A disagreement shall not be silently removed, averaged away, or resolved by
+selecting the label that improves the candidate's score.
+
+### 8.5 Holdout protection
+
+Independent review of holdout cases occurs only after the release-candidate
+commit, prompts, model configuration, retrieval configuration, schemas, and
+scorers are frozen.
+
+The independent reviewer shall not provide tuning guidance before submitting
+and locking the review.
+
+If adjudication changes a holdout label materially or reveals that a holdout
+case is invalid:
+
+- The current release candidate is not scored against the corrected case as
+  though it remained an untouched holdout.
+- A new dataset version is created.
+- The affected holdout case is replaced or reclassified according to the
+  benchmark-governance rules.
+- A new release candidate is frozen and the release evaluation is repeated.
+
+Review findings from the current holdout shall not be used to tune and then
+re-evaluate the same unchanged holdout set.
+
+### 8.6 Release-review manifest
+
+The independent-review evidence shall be represented by a versioned
+machine-readable manifest, planned at:
+
+`evaluation/reviews/release-review-manifest.v1.yaml`
+
+The manifest contract shall include:
+
+```yaml
+schema_version: release-review-manifest/v1
+review_manifest_id: RELEASE-REVIEW-V1
+benchmark_manifest_id: BENCHMARK-FIXTURES-V1
+candidate:
+  commit_sha: "<frozen-candidate-sha>"
+  configuration_id: "<frozen-configuration-id>"
+selection:
+  method: stratified
+  seed: "<recorded-seed>"
+  selected_before_candidate_execution: true
+  validation_case_count: 10
+  holdout_case_count: 10
+reviewers:
+  primary_reviewer_id: "<stable-id>"
+  independent_reviewer_id: "<stable-id>"
+  independent_reviewer_eligible: true
+  independence_attestation_recorded: true
+cases:
+  - case_id: "<case-id>"
+    split: validation
+    category: "<category>"
+    primary_label_revision: "<revision>"
+    independent_label_revision: "<revision>"
+    disagreement_status: none
+    adjudication_status: not_required
+release_status:
+  all_required_reviews_complete: false
+  all_disagreements_resolved: false
+  eg_09_eligible: false
+```
+
+This is a planned contract. The Phase 0 documentation does not claim that the
+manifest, reviewer, or completed reviews currently exist.
 
 ### Finding rubric
 
@@ -425,9 +569,21 @@ cost per successful workflow = total workflow AI cost / workflows meeting succes
 | `traceability_and_unsupported_claim_v1` | Score source links and unsupported claims | Deterministic/human | Planned |
 | `core_workflow_success_v1` | Verify required stages, expected boundary, and side effects | Deterministic | Planned |
 | `operational_evidence_v1` | Calculate latency, cost, provenance, and budget compliance | Deterministic | Planned |
-| `label_completeness_and_adjudication_v1` | Verify labeling and second-review records | Deterministic | Planned |
+| `label_completeness_and_adjudication_v1` | Verify that all 100 cases have required labels and that the selected minimum 20 non-security release cases have eligible blind independent reviews, immutable review records, resolved adjudications, and preserved holdout isolation | Deterministic | Planned |
 | `security_scanner_exit_status_v1` | Aggregate required scanner results | Deterministic | Planned |
 | `deployment_policy_v1` | Verify IaC and live exposure policy | Deterministic | Planned |
+
+The planned `label_completeness_and_adjudication_v1` scorer shall verify:
+
+- 100 cases labeled.
+- At least 10 validation reviews.
+- At least 10 holdout reviews.
+- Eligible independent reviewer.
+- Locked reviews.
+- No unresolved disagreements.
+- Complete provenance.
+- Candidate frozen before holdout review.
+- No review record reused against an invalidated dataset version.
 
 ## 10. Evaluation release gates
 
@@ -443,7 +599,7 @@ Every release gate must report its numerator, denominator, case-manifest version
 | EG-06 Traceability and claims | Traceability correctness ≥95%; unsupported material-claim rate ≤2%. |
 | EG-07 Core workflow | Core-workflow success ≥90%. An expected parser or policy rejection counts as success only when it occurs at the expected boundary with no unexpected side effect. |
 | EG-08 Operational evidence | Standard workflow p95 ≤30 seconds; full 100-case release evaluation ≤USD 10; all required provenance is retained. |
-| EG-09 Label quality | Every case is labeled before candidate evaluation. At least 20 non-security release cases have independent second review and adjudicated disagreements. |
+| EG-09 Label quality | Every benchmark case is labeled before candidate evaluation. At least 20 non-security release cases have a blind independent second review: at least 10 validation and at least 10 holdout cases selected through a frozen stratified process. All material disagreements are adjudicated with immutable primary, secondary, and adjudicated label records. Missing reviews, reviewer ineligibility, unresolved disagreements, candidate-output exposure before independent labeling, or incomplete review provenance fails the gate and blocks portfolio release. |
 
 Security Gates (`SG-01` through `SG-08`) defined in `THREAT_MODEL.md` are also mandatory release gates. Evaluation gates do not replace deterministic security controls.
 

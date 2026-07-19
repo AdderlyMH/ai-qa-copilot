@@ -549,13 +549,18 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Deliverable:** Schema, citation existence, traceability, policy, cost, and latency scorers.
 - **Acceptance:** Scorers have unit tests and explicit denominators.
 
-#### EVAL-003 — Implement human-review workflow and rubrics
+#### EVAL-003 — Implement human-review and independent-adjudication workflow
 
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** EVAL-001
-- **Deliverable:** Finding, test, and failure-analysis forms/reports.
-- **Acceptance:** Labels are versioned and linked to case/run/rubric.
+- **Deliverable:** Versioned primary-review, blind independent-review, disagreement, adjudication, reviewer-attestation, and rubric records for finding, test, and failure-analysis labels.
+- **Acceptance:**
+  - Primary, independent, and adjudicated label revisions are immutable and linked to case, dataset, rubric, reviewer, and timestamp.
+  - The independent reviewer cannot see the primary label or candidate output before submitting and locking the second review.
+  - Reviewer eligibility and independence attestations are recorded.
+  - Material disagreements remain visible and require documented adjudication.
+  - Unresolved disagreement cannot be represented as an approved final label.
 
 #### EVAL-004 — Build B0 naive baseline
 
@@ -578,8 +583,13 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** EVAL-005
-- **Deliverable:** 100 total cases with split controls.
-- **Acceptance:** Holdout is not used for prompt tuning.
+- **Deliverable:** A complete versioned 100-case corpus with 60 development, 20 validation, and 20 holdout cases, plus the frozen stratified case-selection contract for mandatory independent release review.
+- **Acceptance:**
+  - Category and split totals match the evaluation plan.
+  - Holdout cases are not used for prompt, retrieval, model-routing, schema, or scorer tuning.
+  - The independent-review selection method can select at least 10 eligible non-security validation cases and at least 10 eligible non-security holdout cases.
+  - The selection method and seed are versioned before release-candidate evaluation.
+  - Selected cases cannot be replaced because of poor candidate performance or reviewer disagreement.
 
 #### EVAL-007 — Implement AI smoke and release workflows
 
@@ -591,6 +601,16 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
   - The smoke workflow runs only the configured representative subset under its documented cost ceiling.
   - The full release workflow refuses to start when the B0 baseline, complete 60/20/20 corpus, ground-truth registry, scorer versions, or immutable artifact hashes are missing or inconsistent.
   - The release workflow executes the complete versioned corpus, preserves holdout isolation, records commit and configuration provenance, enforces spend caps, and returns nonzero exit codes when any mandatory EG or SG gate fails.
+  - The full release workflow invokes `label_completeness_and_adjudication_v1`.
+  - The workflow fails before publishing release metrics when:
+    - fewer than 10 eligible validation cases have completed independent review;
+    - fewer than 10 eligible holdout cases have completed independent review;
+    - any required reviewer is ineligible;
+    - any selected case lacks immutable primary or independent labels;
+    - any material disagreement remains unresolved;
+    - required review provenance is missing;
+    - the candidate was not frozen before the holdout-review process.
+  - No manual override or expected-failure status may convert an EG-09 failure into a passing release.
   - Workflow creation alone is not evidence that any evaluation gate has executed or passed.
 
 ### Epic OBS — Trace, cost, and reliability evidence

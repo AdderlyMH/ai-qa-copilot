@@ -1,6 +1,6 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-07-18<br>
+**Status date:** 2026-07-19<br>
 **Overall state:** Foundation in progress  
 **Current phase:** Phase 0 — Foundation  
 **Target release:** 2026-11-15  
@@ -183,7 +183,8 @@ No product metric has a valid baseline yet.
 
 ## 12. Next concrete action
 
-**Create the control traceability matrix.**
+**Establish deterministic repository-integrity validation and regenerate the
+manifest, README, and project status from current evidence.**
 
 Do not begin model integration before the source-of-truth documents, initial ADRs, control traceability matrix, and final Phase 0 validation are version controlled.
 
@@ -293,6 +294,34 @@ Do not begin model integration before the source-of-truth documents, initial ADR
 - Exactly one next action:
   - Make the independent second-review requirement mandatory and
     unambiguous.
+
+### 2026-07-19 — Independent review governance completed
+
+- Implemented:
+  - Made the second review mandatory for at least 10 validation and 10
+    holdout non-security release cases.
+  - Defined reviewer eligibility, blindness, independence, review records,
+    adjudication, and holdout-protection rules.
+  - Made unresolved disagreement and incomplete review explicit EG-09
+    failures.
+  - Aligned EVAL-003, EVAL-006, EVAL-007, CT-EG-09, and ADR-007.
+
+- Verified:
+  - Independent-review policy validation passed locally.
+  - Evaluation/security review status: pending or PASS.
+
+- Not yet verified:
+  - Recruitment of an independent reviewer.
+  - Completed second-review records.
+  - Actual adjudication.
+  - EG-09 execution.
+
+- Remaining Phase 0 blockers:
+  - 1
+
+- Exactly one next action:
+  - Establish deterministic repository-integrity validation and regenerate
+    the manifest, README, and project status from current evidence.
 
 ## 14. Update template
 
