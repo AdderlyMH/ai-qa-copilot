@@ -6,6 +6,7 @@ on:
       - main
       - docs/phase0-closeout
     paths:
+      - ".gitattributes"
       - "README.md"
       - "MANIFEST.json"
       - "requirements-docs.txt"
@@ -15,6 +16,7 @@ on:
       - ".github/workflows/docs-validation.yml"
   pull_request:
     paths:
+      - ".gitattributes"
       - "README.md"
       - "MANIFEST.json"
       - "requirements-docs.txt"

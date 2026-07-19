@@ -7,8 +7,8 @@
   "files": [
     {
       "path": ".github/workflows/docs-validation.yml",
-      "bytes": 1441,
-      "sha256": "b0e82492c7cdd6d72ed080112f0045dd1afb699b5a25e55862d1dd53749beb12"
+      "bytes": 1491,
+      "sha256": "470581df5590483ddb9bb264393a0d8d6a3aa586c40c10fa2d3bc7c8da61beb2"
     },
     {
       "path": "README.md",
@@ -17,13 +17,13 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 38125,
-      "sha256": "6549a29b542179dde98d235712798d8ea898dd6c50643d9788e5284758e0f884"
+      "bytes": 37308,
+      "sha256": "64ed36c31a3d59513a45a3490fa5ff3d24268615bcf87b0dc4d950157a76bd57"
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 39299,
-      "sha256": "e6531cb792d180cd7e2ed66cdae58ce680c6ac90132bd0701ea7baf43343fdcc"
+      "bytes": 38520,
+      "sha256": "d305a270ff3f0227f6da3b7dbaa4afc2313d0d0b36d0a102f0a7440cd9a41529"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -37,13 +37,13 @@
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
-      "bytes": 36019,
-      "sha256": "5290ad019e865fa2d65968436d98e5346c39eb52445f0257a42f0ea556f12e44"
+      "bytes": 35513,
+      "sha256": "daa08c62e5902e0698705f7a71072c02d99974e2222d73fd3966487c32d0bd23"
     },
     {
       "path": "docs/PROJECT_CHARTER.md",
-      "bytes": 13274,
-      "sha256": "701e7fb3a7212db843b24ef736155a6c59640bb538267b996be8a94767476b97"
+      "bytes": 13007,
+      "sha256": "8d50da4a733bcbc28de34cbcdebf484e9fe1890fb311f83e8b70b187819a9378"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
@@ -57,8 +57,8 @@
     },
     {
       "path": "docs/THREAT_MODEL.md",
-      "bytes": 41082,
-      "sha256": "4be161f7706f76ef5dc67f034c7d7cc8bc1644bc1c979dc185dafab130ee8fed"
+      "bytes": 40690,
+      "sha256": "ee05fa0a775d53a99e01589fc04b214feb100e4b258a180c7300cac0055ce10a"
     },
     {
       "path": "docs/adr/ADR-001-modular-monolith.md",
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/adr/ADR-009-parser-isolation.md",
-      "bytes": 8528,
-      "sha256": "4c9ff08fbe1c752daee347b42226871b34bb9d7b7f38f85b4bafc4b5029ae6dc"
+      "bytes": 8458,
+      "sha256": "12aa350aa1b8f4ce7191e9a149c8bc826de89ac0739421027f76f795024a4528"
     },
     {
       "path": "docs/adr/ADR-010-canonical-report-revisions.md",
@@ -112,23 +112,23 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 2277,
-      "sha256": "83100eccb8f51685cb821eb6e55c58f5be5c366e37cc6863933124fcd15186a1"
+      "bytes": 2269,
+      "sha256": "4e9e5c9f30aeae54ddd7d4da59930423aa8cdb2b824e258790d46a2b8d790638"
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 6076,
-      "sha256": "0accf823fc315f6f56d8ed2c709c1a1f8e62d756da4d8f8442291d989085aad2"
+      "bytes": 5929,
+      "sha256": "b13585142e40da78a2dd506854c55fc7a43c5fda78fd6760f52c666bbab884b1"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
-      "bytes": 9651,
-      "sha256": "984f07c12817688d0324955d0ca7680e83b5804d1e47166ff09490ed2cd5a3b5"
+      "bytes": 9345,
+      "sha256": "7101739b2bd3c8be7f1a53ea75449e9191e8fbd8865ffe3f4aef821bbaf84dda"
     },
     {
       "path": "fixtures/benchmark/ground-truth.v1.yaml",
-      "bytes": 13709,
-      "sha256": "8533772978e0a8b26d6d1f449c38dde02adbb012d8810718a944bb17a2a1e78a"
+      "bytes": 13321,
+      "sha256": "d98e05af714e50449ff613fb0809f8ac1a7d1073f76c7152cc8203a1f7836977"
     },
     {
       "path": "fixtures/sample-openapi.yaml",
