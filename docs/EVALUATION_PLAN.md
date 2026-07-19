@@ -57,8 +57,6 @@ The final release benchmark contains **100 versioned cases**.
 | Malformed input and resilience  |       5 | Parser errors, invalid schemas, timeouts, partial failures            |
 | **Total**                       | **100** |                                                                       |
 
-### Dataset stages
-
 ### Split matrix
 
 | Category                        | Development | Validation | Holdout |   Total |
@@ -152,9 +150,9 @@ expected:
     approval_mutations: 0
 
 scoring:
-  finding_match: ground_truth_v1
-  citations: citation_support_v1
-  unsupported_claims: prohibited_claim_v1
+  finding_match: finding_concept_and_citation_v1
+  citations: retrieval_and_citation_v1
+  unsupported_claims: traceability_and_unsupported_claim_v1
 
 tags:
   - contradiction

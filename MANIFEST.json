@@ -27,13 +27,13 @@
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 17985,
-      "sha256": "0600a5af8432364b7e36cdae199736ed0f02a405d1a5fd84a177d533282c7cd9"
+      "bytes": 17991,
+      "sha256": "4d6089cada1872f0e9992cbd30216cda8d417621f0e9f6559863bafaac500ff8"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 35287,
-      "sha256": "e581709139a0d7bdf131d4ed9690372e8a9f0e870125e334b0670904733503e9"
+      "bytes": 35307,
+      "sha256": "8cea99e364d14607f2796cb46bb187b4d1eaffbf4172343a0fcb5bc578bde1d1"
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
@@ -82,8 +82,8 @@
     },
     {
       "path": "docs/adr/ADR-005-aws-serverless-and-database.md",
-      "bytes": 6595,
-      "sha256": "03796e4c78c75e396aaa80d3f91e3d9d30715f7d66d039b719d513797ac1b9bd"
+      "bytes": 6583,
+      "sha256": "d3ce54d40884f588790b2807586c0031d65d6bbdaf58c38b1dc0b19b7bc29798"
     },
     {
       "path": "docs/adr/ADR-006-public-demo-data-policy.md",
@@ -157,8 +157,8 @@
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 47791,
-      "sha256": "1cf37915a861954f67c83c2c667c1ebe30c363021fd112d1c9e9810d6ebbb4b3"
+      "bytes": 53279,
+      "sha256": "44a410a84a82518229502dead840d35bf41f3c68f5eecaf4a736e35daa9141ef"
     }
   ]
 }

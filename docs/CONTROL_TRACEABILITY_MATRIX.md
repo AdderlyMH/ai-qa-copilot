@@ -1,8 +1,8 @@
 # Control Traceability Matrix — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline  
-**Version:** 0.1  
-**Last updated:** 2026-07-18  
+**Document status:** Approved working baseline<br>
+**Version:** 0.1<br>
+**Last updated:** 2026-07-18<br>
 **Scope:** Phase 0 control, security, and evaluation traceability
 
 ## 1. Purpose

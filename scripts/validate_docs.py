@@ -80,6 +80,9 @@ INLINE_LINK_RE = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
 REFERENCE_LINK_RE = re.compile(
     r"^\s*\[[^\]\n]+\]:\s*(?:<([^>\n]+)>|(\S+))", re.MULTILINE
 )
+MARKDOWN_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#?\s*$", re.MULTILINE)
+HTML_ID_RE = re.compile(r"\bid\s*=\s*[\"']([^\"']+)[\"']", re.IGNORECASE)
+FENCED_YAML_RE = re.compile(r"```yaml[^\n]*\n(.*?)```", re.IGNORECASE | re.DOTALL)
 TABLE_ID_RE = re.compile(r"^(?:FR|NFR)-[A-Z]+-\d{3}$")
 THREAT_ID_RE = re.compile(r"^TM-[A-Z]+-\d{3}$")
 BACKLOG_HEADING_RE = re.compile(
@@ -158,16 +161,40 @@ def _is_ignored_link(destination: str) -> bool:
     lowered = destination.lower()
     return (
         not destination
-        or destination.startswith("#")
+        or destination == "#"
         or lowered.startswith("https:")
         or lowered.startswith("http:")
         or lowered.startswith("mailto:")
     )
 
 
-def validate_markdown_links(root: Path, errors: list[str]) -> None:
-    """Verify that each relative Markdown link points at an existing file."""
+def _github_heading_anchor(heading: str) -> str:
+    """Return the GitHub-style anchor emitted for a Markdown heading."""
 
+    normalized = re.sub(r"<[^>]+>", "", heading).strip().casefold()
+    normalized = re.sub(r"[^\w\s-]", "", normalized)
+    return re.sub(r"\s", "-", normalized)
+
+
+def markdown_anchors(text: str) -> set[str]:
+    """Collect explicit IDs and GitHub-style heading anchors from Markdown text."""
+
+    anchors = set(HTML_ID_RE.findall(text))
+    seen_headings: Counter[str] = Counter()
+    for match in MARKDOWN_HEADING_RE.finditer(text):
+        base_anchor = _github_heading_anchor(match.group(2))
+        if not base_anchor:
+            continue
+        occurrence = seen_headings[base_anchor]
+        seen_headings[base_anchor] += 1
+        anchors.add(base_anchor if occurrence == 0 else f"{base_anchor}-{occurrence}")
+    return anchors
+
+
+def validate_markdown_links(root: Path, errors: list[str]) -> None:
+    """Verify that relative Markdown links resolve to existing files and anchors."""
+
+    anchors_by_path: dict[Path, set[str]] = {}
     for markdown_path in discover_included_files(root):
         if markdown_path.suffix != ".md":
             continue
@@ -184,10 +211,13 @@ def validate_markdown_links(root: Path, errors: list[str]) -> None:
             destination = _link_target(raw_destination)
             if _is_ignored_link(destination):
                 continue
-            path_part = unquote(destination.split("#", 1)[0])
-            if not path_part:
-                continue
-            target = (markdown_path.parent / path_part).resolve()
+            path_part, separator, fragment = destination.partition("#")
+            path_part = unquote(path_part)
+            target = (
+                markdown_path.resolve()
+                if not path_part
+                else (markdown_path.parent / path_part).resolve()
+            )
             try:
                 target.relative_to(root.resolve())
             except ValueError:
@@ -201,6 +231,17 @@ def validate_markdown_links(root: Path, errors: list[str]) -> None:
                     errors,
                     f"{relative}: relative link target does not exist: {destination}",
                 )
+                continue
+            if separator and fragment and target.suffix.casefold() == ".md":
+                if target not in anchors_by_path:
+                    target_text = read_text(root, rel_path(root, target), errors)
+                    anchors_by_path[target] = markdown_anchors(target_text or "")
+                anchor = unquote(fragment)
+                if anchor not in anchors_by_path[target]:
+                    add_error(
+                        errors,
+                        f"{relative}: Markdown anchor does not exist: {destination}",
+                    )
 
 
 def _allows_multiple_yaml_documents(text: str) -> bool:
@@ -601,6 +642,41 @@ def authoritative_identifiers(
         "ground_truth": ground_truth_ids,
         "scorers": scorers,
     }
+
+
+def validate_evaluation_case_schema_scorers(
+    root: Path, identifiers: dict[str, set[str]], errors: list[str]
+) -> None:
+    """Require documented evaluation case-schema scorer IDs to be registered."""
+
+    relative = "docs/EVALUATION_PLAN.md"
+    text = read_text(root, relative, errors)
+    if text is None:
+        return
+    for block in FENCED_YAML_RE.findall(text):
+        try:
+            document = yaml.safe_load(block)
+        except yaml.YAMLError as error:
+            add_error(errors, f"{relative}: embedded YAML example does not parse: {error}")
+            continue
+        if not isinstance(document, dict) or "scoring" not in document:
+            continue
+        scoring = document["scoring"]
+        if not isinstance(scoring, dict):
+            add_error(errors, f"{relative}: case-schema scoring must be a mapping")
+            continue
+        for field, scorer in scoring.items():
+            if not isinstance(scorer, str) or not scorer:
+                add_error(
+                    errors,
+                    f"{relative}: case-schema scoring.{field} must name a scorer ID",
+                )
+            elif scorer not in identifiers["scorers"]:
+                add_error(
+                    errors,
+                    f"{relative}: case-schema scoring.{field} reference {scorer!r} "
+                    "does not resolve",
+                )
 
 
 def validate_adr_completeness(root: Path, errors: list[str]) -> None:
@@ -1124,6 +1200,7 @@ def validate_repository(root: Path) -> ValidationResult:
     _, parsed_yaml = parse_included_structured_files(selected_root, errors)
     validate_openapi_fixture(parsed_yaml, errors)
     identifiers = authoritative_identifiers(selected_root, parsed_yaml, errors)
+    validate_evaluation_case_schema_scorers(selected_root, identifiers, errors)
     validate_adr_completeness(selected_root, errors)
     critical_high_threat_count = validate_control_matrix(
         selected_root, identifiers, errors
@@ -1225,6 +1302,51 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
                 for error in matrix_result.errors
             ):
                 failures.append("broken traceability reference was not detected")
+
+        anchor_root = temporary_root / "broken-markdown-anchor"
+        _copy_repository_inputs(root, anchor_root)
+        adr_path = anchor_root / "docs/adr/ADR-005-aws-serverless-and-database.md"
+        adr_text = adr_path.read_text(encoding="utf-8")
+        if "#current-status" not in adr_text:
+            failures.append("could not construct broken Markdown anchor case")
+        else:
+            adr_path.write_text(
+                adr_text.replace("#current-status", "#missing-status-section", 1),
+                encoding="utf-8",
+                newline="\n",
+            )
+            write_manifest(anchor_root)
+            anchor_result = validate_repository(anchor_root)
+            if not any(
+                "Markdown anchor does not exist" in error
+                for error in anchor_result.errors
+            ):
+                failures.append("broken Markdown anchor was not detected")
+
+        scorer_root = temporary_root / "undefined-case-schema-scorer"
+        _copy_repository_inputs(root, scorer_root)
+        evaluation_path = scorer_root / "docs/EVALUATION_PLAN.md"
+        evaluation_text = evaluation_path.read_text(encoding="utf-8")
+        if "finding_match: finding_concept_and_citation_v1" not in evaluation_text:
+            failures.append("could not construct undefined case-schema scorer case")
+        else:
+            evaluation_path.write_text(
+                evaluation_text.replace(
+                    "finding_match: finding_concept_and_citation_v1",
+                    "finding_match: missing_scorer_v1",
+                    1,
+                ),
+                encoding="utf-8",
+                newline="\n",
+            )
+            write_manifest(scorer_root)
+            scorer_result = validate_repository(scorer_root)
+            if not any(
+                "case-schema scoring.finding_match reference 'missing_scorer_v1' "
+                "does not resolve" in error
+                for error in scorer_result.errors
+            ):
+                failures.append("undefined case-schema scorer was not detected")
     return not failures, failures
 
 
@@ -1258,6 +1380,8 @@ def main(argv: list[str] | None = None) -> int:
         print("- stale manifest detected")
         print("- empty ADR section detected")
         print("- broken traceability reference detected")
+        print("- broken Markdown anchor detected")
+        print("- undefined case-schema scorer detected")
         return 0
 
     result = validate_repository(root)

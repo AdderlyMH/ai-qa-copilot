@@ -92,4 +92,4 @@ The following are planned acceptance conditions; this ADR records no executed va
 - [Architecture — production deployment](../ARCHITECTURE.md#12-production-deployment)
 - [Architecture — database deployment decision](../ARCHITECTURE.md#123-database-deployment-decision)
 - [Backlog — INFRA-003 production PostgreSQL](../BACKLOG.md#infra-003--select-and-deploy-production-postgresql)
-- [Project status — working assumptions](../PROJECT_STATUS.md#6-working-assumptions)
+- [Project status — current status](../PROJECT_STATUS.md#current-status)
