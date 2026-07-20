@@ -1246,7 +1246,7 @@ def _empty_adr_decision(path: Path) -> None:
 
 
 def run_self_tests(root: Path) -> tuple[bool, list[str]]:
-    """Run safe negative cases in a temporary repository copy."""
+    """Run isolated validation and manifest-stability checks in temporary copies."""
 
     failures: list[str] = []
     with tempfile.TemporaryDirectory(prefix="docs-validator-") as temporary:
@@ -1266,6 +1266,21 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
             for error in stale_result.errors
         ):
             failures.append("stale manifest was not detected")
+
+        lf_manifest_root = temporary_root / "lf-manifest"
+        crlf_manifest_root = temporary_root / "crlf-manifest"
+        _copy_repository_inputs(root, lf_manifest_root)
+        _copy_repository_inputs(root, crlf_manifest_root)
+        relative_backlog = Path("docs/BACKLOG.md")
+        lf_backlog = (lf_manifest_root / relative_backlog).read_bytes().replace(
+            b"\r\n", b"\n"
+        )
+        (lf_manifest_root / relative_backlog).write_bytes(lf_backlog)
+        (crlf_manifest_root / relative_backlog).write_bytes(
+            lf_backlog.replace(b"\n", b"\r\n")
+        )
+        if build_manifest(lf_manifest_root) != build_manifest(crlf_manifest_root):
+            failures.append("manifest changes when a covered file uses CRLF line endings")
 
         adr_root = temporary_root / "empty-adr-section"
         _copy_repository_inputs(root, adr_root)
@@ -1378,6 +1393,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print("Documentation validator self-tests passed:")
         print("- stale manifest detected")
+        print("- CRLF manifest normalization is stable")
         print("- empty ADR section detected")
         print("- broken traceability reference detected")
         print("- broken Markdown anchor detected")

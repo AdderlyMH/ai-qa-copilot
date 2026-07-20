@@ -19,8 +19,14 @@ from docs_integrity import (
 )
 
 
+def canonical_manifest_bytes(raw_bytes: bytes) -> bytes:
+    """Return manifest bytes with CRLF line endings normalized to LF."""
+
+    return raw_bytes.replace(b"\r\n", b"\n")
+
+
 def sha256_hex(raw_bytes: bytes) -> str:
-    """Return the SHA-256 digest for exact raw file bytes."""
+    """Return the SHA-256 digest for the supplied manifest bytes."""
 
     return hashlib.sha256(raw_bytes).hexdigest()
 
@@ -31,7 +37,7 @@ def build_manifest(root: Path | None = None) -> dict[str, Any]:
     selected_root = (root or repository_root()).resolve()
     files: list[dict[str, Any]] = []
     for path in discover_included_files(selected_root):
-        raw_bytes = path.read_bytes()
+        raw_bytes = canonical_manifest_bytes(path.read_bytes())
         files.append(
             {
                 "path": relative_posix(selected_root, path).as_posix(),

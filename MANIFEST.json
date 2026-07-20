@@ -17,13 +17,13 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 38129,
-      "sha256": "bebeb223af8b6802eb6ae6ca75c432c8899780728984979c55b8216f3712c057"
+      "bytes": 37315,
+      "sha256": "1281b9cf817ef7a2cb0bd7021f29f190b543ff23f8da71879a178ac75b37ff19"
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 39777,
-      "sha256": "4f2aedecae9b1c35a2053d87084a586aa8cbc092cb2ed786142339926b9db3b4"
+      "bytes": 38999,
+      "sha256": "a144ef752876bd6e341f3da057410b50769338f09be67a16e59e6b6d97e4d83b"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -37,13 +37,13 @@
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
-      "bytes": 36144,
-      "sha256": "7965a4bd2d5237427267a848e6b7c44340298dfb66bf55572d2fb4428165d7ca"
+      "bytes": 35639,
+      "sha256": "2a8d4457971036ae74251f7b798dae06e28176fdea48cb4230638173ca08a57f"
     },
     {
       "path": "docs/PROJECT_CHARTER.md",
-      "bytes": 13274,
-      "sha256": "701e7fb3a7212db843b24ef736155a6c59640bb538267b996be8a94767476b97"
+      "bytes": 13007,
+      "sha256": "8d50da4a733bcbc28de34cbcdebf484e9fe1890fb311f83e8b70b187819a9378"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
@@ -57,8 +57,8 @@
     },
     {
       "path": "docs/THREAT_MODEL.md",
-      "bytes": 41408,
-      "sha256": "a1c28b4c0e86dd029aea78d538d6e9f72466deebcee58506c99841d849f508f9"
+      "bytes": 41018,
+      "sha256": "4c393374909587b0d02aa841f4525b4d9c432255e21701fab16c825598909de8"
     },
     {
       "path": "docs/adr/ADR-001-modular-monolith.md",
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/adr/ADR-009-parser-isolation.md",
-      "bytes": 10185,
-      "sha256": "377c46951a5d9afe71a96e2dce1d230dae0a5e3574b8b0d3c49cf71a49cf637b"
+      "bytes": 10084,
+      "sha256": "05b84e297f8c7068c3b04f8dbe8d5061d3f1e2f38a5e76f01abdfa5119bd28ff"
     },
     {
       "path": "docs/adr/ADR-010-canonical-report-revisions.md",
@@ -112,23 +112,23 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 2277,
-      "sha256": "83100eccb8f51685cb821eb6e55c58f5be5c366e37cc6863933124fcd15186a1"
+      "bytes": 2269,
+      "sha256": "4e9e5c9f30aeae54ddd7d4da59930423aa8cdb2b824e258790d46a2b8d790638"
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 6076,
-      "sha256": "0accf823fc315f6f56d8ed2c709c1a1f8e62d756da4d8f8442291d989085aad2"
+      "bytes": 5929,
+      "sha256": "b13585142e40da78a2dd506854c55fc7a43c5fda78fd6760f52c666bbab884b1"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
-      "bytes": 9669,
-      "sha256": "980b2d77fc2a5e95ea41798c0a6f43eac07c731718c45e2ebd5b02516ad9aaf8"
+      "bytes": 9365,
+      "sha256": "5201290ae432610a9f9774c662617d3ac9de7bd1ccec21dbc4a045af0808a2e4"
     },
     {
       "path": "fixtures/benchmark/ground-truth.v1.yaml",
-      "bytes": 13707,
-      "sha256": "82691abee96f9c8e73ef34d4b37c5265b75f73a626f1f777ee6e64ac2fd65880"
+      "bytes": 13321,
+      "sha256": "d98e05af714e50449ff613fb0809f8ac1a7d1073f76c7152cc8203a1f7836977"
     },
     {
       "path": "fixtures/sample-openapi.yaml",
@@ -152,13 +152,13 @@
     },
     {
       "path": "scripts/generate_manifest.py",
-      "bytes": 7732,
-      "sha256": "d6fe709891e7eecfe5dffa33d1786255f5df2bea4f84f998b373c26ddc280e89"
+      "bytes": 7943,
+      "sha256": "841e0d65682389a8a7645840e0203442369e8ab9475d367e8b2e7090a003b9b0"
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 53279,
-      "sha256": "44a410a84a82518229502dead840d35bf41f3c68f5eecaf4a736e35daa9141ef"
+      "bytes": 54121,
+      "sha256": "3ad1ef8f977864757d3b276e592994d26e2ae27593c0c6f2d5ecd4340f0618ac"
     }
   ]
 }

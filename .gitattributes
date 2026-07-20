@@ -1,5 +1,5 @@
-# MANIFEST.json records raw file bytes. Keep every manifest-covered text file
-# LF-normalized so its digest is identical in Windows and Linux checkouts.
+# MANIFEST.json hashes LF-canonical bytes. Keep every manifest-covered text
+# file LF-normalized so its digest is identical in Windows and Linux checkouts.
 README.md text eol=lf
 AGENTS.md text eol=lf
 CONTRIBUTING.md text eol=lf
