@@ -655,9 +655,22 @@ Purpose: demonstrate why a simple chatbot approach is insufficient without allow
 - Task-specific prompts.
 - Strict structured outputs.
 - Citation and taxonomy validation.
-- One configured model per task.
+- One configured model for every task type, with no task-to-model routing.
 
-This becomes the initial production candidate.
+The single initial production candidate is **B1/v1**:
+
+| Field                                  | Pinned value                                            |
+|----------------------------------------|---------------------------------------------------------|
+| Provider API                           | OpenAI Responses API                                    |
+| Model ID                               | `gpt-5.6-terra`                                         |
+| Reasoning effort                       | `medium`                                                |
+| Task-to-model routing                  | Disabled                                                |
+| Prompt, schema, and retrieval settings | Versioned and immutable per run; recorded in provenance |
+
+The model identifier is deliberately `gpt-5.6-terra`, not the `gpt-5.6` alias.
+Every initial production task uses B1/v1. A configuration change requires a
+new version and comparison evidence; it cannot silently alter an existing B1
+result.
 
 ### Candidate B2 — Cost-optimized routing
 
@@ -665,6 +678,11 @@ This becomes the initial production candidate.
 - Stronger model only for complex contradiction, test-design, and failure-analysis tasks.
 - Shared embedding cache.
 - Reduced evidence and output limits where quality is retained.
+
+B2 is not an initial production configuration. It may be evaluated only after
+an immutable B1 reference run exists, and it may be promoted only when the
+controlled comparison shows no task-success or security regression and
+documents its quality, latency, and cost trade-off.
 
 ### Optional candidate B3 — Managed agent runtime
 
@@ -676,7 +694,7 @@ At minimum:
 
 1. Semantic retrieval only versus hybrid retrieval.
 2. No citation post-validation versus citation validation.
-3. One strong model for all tasks versus deterministic model routing.
+3. B1/v1 single-model operation versus B2 deterministic model routing.
 4. Full evidence context versus bounded task-specific context.
 5. One general prompt versus task-specific prompts.
 6. Duplicate detection off versus on.

@@ -39,8 +39,22 @@ REQUIRED_ADR_SECTIONS = (
     "Links",
 )
 REQUIRED_FILES = (
+    ".gitattributes",
+    ".githooks/pre-commit",
+    ".github/CODEOWNERS",
+    ".github/dependabot.yml",
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml",
+    ".github/pull_request_template.md",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "Makefile",
     "README.md",
     MANIFEST_FILENAME,
+    "pyproject.toml",
+    "requirements-dev.txt",
     "requirements-docs.txt",
     ".github/workflows/docs-validation.yml",
     "docs/PROJECT_CHARTER.md",
@@ -51,6 +65,7 @@ REQUIRED_FILES = (
     "docs/BACKLOG.md",
     "docs/PROJECT_STATUS.md",
     "docs/CONTROL_TRACEABILITY_MATRIX.md",
+    "docs/REPOSITORY_GOVERNANCE.md",
     "docs/adr/README.md",
     *(
         f"docs/adr/ADR-{number:03d}-{slug}.md"
@@ -72,6 +87,18 @@ REQUIRED_FILES = (
     "fixtures/benchmark/fixture-manifest.v1.yaml",
     "fixtures/benchmark/ground-truth.v1.yaml",
     "fixtures/benchmark/README.md",
+    "scripts/tasks.py",
+)
+REQUIRED_ENGINEERING_TARGETS = (
+    "bootstrap",
+    "format",
+    "lint",
+    "typecheck",
+    "test",
+    "dev",
+    "docs-check",
+    "docs-self-test",
+    "ci",
 )
 EXPECTED_SECURITY_GATES = {f"SG-{number:02d}" for number in range(1, 9)}
 EXPECTED_EVALUATION_GATES = {f"EG-{number:02d}" for number in range(1, 10)}
@@ -173,6 +200,48 @@ def validate_required_files(root: Path, errors: list[str]) -> None:
             continue
         if not path.read_bytes().strip():
             add_error(errors, f"{relative}: required file is empty")
+
+
+def validate_engineering_command_contract(root: Path, errors: list[str]) -> None:
+    """Require the documented Makefile and Python task-runner targets."""
+
+    makefile = read_text(root, "Makefile", errors)
+    task_runner = read_text(root, "scripts/tasks.py", errors)
+    if makefile is None or task_runner is None:
+        return
+    for target in REQUIRED_ENGINEERING_TARGETS:
+        if not re.search(rf"^{re.escape(target)}\s*:", makefile, re.MULTILINE):
+            add_error(errors, f"Makefile: missing stable target {target!r}")
+        if f'"{target}"' not in task_runner:
+            add_error(errors, f"scripts/tasks.py: missing stable target {target!r}")
+
+
+def validate_dependabot_config(parsed_yaml: dict[str, Any], errors: list[str]) -> None:
+    """Require a bounded, versioned Dependabot update configuration."""
+
+    document = parsed_yaml.get(".github/dependabot.yml")
+    if not isinstance(document, dict):
+        add_error(errors, ".github/dependabot.yml: root must be a mapping")
+        return
+    if document.get("version") != 2:
+        add_error(errors, ".github/dependabot.yml: version must be 2")
+    updates = document.get("updates")
+    if not isinstance(updates, list):
+        add_error(errors, ".github/dependabot.yml: updates must be a list")
+        return
+    has_weekly_pip = any(
+        isinstance(update, dict)
+        and update.get("package-ecosystem") == "pip"
+        and update.get("directory") == "/"
+        and isinstance(update.get("schedule"), dict)
+        and update["schedule"].get("interval") == "weekly"
+        for update in updates
+    )
+    if not has_weekly_pip:
+        add_error(
+            errors,
+            ".github/dependabot.yml: require a weekly root pip update entry",
+        )
 
 
 def _link_target(raw_destination: str) -> str:
@@ -357,7 +426,9 @@ def _walk_refs(value: Any, location: str = "#") -> Iterable[tuple[str, Any]]:
 
     if isinstance(value, dict):
         for key, child in value.items():
-            child_location = f"{location}/{str(key).replace('~', '~0').replace('/', '~1')}"
+            child_location = (
+                f"{location}/{str(key).replace('~', '~0').replace('/', '~1')}"
+            )
             if key == "$ref":
                 yield child_location, child
             yield from _walk_refs(child, child_location)
@@ -380,9 +451,7 @@ def _resolve_mapping_reference(document: dict[str, Any], value: Any) -> dict[str
     return resolved if isinstance(resolved, dict) else {}
 
 
-def validate_openapi_fixture(
-    parsed_yaml: dict[str, Any], errors: list[str]
-) -> None:
+def validate_openapi_fixture(parsed_yaml: dict[str, Any], errors: list[str]) -> None:
     """Validate the bounded, local-reference OpenAPI fixture contract."""
 
     relative = "fixtures/sample-openapi.yaml"
@@ -440,7 +509,10 @@ def validate_openapi_fixture(
         try:
             path_item = _resolve_mapping_reference(document, raw_path_item)
         except ValueError as error:
-            add_error(errors, f"{relative}: path {path_template!r} has invalid reference: {error}")
+            add_error(
+                errors,
+                f"{relative}: path {path_template!r} has invalid reference: {error}",
+            )
             continue
         if not path_item:
             add_error(errors, f"{relative}: path {path_template!r} must be a mapping")
@@ -511,7 +583,9 @@ def validate_openapi_fixture(
                         f"{relative}: {method.upper()} {path_template} "
                         f"does not declare path parameter {placeholder!r}",
                     )
-                elif not any(parameter.get("required") is True for parameter in declarations):
+                elif not any(
+                    parameter.get("required") is True for parameter in declarations
+                ):
                     add_error(
                         errors,
                         f"{relative}: {method.upper()} {path_template} path parameter "
@@ -680,7 +754,9 @@ def authoritative_identifiers(
     adr_ids = {f"ADR-{number:03d}" for number in ADR_NUMBERS}
     for identifier in adr_ids:
         if not list((root / "docs/adr").glob(f"{identifier}-*.md")):
-            add_error(errors, f"docs/adr: authoritative ADR filename missing for {identifier}")
+            add_error(
+                errors, f"docs/adr: authoritative ADR filename missing for {identifier}"
+            )
 
     fixture = parsed_yaml.get("fixtures/benchmark/fixture-manifest.v1.yaml")
     fixture_ids: set[str] = set()
@@ -695,21 +771,24 @@ def authoritative_identifiers(
         if isinstance(manifest_id, str):
             fixture_ids.add(manifest_id)
     else:
-        add_error(errors, "fixtures/benchmark/fixture-manifest.v1.yaml: expected mapping")
+        add_error(
+            errors, "fixtures/benchmark/fixture-manifest.v1.yaml: expected mapping"
+        )
 
     ground_truth = parsed_yaml.get("fixtures/benchmark/ground-truth.v1.yaml")
     ground_truth_ids: set[str] = set()
     if isinstance(ground_truth, dict):
+        ground_truth_record_ids: list[str] = []
+        for record in [
+            *_mapping_list(ground_truth.get("findings")),
+            *_mapping_list(ground_truth.get("policies")),
+        ]:
+            record_id = record.get("id")
+            if isinstance(record_id, str):
+                ground_truth_record_ids.append(record_id)
         ground_truth_ids = _validate_unique_ids(
             "ground-truth ID",
-            [
-                record.get("id")
-                for record in [
-                    *_mapping_list(ground_truth.get("findings")),
-                    *_mapping_list(ground_truth.get("policies")),
-                ]
-                if isinstance(record.get("id"), str)
-            ],
+            ground_truth_record_ids,
             "fixtures/benchmark/ground-truth.v1.yaml",
             errors,
         )
@@ -746,7 +825,9 @@ def validate_evaluation_case_schema_scorers(
         try:
             document = yaml.safe_load(block)
         except yaml.YAMLError as error:
-            add_error(errors, f"{relative}: embedded YAML example does not parse: {error}")
+            add_error(
+                errors, f"{relative}: embedded YAML example does not parse: {error}"
+            )
             continue
         if not isinstance(document, dict) or "scoring" not in document:
             continue
@@ -756,9 +837,10 @@ def validate_evaluation_case_schema_scorers(
                 f"{relative}: case-schema side_effect_schema must be "
                 f"{CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
             )
-        if not isinstance(document.get("expected_boundary"), str) or not document[
-            "expected_boundary"
-        ]:
+        if (
+            not isinstance(document.get("expected_boundary"), str)
+            or not document["expected_boundary"]
+        ):
             add_error(
                 errors,
                 f"{relative}: case-schema expected_boundary must be a non-empty string",
@@ -996,7 +1078,9 @@ def validate_control_matrix(
     for token in sorted(fixture_tokens):
         if "*" in token:
             pattern = re.compile("^" + re.escape(token).replace(r"\*", ".*") + "$")
-            if not any(pattern.fullmatch(candidate) for candidate in identifiers["fixtures"]):
+            if not any(
+                pattern.fullmatch(candidate) for candidate in identifiers["fixtures"]
+            ):
                 add_error(
                     errors,
                     f"docs/CONTROL_TRACEABILITY_MATRIX.md: fixture pattern "
@@ -1056,7 +1140,9 @@ def validate_side_effect_fixture_contract(
                 f"{fixture_relative}: side_effect_contract.comparison must be "
                 "exact_non_negative_integer_counts",
             )
-        if manifest_contract.get("required_fields") != list(CANONICAL_SIDE_EFFECT_FIELDS):
+        if manifest_contract.get("required_fields") != list(
+            CANONICAL_SIDE_EFFECT_FIELDS
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: side_effect_contract.required_fields must equal "
@@ -1097,9 +1183,13 @@ def validate_side_effect_fixture_contract(
         "expected_side_effects",
     )
     if not isinstance(fixture_record_contract, dict):
-        add_error(errors, f"{fixture_relative}: fixture_record_contract must be a mapping")
+        add_error(
+            errors, f"{fixture_relative}: fixture_record_contract must be a mapping"
+        )
     else:
-        if fixture_record_contract.get("required_fields") != list(required_fixture_fields):
+        if fixture_record_contract.get("required_fields") != list(
+            required_fixture_fields
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: fixture_record_contract.required_fields must "
@@ -1150,7 +1240,10 @@ def validate_side_effect_fixture_contract(
                 "exact_complete_vector",
             )
         required_case_fields = case_contract.get("required_fields")
-        if not isinstance(required_case_fields, list) or "side_effect_schema" not in required_case_fields:
+        if (
+            not isinstance(required_case_fields, list)
+            or "side_effect_schema" not in required_case_fields
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: case_contract.required_fields must include "
@@ -1177,13 +1270,19 @@ def validate_side_effect_fixture_contract(
                     f"{fixture_relative}: scorer_contract.{scorer} must be a mapping",
                 )
                 continue
-            if scorer_definition.get("side_effect_schema") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+            if (
+                scorer_definition.get("side_effect_schema")
+                != CANONICAL_SIDE_EFFECT_SCHEMA_ID
+            ):
                 add_error(
                     errors,
                     f"{fixture_relative}: scorer_contract.{scorer}.side_effect_schema "
                     f"must be {CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
                 )
-            if scorer_definition.get("side_effect_comparison") != "exact_complete_vector":
+            if (
+                scorer_definition.get("side_effect_comparison")
+                != "exact_complete_vector"
+            ):
                 add_error(
                     errors,
                     f"{fixture_relative}: scorer_contract.{scorer}.side_effect_comparison "
@@ -1281,9 +1380,13 @@ def validate_side_effect_fixture_contract(
         if isinstance(record.get("id"), str)
     }
     if not parser_records:
-        add_error(errors, f"{fixture_relative}: no versioned parser fixture records found")
+        add_error(
+            errors, f"{fixture_relative}: no versioned parser fixture records found"
+        )
     if not security_records:
-        add_error(errors, f"{fixture_relative}: no versioned security fixture records found")
+        add_error(
+            errors, f"{fixture_relative}: no versioned security fixture records found"
+        )
 
     source_locator_owners: dict[str, str] = {}
     for fixture_kind, records in (
@@ -1295,7 +1398,9 @@ def validate_side_effect_fixture_contract(
             source = f"{fixture_relative}: {fixture_id}"
             for field in required_fixture_fields:
                 if field not in record:
-                    add_error(errors, f"{source}: required fixture field {field!r} is missing")
+                    add_error(
+                        errors, f"{source}: required fixture field {field!r} is missing"
+                    )
             version = record.get("version")
             if isinstance(version, bool) or not isinstance(version, int) or version < 1:
                 add_error(errors, f"{source}: version must be a positive integer")
@@ -1305,12 +1410,17 @@ def validate_side_effect_fixture_contract(
                     errors,
                     f"{source}: status must use the approved expected-status/v1 vocabulary",
                 )
-            if not isinstance(record.get("expected_boundary"), str) or not record[
-                "expected_boundary"
-            ]:
-                add_error(errors, f"{source}: expected_boundary must be a non-empty string")
+            if (
+                not isinstance(record.get("expected_boundary"), str)
+                or not record["expected_boundary"]
+            ):
+                add_error(
+                    errors, f"{source}: expected_boundary must be a non-empty string"
+                )
             expected_outcome = record.get("expected_outcome")
-            valid_outcomes = {"reject"} if fixture_kind == "parser" else {"allow", "block"}
+            valid_outcomes = (
+                {"reject"} if fixture_kind == "parser" else {"allow", "block"}
+            )
             if expected_outcome not in valid_outcomes:
                 add_error(
                     errors,
@@ -1318,9 +1428,13 @@ def validate_side_effect_fixture_contract(
                     f"{', '.join(sorted(valid_outcomes))}",
                 )
             if fixture_kind == "parser" and expected_status != "must_block":
-                add_error(errors, f"{source}: parser rejection status must be must_block")
+                add_error(
+                    errors, f"{source}: parser rejection status must be must_block"
+                )
             elif expected_outcome == "allow" and expected_status != "must_allow":
-                add_error(errors, f"{source}: allowed fixture status must be must_allow")
+                add_error(
+                    errors, f"{source}: allowed fixture status must be must_allow"
+                )
             elif expected_outcome == "block" and expected_status not in {
                 "must_block",
                 "must_redact",
@@ -1331,9 +1445,14 @@ def validate_side_effect_fixture_contract(
                 )
 
             source_variant_locator = record.get("source_variant_locator")
-            locator_match = (
-                SOURCE_VARIANT_LOCATOR_RE.fullmatch(source_variant_locator)
+            valid_source_variant_locator = (
+                source_variant_locator
                 if isinstance(source_variant_locator, str)
+                else ""
+            )
+            locator_match = (
+                SOURCE_VARIANT_LOCATOR_RE.fullmatch(valid_source_variant_locator)
+                if valid_source_variant_locator
                 else None
             )
             if locator_match is None:
@@ -1343,21 +1462,23 @@ def validate_side_effect_fixture_contract(
                     "<variant_id>#<fixture-local-locator>",
                 )
             else:
-                variant_id = locator_match.group(1)
+                variant_id = locator_match.group(1) or ""
                 if variant_id not in variant_ids:
                     add_error(
                         errors,
                         f"{source}: source_variant_locator references unknown variant "
                         f"{variant_id}",
                     )
-                previous_owner = source_locator_owners.get(source_variant_locator)
+                previous_owner = source_locator_owners.get(valid_source_variant_locator)
                 if previous_owner is not None:
                     add_error(
                         errors,
                         f"{source}: source_variant_locator duplicates {previous_owner}",
                     )
                 else:
-                    source_locator_owners[source_variant_locator] = str(fixture_id)
+                    source_locator_owners[valid_source_variant_locator] = str(
+                        fixture_id
+                    )
 
             linkage = record.get("ground_truth_linkage")
             if not isinstance(linkage, dict):
@@ -1371,8 +1492,13 @@ def validate_side_effect_fixture_contract(
                     )
                 elif applicable:
                     linked_ids = linkage.get("ground_truth_ids")
-                    if not isinstance(linked_ids, list) or not linked_ids or not all(
-                        isinstance(ground_truth_id, str) for ground_truth_id in linked_ids
+                    if (
+                        not isinstance(linked_ids, list)
+                        or not linked_ids
+                        or not all(
+                            isinstance(ground_truth_id, str)
+                            for ground_truth_id in linked_ids
+                        )
                     ):
                         add_error(
                             errors,
@@ -1403,9 +1529,13 @@ def validate_side_effect_fixture_contract(
                             "declare ground_truth_ids",
                         )
             vector = record.get("expected_side_effects")
-            vector_is_valid = validate_complete_side_effect_vector(vector, source, errors)
-            if fixture_kind == "parser" and vector_is_valid and not _is_zero_side_effect_vector(
-                vector
+            vector_is_valid = validate_complete_side_effect_vector(
+                vector, source, errors
+            )
+            if (
+                fixture_kind == "parser"
+                and vector_is_valid
+                and not _is_zero_side_effect_vector(vector)
             ):
                 add_error(
                     errors,
@@ -1439,7 +1569,9 @@ def validate_side_effect_fixture_contract(
                 "network-control scenario",
             )
         if approved_network_control.get("expected_outcome") != "allow":
-            add_error(errors, f"{fixture_relative}: SEC-NET-006 must be an allow control")
+            add_error(
+                errors, f"{fixture_relative}: SEC-NET-006 must be an allow control"
+            )
         if (
             approved_network_control.get("expected_boundary")
             != "transport_after_owner_target_plan_approval_and_dns_validation"
@@ -1449,7 +1581,10 @@ def validate_side_effect_fixture_contract(
                 f"{fixture_relative}: SEC-NET-006 must declare the post-validation "
                 "transport boundary",
             )
-        if approved_network_control.get("expected_side_effects") != expected_positive_vector:
+        if (
+            approved_network_control.get("expected_side_effects")
+            != expected_positive_vector
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: SEC-NET-006 must declare exactly one approved "
@@ -1461,9 +1596,13 @@ def validate_side_effect_fixture_contract(
             "fake_resolver_returns_only_approved_public_address",
         }
         network_preconditions = approved_network_control.get("preconditions")
-        if not isinstance(network_preconditions, list) or not all(
-            isinstance(precondition, str) for precondition in network_preconditions
-        ) or not required_preconditions.issubset(set(network_preconditions)):
+        if (
+            not isinstance(network_preconditions, list)
+            or not all(
+                isinstance(precondition, str) for precondition in network_preconditions
+            )
+            or not required_preconditions.issubset(set(network_preconditions))
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: SEC-NET-006 must declare all validation "
@@ -1471,10 +1610,12 @@ def validate_side_effect_fixture_contract(
             )
 
     for fixture_id in tuple(f"SEC-NET-{number:03d}" for number in range(1, 6)):
-        record = records_by_id.get(fixture_id)
-        if isinstance(record, dict) and record.get("expected_side_effects", {}).get(
-            "http_requests"
-        ) != 0:
+        network_record = records_by_id.get(fixture_id)
+        if (
+            isinstance(network_record, dict)
+            and network_record.get("expected_side_effects", {}).get("http_requests")
+            != 0
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: {fixture_id} deny control must make zero HTTP "
@@ -1495,29 +1636,34 @@ def validate_side_effect_fixture_contract(
             "target_configuration_changed_after_approval",
         ),
     ):
-        record = records_by_id.get(fixture_id)
-        if not isinstance(record, dict):
+        approval_record = records_by_id.get(fixture_id)
+        if not isinstance(approval_record, dict):
             continue
-        if record.get("scenario") != expected_scenario:
+        if approval_record.get("scenario") != expected_scenario:
             add_error(
                 errors,
                 f"{fixture_relative}: {fixture_id} has the wrong scenario",
             )
-        if record.get("expected_outcome") != "block":
+        if approval_record.get("expected_outcome") != "block":
             add_error(errors, f"{fixture_relative}: {fixture_id} must block")
-        if record.get("expected_boundary") != expected_boundary:
+        if approval_record.get("expected_boundary") != expected_boundary:
             add_error(
                 errors,
                 f"{fixture_relative}: {fixture_id} has the wrong expected boundary",
             )
-        preconditions = record.get("preconditions")
-        if not isinstance(preconditions, list) or expected_precondition not in preconditions:
+        preconditions = approval_record.get("preconditions")
+        if (
+            not isinstance(preconditions, list)
+            or expected_precondition not in preconditions
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: {fixture_id} is missing its required scenario "
                 "precondition",
             )
-        if not _is_zero_side_effect_vector(record.get("expected_side_effects")):
+        if not _is_zero_side_effect_vector(
+            approval_record.get("expected_side_effects")
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: {fixture_id} must use the all-zero "
@@ -1526,7 +1672,9 @@ def validate_side_effect_fixture_contract(
 
     deterministic_suite = fixture.get("deterministic_ci_suite")
     if not isinstance(deterministic_suite, dict):
-        add_error(errors, f"{fixture_relative}: deterministic_ci_suite must be a mapping")
+        add_error(
+            errors, f"{fixture_relative}: deterministic_ci_suite must be a mapping"
+        )
     else:
         if deterministic_suite.get("suite_id") != "security-fixtures-pr/v1":
             add_error(
@@ -1573,7 +1721,10 @@ def validate_side_effect_fixture_contract(
     if not isinstance(release_integrity, dict):
         add_error(errors, f"{fixture_relative}: release_integrity must be a mapping")
     else:
-        if release_integrity.get("canonical_side_effect_schema") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+        if (
+            release_integrity.get("canonical_side_effect_schema")
+            != CANONICAL_SIDE_EFFECT_SCHEMA_ID
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: release_integrity.canonical_side_effect_schema "
@@ -1581,7 +1732,9 @@ def validate_side_effect_fixture_contract(
             )
         for flag in required_integrity_flags:
             if release_integrity.get(flag) is not True:
-                add_error(errors, f"{fixture_relative}: release_integrity.{flag} must be true")
+                add_error(
+                    errors, f"{fixture_relative}: release_integrity.{flag} must be true"
+                )
 
 
 def validate_fixture_integrity(
@@ -1600,12 +1753,17 @@ def validate_fixture_integrity(
         return
 
     if fixture.get("schema_version") != "fixture-manifest/v1":
-        add_error(errors, f"{fixture_relative}: schema_version must be fixture-manifest/v1")
+        add_error(
+            errors, f"{fixture_relative}: schema_version must be fixture-manifest/v1"
+        )
     if ground_truth.get("schema_version") != "ground-truth/v1":
         add_error(errors, f"{ground_relative}: schema_version must be ground-truth/v1")
     if not isinstance(fixture.get("manifest_id"), str) or not fixture["manifest_id"]:
         add_error(errors, f"{fixture_relative}: manifest_id is required")
-    if not isinstance(ground_truth.get("catalog_id"), str) or not ground_truth["catalog_id"]:
+    if (
+        not isinstance(ground_truth.get("catalog_id"), str)
+        or not ground_truth["catalog_id"]
+    ):
         add_error(errors, f"{ground_relative}: catalog_id is required")
 
     validate_side_effect_fixture_contract(
@@ -1647,7 +1805,8 @@ def validate_fixture_integrity(
         source_path = root / path_value
         if not source_path.is_file():
             add_error(
-                errors, f"{fixture_relative}: {artifact_id} source artifact is missing: {path_value}"
+                errors,
+                f"{fixture_relative}: {artifact_id} source artifact is missing: {path_value}",
             )
             continue
         declared_hash = (
@@ -1670,9 +1829,10 @@ def validate_fixture_integrity(
             )
 
     for value in _all_string_values(fixture):
-        if re.fullmatch(r"GT-(?:FIND|POL)-\d{3}", value) and value not in identifiers[
-            "ground_truth"
-        ]:
+        if (
+            re.fullmatch(r"GT-(?:FIND|POL)-\d{3}", value)
+            and value not in identifiers["ground_truth"]
+        ):
             add_error(
                 errors,
                 f"{fixture_relative}: ground-truth reference {value} does not exist",
@@ -1692,7 +1852,8 @@ def validate_fixture_integrity(
             continue
         if not isinstance(source, dict):
             add_error(
-                errors, f"{ground_relative}: source artifact {artifact_id} must be a mapping"
+                errors,
+                f"{ground_relative}: source artifact {artifact_id} must be a mapping",
             )
             continue
         fixture_path = bases_by_id[artifact_id].get("path")
@@ -1819,10 +1980,12 @@ def validate_fixture_integrity(
     total_category_cases = 0
     for category in categories:
         category_id = category.get("id", "<unknown>")
-        values = {
-            name: category.get(name) for name in ("development", "validation", "holdout")
-        }
-        if not all(isinstance(value, int) for value in values.values()):
+        values: dict[str, int] = {}
+        for split_name in ("development", "validation", "holdout"):
+            split_value = category.get(split_name)
+            if isinstance(split_value, int):
+                values[split_name] = split_value
+        if len(values) != 3:
             add_error(
                 errors,
                 f"{fixture_relative}: category {category_id} has non-integer split values",
@@ -1835,8 +1998,8 @@ def validate_fixture_integrity(
                 f"{fixture_relative}: category {category_id} total contradicts its splits",
             )
         total_category_cases += category_total if isinstance(category_total, int) else 0
-        for name, value in values.items():
-            category_totals[name] += value
+        for split_name, split_value in values.items():
+            category_totals[split_name] += split_value
     if total_category_cases != 100:
         add_error(
             errors,
@@ -1864,9 +2027,13 @@ def validate_fixture_integrity(
         and isinstance(validation_rules, dict)
         and validation_rules.get("seed_fixture_mutation_invalidates_catalog_version")
         is True
-        and validation_rules.get("policy_side_effect_schema_must_match_fixture_manifest")
+        and validation_rules.get(
+            "policy_side_effect_schema_must_match_fixture_manifest"
+        )
         is True
-        and validation_rules.get("every_policy_record_requires_complete_side_effect_vector")
+        and validation_rules.get(
+            "every_policy_record_requires_complete_side_effect_vector"
+        )
         is True
         and validation_rules.get("every_record_requires_approved_status") is True
     ):
@@ -1923,8 +2090,10 @@ def validate_repository(root: Path) -> ValidationResult:
     selected_root = root.resolve()
     errors: list[str] = []
     validate_required_files(selected_root, errors)
+    validate_engineering_command_contract(selected_root, errors)
     validate_markdown_links(selected_root, errors)
     _, parsed_yaml = parse_included_structured_files(selected_root, errors)
+    validate_dependabot_config(parsed_yaml, errors)
     validate_openapi_fixture(parsed_yaml, errors)
     identifiers = authoritative_identifiers(selected_root, parsed_yaml, errors)
     validate_evaluation_case_schema_scorers(selected_root, identifiers, errors)
@@ -1999,15 +2168,17 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
         _copy_repository_inputs(root, lf_manifest_root)
         _copy_repository_inputs(root, crlf_manifest_root)
         relative_backlog = Path("docs/BACKLOG.md")
-        lf_backlog = (lf_manifest_root / relative_backlog).read_bytes().replace(
-            b"\r\n", b"\n"
+        lf_backlog = (
+            (lf_manifest_root / relative_backlog).read_bytes().replace(b"\r\n", b"\n")
         )
         (lf_manifest_root / relative_backlog).write_bytes(lf_backlog)
         (crlf_manifest_root / relative_backlog).write_bytes(
             lf_backlog.replace(b"\n", b"\r\n")
         )
         if build_manifest(lf_manifest_root) != build_manifest(crlf_manifest_root):
-            failures.append("manifest changes when a covered file uses CRLF line endings")
+            failures.append(
+                "manifest changes when a covered file uses CRLF line endings"
+            )
 
         adr_root = temporary_root / "empty-adr-section"
         _copy_repository_inputs(root, adr_root)
@@ -2031,9 +2202,7 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
             failures.append("could not construct broken matrix reference case")
         else:
             matrix_path.write_text(
-                matrix_text.replace(
-                    "TM-FILE-001", "TM-FILE-001; TM-FAKE-999", 1
-                ),
+                matrix_text.replace("TM-FILE-001", "TM-FILE-001; TM-FAKE-999", 1),
                 encoding="utf-8",
                 newline="\n",
             )
@@ -2126,7 +2295,9 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
         traceability_ground_path = (
             traceability_root / "fixtures/benchmark/ground-truth.v1.yaml"
         )
-        traceability_fixture_text = traceability_fixture_path.read_text(encoding="utf-8")
+        traceability_fixture_text = traceability_fixture_path.read_text(
+            encoding="utf-8"
+        )
         traceability_ground_text = traceability_ground_path.read_text(encoding="utf-8")
         fixture_fields = (
             "      <<: *parser_rejection_defaults\n"
@@ -2134,7 +2305,10 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
             "VF-PARSER-ABUSE-001#markdown_text/SEC-PARSE-MD-001\n"
         )
         finding_status = "    status: must_find\n"
-        if fixture_fields not in traceability_fixture_text or finding_status not in traceability_ground_text:
+        if (
+            fixture_fields not in traceability_fixture_text
+            or finding_status not in traceability_ground_text
+        ):
             failures.append("could not construct missing fixture traceability case")
         else:
             traceability_fixture_path.write_text(

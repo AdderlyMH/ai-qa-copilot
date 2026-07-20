@@ -2,13 +2,18 @@
 
 ## Current state
 
-The repository is in Phase 0 foundation closeout. It contains the approved
-product, architecture, security, evaluation, fixture, ADR, and traceability
-contracts.
+The repository is in Phase 0 foundation closeout. It contains working product,
+architecture, security, evaluation, fixture, ADR, traceability, and governance
+contracts under review; Phase 0 is not yet accepted or complete.
 
 Application implementation has not started. No model integration, deployment,
 runtime evaluation, product metric, latency result, or cost result has been
 verified.
+
+Phase 0 acceptance remains blocked by external governance evidence: a verified
+Linear project with owned P0 work, and GitHub enforcement for `main`, secret
+scanning, and Dependabot. See [project status](docs/PROJECT_STATUS.md) and
+[repository governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 
 ## Canonical documents
 
@@ -19,6 +24,7 @@ verified.
 - [Evaluation plan](docs/EVALUATION_PLAN.md)
 - [Backlog](docs/BACKLOG.md)
 - [Project status](docs/PROJECT_STATUS.md)
+- [Repository governance evidence](docs/REPOSITORY_GOVERNANCE.md)
 - [Control traceability matrix](docs/CONTROL_TRACEABILITY_MATRIX.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Benchmark fixture guide](fixtures/benchmark/README.md)
@@ -26,11 +32,13 @@ verified.
 ## Documentation validation
 
 ```powershell
-python -m pip install -r requirements-docs.txt
-python scripts/generate_manifest.py --check
-python scripts/validate_docs.py
-python scripts/validate_docs.py --self-test
+python scripts/tasks.py bootstrap
+python scripts/tasks.py ci
 ```
+
+`python scripts/tasks.py` exposes stable `format`, `lint`, `typecheck`,
+`test`, `dev`, `docs-check`, `docs-self-test`, and `ci` commands. `make` offers
+the same targets where GNU Make is available.
 
 `MANIFEST.json` is generated from canonical repository files and excludes
 itself to avoid circular hashing.
@@ -48,9 +56,13 @@ and stages the manifest. It refuses a commit when related documentation files
 have unstaged or untracked changes, so the staged manifest always describes the
 staged documentation snapshot.
 
-Local documentation validation passes. Remote evidence is
-[`docs-validation` run 29781065312](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29781065312),
+The latest committed remote documentation evidence is
+[`docs-validation` run 29782544144](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29782544144),
 which succeeded for branch commit
-[`21d0fa3`](https://github.com/AdderlyMH/ai-qa-copilot/commit/21d0fa3252715b1bbd5e8a38c93458e284ec7f81).
-That result applies only to that commit; any later commit needs its own
+[`4e344de`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4e344ded060cef2645645751f6cb66e673655675).
+That result applies only to that commit; each later commit requires its own
 successful `docs-validation` run.
+
+## License
+
+This repository is licensed under the [MIT License](LICENSE).

@@ -13,21 +13,41 @@ from pathlib import Path, PurePosixPath
 MANIFEST_FILENAME = "MANIFEST.json"
 SCHEMA_VERSION = "docs-manifest/v2"
 INCLUSION_DESCRIPTION = (
-    "Canonical Phase 0 documents, fixtures, ADRs, validation scripts, "
-    "dependency lock, and documentation workflow"
+    "Canonical Phase 0 documents, repository-governance artifacts, fixtures, "
+    "ADRs, validation scripts, dependency locks, and validation workflow"
 )
 SELF_HASH_POLICY = "MANIFEST.json is excluded to prevent circular hashing"
 
-_ROOT_FILES = frozenset({"README.md", "requirements-docs.txt"})
-_OPTIONAL_ROOT_FILES = frozenset({"AGENTS.md", "CONTRIBUTING.md"})
+_ROOT_FILES = frozenset(
+    {
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "Makefile",
+        "README.md",
+        "pyproject.toml",
+        "requirements-dev.txt",
+        "requirements-docs.txt",
+    }
+)
 _SCRIPT_FILES = frozenset(
     {
         "docs_integrity.py",
         "generate_manifest.py",
+        "tasks.py",
         "validate_docs.py",
     }
 )
-_WORKFLOW_PATH = PurePosixPath(".github/workflows/docs-validation.yml")
+_GOVERNANCE_PATHS = frozenset(
+    {
+        PurePosixPath(".gitattributes"),
+        PurePosixPath(".githooks/pre-commit"),
+        PurePosixPath(".github/CODEOWNERS"),
+        PurePosixPath(".github/dependabot.yml"),
+        PurePosixPath(".github/pull_request_template.md"),
+        PurePosixPath(".github/workflows/docs-validation.yml"),
+    }
+)
 
 # Generated and temporary output is intentionally not evidence of the
 # canonical documentation contract.  The named inclusion rules below already
@@ -84,7 +104,10 @@ def is_included(relative_path: PurePosixPath) -> bool:
         return False
 
     if len(relative_path.parts) == 1:
-        return relative_path.name in _ROOT_FILES | _OPTIONAL_ROOT_FILES
+        return relative_path.name in _ROOT_FILES
+
+    if relative_path in _GOVERNANCE_PATHS:
+        return True
 
     if relative_path.parts[0] == "docs":
         return relative_path.suffix == ".md"
@@ -95,7 +118,11 @@ def is_included(relative_path: PurePosixPath) -> bool:
     if len(relative_path.parts) == 2 and relative_path.parts[0] == "scripts":
         return relative_path.name in _SCRIPT_FILES
 
-    return relative_path == _WORKFLOW_PATH
+    return (
+        len(relative_path.parts) == 3
+        and relative_path.parts[:2] == (".github", "ISSUE_TEMPLATE")
+        and relative_path.suffix in {".md", ".yaml", ".yml"}
+    )
 
 
 def discover_included_files(root: Path | None = None) -> list[Path]:

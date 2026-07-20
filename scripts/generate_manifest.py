@@ -56,8 +56,7 @@ def serialize_manifest(manifest: dict[str, Any]) -> bytes:
     """Serialize a manifest with the repository's deterministic JSON format."""
 
     return (
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=False)
-        + "\n"
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
     ).encode("utf-8")
 
 
@@ -76,7 +75,9 @@ def write_manifest(root: Path | None = None) -> dict[str, Any]:
     return manifest
 
 
-def _file_index(files: object, side: str) -> tuple[dict[str, dict[str, Any]], list[str]]:
+def _file_index(
+    files: object, side: str
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
     """Index valid file records while reporting malformed manifest records."""
 
     indexed: dict[str, dict[str, Any]] = {}
@@ -119,8 +120,8 @@ def manifest_differences(expected: dict[str, Any], actual: object) -> list[str]:
     actual_file_records = actual.get("files")
     if not isinstance(actual_file_records, list):
         actual_file_records = []
-    actual_path_order = [
-        entry.get("path")
+    actual_path_order: list[str] = [
+        str(entry["path"])
         for entry in actual_file_records
         if isinstance(entry, dict) and isinstance(entry.get("path"), str)
     ]

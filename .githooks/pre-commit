@@ -6,7 +6,7 @@ set -eu
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-manifest_sources="README.md requirements-docs.txt AGENTS.md CONTRIBUTING.md docs fixtures scripts .github/workflows/docs-validation.yml"
+manifest_sources=".gitattributes .githooks/pre-commit .github AGENTS.md CONTRIBUTING.md LICENSE Makefile README.md pyproject.toml requirements-dev.txt requirements-docs.txt docs fixtures scripts"
 
 # Do no work for commits that cannot affect the manifest.
 if git diff --cached --quiet -- MANIFEST.json $manifest_sources; then

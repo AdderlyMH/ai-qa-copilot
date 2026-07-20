@@ -23,19 +23,19 @@ The architecture must demonstrate production AI-engineering skill without becomi
 
 ## 2. Key decisions
 
-| Decision | Selected direction | Rationale |
-|---|---|---|
-| Application shape | Modular monolith | Preserves clean boundaries without microservice overhead |
-| AI orchestration | Deterministic application workflow using the OpenAI Responses API directly | Application owns state, tool dispatch, validation, approval, and retries |
-| Agents | No multi-agent system in MVP | Multiple agents require measured benefit, not architectural theater |
-| Model output | Strict versioned schemas validated with Pydantic | Converts stochastic output into explicit contracts |
-| Retrieval | PostgreSQL full-text search plus pgvector, combined through rank fusion | Handles exact requirement identifiers and semantic matches |
-| Side effects | Model proposes; deterministic code validates; owner approves; a restricted execution worker revalidates and invokes the executor | Prevents the API, model, and general worker from gaining target-network authority |
-| Production cloud | AWS-first, Terraform-managed | Aligns with existing experience and demonstrates infrastructure ownership |
-| Data | PostgreSQL plus S3-compatible object storage | Strong relational provenance with vector retrieval and durable raw files |
-| Background work | Durable database-backed job state plus separate parser, general-job, and approved-execution queues with private worker roles | Keeps untrusted parsing, AI work, and outbound HTTP execution independently least-privileged without introducing domain microservices |
-| Public access | Authenticated owner plus read-only guest demo | Demonstrates a usable product while minimizing public attack surface |
-| Document ingestion | Quarantine-first object storage and isolated parsing of every uploaded file | Treats file bytes, metadata, parsed text, and OpenAPI content as untrusted before retrieval or model use |
+| Decision           | Selected direction                                                                                                               | Rationale                                                                                                                             |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| Application shape  | Modular monolith                                                                                                                 | Preserves clean boundaries without microservice overhead                                                                              |
+| AI orchestration   | Deterministic application workflow using the OpenAI Responses API directly                                                       | Application owns state, tool dispatch, validation, approval, and retries                                                              |
+| Agents             | No multi-agent system in MVP                                                                                                     | Multiple agents require measured benefit, not architectural theater                                                                   |
+| Model output       | Strict versioned schemas validated with Pydantic                                                                                 | Converts stochastic output into explicit contracts                                                                                    |
+| Retrieval          | PostgreSQL full-text search plus pgvector, combined through rank fusion                                                          | Handles exact requirement identifiers and semantic matches                                                                            |
+| Side effects       | Model proposes; deterministic code validates; owner approves; a restricted execution worker revalidates and invokes the executor | Prevents the API, model, and general worker from gaining target-network authority                                                     |
+| Production cloud   | AWS-first, Terraform-managed                                                                                                     | Aligns with existing experience and demonstrates infrastructure ownership                                                             |
+| Data               | PostgreSQL plus S3-compatible object storage                                                                                     | Strong relational provenance with vector retrieval and durable raw files                                                              |
+| Background work    | Durable database-backed job state plus separate parser, general-job, and approved-execution queues with private worker roles     | Keeps untrusted parsing, AI work, and outbound HTTP execution independently least-privileged without introducing domain microservices |
+| Public access      | Authenticated owner plus read-only guest demo                                                                                    | Demonstrates a usable product while minimizing public attack surface                                                                  |
+| Document ingestion | Quarantine-first object storage and isolated parsing of every uploaded file                                                      | Treats file bytes, metadata, parsed text, and OpenAPI content as untrusted before retrieval or model use                              |
 
 ## 3. System context
 
@@ -429,13 +429,24 @@ Validation policy:
 
 ### 8.5 Model routing
 
-Initial routing is deterministic:
+The initial production candidate is the single, pinned **B1/v1**
+configuration defined in the evaluation plan:
 
-- Low-cost model for classification, extraction, and simple normalization.
-- Stronger model for contradiction analysis, complex test generation, and failure analysis.
-- No dynamic self-selected model routing in MVP.
+- OpenAI Responses API using model ID `gpt-5.6-terra`.
+- `reasoning.effort: medium` for every B1 task type.
+- One model configuration for extraction, analysis, test design, and failure
+  analysis; task-to-model routing is disabled.
+- Prompt, schema, retrieval, model ID, and parameter versions are immutable
+  for an evaluation run and recorded as provenance.
 
-Routing changes require comparison on task success, cost, and latency.
+`gpt-5.6` and other provider aliases are not valid B1/v1 configuration values.
+There is no dynamic or deterministic multi-model routing in the initial
+production configuration.
+
+B2 is a later cost-optimized routing candidate, not an MVP default. It may be
+implemented or promoted only after a B1 reference run and a controlled B1/B2
+comparison show no task-success or security regression and justify the cost
+and latency trade-off.
 
 ### 8.6 Rendering untrusted content
 
@@ -608,12 +619,12 @@ flowchart TB
 
 The following deployment roles are separate IAM identities, queue policies, database roles, object-store prefixes, network policies, and telemetry namespaces. A shared code repository or container base image must not merge these permissions.
 
-| Runtime role | Queue / trigger | Permitted data and egress | Explicitly excluded |
-|---|---|---|---|
-| API | Authenticated HTTP request | Project/identity state, quarantine write, job enqueue, sanitized demo lookup; private telemetry endpoints | Complex parsing, model credentials, target secrets, target-network egress, execution-queue consumption |
-| Restricted parser worker | Parser queue only | Read quarantined object; write bounded accepted normalization or sanitized rejection; enqueue accepted general job; private storage/database/telemetry endpoints | Public Internet, model provider, executor queue, target secrets, target network, generic filesystem or infrastructure access |
-| General analysis worker | General-job queue only | Accepted project content, retrieval/indexing state, model gateway, reports/evaluation provenance, private telemetry endpoints | Quarantine parsing, approved-execution queue, target secrets, target-network egress, target configuration mutation |
-| Restricted execution worker | Approved-execution queue only | Immutable plan, unconsumed approval, immutable target snapshot, target-specific secret; write execution evidence/state/audit; egress only to configured sandbox target and private telemetry endpoints | Model credential, raw documents, parser capability, public ingress, plan/approval/target mutation, general job consumption |
+| Runtime role                | Queue / trigger               | Permitted data and egress                                                                                                                                                                              | Explicitly excluded                                                                                                          |
+|-----------------------------|-------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| API                         | Authenticated HTTP request    | Project/identity state, quarantine write, job enqueue, sanitized demo lookup; private telemetry endpoints                                                                                              | Complex parsing, model credentials, target secrets, target-network egress, execution-queue consumption                       |
+| Restricted parser worker    | Parser queue only             | Read quarantined object; write bounded accepted normalization or sanitized rejection; enqueue accepted general job; private storage/database/telemetry endpoints                                       | Public Internet, model provider, executor queue, target secrets, target network, generic filesystem or infrastructure access |
+| General analysis worker     | General-job queue only        | Accepted project content, retrieval/indexing state, model gateway, reports/evaluation provenance, private telemetry endpoints                                                                          | Quarantine parsing, approved-execution queue, target secrets, target-network egress, target configuration mutation           |
+| Restricted execution worker | Approved-execution queue only | Immutable plan, unconsumed approval, immutable target snapshot, target-specific secret; write execution evidence/state/audit; egress only to configured sandbox target and private telemetry endpoints | Model credential, raw documents, parser capability, public ingress, plan/approval/target mutation, general job consumption   |
 
 Guest reads are a distinct API policy: they resolve only a server-selected immutable sanitized `DemoPublication` revision. They cannot access generic project/object/export/report-regeneration routes or cause model, queue, or target work.
 
@@ -752,24 +763,25 @@ Logs are structured JSON and include correlation IDs. They exclude:
 
 ## 15. Reliability and failure handling
 
-| Failure | Required behavior |
-|---|---|
-| Model timeout or rate limit | Bounded retry with jitter; record attempt; preserve job state |
-| Invalid structured output | One bounded repair attempt; then explicit failure |
-| Embedding failure | Retry batch safely; do not mark document fully indexed |
+| Failure                                                            | Required behavior                                                                                                                                                                                                                  |
+|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Model timeout or rate limit                                        | Bounded retry with jitter; record attempt; preserve job state                                                                                                                                                                      |
+| Invalid structured output                                          | One bounded repair attempt; then explicit failure                                                                                                                                                                                  |
+| Embedding failure                                                  | Retry batch safely; do not mark document fully indexed                                                                                                                                                                             |
 | Parser policy, malformed-input, timeout, or resource-limit failure | Preserve only required private quarantine/audit material; record a stable sanitized terminal rejection; do not retry or create downstream chunks, embeddings, model calls, reports, execution candidates, DNS calls, or HTTP sends |
-| Queue duplicate | Idempotency key prevents duplicate side effects |
-| Worker crash | Visibility timeout and retry; dead-letter after bounded attempts |
-| Database unavailable | Fail safely; do not execute from stale approval state |
-| Approval expired or replayed | Reject before network request |
-| Target DNS changes | Revalidate immediately before connect and block unsafe address |
-| Oversized response | Stop reading at limit; store truncated indicator; fail relevant assertion |
-| Provider configuration change | New version; old runs remain reproducible from metadata |
-| Deployment regression | Automated health checks and documented rollback |
+| Queue duplicate                                                    | Idempotency key prevents duplicate side effects                                                                                                                                                                                    |
+| Worker crash                                                       | Visibility timeout and retry; dead-letter after bounded attempts                                                                                                                                                                   |
+| Database unavailable                                               | Fail safely; do not execute from stale approval state                                                                                                                                                                              |
+| Approval expired or replayed                                       | Reject before network request                                                                                                                                                                                                      |
+| Target DNS changes                                                 | Revalidate immediately before connect and block unsafe address                                                                                                                                                                     |
+| Oversized response                                                 | Stop reading at limit; store truncated indicator; fail relevant assertion                                                                                                                                                          |
+| Provider configuration change                                      | New version; old runs remain reproducible from metadata                                                                                                                                                                            |
+| Deployment regression                                              | Automated health checks and documented rollback                                                                                                                                                                                    |
 
 ## 16. Cost controls
 
-- Use task-specific model routing rather than strongest model everywhere.
+- Use the B1/v1 pinned configuration until B2 routing passes its required
+  comparison; do not substitute model routing for evidence-based cost control.
 - Cache embeddings by content hash and embedding version.
 - Limit retrieved evidence size.
 - Limit retries and output tokens.
@@ -782,15 +794,15 @@ Logs are structured JSON and include correlation IDs. They exclude:
 
 ## 17. Testing architecture
 
-| Layer | Examples |
-|---|---|
-| Unit | URL policy, schema validation, state transitions, rank fusion, cost calculations |
-| Integration | PostgreSQL repositories, pgvector retrieval, S3 adapter, queue idempotency |
-| Contract | Frontend/API schemas, OpenAI gateway adapter, mock API/OpenAPI consistency |
-| Security | SSRF, DNS rebinding, approval replay, target-snapshot mutation, prompt injection, XSS, file abuse, parser isolation, workload-permission, and guest-route abuse |
-| AI evaluation | Versioned fixture-manifest and ground-truth cases for findings, tests, citations, tool planning, failure analysis, and zero-unexpected-side-effect policy behavior |
-| End-to-end | Upload → analysis → test generation → approval → sandbox execution → report |
-| Infrastructure | Terraform validation, policy scanning, container scanning, deployment smoke test |
+| Layer          | Examples                                                                                                                                                           |
+|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Unit           | URL policy, schema validation, state transitions, rank fusion, cost calculations                                                                                   |
+| Integration    | PostgreSQL repositories, pgvector retrieval, S3 adapter, queue idempotency                                                                                         |
+| Contract       | Frontend/API schemas, OpenAI gateway adapter, mock API/OpenAPI consistency                                                                                         |
+| Security       | SSRF, DNS rebinding, approval replay, target-snapshot mutation, prompt injection, XSS, file abuse, parser isolation, workload-permission, and guest-route abuse    |
+| AI evaluation  | Versioned fixture-manifest and ground-truth cases for findings, tests, citations, tool planning, failure analysis, and zero-unexpected-side-effect policy behavior |
+| End-to-end     | Upload → analysis → test generation → approval → sandbox execution → report                                                                                        |
+| Infrastructure | Terraform validation, policy scanning, container scanning, deployment smoke test                                                                                   |
 
 ## 18. Architecture evolution criteria
 

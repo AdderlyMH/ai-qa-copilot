@@ -1,29 +1,84 @@
 {
   "schema_version": "docs-manifest/v2",
   "inclusion_policy": {
-    "description": "Canonical Phase 0 documents, fixtures, ADRs, validation scripts, dependency lock, and documentation workflow",
+    "description": "Canonical Phase 0 documents, repository-governance artifacts, fixtures, ADRs, validation scripts, dependency locks, and validation workflow",
     "self_hash_policy": "MANIFEST.json is excluded to prevent circular hashing"
   },
   "files": [
     {
+      "path": ".githooks/pre-commit",
+      "bytes": 1509,
+      "sha256": "2597fb65a1879fe727aa630166118f5c34bdddf5c8b0f890e5efdbdfa2f16172"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "bytes": 13,
+      "sha256": "1410f2ed7aa4ba8eba04093e0afb3691490a91f5d7d3b9d6b5d2ca63b9578611"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.yml",
+      "bytes": 731,
+      "sha256": "203f741c9a23209b5456a1a45df44cfc6b90c9ea0de0b53eebb53f682fe886e5"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "bytes": 264,
+      "sha256": "f3c65bed714c8828a57cc170fdc48416815671fee69bfe69bdbd4a96f12ad269"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "bytes": 624,
+      "sha256": "7eee37f209e71b672953b74b5e592b580eaf60b991d65beac1979cf925e8de09"
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "bytes": 133,
+      "sha256": "e11ee2dd9f1773e15bd2230e150a9f375c08b84fb4ff118e02d942b30639028e"
+    },
+    {
+      "path": ".github/pull_request_template.md",
+      "bytes": 457,
+      "sha256": "cecd232b7c184d3edb98cb60a7970bdedd5c6a3174ffbc4a9c5f0e8bef7b219c"
+    },
+    {
       "path": ".github/workflows/docs-validation.yml",
-      "bytes": 1491,
-      "sha256": "470581df5590483ddb9bb264393a0d8d6a3aa586c40c10fa2d3bc7c8da61beb2"
+      "bytes": 1924,
+      "sha256": "de041d37e10fa3a41ff641558833f0e8470690434660581d8113be5dd69d04d6"
+    },
+    {
+      "path": "AGENTS.md",
+      "bytes": 2188,
+      "sha256": "07f5cd7f88a5c6109f7f4cdcfd2e3bda9e45d2fdb1dd032f6c1569addae9522f"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "bytes": 2913,
+      "sha256": "b6cf5a3f0b7d5907dbdd5b1b3ce42c4ce206dacc2e765ad81522f914656be61e"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1071,
+      "sha256": "16e188b06590192ae644cb1b4a313c4a06eaeb1077ba76fd3e7bb640e0719e85"
+    },
+    {
+      "path": "Makefile",
+      "bytes": 551,
+      "sha256": "24877567ded1b17c55885ff46ec204227c76edbe1abae428e29be6df1277f8c3"
     },
     {
       "path": "README.md",
-      "bytes": 2042,
-      "sha256": "de9c9da0d3073c3bca650caffda7b075c5dad40ce98a4cbb1119e73c2be92c0d"
+      "bytes": 2634,
+      "sha256": "ceb4f2428d88f8d971947a63d2613a87b0aea546db9c885b60a3ab471d27be34"
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 37315,
-      "sha256": "1281b9cf817ef7a2cb0bd7021f29f190b543ff23f8da71879a178ac75b37ff19"
+      "bytes": 44627,
+      "sha256": "aeb9a3d82ab4fbf49f1a3541e04689c42dc71ce0d47e55e14437ec9b32fd8f91"
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 39314,
-      "sha256": "c45672cd55e57382c64edfd8ec70bd029c8bdfac495e3dddb81f7874133a643e"
+      "bytes": 43486,
+      "sha256": "4ff7ccb30878f3b607adb0a5ef9874af4ed17a4695ac0a0c9027e3cd83900b6a"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -32,8 +87,8 @@
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 46307,
-      "sha256": "14c16ef3f8338987dd399cee1ae9be5a82893b620a900fe3d01215ff05af212f"
+      "bytes": 47583,
+      "sha256": "48740e34c26827f9525469e4c45354a2f47cb971f443abb2db2016eee031b91d"
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
@@ -42,13 +97,18 @@
     },
     {
       "path": "docs/PROJECT_CHARTER.md",
-      "bytes": 13007,
-      "sha256": "8d50da4a733bcbc28de34cbcdebf484e9fe1890fb311f83e8b70b187819a9378"
+      "bytes": 15333,
+      "sha256": "2e72b119da4e8d99a74bb5412564d89bf8c45c90608bb119a29ab58f697d0552"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 2332,
-      "sha256": "6abf518723f016b9f4dd287e2559d21dde69e77dfbae31549c5921f0c4c95ef1"
+      "bytes": 3214,
+      "sha256": "69804c18a50aa3aa4d248d2bb8852714780903c69318e4eb7e1647a07e488497"
+    },
+    {
+      "path": "docs/REPOSITORY_GOVERNANCE.md",
+      "bytes": 3500,
+      "sha256": "9e165e279c364a202e118ff05a6ea26a007ffd7ee931dea04920e3f1a35911c9"
     },
     {
       "path": "docs/SKILLS_PROFILE.md",
@@ -141,24 +201,39 @@
       "sha256": "414635e6c030d9a2a6ec6857128697a29514d49698f2b63d72649f191db36e4a"
     },
     {
+      "path": "pyproject.toml",
+      "bytes": 313,
+      "sha256": "c54bdd7927ebed5c4e66e90247f17c86c61ca666e3c04927d79f389185cc7ac2"
+    },
+    {
+      "path": "requirements-dev.txt",
+      "bytes": 81,
+      "sha256": "ce261dc68d8c31f96e649a810e38b5bd65ba19a14622a7622bd0c22e99f3e023"
+    },
+    {
       "path": "requirements-docs.txt",
       "bytes": 14,
       "sha256": "0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a"
     },
     {
       "path": "scripts/docs_integrity.py",
-      "bytes": 3873,
-      "sha256": "e1ff4ae654f9978919b157f95af82f23f0cda6559888fbbc44827adf39f9eedf"
+      "bytes": 4494,
+      "sha256": "989d5c31a19307797eaba362f7f3769cde23621cbc79e3e2b1139c276d6405b6"
     },
     {
       "path": "scripts/generate_manifest.py",
-      "bytes": 7943,
-      "sha256": "841e0d65682389a8a7645840e0203442369e8ab9475d367e8b2e7090a003b9b0"
+      "bytes": 7953,
+      "sha256": "820d7bda78feefb57d5a1269dec657f648b30511353aa2a7dbb060f9a5ea065c"
+    },
+    {
+      "path": "scripts/tasks.py",
+      "bytes": 3292,
+      "sha256": "5678175884fdc5bd2b636aaab469271349d8837bd3c81f65d19225a38798c4fe"
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 88889,
-      "sha256": "43d2c1851ef74e23cd7225ac01028817f52f65623c36eb564e327af1b4012d0e"
+      "bytes": 93285,
+      "sha256": "a528c66ab3ff8d9535c74ea760353d7d1d15c1039e32d9eaff2412b6214ed539"
     }
   ]
 }

@@ -7,8 +7,19 @@ on:
       - docs/phase0-closeout
     paths:
       - ".gitattributes"
+      - ".githooks/pre-commit"
+      - ".github/CODEOWNERS"
+      - ".github/dependabot.yml"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/pull_request_template.md"
       - "README.md"
+      - "AGENTS.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "Makefile"
       - "MANIFEST.json"
+      - "pyproject.toml"
+      - "requirements-dev.txt"
       - "requirements-docs.txt"
       - "docs/**"
       - "fixtures/**"
@@ -17,8 +28,19 @@ on:
   pull_request:
     paths:
       - ".gitattributes"
+      - ".githooks/pre-commit"
+      - ".github/CODEOWNERS"
+      - ".github/dependabot.yml"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/pull_request_template.md"
       - "README.md"
+      - "AGENTS.md"
+      - "CONTRIBUTING.md"
+      - "LICENSE"
+      - "Makefile"
       - "MANIFEST.json"
+      - "pyproject.toml"
+      - "requirements-dev.txt"
       - "requirements-docs.txt"
       - "docs/**"
       - "fixtures/**"
@@ -45,16 +67,10 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: requirements-docs.txt
+          cache-dependency-path: requirements-dev.txt
 
-      - name: Install documentation dependencies
-        run: python -m pip install -r requirements-docs.txt
+      - name: Install repository validation dependencies
+        run: python -m pip install -r requirements-dev.txt
 
-      - name: Check manifest freshness
-        run: python scripts/generate_manifest.py --check
-
-      - name: Validate documentation
-        run: python scripts/validate_docs.py
-
-      - name: Test validator failure detection
-        run: python scripts/validate_docs.py --self-test
+      - name: Run repository validation contract
+        run: python scripts/tasks.py ci
