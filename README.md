@@ -48,5 +48,9 @@ and stages the manifest. It refuses a commit when related documentation files
 have unstaged or untracked changes, so the staged manifest always describes the
 staged documentation snapshot.
 
-Local documentation validation passes. Remote GitHub Actions evidence is
-pending for the latest branch commit.
+Local documentation validation passes. Remote evidence is
+[`docs-validation` run 29781065312](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29781065312),
+which succeeded for branch commit
+[`21d0fa3`](https://github.com/AdderlyMH/ai-qa-copilot/commit/21d0fa3252715b1bbd5e8a38c93458e284ec7f81).
+That result applies only to that commit; any later commit needs its own
+successful `docs-validation` run.

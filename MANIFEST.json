@@ -12,8 +12,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 1744,
-      "sha256": "c6a265aa73144531ae4fb7cd051aac1937eceb475427ea99523fdb94880e09de"
+      "bytes": 2042,
+      "sha256": "de9c9da0d3073c3bca650caffda7b075c5dad40ce98a4cbb1119e73c2be92c0d"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -47,8 +47,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 1714,
-      "sha256": "17d9b84d53164bbf5ba61492fe8304c0a476ccb7ced07873615853fbf02b94d8"
+      "bytes": 2332,
+      "sha256": "6abf518723f016b9f4dd287e2559d21dde69e77dfbae31549c5921f0c4c95ef1"
     },
     {
       "path": "docs/SKILLS_PROFILE.md",
