@@ -8,7 +8,7 @@
 ## Current status
 
 The repository has a working Phase 0 contract set, not an approved or complete
-Phase 0 baseline. Exact-commit documentation CI is green for `4e344de`, but
+Phase 0 baseline. Exact-commit documentation CI is green for `2c90cd1`, but
 that does not prove branch protection, secret scanning, Dependabot enablement,
 or Linear project ownership.
 
@@ -30,10 +30,10 @@ or Linear project ownership.
 
 ### Verified remotely
 
-- [`docs-validation` run 29782544144](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29782544144)
+- [`docs-validation` run #8](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29787274484)
   succeeded for branch commit
-  [`4e344de`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4e344ded060cef2645645751f6cb66e673655675).
-- This evidence applies only to `4e344de`; any later commit needs its own
+  [`2c90cd1`](https://github.com/AdderlyMH/ai-qa-copilot/commit/2c90cd18ffc06231b3d9a15da022fc1be4270aab).
+- This evidence applies only to `2c90cd1`; any later commit needs its own
   successful run.
 
 ## Remaining Phase 0 gate blockers

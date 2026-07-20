@@ -57,9 +57,9 @@ have unstaged or untracked changes, so the staged manifest always describes the
 staged documentation snapshot.
 
 The latest committed remote documentation evidence is
-[`docs-validation` run 29782544144](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29782544144),
+[`docs-validation` run #8](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29787274484),
 which succeeded for branch commit
-[`4e344de`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4e344ded060cef2645645751f6cb66e673655675).
+[`2c90cd1`](https://github.com/AdderlyMH/ai-qa-copilot/commit/2c90cd18ffc06231b3d9a15da022fc1be4270aab).
 That result applies only to that commit; each later commit requires its own
 successful `docs-validation` run.
 
