@@ -22,18 +22,18 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 38999,
-      "sha256": "a144ef752876bd6e341f3da057410b50769338f09be67a16e59e6b6d97e4d83b"
+      "bytes": 39314,
+      "sha256": "c45672cd55e57382c64edfd8ec70bd029c8bdfac495e3dddb81f7874133a643e"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 18309,
-      "sha256": "3763ca1fe344109a418a883e86eb4358a0d1fabe033b154ef39bb2bfadc16a55"
+      "bytes": 30381,
+      "sha256": "5aafa9efeea9e8daeacaa6d9d4d502bfbce0400c72320c1ab033606a9ba80374"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 35307,
-      "sha256": "8cea99e364d14607f2796cb46bb187b4d1eaffbf4172343a0fcb5bc578bde1d1"
+      "bytes": 46307,
+      "sha256": "14c16ef3f8338987dd399cee1ae9be5a82893b620a900fe3d01215ff05af212f"
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
@@ -57,8 +57,8 @@
     },
     {
       "path": "docs/THREAT_MODEL.md",
-      "bytes": 41018,
-      "sha256": "4c393374909587b0d02aa841f4525b4d9c432255e21701fab16c825598909de8"
+      "bytes": 52558,
+      "sha256": "694a525b52057d94cfab455abde4d913a68b7f264546895acec46937d11d2fbb"
     },
     {
       "path": "docs/adr/ADR-001-modular-monolith.md",
@@ -117,18 +117,18 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 5929,
-      "sha256": "b13585142e40da78a2dd506854c55fc7a43c5fda78fd6760f52c666bbab884b1"
+      "bytes": 7343,
+      "sha256": "9be1f746f9ff8a1f04fac0d6647437f5b917e073d6d9f5d7be1610730eaafe42"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
-      "bytes": 9365,
-      "sha256": "5201290ae432610a9f9774c662617d3ac9de7bd1ccec21dbc4a045af0808a2e4"
+      "bytes": 40091,
+      "sha256": "77742bc9abc739c31f7e518f6d6c0845691d7ece5901c2dafec4fa83cb51becf"
     },
     {
       "path": "fixtures/benchmark/ground-truth.v1.yaml",
-      "bytes": 13321,
-      "sha256": "d98e05af714e50449ff613fb0809f8ac1a7d1073f76c7152cc8203a1f7836977"
+      "bytes": 14893,
+      "sha256": "c4a5800834585a847f26cf4fc898f5e7cf69551e7ff5769e9de1be6648ed8814"
     },
     {
       "path": "fixtures/sample-openapi.yaml",
@@ -157,8 +157,8 @@
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 54121,
-      "sha256": "3ad1ef8f977864757d3b276e592994d26e2ae27593c0c6f2d5ecd4340f0618ac"
+      "bytes": 88889,
+      "sha256": "43d2c1851ef74e23cd7225ac01028817f52f65623c36eb564e327af1b4012d0e"
     }
   ]
 }

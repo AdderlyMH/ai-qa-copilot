@@ -75,6 +75,37 @@ REQUIRED_FILES = (
 )
 EXPECTED_SECURITY_GATES = {f"SG-{number:02d}" for number in range(1, 9)}
 EXPECTED_EVALUATION_GATES = {f"EG-{number:02d}" for number in range(1, 10)}
+CANONICAL_SIDE_EFFECT_SCHEMA_ID = "side-effects/v1"
+CANONICAL_SIDE_EFFECT_FIELDS = (
+    "chunks",
+    "embeddings",
+    "model_calls",
+    "execution_candidates",
+    "automatic_retries",
+    "dns_requests",
+    "http_requests",
+    "execution_plans",
+    "target_configuration_mutations",
+    "approval_mutations",
+    "secret_exposures",
+)
+APPROVED_EXPECTED_STATUSES = (
+    "must_find",
+    "may_find",
+    "must_block",
+    "must_allow",
+    "must_redact",
+    "must_mark_unsupported",
+)
+REQUIRED_DETERMINISTIC_SECURITY_FIXTURES = {
+    "SEC-NET-006",
+    "SEC-APP-005",
+    "SEC-APP-006",
+}
+SECURITY_FIXTURE_ID_RE = re.compile(r"^(?:SEC(?:-[A-Z0-9]+)+|EXEC-POL)-\d{3}$")
+SOURCE_VARIANT_LOCATOR_RE = re.compile(
+    r"^(VF-(?:[A-Z0-9]+-)+\d{3})#([A-Za-z0-9][A-Za-z0-9_./:-]*)$"
+)
 
 INLINE_LINK_RE = re.compile(r"!?\[[^\]\n]*\]\(([^)\n]+)\)")
 REFERENCE_LINK_RE = re.compile(
@@ -528,6 +559,64 @@ def _mapping_list(value: Any) -> list[dict[str, Any]]:
     return [entry for entry in value if isinstance(entry, dict)]
 
 
+def _fixture_records(value: Any) -> Iterable[dict[str, Any]]:
+    """Yield versioned fixture records from a parser or security fixture section."""
+
+    if isinstance(value, list):
+        for child in value:
+            yield from _fixture_records(child)
+        return
+    if not isinstance(value, dict):
+        return
+    fixture_id = value.get("id")
+    if isinstance(fixture_id, str) and SECURITY_FIXTURE_ID_RE.fullmatch(fixture_id):
+        yield value
+        return
+    for child in value.values():
+        yield from _fixture_records(child)
+
+
+def validate_complete_side_effect_vector(
+    vector: Any, source: str, errors: list[str]
+) -> bool:
+    """Require one exact, non-negative-count side-effect vector."""
+
+    if not isinstance(vector, dict):
+        add_error(errors, f"{source}: expected_side_effects must be a mapping")
+        return False
+
+    valid = True
+    actual_fields = set(vector)
+    required_fields = set(CANONICAL_SIDE_EFFECT_FIELDS)
+    for field in CANONICAL_SIDE_EFFECT_FIELDS:
+        if field not in vector:
+            add_error(
+                errors,
+                f"{source}: expected_side_effects is missing required field {field!r}",
+            )
+            valid = False
+            continue
+        value = vector[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            add_error(
+                errors,
+                f"{source}: expected_side_effects.{field} must be a non-negative integer",
+            )
+            valid = False
+    for field in sorted(actual_fields - required_fields):
+        add_error(errors, f"{source}: unexpected expected_side_effects field {field!r}")
+        valid = False
+    return valid
+
+
+def _is_zero_side_effect_vector(vector: Any) -> bool:
+    """Return whether a valid canonical side-effect vector is entirely zero."""
+
+    return isinstance(vector, dict) and all(
+        vector.get(field) == 0 for field in CANONICAL_SIDE_EFFECT_FIELDS
+    )
+
+
 def collect_fixture_id_declarations(fixture: dict[str, Any]) -> list[str]:
     """Collect IDs owned by the fixture manifest, excluding reference lists."""
 
@@ -661,6 +750,24 @@ def validate_evaluation_case_schema_scorers(
             continue
         if not isinstance(document, dict) or "scoring" not in document:
             continue
+        if document.get("side_effect_schema") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+            add_error(
+                errors,
+                f"{relative}: case-schema side_effect_schema must be "
+                f"{CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
+            )
+        if not isinstance(document.get("expected_boundary"), str) or not document[
+            "expected_boundary"
+        ]:
+            add_error(
+                errors,
+                f"{relative}: case-schema expected_boundary must be a non-empty string",
+            )
+        validate_complete_side_effect_vector(
+            document.get("expected_side_effects"),
+            f"{relative}: case-schema",
+            errors,
+        )
         scoring = document["scoring"]
         if not isinstance(scoring, dict):
             add_error(errors, f"{relative}: case-schema scoring must be a mapping")
@@ -924,6 +1031,559 @@ def _all_string_values(value: Any) -> Iterable[str]:
         yield value
 
 
+def validate_side_effect_fixture_contract(
+    fixture: dict[str, Any],
+    ground_truth: dict[str, Any],
+    fixture_relative: str,
+    ground_relative: str,
+    errors: list[str],
+) -> None:
+    """Validate the one canonical side-effect schema and fixture records."""
+
+    manifest_contract = fixture.get("side_effect_contract")
+    if not isinstance(manifest_contract, dict):
+        add_error(errors, f"{fixture_relative}: side_effect_contract must be a mapping")
+    else:
+        if manifest_contract.get("schema_id") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+            add_error(
+                errors,
+                f"{fixture_relative}: side_effect_contract.schema_id must be "
+                f"{CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
+            )
+        if manifest_contract.get("comparison") != "exact_non_negative_integer_counts":
+            add_error(
+                errors,
+                f"{fixture_relative}: side_effect_contract.comparison must be "
+                "exact_non_negative_integer_counts",
+            )
+        if manifest_contract.get("required_fields") != list(CANONICAL_SIDE_EFFECT_FIELDS):
+            add_error(
+                errors,
+                f"{fixture_relative}: side_effect_contract.required_fields must equal "
+                "the canonical side-effects/v1 field order",
+            )
+        if manifest_contract.get("alias_policy") != "no_field_aliases":
+            add_error(
+                errors,
+                f"{fixture_relative}: side_effect_contract.alias_policy must be "
+                "no_field_aliases",
+            )
+
+    status_contract = fixture.get("status_contract")
+    if not isinstance(status_contract, dict):
+        add_error(errors, f"{fixture_relative}: status_contract must be a mapping")
+    else:
+        if status_contract.get("schema_id") != "expected-status/v1":
+            add_error(
+                errors,
+                f"{fixture_relative}: status_contract.schema_id must be expected-status/v1",
+            )
+        if status_contract.get("allowed_values") != list(APPROVED_EXPECTED_STATUSES):
+            add_error(
+                errors,
+                f"{fixture_relative}: status_contract.allowed_values must equal the "
+                "approved status vocabulary",
+            )
+
+    fixture_record_contract = fixture.get("fixture_record_contract")
+    required_fixture_fields = (
+        "id",
+        "version",
+        "status",
+        "source_variant_locator",
+        "ground_truth_linkage",
+        "expected_outcome",
+        "expected_boundary",
+        "expected_side_effects",
+    )
+    if not isinstance(fixture_record_contract, dict):
+        add_error(errors, f"{fixture_relative}: fixture_record_contract must be a mapping")
+    else:
+        if fixture_record_contract.get("required_fields") != list(required_fixture_fields):
+            add_error(
+                errors,
+                f"{fixture_relative}: fixture_record_contract.required_fields must "
+                "declare every per-ID fixture field",
+            )
+        if (
+            fixture_record_contract.get("source_variant_locator_format")
+            != "<variant_id>#<fixture-local-locator>"
+        ):
+            add_error(
+                errors,
+                f"{fixture_relative}: fixture_record_contract must define the canonical "
+                "source/variant locator format",
+            )
+        linkage_contract = fixture_record_contract.get("ground_truth_linkage_contract")
+        if not isinstance(linkage_contract, dict):
+            add_error(
+                errors,
+                f"{fixture_relative}: fixture_record_contract.ground_truth_linkage_contract "
+                "must be a mapping",
+            )
+        elif (
+            linkage_contract.get("required_fields") != ["applicable"]
+            or linkage_contract.get("when_applicable_required_fields")
+            != ["ground_truth_ids"]
+            or linkage_contract.get("when_not_applicable_required_fields") != ["reason"]
+        ):
+            add_error(
+                errors,
+                f"{fixture_relative}: fixture_record_contract ground-truth linkage "
+                "requirements are incomplete",
+            )
+
+    case_contract = fixture.get("case_contract")
+    if not isinstance(case_contract, dict):
+        add_error(errors, f"{fixture_relative}: case_contract must be a mapping")
+    else:
+        if case_contract.get("side_effect_schema") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+            add_error(
+                errors,
+                f"{fixture_relative}: case_contract.side_effect_schema must be "
+                f"{CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
+            )
+        if case_contract.get("side_effect_comparison") != "exact_complete_vector":
+            add_error(
+                errors,
+                f"{fixture_relative}: case_contract.side_effect_comparison must be "
+                "exact_complete_vector",
+            )
+        required_case_fields = case_contract.get("required_fields")
+        if not isinstance(required_case_fields, list) or "side_effect_schema" not in required_case_fields:
+            add_error(
+                errors,
+                f"{fixture_relative}: case_contract.required_fields must include "
+                "side_effect_schema",
+            )
+        if case_contract.get("expected_side_effect_fields") != list(
+            CANONICAL_SIDE_EFFECT_FIELDS
+        ):
+            add_error(
+                errors,
+                f"{fixture_relative}: case_contract.expected_side_effect_fields must "
+                "equal the canonical side-effects/v1 field order",
+            )
+
+    scorer_contract = fixture.get("scorer_contract")
+    if not isinstance(scorer_contract, dict):
+        add_error(errors, f"{fixture_relative}: scorer_contract must be a mapping")
+    else:
+        for scorer in ("exact_policy_boundary_v1", "core_workflow_success_v1"):
+            scorer_definition = scorer_contract.get(scorer)
+            if not isinstance(scorer_definition, dict):
+                add_error(
+                    errors,
+                    f"{fixture_relative}: scorer_contract.{scorer} must be a mapping",
+                )
+                continue
+            if scorer_definition.get("side_effect_schema") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+                add_error(
+                    errors,
+                    f"{fixture_relative}: scorer_contract.{scorer}.side_effect_schema "
+                    f"must be {CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
+                )
+            if scorer_definition.get("side_effect_comparison") != "exact_complete_vector":
+                add_error(
+                    errors,
+                    f"{fixture_relative}: scorer_contract.{scorer}.side_effect_comparison "
+                    "must be exact_complete_vector",
+                )
+
+    ground_contract = ground_truth.get("side_effect_contract")
+    if not isinstance(ground_contract, dict):
+        add_error(errors, f"{ground_relative}: side_effect_contract must be a mapping")
+    else:
+        if ground_contract.get("schema_id") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+            add_error(
+                errors,
+                f"{ground_relative}: side_effect_contract.schema_id must be "
+                f"{CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
+            )
+        if (
+            ground_contract.get("canonical_source")
+            != "fixture-manifest.v1.yaml#side_effect_contract"
+        ):
+            add_error(
+                errors,
+                f"{ground_relative}: side_effect_contract.canonical_source must reference "
+                "the fixture manifest contract",
+            )
+        if ground_contract.get("comparison") != "exact_complete_vector":
+            add_error(
+                errors,
+                f"{ground_relative}: side_effect_contract.comparison must be "
+                "exact_complete_vector",
+            )
+
+    ground_status_contract = ground_truth.get("status_contract")
+    if not isinstance(ground_status_contract, dict):
+        add_error(errors, f"{ground_relative}: status_contract must be a mapping")
+    else:
+        if ground_status_contract.get("schema_id") != "expected-status/v1":
+            add_error(
+                errors,
+                f"{ground_relative}: status_contract.schema_id must be expected-status/v1",
+            )
+        if (
+            ground_status_contract.get("canonical_source")
+            != "fixture-manifest.v1.yaml#status_contract"
+        ):
+            add_error(
+                errors,
+                f"{ground_relative}: status_contract.canonical_source must reference "
+                "the fixture manifest status contract",
+            )
+
+    record_contract = ground_truth.get("record_contract")
+    if not isinstance(record_contract, dict):
+        add_error(errors, f"{ground_relative}: record_contract must be a mapping")
+    else:
+        if record_contract.get("side_effect_schema") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+            add_error(
+                errors,
+                f"{ground_relative}: record_contract.side_effect_schema must be "
+                f"{CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
+            )
+        if record_contract.get("side_effect_comparison") != "exact_complete_vector":
+            add_error(
+                errors,
+                f"{ground_relative}: record_contract.side_effect_comparison must be "
+                "exact_complete_vector",
+            )
+        if record_contract.get("status_schema") != "expected-status/v1":
+            add_error(
+                errors,
+                f"{ground_relative}: record_contract.status_schema must be "
+                "expected-status/v1",
+            )
+        for field_name in ("required_finding_fields", "required_policy_fields"):
+            required_fields = record_contract.get(field_name)
+            if not isinstance(required_fields, list) or "status" not in required_fields:
+                add_error(
+                    errors,
+                    f"{ground_relative}: record_contract.{field_name} must include status",
+                )
+
+    parser_records = list(_fixture_records(fixture.get("parser_fixtures")))
+    security_records = list(_fixture_records(fixture.get("security_fixtures")))
+    variant_ids = {
+        variant.get("id")
+        for variant in _mapping_list(fixture.get("variant_families"))
+        if isinstance(variant.get("id"), str)
+    }
+    ground_truth_record_ids = {
+        record.get("id")
+        for record in [
+            *_mapping_list(ground_truth.get("findings")),
+            *_mapping_list(ground_truth.get("policies")),
+        ]
+        if isinstance(record.get("id"), str)
+    }
+    if not parser_records:
+        add_error(errors, f"{fixture_relative}: no versioned parser fixture records found")
+    if not security_records:
+        add_error(errors, f"{fixture_relative}: no versioned security fixture records found")
+
+    source_locator_owners: dict[str, str] = {}
+    for fixture_kind, records in (
+        ("parser", parser_records),
+        ("security", security_records),
+    ):
+        for record in records:
+            fixture_id = record.get("id", "<unknown>")
+            source = f"{fixture_relative}: {fixture_id}"
+            for field in required_fixture_fields:
+                if field not in record:
+                    add_error(errors, f"{source}: required fixture field {field!r} is missing")
+            version = record.get("version")
+            if isinstance(version, bool) or not isinstance(version, int) or version < 1:
+                add_error(errors, f"{source}: version must be a positive integer")
+            expected_status = record.get("status")
+            if expected_status not in APPROVED_EXPECTED_STATUSES:
+                add_error(
+                    errors,
+                    f"{source}: status must use the approved expected-status/v1 vocabulary",
+                )
+            if not isinstance(record.get("expected_boundary"), str) or not record[
+                "expected_boundary"
+            ]:
+                add_error(errors, f"{source}: expected_boundary must be a non-empty string")
+            expected_outcome = record.get("expected_outcome")
+            valid_outcomes = {"reject"} if fixture_kind == "parser" else {"allow", "block"}
+            if expected_outcome not in valid_outcomes:
+                add_error(
+                    errors,
+                    f"{source}: expected_outcome must be one of "
+                    f"{', '.join(sorted(valid_outcomes))}",
+                )
+            if fixture_kind == "parser" and expected_status != "must_block":
+                add_error(errors, f"{source}: parser rejection status must be must_block")
+            elif expected_outcome == "allow" and expected_status != "must_allow":
+                add_error(errors, f"{source}: allowed fixture status must be must_allow")
+            elif expected_outcome == "block" and expected_status not in {
+                "must_block",
+                "must_redact",
+            }:
+                add_error(
+                    errors,
+                    f"{source}: blocked fixture status must be must_block or must_redact",
+                )
+
+            source_variant_locator = record.get("source_variant_locator")
+            locator_match = (
+                SOURCE_VARIANT_LOCATOR_RE.fullmatch(source_variant_locator)
+                if isinstance(source_variant_locator, str)
+                else None
+            )
+            if locator_match is None:
+                add_error(
+                    errors,
+                    f"{source}: source_variant_locator must use "
+                    "<variant_id>#<fixture-local-locator>",
+                )
+            else:
+                variant_id = locator_match.group(1)
+                if variant_id not in variant_ids:
+                    add_error(
+                        errors,
+                        f"{source}: source_variant_locator references unknown variant "
+                        f"{variant_id}",
+                    )
+                previous_owner = source_locator_owners.get(source_variant_locator)
+                if previous_owner is not None:
+                    add_error(
+                        errors,
+                        f"{source}: source_variant_locator duplicates {previous_owner}",
+                    )
+                else:
+                    source_locator_owners[source_variant_locator] = str(fixture_id)
+
+            linkage = record.get("ground_truth_linkage")
+            if not isinstance(linkage, dict):
+                add_error(errors, f"{source}: ground_truth_linkage must be a mapping")
+            else:
+                applicable = linkage.get("applicable")
+                if not isinstance(applicable, bool):
+                    add_error(
+                        errors,
+                        f"{source}: ground_truth_linkage.applicable must be boolean",
+                    )
+                elif applicable:
+                    linked_ids = linkage.get("ground_truth_ids")
+                    if not isinstance(linked_ids, list) or not linked_ids or not all(
+                        isinstance(ground_truth_id, str) for ground_truth_id in linked_ids
+                    ):
+                        add_error(
+                            errors,
+                            f"{source}: applicable ground_truth_linkage requires "
+                            "non-empty ground_truth_ids",
+                        )
+                    else:
+                        for ground_truth_id in linked_ids:
+                            if ground_truth_id not in ground_truth_record_ids:
+                                add_error(
+                                    errors,
+                                    f"{source}: ground_truth_linkage references unknown "
+                                    f"record {ground_truth_id}",
+                                )
+                else:
+                    reason = linkage.get("reason")
+                    if not isinstance(reason, str) or not reason:
+                        add_error(
+                            errors,
+                            f"{source}: non-applicable ground_truth_linkage requires "
+                            "a non-empty reason",
+                        )
+                    linked_ids = linkage.get("ground_truth_ids")
+                    if linked_ids not in (None, []):
+                        add_error(
+                            errors,
+                            f"{source}: non-applicable ground_truth_linkage must not "
+                            "declare ground_truth_ids",
+                        )
+            vector = record.get("expected_side_effects")
+            vector_is_valid = validate_complete_side_effect_vector(vector, source, errors)
+            if fixture_kind == "parser" and vector_is_valid and not _is_zero_side_effect_vector(
+                vector
+            ):
+                add_error(
+                    errors,
+                    f"{source}: parser rejection must use the all-zero "
+                    "side-effects/v1 vector",
+                )
+
+    records_by_id = {
+        record["id"]: record
+        for record in [*parser_records, *security_records]
+        if isinstance(record.get("id"), str)
+    }
+    for fixture_id in sorted(REQUIRED_DETERMINISTIC_SECURITY_FIXTURES):
+        if fixture_id not in records_by_id:
+            add_error(
+                errors,
+                f"{fixture_relative}: required deterministic security fixture "
+                f"{fixture_id} is missing",
+            )
+
+    approved_network_control = records_by_id.get("SEC-NET-006")
+    expected_positive_vector = {field: 0 for field in CANONICAL_SIDE_EFFECT_FIELDS}
+    expected_positive_vector.update(
+        {"dns_requests": 1, "http_requests": 1, "approval_mutations": 1}
+    )
+    if isinstance(approved_network_control, dict):
+        if approved_network_control.get("scenario") != "valid_approved_network_control":
+            add_error(
+                errors,
+                f"{fixture_relative}: SEC-NET-006 must declare the valid approved "
+                "network-control scenario",
+            )
+        if approved_network_control.get("expected_outcome") != "allow":
+            add_error(errors, f"{fixture_relative}: SEC-NET-006 must be an allow control")
+        if (
+            approved_network_control.get("expected_boundary")
+            != "transport_after_owner_target_plan_approval_and_dns_validation"
+        ):
+            add_error(
+                errors,
+                f"{fixture_relative}: SEC-NET-006 must declare the post-validation "
+                "transport boundary",
+            )
+        if approved_network_control.get("expected_side_effects") != expected_positive_vector:
+            add_error(
+                errors,
+                f"{fixture_relative}: SEC-NET-006 must declare exactly one approved "
+                "DNS request, approval mutation, and HTTP request",
+            )
+        required_preconditions = {
+            "registered_target_matches_immutable_plan",
+            "approval_is_owner_bound_unexpired_and_unconsumed",
+            "fake_resolver_returns_only_approved_public_address",
+        }
+        network_preconditions = approved_network_control.get("preconditions")
+        if not isinstance(network_preconditions, list) or not all(
+            isinstance(precondition, str) for precondition in network_preconditions
+        ) or not required_preconditions.issubset(set(network_preconditions)):
+            add_error(
+                errors,
+                f"{fixture_relative}: SEC-NET-006 must declare all validation "
+                "preconditions",
+            )
+
+    for fixture_id in tuple(f"SEC-NET-{number:03d}" for number in range(1, 6)):
+        record = records_by_id.get(fixture_id)
+        if isinstance(record, dict) and record.get("expected_side_effects", {}).get(
+            "http_requests"
+        ) != 0:
+            add_error(
+                errors,
+                f"{fixture_relative}: {fixture_id} deny control must make zero HTTP "
+                "requests",
+            )
+
+    for fixture_id, expected_scenario, expected_boundary, expected_precondition in (
+        (
+            "SEC-APP-005",
+            "concurrent_approval_consumption",
+            "concurrent_approval_claim_check_before_transport",
+            "another_executor_has_atomically_claimed_the_same_approval",
+        ),
+        (
+            "SEC-APP-006",
+            "target_configuration_mutation_after_approval",
+            "target_configuration_hash_revalidation_before_transport",
+            "target_configuration_changed_after_approval",
+        ),
+    ):
+        record = records_by_id.get(fixture_id)
+        if not isinstance(record, dict):
+            continue
+        if record.get("scenario") != expected_scenario:
+            add_error(
+                errors,
+                f"{fixture_relative}: {fixture_id} has the wrong scenario",
+            )
+        if record.get("expected_outcome") != "block":
+            add_error(errors, f"{fixture_relative}: {fixture_id} must block")
+        if record.get("expected_boundary") != expected_boundary:
+            add_error(
+                errors,
+                f"{fixture_relative}: {fixture_id} has the wrong expected boundary",
+            )
+        preconditions = record.get("preconditions")
+        if not isinstance(preconditions, list) or expected_precondition not in preconditions:
+            add_error(
+                errors,
+                f"{fixture_relative}: {fixture_id} is missing its required scenario "
+                "precondition",
+            )
+        if not _is_zero_side_effect_vector(record.get("expected_side_effects")):
+            add_error(
+                errors,
+                f"{fixture_relative}: {fixture_id} must use the all-zero "
+                "side-effects/v1 vector",
+            )
+
+    deterministic_suite = fixture.get("deterministic_ci_suite")
+    if not isinstance(deterministic_suite, dict):
+        add_error(errors, f"{fixture_relative}: deterministic_ci_suite must be a mapping")
+    else:
+        if deterministic_suite.get("suite_id") != "security-fixtures-pr/v1":
+            add_error(
+                errors,
+                f"{fixture_relative}: deterministic_ci_suite.suite_id must be "
+                "security-fixtures-pr/v1",
+            )
+        suite_ids = deterministic_suite.get("required_fixture_ids")
+        if not isinstance(suite_ids, list) or not all(
+            isinstance(fixture_id, str) for fixture_id in suite_ids
+        ):
+            add_error(
+                errors,
+                f"{fixture_relative}: deterministic_ci_suite.required_fixture_ids "
+                "must be a list of fixture IDs",
+            )
+        else:
+            missing = REQUIRED_DETERMINISTIC_SECURITY_FIXTURES - set(suite_ids)
+            if missing:
+                add_error(
+                    errors,
+                    f"{fixture_relative}: deterministic_ci_suite is missing "
+                    f"{', '.join(sorted(missing))}",
+                )
+            for fixture_id in suite_ids:
+                if fixture_id not in records_by_id:
+                    add_error(
+                        errors,
+                        f"{fixture_relative}: deterministic_ci_suite references unknown "
+                        f"fixture {fixture_id}",
+                    )
+
+    release_integrity = fixture.get("release_integrity")
+    required_integrity_flags = (
+        "every_parser_and_security_fixture_must_be_versioned",
+        "every_security_fixture_must_declare_expected_boundary",
+        "every_security_fixture_must_declare_complete_side_effect_vector",
+        "every_parser_and_security_fixture_must_declare_status",
+        "every_parser_and_security_fixture_must_declare_source_variant_locator",
+        "every_parser_and_security_fixture_must_declare_ground_truth_linkage",
+        "every_parser_fixture_must_declare_expected_boundary",
+        "every_parser_fixture_must_declare_complete_side_effect_vector",
+    )
+    if not isinstance(release_integrity, dict):
+        add_error(errors, f"{fixture_relative}: release_integrity must be a mapping")
+    else:
+        if release_integrity.get("canonical_side_effect_schema") != CANONICAL_SIDE_EFFECT_SCHEMA_ID:
+            add_error(
+                errors,
+                f"{fixture_relative}: release_integrity.canonical_side_effect_schema "
+                f"must be {CANONICAL_SIDE_EFFECT_SCHEMA_ID}",
+            )
+        for flag in required_integrity_flags:
+            if release_integrity.get(flag) is not True:
+                add_error(errors, f"{fixture_relative}: release_integrity.{flag} must be true")
+
+
 def validate_fixture_integrity(
     root: Path,
     parsed_yaml: dict[str, Any],
@@ -947,6 +1607,14 @@ def validate_fixture_integrity(
         add_error(errors, f"{fixture_relative}: manifest_id is required")
     if not isinstance(ground_truth.get("catalog_id"), str) or not ground_truth["catalog_id"]:
         add_error(errors, f"{ground_relative}: catalog_id is required")
+
+    validate_side_effect_fixture_contract(
+        fixture,
+        ground_truth,
+        fixture_relative,
+        ground_relative,
+        errors,
+    )
 
     base_artifacts = _mapping_list(fixture.get("base_artifacts"))
     bases_by_id = {
@@ -1051,11 +1719,65 @@ def validate_fixture_integrity(
                 f"does not agree with fixture manifest",
             )
 
+    ground_record_contract = ground_truth.get("record_contract")
+    required_record_fields = (
+        {
+            "finding": ground_record_contract.get("required_finding_fields", []),
+            "policy": ground_record_contract.get("required_policy_fields", []),
+        }
+        if isinstance(ground_record_contract, dict)
+        else {}
+    )
     for record in [
         *_mapping_list(ground_truth.get("findings")),
         *_mapping_list(ground_truth.get("policies")),
     ]:
         record_id = record.get("id", "<unknown>")
+        record_kind = record.get("kind")
+        if record_kind not in {"finding", "policy"}:
+            add_error(
+                errors,
+                f"{ground_relative}: {record_id} kind must be finding or policy",
+            )
+        else:
+            for field in required_record_fields.get(record_kind, []):
+                if field not in record:
+                    add_error(
+                        errors,
+                        f"{ground_relative}: {record_id} required {record_kind} field "
+                        f"{field!r} is missing",
+                    )
+        status = record.get("status")
+        if status not in APPROVED_EXPECTED_STATUSES:
+            add_error(
+                errors,
+                f"{ground_relative}: {record_id} status must use the approved "
+                "expected-status/v1 vocabulary",
+            )
+        elif record_kind == "finding" and status != "must_find":
+            add_error(
+                errors,
+                f"{ground_relative}: {record_id} finding status must be must_find",
+            )
+        elif record_kind == "policy" and status not in {
+            "must_block",
+            "must_allow",
+            "must_redact",
+            "must_mark_unsupported",
+        }:
+            add_error(
+                errors,
+                f"{ground_relative}: {record_id} policy status is not valid for a policy "
+                "record",
+            )
+        if record_kind == "finding" and record.get("must_find") is not True:
+            add_error(errors, f"{ground_relative}: {record_id} must_find must be true")
+        if record_kind == "policy":
+            validate_complete_side_effect_vector(
+                record.get("expected_side_effects"),
+                f"{ground_relative}: {record_id}",
+                errors,
+            )
         for artifact_id in record.get("source_artifacts", []):
             if artifact_id not in bases_by_id:
                 add_error(
@@ -1142,11 +1864,16 @@ def validate_fixture_integrity(
         and isinstance(validation_rules, dict)
         and validation_rules.get("seed_fixture_mutation_invalidates_catalog_version")
         is True
+        and validation_rules.get("policy_side_effect_schema_must_match_fixture_manifest")
+        is True
+        and validation_rules.get("every_policy_record_requires_complete_side_effect_vector")
+        is True
+        and validation_rules.get("every_record_requires_approved_status") is True
     ):
         add_error(
             errors,
-            "fixture catalogs: base-artifact changes must require updated fixture "
-            "and ground-truth catalog versions",
+            "fixture catalogs: base-artifact and canonical side-effect contracts must "
+            "require updated fixture and ground-truth catalog versions",
         )
 
 
@@ -1362,6 +2089,79 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
                 for error in scorer_result.errors
             ):
                 failures.append("undefined case-schema scorer was not detected")
+
+        side_effect_root = temporary_root / "incomplete-side-effect-contract"
+        _copy_repository_inputs(root, side_effect_root)
+        fixture_path = side_effect_root / "fixtures/benchmark/fixture-manifest.v1.yaml"
+        fixture_text = fixture_path.read_text(encoding="utf-8")
+        boundary = "      expected_boundary: transport_after_owner_target_plan_approval_and_dns_validation\n"
+        vector_field = "approval_mutations: 1, secret_exposures: 0}"
+        if boundary not in fixture_text or vector_field not in fixture_text:
+            failures.append("could not construct incomplete side-effect contract case")
+        else:
+            fixture_path.write_text(
+                fixture_text.replace(boundary, "", 1).replace(
+                    vector_field, "approval_mutations: 1}", 1
+                ),
+                encoding="utf-8",
+                newline="\n",
+            )
+            write_manifest(side_effect_root)
+            side_effect_result = validate_repository(side_effect_root)
+            if not any(
+                "SEC-NET-006: expected_boundary must be a non-empty string" in error
+                for error in side_effect_result.errors
+            ) or not any(
+                "SEC-NET-006: expected_side_effects is missing required field "
+                "'secret_exposures'" in error
+                for error in side_effect_result.errors
+            ):
+                failures.append("incomplete side-effect contract was not detected")
+
+        traceability_root = temporary_root / "missing-fixture-traceability"
+        _copy_repository_inputs(root, traceability_root)
+        traceability_fixture_path = (
+            traceability_root / "fixtures/benchmark/fixture-manifest.v1.yaml"
+        )
+        traceability_ground_path = (
+            traceability_root / "fixtures/benchmark/ground-truth.v1.yaml"
+        )
+        traceability_fixture_text = traceability_fixture_path.read_text(encoding="utf-8")
+        traceability_ground_text = traceability_ground_path.read_text(encoding="utf-8")
+        fixture_fields = (
+            "      <<: *parser_rejection_defaults\n"
+            "      source_variant_locator: "
+            "VF-PARSER-ABUSE-001#markdown_text/SEC-PARSE-MD-001\n"
+        )
+        finding_status = "    status: must_find\n"
+        if fixture_fields not in traceability_fixture_text or finding_status not in traceability_ground_text:
+            failures.append("could not construct missing fixture traceability case")
+        else:
+            traceability_fixture_path.write_text(
+                traceability_fixture_text.replace(fixture_fields, "", 1),
+                encoding="utf-8",
+                newline="\n",
+            )
+            traceability_ground_path.write_text(
+                traceability_ground_text.replace(finding_status, "", 1),
+                encoding="utf-8",
+                newline="\n",
+            )
+            write_manifest(traceability_root)
+            traceability_result = validate_repository(traceability_root)
+            expected_errors = (
+                "SEC-PARSE-MD-001: required fixture field 'status' is missing",
+                "SEC-PARSE-MD-001: required fixture field "
+                "'source_variant_locator' is missing",
+                "SEC-PARSE-MD-001: required fixture field "
+                "'ground_truth_linkage' is missing",
+                "GT-FIND-001 required finding field 'status' is missing",
+            )
+            if not all(
+                any(expected_error in error for error in traceability_result.errors)
+                for expected_error in expected_errors
+            ):
+                failures.append("missing fixture traceability was not detected")
     return not failures, failures
 
 
@@ -1398,6 +2198,8 @@ def main(argv: list[str] | None = None) -> int:
         print("- broken traceability reference detected")
         print("- broken Markdown anchor detected")
         print("- undefined case-schema scorer detected")
+        print("- incomplete side-effect contract detected")
+        print("- missing fixture traceability detected")
         return 0
 
     result = validate_repository(root)

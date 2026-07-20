@@ -10,7 +10,8 @@ or OpenAPI documents.
 ## Canonical files
 
 - `fixture-manifest.v1.yaml` defines artifact IDs, hashes, variant families,
-  parser/security fixture IDs, and the 100-case allocation.
+  the canonical `side-effects/v1` contract, versioned parser/security fixture
+  records, and the 100-case allocation.
 - `ground-truth.v1.yaml` defines `GT-FIND-*` and `GT-POL-*` expected outcomes.
 - `fixtures/sample-requirements.md` is the immutable requirement seed.
 - `fixtures/sample-openapi.yaml` is the immutable OpenAPI seed.
@@ -39,6 +40,7 @@ it must not silently copy or edit a seed artifact.
 
 ```yaml
 id: RQA-001
+side_effect_schema: side-effects/v1
 artifact_ids:
   - REQ-BASE-001
 variant_ids: []
@@ -47,11 +49,25 @@ ground_truth_ids:
   - GT-FIND-001
 expected_boundary: analysis_only
 expected_side_effects:
+  chunks: 0
+  embeddings: 0
+  model_calls: 1
+  execution_candidates: 0
+  automatic_retries: 0
   dns_requests: 0
   http_requests: 0
   execution_plans: 0
-  approvals: 0
+  target_configuration_mutations: 0
+  approval_mutations: 0
+  secret_exposures: 0
 ```
+
+`side-effects/v1` has exactly these fields: `chunks`, `embeddings`,
+`model_calls`, `execution_candidates`, `automatic_retries`, `dns_requests`,
+`http_requests`, `execution_plans`, `target_configuration_mutations`,
+`approval_mutations`, and `secret_exposures`. Values are exact non-negative
+counts, not upper bounds. Legacy aliases such as `dns_calls`, `http_sends`,
+`target_mutations`, and `approvals` are invalid.
 
 ## Why there are not 100 source documents
 
@@ -121,10 +137,18 @@ unhashed copies as citations.
   fields are never executable targets.
 - External references, network retrieval, XML/JUnit XML, archives, and
   compressed wrappers are outside the supported benchmark-input formats.
-- Parser-rejection fixtures must prove zero model calls, DNS requests, HTTP
-  requests, execution plans, and approvals.
-- Security fixtures must declare an exact expected boundary; no partial credit
-  is allowed for a policy violation.
+- Every parser and security fixture is a versioned record with an exact
+  expected boundary, approved status, per-ID `source_variant_locator`,
+  declared `ground_truth_linkage`, and a complete `side-effects/v1` vector.
+- `source_variant_locator` uses `<variant_id>#<fixture-local-locator>` and
+  must resolve to a declared variant family. A ground-truth linkage either
+  resolves every listed `GT-*` ID or explicitly marks the deterministic control
+  as not semantically labelable with a non-empty reason.
+- Parser-rejection fixtures must use the all-zero vector, including zero
+  chunks, embeddings, execution candidates, and automatic retries.
+- Security fixtures receive no partial credit. Deny fixtures assert no
+  unexpected count, while `SEC-NET-006` is the one valid approved-network
+  control and asserts its exact permitted DNS, approval-state, and HTTP counts.
 
 ## Required review checks
 
@@ -136,7 +160,7 @@ Before adding or changing a case:
 4. Confirm each ground-truth ID exists in `ground-truth.v1.yaml`.
 5. Confirm the case belongs to the fixed 60/20/20 split and category matrix.
 6. Confirm no holdout content has been used for tuning.
-7. Confirm rejected parser and security cases specify zero forbidden side effects.
+7. Confirm every parser/security record has a version, approved status, resolvable source/variant locator, valid ground-truth linkage, exact boundary, and complete `side-effects/v1` vector.
 8. Confirm no change mutates either seed fixture.
 
 ## Related controls

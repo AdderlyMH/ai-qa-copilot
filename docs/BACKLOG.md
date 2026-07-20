@@ -136,8 +136,8 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** FND-007
-- **Deliverable:** Versioned fixture catalog for parser, prompt-injection, SSRF, approval, redaction, and isolation cases, including threat ID, expected boundary, expected side effects, and CI lane.
-- **Acceptance:** Every Critical or High threat has at least one fixture ID, expected deterministic outcome, source reference where applicable, and planned CI execution. Deny cases explicitly require zero unexpected model, DNS, HTTP, target-mutation, approval-mutation, or secret-exposure side effects.
+- **Deliverable:** Versioned fixture catalog for parser, prompt-injection, SSRF, approval, redaction, and isolation cases, including threat ID, expected status, source/variant locator, ground-truth linkage where applicable, expected boundary, expected side effects, and CI lane.
+- **Acceptance:** Every Critical or High threat has at least one fixture ID, expected deterministic outcome, source reference where applicable, and planned CI execution. The manifest validator rejects any parser/security fixture without its required status, per-ID source/variant locator, valid ground-truth linkage or explicit non-applicability reason, expected boundary, or complete side-effect vector. Deny cases explicitly require zero unexpected model, DNS, HTTP, target-mutation, approval-mutation, or secret-exposure side effects.
 
 #### FND-009 — Define objective security release-gate matrix
 
