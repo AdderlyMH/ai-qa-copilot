@@ -289,7 +289,7 @@ security_fixtures:
     - SEC-AUTH-001          # cross-project retrieval or access
     - SEC-AUTH-002          # guest write attempt
     - SEC-RED-001           # secret in stored or displayed evidence
-    - SEC-ISO-001           # parser-worker egress or credential-access attempt
+    - SEC-ISO-001           # parser-worker private-endpoint allowlist or prohibited-access attempt
     - SEC-REJECT-001        # rejected input reaches downstream workflow
 
   expected_behavior:

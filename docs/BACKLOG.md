@@ -96,7 +96,7 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Estimate:** 2 h
 - **Dependencies:** FND-001
 - **Deliverable:** `docs/adr/README.md` and ADR-001 through ADR-010 in Proposed or Accepted state.
-- **Acceptance:** Decisions cover modular monolith, direct orchestration, hybrid retrieval, and safe execution pattern.
+- **Acceptance:** `docs/adr/README.md` indexes ADR-001 through ADR-010 and matches the status in each record. The decisions cover modular monolith, direct orchestration, hybrid retrieval, safe HTTP execution, AWS application tier and production database choice, public-demo data policy, three-level evaluation, Cognito authorization, parser isolation, and canonical QA-report revisions. ADR-001 through ADR-004 and ADR-006 through ADR-010 are Accepted. ADR-005 remains Proposed until its documented decision trigger is met: it must be accepted before production Terraform creates the database tier.
 
 #### FND-004 — Create public repository controls
 

@@ -17,18 +17,18 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 37308,
-      "sha256": "64ed36c31a3d59513a45a3490fa5ff3d24268615bcf87b0dc4d950157a76bd57"
+      "bytes": 38129,
+      "sha256": "bebeb223af8b6802eb6ae6ca75c432c8899780728984979c55b8216f3712c057"
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 38520,
-      "sha256": "d305a270ff3f0227f6da3b7dbaa4afc2313d0d0b36d0a102f0a7440cd9a41529"
+      "bytes": 39777,
+      "sha256": "4f2aedecae9b1c35a2053d87084a586aa8cbc092cb2ed786142339926b9db3b4"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 17991,
-      "sha256": "4d6089cada1872f0e9992cbd30216cda8d417621f0e9f6559863bafaac500ff8"
+      "bytes": 18309,
+      "sha256": "3763ca1fe344109a418a883e86eb4358a0d1fabe033b154ef39bb2bfadc16a55"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
@@ -37,13 +37,13 @@
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
-      "bytes": 35513,
-      "sha256": "daa08c62e5902e0698705f7a71072c02d99974e2222d73fd3966487c32d0bd23"
+      "bytes": 36144,
+      "sha256": "7965a4bd2d5237427267a848e6b7c44340298dfb66bf55572d2fb4428165d7ca"
     },
     {
       "path": "docs/PROJECT_CHARTER.md",
-      "bytes": 13007,
-      "sha256": "8d50da4a733bcbc28de34cbcdebf484e9fe1890fb311f83e8b70b187819a9378"
+      "bytes": 13274,
+      "sha256": "701e7fb3a7212db843b24ef736155a6c59640bb538267b996be8a94767476b97"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
@@ -57,8 +57,8 @@
     },
     {
       "path": "docs/THREAT_MODEL.md",
-      "bytes": 40690,
-      "sha256": "ee05fa0a775d53a99e01589fc04b214feb100e4b258a180c7300cac0055ce10a"
+      "bytes": 41408,
+      "sha256": "a1c28b4c0e86dd029aea78d538d6e9f72466deebcee58506c99841d849f508f9"
     },
     {
       "path": "docs/adr/ADR-001-modular-monolith.md",
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/adr/ADR-009-parser-isolation.md",
-      "bytes": 8458,
-      "sha256": "12aa350aa1b8f4ce7191e9a149c8bc826de89ac0739421027f76f795024a4528"
+      "bytes": 10185,
+      "sha256": "377c46951a5d9afe71a96e2dce1d230dae0a5e3574b8b0d3c49cf71a49cf637b"
     },
     {
       "path": "docs/adr/ADR-010-canonical-report-revisions.md",
@@ -112,23 +112,23 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 2269,
-      "sha256": "4e9e5c9f30aeae54ddd7d4da59930423aa8cdb2b824e258790d46a2b8d790638"
+      "bytes": 2277,
+      "sha256": "83100eccb8f51685cb821eb6e55c58f5be5c366e37cc6863933124fcd15186a1"
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 5929,
-      "sha256": "b13585142e40da78a2dd506854c55fc7a43c5fda78fd6760f52c666bbab884b1"
+      "bytes": 6076,
+      "sha256": "0accf823fc315f6f56d8ed2c709c1a1f8e62d756da4d8f8442291d989085aad2"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
-      "bytes": 9345,
-      "sha256": "7101739b2bd3c8be7f1a53ea75449e9191e8fbd8865ffe3f4aef821bbaf84dda"
+      "bytes": 9669,
+      "sha256": "980b2d77fc2a5e95ea41798c0a6f43eac07c731718c45e2ebd5b02516ad9aaf8"
     },
     {
       "path": "fixtures/benchmark/ground-truth.v1.yaml",
-      "bytes": 13321,
-      "sha256": "d98e05af714e50449ff613fb0809f8ac1a7d1073f76c7152cc8203a1f7836977"
+      "bytes": 13707,
+      "sha256": "82691abee96f9c8e73ef34d4b37c5265b75f73a626f1f777ee6e64ac2fd65880"
     },
     {
       "path": "fixtures/sample-openapi.yaml",

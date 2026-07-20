@@ -272,9 +272,9 @@ All uploaded bytes, filenames, MIME declarations, document metadata, parsed text
 
 The API performs only bounded streaming checks: authentication, project authorization, extension/media-type allowlisting, content-signature checks where feasible, and configured size/count/page limits. Eligible bytes are stored with generated object keys in a private quarantine namespace. The request path does not invoke complex parsers.
 
-A restricted parser worker reads an opaque queued document identifier and the corresponding quarantined object. It runs non-root, with a read-only root filesystem, bounded temporary storage, CPU, memory, wall-clock, nesting, and retry limits. It has no public Internet, model-provider credential, executor-target, target-secret, or general-worker capability; it may access only the private storage, parser queue, restricted database role, and telemetry endpoints needed for its role.
+A restricted parser worker reads an opaque queued document identifier and the corresponding quarantined object. It runs non-root, with a read-only root filesystem, bounded temporary storage, CPU, memory, wall-clock, nesting, and retry limits. It has no public-Internet, model-provider, executor-target, target-secret, or general-worker capability; it may access only private quarantine storage, the parser queue, the restricted database role, and telemetry endpoints needed for its role.
 
-Its workload identity permits only those named data-plane endpoints; it has no cloud control-plane or unrelated cloud credentials.
+Its workload identity permits only those named private data-plane endpoints; it has no cloud-control-plane or unrelated-cloud access.
 
 Only a successful parse may create bounded normalized sections, source locations, parser provenance, and a follow-on general indexing job. Raw bytes remain private quarantine objects regardless of acceptance; acceptance promotes only the normalized representation and active database state, and the general worker has no quarantine access. Parsed content remains untrusted evidence. Policy and malformed-input rejection is terminal: it produces a stable sanitized rejection record, no retry, and no chunks, embeddings, model calls, reports, execution candidates, DNS calls, or HTTP sends.
 
