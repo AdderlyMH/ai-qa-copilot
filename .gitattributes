@@ -16,3 +16,6 @@ scripts/docs_integrity.py text eol=lf
 scripts/generate_manifest.py text eol=lf
 scripts/validate_docs.py text eol=lf
 .github/workflows/docs-validation.yml text eol=lf
+
+# Git executes hooks through a POSIX shell, including on Git for Windows.
+.githooks/pre-commit text eol=lf

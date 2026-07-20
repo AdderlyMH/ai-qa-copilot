@@ -35,5 +35,18 @@ python scripts/validate_docs.py --self-test
 `MANIFEST.json` is generated from canonical repository files and excludes
 itself to avoid circular hashing.
 
+### Automatic manifest refresh before commits
+
+Install the versioned Git hook once per clone:
+
+```powershell
+git config --local core.hooksPath .githooks
+```
+
+When a manifest-covered file or `MANIFEST.json` is staged, the hook regenerates
+and stages the manifest. It refuses a commit when related documentation files
+have unstaged or untracked changes, so the staged manifest always describes the
+staged documentation snapshot.
+
 Local documentation validation passes. Remote GitHub Actions evidence is
 pending for the latest branch commit.

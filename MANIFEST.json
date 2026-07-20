@@ -12,8 +12,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 1316,
-      "sha256": "d4bd4a497ed20f96850a7f00dfeb17d50a838e25c7d35a89f39d0e4229302e0c"
+      "bytes": 1744,
+      "sha256": "c6a265aa73144531ae4fb7cd051aac1937eceb475427ea99523fdb94880e09de"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -27,8 +27,8 @@
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 30381,
-      "sha256": "5aafa9efeea9e8daeacaa6d9d4d502bfbce0400c72320c1ab033606a9ba80374"
+      "bytes": 29978,
+      "sha256": "f5d219da365e08b9f87108695331b53408b6b3095daeae46cd3a61d95d3cca0b"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",

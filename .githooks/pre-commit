@@ -1,0 +1,46 @@
+#!/bin/sh
+# Regenerate the documentation manifest from the staged documentation snapshot.
+
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+manifest_sources="README.md requirements-docs.txt AGENTS.md CONTRIBUTING.md docs fixtures scripts .github/workflows/docs-validation.yml"
+
+# Do no work for commits that cannot affect the manifest.
+if git diff --cached --quiet -- MANIFEST.json $manifest_sources; then
+  exit 0
+fi
+
+# The generator reads the worktree, so refuse a partial staging state that
+# could make the staged manifest describe unstaged documentation content.
+if ! git diff --quiet -- $manifest_sources; then
+  echo >&2 "Manifest-covered files have unstaged changes. Stage or stash them before committing."
+  exit 1
+fi
+
+if git ls-files --others --exclude-standard -- $manifest_sources | grep -q .; then
+  echo >&2 "Manifest-covered files are untracked. Stage or remove them before committing."
+  exit 1
+fi
+
+run_python() {
+  if [ -f ".venv/Scripts/python.exe" ]; then
+    ".venv/Scripts/python.exe" "$@"
+  elif [ -x ".venv/bin/python" ]; then
+    ".venv/bin/python" "$@"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 "$@"
+  elif command -v python >/dev/null 2>&1; then
+    python "$@"
+  elif command -v py >/dev/null 2>&1; then
+    py -3 "$@"
+  else
+    echo >&2 "Python 3 is required to regenerate MANIFEST.json."
+    exit 1
+  fi
+}
+
+run_python scripts/generate_manifest.py --write
+git add -- MANIFEST.json
