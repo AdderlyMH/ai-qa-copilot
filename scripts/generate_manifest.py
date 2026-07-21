@@ -25,6 +25,15 @@ def canonical_manifest_bytes(raw_bytes: bytes) -> bytes:
     return raw_bytes.replace(b"\r\n", b"\n")
 
 
+def manifest_content_bytes(path: Path) -> bytes:
+    """Return hashable bytes, preserving binary governance evidence exactly."""
+
+    raw_bytes = path.read_bytes()
+    if path.suffix.lower() == ".png":
+        return raw_bytes
+    return canonical_manifest_bytes(raw_bytes)
+
+
 def sha256_hex(raw_bytes: bytes) -> str:
     """Return the SHA-256 digest for the supplied manifest bytes."""
 
@@ -37,7 +46,7 @@ def build_manifest(root: Path | None = None) -> dict[str, Any]:
     selected_root = (root or repository_root()).resolve()
     files: list[dict[str, Any]] = []
     for path in discover_included_files(selected_root):
-        raw_bytes = canonical_manifest_bytes(path.read_bytes())
+        raw_bytes = manifest_content_bytes(path)
         files.append(
             {
                 "path": relative_posix(selected_root, path).as_posix(),

@@ -14,7 +14,8 @@ MANIFEST_FILENAME = "MANIFEST.json"
 SCHEMA_VERSION = "docs-manifest/v2"
 INCLUSION_DESCRIPTION = (
     "Canonical Phase 0 documents, repository-governance artifacts, fixtures, "
-    "ADRs, validation scripts, dependency locks, and validation workflow"
+    "ADRs, preserved governance-evidence assets, validation scripts, dependency "
+    "locks, and validation workflow"
 )
 SELF_HASH_POLICY = "MANIFEST.json is excluded to prevent circular hashing"
 
@@ -110,7 +111,10 @@ def is_included(relative_path: PurePosixPath) -> bool:
         return True
 
     if relative_path.parts[0] == "docs":
-        return relative_path.suffix == ".md"
+        return relative_path.suffix == ".md" or (
+            relative_path.parts[:2] == ("docs", "evidence")
+            and relative_path.suffix == ".png"
+        )
 
     if relative_path.parts[0] == "fixtures":
         return relative_path.suffix in {".md", ".yaml", ".yml", ".json"}

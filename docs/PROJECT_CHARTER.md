@@ -1,6 +1,6 @@
 # Project Charter — AI Quality Engineering Copilot
 
-**Document status:** Working baseline — Phase 0 active
+**Document status:** Working baseline — Phase 0 closeout verified; Phase 1 not started
 **Version:** 0.2
 **Start date:** 2026-07-17
 **Target portfolio release:** 2026-12-20

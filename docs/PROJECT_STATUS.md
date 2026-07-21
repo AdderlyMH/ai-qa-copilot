@@ -1,16 +1,17 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-07-21<br>
-**Overall state:** External governance blockers resolved; Phase 0 foundation work remains active<br>
-**Current phase:** Phase 0 — Foundation<br>
-**Health:** Green for external governance verification; remaining Phase 0 work is not implementation-ready until its own prerequisites are complete
+**Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 not started<br>
+**Current phase:** Phase 1 — Walking skeleton (not started)<br>
+**Health:** Green — Phase 0 acceptance contracts and external governance evidence are recorded; no application runtime exists
 
 ## Current status
 
-The repository has a verified Phase 0 governance baseline. FND-002 and
-FND-004 are resolved with recorded external evidence. Phase 0 is not yet
-complete: the remaining foundation contracts and their acceptance criteria must
-still be completed before parser or execution implementation begins.
+The repository has a verified Phase 0 documentation/governance baseline.
+FND-001 through FND-009 have recorded acceptance evidence. This closes the
+Phase 0 contract and governance gate; it does not claim that an application,
+deployment, evaluation run, cost/latency measurement, or security release gate
+has executed or passed.
 
 ### Verified locally
 
@@ -25,41 +26,55 @@ still be completed before parser or execution implementation begins.
 - The FND-006 decision is recorded consistently: retain 12 hours/week, retain
   the 231-hour scope and current P1 work, and revise the release target to
   2026-12-20. The 22-week plan provides 264 hours and a 33-hour contingency.
+- FND-007 through FND-009 are resolved as Phase 0 contracts: accepted parser
+  isolation and limits, adversarial fixture and side-effect contracts, and the
+  objective SG-01 through SG-08 traceability matrix are committed and covered
+  by deterministic documentation validation.
 - No application implementation, model integration, deployment, runtime
   benchmark, product metric, cost baseline, or latency baseline is claimed.
 
 ### Verified remotely
 
-- [`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572)
-  succeeded for branch commit
-  [`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
+- [`docs-validation` run #12](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29805545011)
+  succeeded for the latest committed branch tip,
+  [`4b2e7dd`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4b2e7ddf70faa2683de59f576536a395e9b04433).
   This evidence applies only to that commit; each later commit needs its own
   successful run.
+- [`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572)
+  remains the successful `main` run for
+  [`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
 - The public GitHub API verified `main` is protected and that active ruleset
   [`19300108`](https://github.com/AdderlyMH/ai-qa-copilot/rules/19300108)
   requires strict `docs-validation`, resolved review threads, and blocks
   deletion and non-fast-forward updates.
-- Project-owner-supplied GitHub Advanced Security settings evidence shows
-  secret scanning, push protection, Dependabot alerts, and Dependabot security
-  updates enabled. Successful Dependabot `pip` update jobs evidence that the
-  committed version-update configuration is processed.
+- Preserved, manifest-covered GitHub Advanced Security captures make the
+  secret-protection and Dependabot settings evidence independently inspectable
+  in [the evidence bundle](evidence/github-security-2026-07-21/README.md).
+  Successful Dependabot `pip` update jobs independently show that the committed
+  version-update configuration is processed.
 - A project-owner-supplied Linear export verifies the project-specific
   [Portfolio Release project](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview),
   all eight milestones, and all 68 P0 issues with owners, Linear estimates,
   milestones, and acceptance criteria.
 
-## Resolved external gate blockers
+## Phase 0 gate results
 
 1. **FND-002 — Linear plan verification:** **Resolved 2026-07-21.** The
    project ID, milestone set, owned P0 issues, estimates, and acceptance
    criteria are recorded in `REPOSITORY_GOVERNANCE.md`.
 2. **FND-004 — GitHub repository controls:** **Resolved 2026-07-21.** The
-   active `main` ruleset, secret protection, and Dependabot evidence are
-   recorded in `REPOSITORY_GOVERNANCE.md`.
+   active `main` ruleset, preserved security-settings captures, and Dependabot
+   bot-run evidence are recorded in `REPOSITORY_GOVERNANCE.md`.
+3. **FND-007 — Parser and untrusted-content contract:** **Resolved
+   2026-07-21** as documented Phase 0 design and fixture-contract evidence.
+4. **FND-008 — Adversarial fixture catalog:** **Resolved 2026-07-21** as
+   versioned fixture and deterministic-validator evidence.
+5. **FND-009 — Objective security release-gate matrix:** **Resolved
+   2026-07-21** as the committed, validated SG-01 through SG-08 matrix.
 
 The FND-005 repository-control dependency and the FND-006 Linear-verification
-dependency are therefore satisfied. This does not mark uncompleted Foundation
-issues as done.
+dependency are satisfied. Phase 0 is complete as a documentation/governance
+baseline, not as a runtime or release milestone.
 
 ## Not started
 
@@ -72,7 +87,7 @@ issues as done.
 
 ## Next action
 
-Commit the evidence-record update and obtain successful exact-commit CI. Then
-complete **FND-007 — Freeze parser and untrusted-content security contract**,
-followed by FND-008 and FND-009. No parser or execution implementation may
-begin until those prerequisites are complete and verified.
+Start **SKEL-001 — Initialize monorepo** when implementation work is approved.
+Every later implementation, parser, execution, evaluation, deployment, and
+security-release claim remains subject to its own documented dependencies and
+deterministic verification.

@@ -2,21 +2,22 @@
 
 ## Current state
 
-The repository is in Phase 0 foundation work. It contains working product,
-architecture, security, evaluation, fixture, ADR, traceability, and governance
-contracts. External governance verification is complete; Phase 0 itself remains
-active until its remaining foundation issues are completed and verified.
+The repository has completed its Phase 0 documentation and governance baseline.
+It contains working product, architecture, security, evaluation, fixture, ADR,
+traceability, and governance contracts. Phase 1 implementation work has not
+started.
 
 Application implementation has not started. No model integration, deployment,
 runtime evaluation, product metric, latency result, or cost result has been
 verified.
 
-The external governance blockers are resolved: the Linear project contains
-owned P0 work with milestones and estimates, and GitHub enforces the required
-`main` CI rule with secret protection and Dependabot evidence recorded. This
-does not constitute application, deployment, evaluation, cost, latency, or
-security-test success. See [project status](docs/PROJECT_STATUS.md) and
-[repository governance evidence](docs/REPOSITORY_GOVERNANCE.md).
+The Phase 0 exit evidence is recorded: the Linear project contains owned P0
+work with milestones and estimates; GitHub enforces the required `main` CI
+rule with preserved secret-protection and Dependabot evidence; and FND-007
+through FND-009 have documented, validated contract evidence. This does not
+constitute application, deployment, evaluation, cost, latency, or security-test
+success. See [project status](docs/PROJECT_STATUS.md) and [repository
+governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 
 ## Canonical documents
 
@@ -59,10 +60,10 @@ and stages the manifest. It refuses a commit when related documentation files
 have unstaged or untracked changes, so the staged manifest always describes the
 staged documentation snapshot.
 
-The latest committed remote documentation evidence is
-[`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572),
+The latest committed-branch remote documentation evidence is
+[`docs-validation` run #12](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29805545011),
 which succeeded for branch commit
-[`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
+[`4b2e7dd`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4b2e7ddf70faa2683de59f576536a395e9b04433).
 That result applies only to that commit; each later commit requires its own
 successful `docs-validation` run.
 
