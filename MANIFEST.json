@@ -68,7 +68,7 @@
     {
       "path": "README.md",
       "bytes": 2863,
-      "sha256": "fe5188d0d4f7057c89a8f966d6cbb4b94abbd173cded235b643d18c35468e8eb"
+      "sha256": "0a108317bbc301a261241bd5f58037dbb114185138d3e279530ce00ba03b0cb4"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -103,12 +103,12 @@
     {
       "path": "docs/PROJECT_STATUS.md",
       "bytes": 4957,
-      "sha256": "c34b84eb2da1271756edaee120162eeb6f43373aa14040bc68ee27013db0aadc"
+      "sha256": "6699b0eb5889517b1aff56f3508cdc523852061325e54b05ac1f20d58fea95ce"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
       "bytes": 6075,
-      "sha256": "cf751c96758e51e9da3f24c7a4772ca9be058495985a883dfc694f6d58deba71"
+      "sha256": "498136ad0770cd1768375d3f782e9d139f48f5f1e15fe297f8269240b2deab62"
     },
     {
       "path": "docs/SKILLS_PROFILE.md",
