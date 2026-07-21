@@ -31,9 +31,9 @@ bytes are checked by documentation CI. This makes the supplied source evidence
 inspectable from the repository while preserving the distinction between a
 captured settings view and a live authorized API response.
 
-[`docs-validation` run #12](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29805545011)
+[`docs-validation` run #15](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29810002162)
 succeeded for the latest committed branch tip,
-[`4b2e7dd`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4b2e7ddf70faa2683de59f576536a395e9b04433).
+[`94a33d0`](https://github.com/AdderlyMH/ai-qa-copilot/commit/94a33d0a142a5d9e27022774fd7ebc4f3e32f38a).
 [`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572)
 remains the successful `main` run for
 [`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
