@@ -31,12 +31,16 @@ bytes are checked by documentation CI. This makes the supplied source evidence
 inspectable from the repository while preserving the distinction between a
 captured settings view and a live authorized API response.
 
-[`docs-validation` run #15](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29810002162)
-succeeded for the latest committed branch tip,
-[`94a33d0`](https://github.com/AdderlyMH/ai-qa-copilot/commit/94a33d0a142a5d9e27022774fd7ebc4f3e32f38a).
-[`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572)
-remains the successful `main` run for
-[`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
+**Evidence snapshot (2026-07-21):** [`docs-validation` run
+#18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
+succeeded for pull-request branch commit
+[`dac1f24`](https://github.com/AdderlyMH/ai-qa-copilot/commit/dac1f241dc85936ebd4c7d44163ea0370aee3b9c).
+[`docs-validation` run
+#19](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811327018)
+succeeded for merged `main` commit
+[`5645582`](https://github.com/AdderlyMH/ai-qa-copilot/commit/56455820b2aa22c5de075112babbe35a3c29d61c).
+Each result applies only to its recorded commit; later commits require their
+own successful `docs-validation` run.
 
 FND-004 is resolved. This evidence verifies the repository-host controls as
 captured and independently inspectable on 2026-07-21; a later audit must

@@ -60,12 +60,16 @@ and stages the manifest. It refuses a commit when related documentation files
 have unstaged or untracked changes, so the staged manifest always describes the
 staged documentation snapshot.
 
-The latest committed-branch remote documentation evidence is
-[`docs-validation` run #15](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29810002162),
-which succeeded for branch commit
-[`94a33d0`](https://github.com/AdderlyMH/ai-qa-copilot/commit/94a33d0a142a5d9e27022774fd7ebc4f3e32f38a).
-That result applies only to that commit; each later commit requires its own
-successful `docs-validation` run.
+The 2026-07-21 exact-commit documentation-validation evidence snapshot is
+[`docs-validation` run #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002),
+which succeeded for pull-request branch commit
+[`dac1f24`](https://github.com/AdderlyMH/ai-qa-copilot/commit/dac1f241dc85936ebd4c7d44163ea0370aee3b9c).
+The associated `main` snapshot is
+[`docs-validation` run #19](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811327018),
+which succeeded for merge commit
+[`5645582`](https://github.com/AdderlyMH/ai-qa-copilot/commit/56455820b2aa22c5de075112babbe35a3c29d61c).
+Each result applies only to its recorded commit; later commits require their
+own successful `docs-validation` run.
 
 ## License
 
