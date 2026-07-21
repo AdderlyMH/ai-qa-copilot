@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible defect in a documented or implemented contract.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include secrets, private documents, customer data, or target credentials.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and evidence
+      description: Include the command, fixture ID, commit, or CI run when available.
+    validations:
+      required: true

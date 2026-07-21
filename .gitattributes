@@ -1,0 +1,30 @@
+# MANIFEST.json hashes LF-canonical bytes. Keep every manifest-covered text
+# file LF-normalized so its digest is identical in Windows and Linux checkouts.
+README.md text eol=lf
+AGENTS.md text eol=lf
+CONTRIBUTING.md text eol=lf
+LICENSE text eol=lf
+Makefile text eol=lf
+pyproject.toml text eol=lf
+requirements-dev.txt text eol=lf
+requirements-docs.txt text eol=lf
+MANIFEST.json text eol=lf
+
+docs/**/*.md text eol=lf
+fixtures/**/*.md text eol=lf
+fixtures/**/*.yaml text eol=lf
+fixtures/**/*.yml text eol=lf
+fixtures/**/*.json text eol=lf
+
+scripts/docs_integrity.py text eol=lf
+scripts/generate_manifest.py text eol=lf
+scripts/tasks.py text eol=lf
+scripts/validate_docs.py text eol=lf
+.github/CODEOWNERS text eol=lf
+.github/dependabot.yml text eol=lf
+.github/pull_request_template.md text eol=lf
+.github/ISSUE_TEMPLATE/**/*.yml text eol=lf
+.github/workflows/docs-validation.yml text eol=lf
+
+# Git executes hooks through a POSIX shell, including on Git for Windows.
+.githooks/pre-commit text eol=lf

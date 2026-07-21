@@ -1,0 +1,4 @@
+-r requirements-docs.txt
+mypy==2.3.0
+ruff==0.15.22
+types-PyYAML==6.0.12.20260518

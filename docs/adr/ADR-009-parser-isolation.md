@@ -1,19 +1,20 @@
 # ADR-009 — Parser isolation
 
 - **Status:** Accepted
-- **Date:** 2026-07-17
+- **Date:** 2026-07-18
 - **Decision owner:** Project owner
-- **Scope**: MVP document ingestion
+- **Scope:** MVP document ingestion
 
 ## Context
 
-Markdown, text, YAML, JSON, OpenAPI, and PDF uploads are attacker-controlled bytes. Parsing them in the API, model, retrieval, or executor process would allow resource exhaustion, parser exploitation, external-reference access, and prompt-injection authority escalation.
+Markdown, text, bounded PDF, and OpenAPI 3.0.x/3.1.x YAML or JSON uploads are attacker-controlled bytes. Generic JSON test-result files and JUnit/XML input are not supported in the MVP. Parsing supported input in the API, model, retrieval, or executor process would allow resource exhaustion, parser exploitation, external-reference access, and prompt-injection authority escalation.
 
 ## Decision
 
 - The API performs only authorization and bounded preflight checks, then stores accepted raw bytes under generated private quarantine keys.
+- The MVP accepts only Markdown, text, bounded PDF, and OpenAPI YAML or JSON inputs; generic JSON test-result and JUnit/XML ingestion remain unsupported.
 - A queue sends an opaque document identifier—not raw bytes—to a dedicated parser worker.
-- The parser worker runs non-root, with no network egress, no model/cloud/executor credentials, a read-only filesystem, bounded temporary storage, and enforced CPU, memory, and wall-clock limits.
+- The parser worker runs non-root with a scoped private data-plane workload identity that may access only private quarantine storage, the parser queue, the restricted database, and telemetry endpoints. It has no public-Internet, model-provider, executor-target, cloud-control-plane, or unrelated-cloud access, and uses a read-only filesystem, bounded temporary storage, and enforced CPU, memory, and wall-clock limits.
 - Parser workers may emit only an accepted, bounded normalized representation with provenance or a sanitized rejection record.
 - Only accepted documents may be promoted to active versions, chunked, embedded, retrieved, or supplied as model evidence.
 - Rejections are terminal: no parser retry, chunks, embeddings, model calls, reports, execution candidates, DNS queries, or HTTP requests.
@@ -34,13 +35,13 @@ Markdown, text, YAML, JSON, OpenAPI, and PDF uploads are attacker-controlled byt
 
 ## Consequences
 
-Positive consequences:
+### Positive consequences
 
 - A parser failure cannot become model context or an executable artifact.
 - The trust boundary is auditable through a document state and rejection record.
 - Parser and prompt-injection safety can be verified without depending on model behavior.
 
-Costs and trade-offs:
+### Costs and trade-offs
 
 - Ingestion requires private quarantine storage, a queue, a restricted worker, promotion logic, and sanitized failure taxonomy.
 - Accepted content is not immediately retrievable; it becomes available only after isolated parsing completes.
@@ -49,25 +50,35 @@ Costs and trade-offs:
 
 ## Security, cost, and operational impact
 
-- This decision implements the boundary between uploaded bytes and parser, parser output and retrieval, and untrusted evidence and privileged application policy.
+### Security
+
+- This decision defines the boundary between uploaded bytes and parser, parser output and retrieval, and untrusted evidence and privileged application policy.
 - It mitigates YAML alias/tag abuse, deep nesting, malformed JSON, OpenAPI external-reference SSRF, PDF active-content and decompression attacks, parser compromise, and prompt injection through source content.
 - It does not trust source text based on file type, successful parsing, or a model’s classification.
+
+### Cost
+
 - Enforce the upload, parser, and normalized-output limits from Product Requirements §10 before promotion.
 - Measure queue latency, parser duration, memory-limit termination, rejection code, accepted/rejected count, and zero-downstream-side-effect assertions.
+
+### Operations
+
 - Preserve only the minimum private raw object, content hash, safe metadata, and sanitized rejection information needed for audit and deletion.
 - Alert on repeated resource-limit failures, worker isolation violations, unexpected egress attempts, and parser rejection-rate changes.
 
 ## Validation
 
-| Validation              | Required result                                                                                                                                |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| Preflight limits        | Oversized, compressed, unsupported, and type-mismatched uploads are rejected before parser work.                                               |
-| YAML/JSON/OpenAPI abuse | Alias, tag, duplicate-key, depth, node, scalar, malformed, external-reference, cyclic-reference, and timeout fixtures fail closed.             |
-| PDF abuse               | Encrypted, active-content, attachment, malformed, oversized, decompression, page, object, and stream-limit fixtures fail closed.               |
-| Isolation               | Parser worker has no usable network, credentials, writable application filesystem, model access, or executor access.                           |
-| Rejection path          | Every rejection produces zero chunks, embeddings, model calls, reports, execution candidates, DNS requests, and HTTP sends.                    |
-| Prompt injection        | Embedded instructions and malicious OpenAPI metadata cannot alter any privileged prompt, policy, target, approval, schema, or tool definition. |
-| Regression evidence     | The deterministic parser, injection, SSRF, approval, redaction, and isolation fixture suites run on every pull request.                        |
+The following are planned acceptance conditions; this ADR records no executed validation evidence.
+
+| Validation              | Required result                                                                                                                                                                                                                                                                                                  |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Preflight limits        | Oversized, compressed, unsupported, and type-mismatched uploads are rejected before parser work.                                                                                                                                                                                                                 |
+| YAML/JSON/OpenAPI abuse | Alias, tag, duplicate-key, depth, node, scalar, malformed, external-reference, cyclic-reference, and timeout fixtures fail closed.                                                                                                                                                                               |
+| PDF abuse               | Encrypted, active-content, attachment, malformed, oversized, decompression, page, object, and stream-limit fixtures fail closed.                                                                                                                                                                                 |
+| Isolation               | Parser worker can access only its scoped private data-plane endpoints (private quarantine storage, parser queue, restricted database, and telemetry); public-Internet, model-provider, executor-target, cloud-control-plane, and unrelated-cloud access is denied, as is writable application-filesystem access. |
+| Rejection path          | Every rejection produces zero chunks, embeddings, model calls, reports, execution candidates, DNS requests, and HTTP sends.                                                                                                                                                                                      |
+| Prompt injection        | Embedded instructions and malicious OpenAPI metadata cannot alter any privileged prompt, policy, target, approval, schema, or tool definition.                                                                                                                                                                   |
+| Regression evidence     | The deterministic parser, injection, SSRF, approval, redaction, and isolation fixture suites are required on every relevant CI change, including protected-branch pushes and pull requests when used.                                                                                                            |
 
 ## Rollback criteria
 

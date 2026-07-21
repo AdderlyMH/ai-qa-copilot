@@ -427,7 +427,7 @@ These values are hard maximums. They may be lowered through configuration. Raisi
 | PDF parser limit | 15 seconds and 512 MiB |
 | PDF active content, encryption, attachments, OCR, rendering, or conversion | Rejected or unsupported in MVP |
 
-All parsers run as non-root isolated workers with no public network egress, no model or cloud-control-plane credentials, only a scoped data-plane workload identity for their named private endpoints, a read-only filesystem, bounded temporary storage, and OS-enforced resource limits.
+All parsers run as non-root isolated workers with a read-only filesystem, bounded temporary storage, and OS-enforced resource limits. Their scoped private data-plane workload identity may access only private quarantine storage, the parser queue, the restricted database, and telemetry endpoints; public-Internet, model-provider, executor-target, cloud-control-plane, and unrelated-cloud access is prohibited.
 
 ### 10.2 Execution and workflow limits
 

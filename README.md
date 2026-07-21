@@ -1,59 +1,68 @@
-# AI Quality Engineering Copilot — Project Document Pack
+# AI Quality Engineering Copilot
 
-**Version:** 0.1  
-**Prepared:** 2026-07-17  
-**Target portfolio release:** 2026-11-15  
-**Status:** Foundation baseline
+## Current state
 
-This pack defines a production-style portfolio project for an experienced Software Development Engineer in Test transitioning toward AI engineering. The project is intentionally centered on one credible product rather than a collection of disconnected demos.
+The repository is in Phase 0 foundation closeout. It contains working product,
+architecture, security, evaluation, fixture, ADR, traceability, and governance
+contracts under review; Phase 0 is not yet accepted or complete.
+
+Application implementation has not started. No model integration, deployment,
+runtime evaluation, product metric, latency result, or cost result has been
+verified.
+
+Phase 0 acceptance remains blocked by external governance evidence: a verified
+Linear project with owned P0 work, and GitHub enforcement for `main`, secret
+scanning, and Dependabot. See [project status](docs/PROJECT_STATUS.md) and
+[repository governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 
 ## Canonical documents
 
-| File | Purpose |
-|---|---|
-| [`docs/SKILLS_PROFILE.md`](docs/SKILLS_PROFILE.md) | Career positioning, transferable strengths, target roles, and skill-development priorities |
-| [`docs/PROJECT_CHARTER.md`](docs/PROJECT_CHARTER.md) | Mission, users, scope, outcomes, constraints, assumptions, and success criteria |
-| [`docs/PRODUCT_REQUIREMENTS.md`](docs/PRODUCT_REQUIREMENTS.md) | Functional and nonfunctional requirements, workflows, release criteria, and UX expectations |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design, component boundaries, data flows, deployment, reliability, and cost controls |
-| [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) | Assets, trust boundaries, threats, mitigations, verification, and residual risk |
-| [`docs/EVALUATION_PLAN.md`](docs/EVALUATION_PLAN.md) | Versioned evaluation dataset, rubrics, metrics, baselines, CI strategy, and release thresholds |
-| [`docs/BACKLOG.md`](docs/BACKLOG.md) | Milestones, Linear-ready epics and issues, dependencies, and definition of done |
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Current state, verified progress, decisions, risks, blockers, metrics, and next action |
-| [`fixtures/sample-requirements.md`](fixtures/sample-requirements.md) | Synthetic order-management requirements containing controlled ambiguities and contradictions |
-| [`fixtures/sample-openapi.yaml`](fixtures/sample-openapi.yaml) | Synthetic OpenAPI contract containing controlled inconsistencies and adversarial content |
+- [Project charter](docs/PROJECT_CHARTER.md)
+- [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Threat model](docs/THREAT_MODEL.md)
+- [Evaluation plan](docs/EVALUATION_PLAN.md)
+- [Backlog](docs/BACKLOG.md)
+- [Project status](docs/PROJECT_STATUS.md)
+- [Repository governance evidence](docs/REPOSITORY_GOVERNANCE.md)
+- [Control traceability matrix](docs/CONTROL_TRACEABILITY_MATRIX.md)
+- [Architecture decision records](docs/adr/README.md)
+- [Benchmark fixture guide](fixtures/benchmark/README.md)
 
-## Document precedence
+## Documentation validation
 
-When documents conflict, use this order:
+```powershell
+python scripts/tasks.py bootstrap
+python scripts/tasks.py ci
+```
 
-1. `PROJECT_CHARTER.md` for mission, target users, scope, and constraints.
-2. `PRODUCT_REQUIREMENTS.md` for product behavior and acceptance criteria.
-3. `ARCHITECTURE.md` and `THREAT_MODEL.md` for implementation and security controls.
-4. `EVALUATION_PLAN.md` for measurement and release thresholds.
-5. `BACKLOG.md` for sequencing.
-6. `PROJECT_STATUS.md` for actual current state.
+`python scripts/tasks.py` exposes stable `format`, `lint`, `typecheck`,
+`test`, `dev`, `docs-check`, `docs-self-test`, and `ci` commands. `make` offers
+the same targets where GNU Make is available.
 
-A conflict must be recorded and resolved explicitly; it must not be silently ignored.
+`MANIFEST.json` is generated from canonical repository files and excludes
+itself to avoid circular hashing.
 
-## Working assumptions
+### Automatic manifest refresh before commits
 
-The following were adopted because the corresponding intake fields were left open:
+Install the versioned Git hook once per clone:
 
-- Approximately 12 project hours per week, with 8 hours as the sustainable minimum.
-- Target release date of 2026-11-15.
-- Public live demo, recorded demo, and reproducible local deployment.
-- AWS-first production deployment with Terraform.
-- OpenAI as the initial AI provider.
-- Synthetic and public data only.
-- Single authenticated owner plus a read-only guest demonstration.
-- Maximum normal monthly project spend of USD 50, with a USD 35 target.
-- Deeper technical implementation, but a fixed MVP boundary.
+```powershell
+git config --local core.hooksPath .githooks
+```
 
-Change these assumptions through a recorded decision and update all affected documents.
+When a manifest-covered file or `MANIFEST.json` is staged, the hook regenerates
+and stages the manifest. It refuses a commit when related documentation files
+have unstaged or untracked changes, so the staged manifest always describes the
+staged documentation snapshot.
 
-## Immediate use
+The latest committed remote documentation evidence is
+[`docs-validation` run #8](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29787274484),
+which succeeded for branch commit
+[`2c90cd1`](https://github.com/AdderlyMH/ai-qa-copilot/commit/2c90cd18ffc06231b3d9a15da022fc1be4270aab).
+That result applies only to that commit; each later commit requires its own
+successful `docs-validation` run.
 
-1. Add these files to the project repository.
-2. Create the matching Linear milestones and issues from `docs/BACKLOG.md`.
-3. Initialize the repository according to `docs/ARCHITECTURE.md`.
-4. Update `docs/PROJECT_STATUS.md` only from actual repository and deployment evidence.
+## License
+
+This repository is licensed under the [MIT License](LICENSE).

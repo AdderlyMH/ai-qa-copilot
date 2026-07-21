@@ -1,15 +1,29 @@
 # Delivery Backlog — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline
+**Document status:** Working baseline — Phase 0 closeout pending
 **Version:** 0.2
 **Planning date:** 2026-07-17
-**Target release:** 2026-11-15
-**Capacity assumption:** 12 hours/week; at least 230 planned hours before re-estimating expanded parser, executor, and ADR work
-**Issue tracker:** Linear
+**Target release:** 2026-12-20
+**Capacity assumption:** 12 hours/week; 231 planned hours and 264 available
+hours through the revised release date
+**Issue tracker:** [Linear workspace](https://linear.app/ai-qa-copilot) —
+project-specific URL/ID and FND-002 verification are pending
 
 ## 1. Delivery strategy
 
 Work proceeds through complete vertical slices. A phase is complete only when its acceptance criteria are verified. New feature ideas go to the post-MVP backlog unless they are necessary for a release gate.
+
+### Dependency semantics
+
+A dependency is satisfied only when its acceptance criteria have been verified
+with recorded evidence. Creating a file, workflow, fixture catalog, scanner
+configuration, or dataset definition does not satisfy a dependency that
+requires execution results.
+
+Transitive dependencies need not be repeated unless the direct dependency does
+not guarantee the required evidence. Release and hardening tasks must depend
+on the workflow that produces the evidence, not only on the input corpus or
+configuration consumed by that workflow.
 
 ### Priority definitions
 
@@ -44,19 +58,40 @@ Work proceeds through complete vertical slices. A phase is complete only when it
 
 ## 2. Milestone calendar
 
-| Phase | Dates | Planned effort | Exit result |
-|---|---|---------------:|---|
-| 0. Foundation | Jul 17–Jul 26 |           22 h | Approved baseline docs and repository plan |
-| 1. Walking skeleton | Jul 27–Aug 9 |           28 h | UI → API → model → persistence → CI |
-| 2. Ingestion and retrieval | Aug 10–Aug 30 |           34 h | Versioned documents, hybrid retrieval, citations |
-| 3. Analysis and test design | Aug 31–Sep 20 |           34 h | Findings, structured tests, traceability |
-| 4. Controlled execution | Sep 21–Oct 4 |           34 h | Approval, sandbox execution, evidence |
-| 5. Evaluation and observability | Oct 5–Oct 25 |           37 h | 100-case benchmark, traces, cost/latency gates |
-| 6. Security and deployment | Oct 26–Nov 8 |           24 h | Terraform, live deployment, hardening, rollback |
-| 7. Portfolio release | Nov 9–Nov 15 |           18 h | Public repo, demo, video, case study |
-| **Total** | |      **231 h** | |
+### Revised delivery calendar — decision recorded 2026-07-20
 
-The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 must record a revised schedule, capacity, scope, or release-date decision before implementation begins. P1 polish may be deferred, but parser, approval, SSRF, evaluation, and provenance gates may not be removed.
+| Phase                           | Dates         | Planned effort | Exit result                                         |
+|---------------------------------|---------------|---------------:|-----------------------------------------------------|
+| 0. Foundation                   | Jul 20–Aug 2  |           22 h | Verified Phase 0 baseline and repository governance |
+| 1. Walking skeleton             | Aug 3–Aug 23  |           28 h | UI → API → model → persistence → CI                 |
+| 2. Ingestion and retrieval      | Aug 24–Sep 13 |           34 h | Versioned documents, hybrid retrieval, citations    |
+| 3. Analysis and test design     | Sep 14–Oct 4  |           34 h | Findings, structured tests, traceability            |
+| 4. Controlled execution         | Oct 5–Oct 25  |           34 h | Approval, sandbox execution, evidence               |
+| 5. Evaluation and observability | Oct 26–Nov 22 |           37 h | 100-case benchmark, traces, cost/latency gates      |
+| 6. Security and deployment      | Nov 23–Dec 6  |           24 h | Terraform, live deployment, hardening, rollback     |
+| 7. Portfolio release            | Dec 7–Dec 20  |           18 h | Public repo, demo, video, case study                |
+| **Total**                       |               |      **231 h** |                                                     |
+
+### Superseded initial planning calendar
+
+| Phase                           | Dates         | Planned effort | Exit result                                      |
+|---------------------------------|---------------|---------------:|--------------------------------------------------|
+| 0. Foundation                   | Jul 17–Jul 26 |           22 h | Approved baseline docs and repository plan       |
+| 1. Walking skeleton             | Jul 27–Aug 9  |           28 h | UI → API → model → persistence → CI              |
+| 2. Ingestion and retrieval      | Aug 10–Aug 30 |           34 h | Versioned documents, hybrid retrieval, citations |
+| 3. Analysis and test design     | Aug 31–Sep 20 |           34 h | Findings, structured tests, traceability         |
+| 4. Controlled execution         | Sep 21–Oct 4  |           34 h | Approval, sandbox execution, evidence            |
+| 5. Evaluation and observability | Oct 5–Oct 25  |           37 h | 100-case benchmark, traces, cost/latency gates   |
+| 6. Security and deployment      | Oct 26–Nov 8  |           24 h | Terraform, live deployment, hardening, rollback  |
+| 7. Portfolio release            | Nov 9–Nov 15  |           18 h | Public repo, demo, video, case study             |
+| **Total**                       |               |      **231 h** |                                                  |
+
+**FND-006 decision recorded 2026-07-20:** retain 12 hours/week, keep the
+231-hour scope, and revise the target release to 2026-12-20. The 22-week plan
+provides 264 hours and a 33-hour contingency. No P1 item is deferred; in
+particular, B2 routing remains a later candidate that cannot be enabled before
+B1 comparison evidence. Parser, approval, SSRF, evaluation, provenance, and
+other P0 gates remain non-negotiable.
 
 ## 3. Phase 0 — Foundation
 
@@ -77,6 +112,10 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Dependencies:** FND-001
 - **Deliverable:** Linear project with phases, dates, labels, and initial issues.
 - **Acceptance:** Every P0 item has owner, milestone, estimate, and acceptance criteria.
+- **Evidence status (2026-07-20):** The workspace URL
+  `https://linear.app/ai-qa-copilot` is recorded, but it is not a
+  project-specific identifier and does not expose milestones or P0 ownership.
+  See `REPOSITORY_GOVERNANCE.md`; this item remains unverified.
 
 #### FND-003 — Initialize decision-record process
 
@@ -84,7 +123,7 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Estimate:** 2 h
 - **Dependencies:** FND-001
 - **Deliverable:** `docs/adr/README.md` and ADR-001 through ADR-010 in Proposed or Accepted state.
-- **Acceptance:** Decisions cover modular monolith, direct orchestration, hybrid retrieval, and safe execution pattern.
+- **Acceptance:** `docs/adr/README.md` indexes ADR-001 through ADR-010 and matches the status in each record. The decisions cover modular monolith, direct orchestration, hybrid retrieval, safe HTTP execution, AWS application tier and production database choice, public-demo data policy, three-level evaluation, Cognito authorization, parser isolation, and canonical QA-report revisions. ADR-001 through ADR-004 and ADR-006 through ADR-010 are Accepted. ADR-005 remains Proposed until its documented decision trigger is met: it must be accepted before production Terraform creates the database tier.
 
 #### FND-004 — Create public repository controls
 
@@ -93,6 +132,11 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Dependencies:** None
 - **Deliverable:** Repository, branch protection, issue/PR templates, CODEOWNERS if useful, license decision.
 - **Acceptance:** Main branch requires CI; secret scanning and dependency updates are enabled.
+- **Evidence status (2026-07-20):** Templates, CODEOWNERS, MIT license, and
+  Dependabot configuration are committed. Main branch protection, secret
+  scanning, and external Dependabot enablement remain unverified; do not close
+  this item until the external evidence in `REPOSITORY_GOVERNANCE.md` is
+  updated.
 
 #### FND-005 — Define engineering commands and standards
 
@@ -101,6 +145,9 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Dependencies:** FND-004
 - **Deliverable:** `AGENTS.md`, `CONTRIBUTING.md`, Makefile/task runner contract.
 - **Acceptance:** Formatting, lint, type-check, test, and dev commands have stable names.
+- **Evidence status (2026-07-20):** The files and stable command contract are
+  committed and validated locally. Formal completion remains dependent on
+  FND-004 external repository-control verification.
 
 #### FND-006 — Re-estimate schedule, capacity, and budget after mandatory P0 additions
 
@@ -108,8 +155,12 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Estimate:** 2 h
 - **Dependencies:** FND-002, FND-003
 - **Deliverable:** Revised effort estimate, weekly-capacity plan, release-date assessment, monthly-budget plan, and documented decision on any P1 deferrals.
-- **Planning note:** Existing explicit backlog estimates total 212 h. IAM adds 6 h, JSON/JUnit result normalization adds 3 h, and the REP epic adds 9 h, giving at least 230 h before re-estimating the enlarged parser, executor, and ADR work.
+- **Planning note:** Generic JSON test-result and JUnit/XML ingestion are deferred to the post-MVP backlog and are excluded from MVP effort totals. The MVP supports JSON only when it is an OpenAPI document or a generated application output. Recalculate the delivery total from the remaining explicit MVP issues after all Phase 0 corrections are complete.
 - **Acceptance:** The owner explicitly selects additional capacity, a revised release date, and/or specific P1 deferrals. P0 authentication, parser isolation, executor isolation, reporting, and security validation remain in scope. The resulting changes are propagated to the charter, backlog, and project status.
+- **Decision recorded (2026-07-20):** Retain 12 hours/week, revise the release
+  date to 2026-12-20, retain the 231-hour scope, and make no P1 deferrals.
+  This provides 264 available hours and 33 hours of contingency. Formal
+  completion remains dependent on FND-002 verification.
 
 #### FND-007 — Freeze parser and untrusted-content security contract
 
@@ -124,8 +175,8 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** FND-007
-- **Deliverable:** Versioned fixture catalog for parser, prompt-injection, SSRF, approval, redaction, and isolation cases, including threat ID, expected boundary, expected side effects, and CI lane.
-- **Acceptance:** Every Critical or High threat has at least one fixture ID, expected deterministic outcome, source reference where applicable, and planned CI execution. Deny cases explicitly require zero unexpected model, DNS, HTTP, target-mutation, approval-mutation, or secret-exposure side effects.
+- **Deliverable:** Versioned fixture catalog for parser, prompt-injection, SSRF, approval, redaction, and isolation cases, including threat ID, expected status, source/variant locator, ground-truth linkage where applicable, expected boundary, expected side effects, and CI lane.
+- **Acceptance:** Every Critical or High threat has at least one fixture ID, expected deterministic outcome, source reference where applicable, and planned CI execution. The manifest validator rejects any parser/security fixture without its required status, per-ID source/variant locator, valid ground-truth linkage or explicit non-applicability reason, expected boundary, or complete side-effect vector. Deny cases explicitly require zero unexpected model, DNS, HTTP, target-mutation, approval-mutation, or secret-exposure side effects.
 
 #### FND-009 — Define objective security release-gate matrix
 
@@ -537,13 +588,18 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Deliverable:** Schema, citation existence, traceability, policy, cost, and latency scorers.
 - **Acceptance:** Scorers have unit tests and explicit denominators.
 
-#### EVAL-003 — Implement human-review workflow and rubrics
+#### EVAL-003 — Implement human-review and independent-adjudication workflow
 
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** EVAL-001
-- **Deliverable:** Finding, test, and failure-analysis forms/reports.
-- **Acceptance:** Labels are versioned and linked to case/run/rubric.
+- **Deliverable:** Versioned primary-review, blind independent-review, disagreement, adjudication, reviewer-attestation, and rubric records for finding, test, and failure-analysis labels.
+- **Acceptance:**
+  - Primary, independent, and adjudicated label revisions are immutable and linked to case, dataset, rubric, reviewer, and timestamp.
+  - The independent reviewer cannot see the primary label or candidate output before submitting and locking the second review.
+  - Reviewer eligibility and independence attestations are recorded.
+  - Material disagreements remain visible and require documented adjudication.
+  - Unresolved disagreement cannot be represented as an approved final label.
 
 #### EVAL-004 — Build B0 naive baseline
 
@@ -566,16 +622,35 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** EVAL-005
-- **Deliverable:** 100 total cases with split controls.
-- **Acceptance:** Holdout is not used for prompt tuning.
+- **Deliverable:** A complete versioned 100-case corpus with 60 development, 20 validation, and 20 holdout cases, plus the frozen stratified case-selection contract for mandatory independent release review.
+- **Acceptance:**
+  - Category and split totals match the evaluation plan.
+  - Holdout cases are not used for prompt, retrieval, model-routing, schema, or scorer tuning.
+  - The independent-review selection method can select at least 10 eligible non-security validation cases and at least 10 eligible non-security holdout cases.
+  - The selection method and seed are versioned before release-candidate evaluation.
+  - Selected cases cannot be replaced because of poor candidate performance or reviewer disagreement.
 
 #### EVAL-007 — Implement AI smoke and release workflows
 
 - **Priority:** P0
 - **Estimate:** 3 h
-- **Dependencies:** EVAL-002
-- **Deliverable:** GitHub Actions for 5–10 case smoke and protected full evaluation.
-- **Acceptance:** Spend caps and hard-gate exit codes work.
+- **Dependencies:** EVAL-002, EVAL-004, EVAL-006
+- **Deliverable:** GitHub Actions workflows for a 5–10 case AI smoke evaluation and a protected full release evaluation over the pinned baseline, complete versioned 100-case corpus, scorer versions, and configuration revisions.
+- **Acceptance:**
+  - The smoke workflow runs only the configured representative subset under its documented cost ceiling.
+  - The full release workflow refuses to start when the B0 baseline, complete 60/20/20 corpus, ground-truth registry, scorer versions, or immutable artifact hashes are missing or inconsistent.
+  - The release workflow executes the complete versioned corpus, preserves holdout isolation, records commit and configuration provenance, enforces spend caps, and returns nonzero exit codes when any mandatory EG or SG gate fails.
+  - The full release workflow invokes `label_completeness_and_adjudication_v1`.
+  - The workflow fails before publishing release metrics when:
+    - fewer than 10 eligible validation cases have completed independent review;
+    - fewer than 10 eligible holdout cases have completed independent review;
+    - any required reviewer is ineligible;
+    - any selected case lacks immutable primary or independent labels;
+    - any material disagreement remains unresolved;
+    - required review provenance is missing;
+    - the candidate was not frozen before the holdout-review process.
+  - No manual override or expected-failure status may convert an EG-09 failure into a passing release.
+  - Workflow creation alone is not evidence that any evaluation gate has executed or passed.
 
 ### Epic OBS — Trace, cost, and reliability evidence
 
@@ -655,9 +730,15 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 
 - **Priority:** P0
 - **Estimate:** 3 h
-- **Dependencies:** EXEC-006, INFRA-004, EVAL-006
-- **Deliverable:** Evidence for every critical threat control.
-- **Acceptance:** All critical security gates pass.
+- **Dependencies:** EXEC-006, INFRA-004, HARD-001, EVAL-007
+- **Deliverable:** Execute and archive the complete threat-model verification matrix using the finished release-evaluation workflow, deterministic security fixtures, scanner outputs, deployed sandbox evidence, and redacted execution evidence.
+- **Acceptance:**
+  - SG-01 through SG-08 are evaluated against the exact commit, fixture-manifest version, scorer or validator version, target configuration, and deployment revision under review.
+  - Every gate records its fixed numerator, denominator, expected boundary, actual boundary, side-effect assertions, evidence artifact, and pass/fail exit result.
+  - All mandatory security gates pass; no Critical case is skipped, marked expected-failure, or accepted as inconclusive.
+  - `SG-07` uses completed `HARD-001` scanner evidence.
+  - The evaluation uses the completed `EVAL-007` release workflow rather than treating corpus existence as execution evidence.
+  - A completed corpus, workflow definition, or scanner configuration is not itself evidence that the gate passed.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
@@ -749,18 +830,26 @@ The 231-hour plan is above the original 12-hours-per-week assumption. FND-006 mu
 
 ## 11. Post-MVP backlog
 
-| ID | Candidate | Priority after release | Entry criterion |
-|---|---|---|---|
-| PMVP-001 | Playwright generation and browser execution | P1 | API workflow release gates pass |
-| PMVP-002 | Postman collection import/export | P1 | User feedback shows demand |
-| PMVP-003 | Linear issue creation | P2 | Write-action approval design is extended safely |
-| PMVP-004 | Second model provider and fallback | P1 | Measured resilience or cost need |
-| PMVP-005 | Retrieval reranker | P1 | Retrieval benchmark shows meaningful gap |
-| PMVP-006 | Single Agents SDK orchestrator | P2 | Direct workflow has measurable state/HITL complexity |
-| PMVP-007 | Team collaboration and RBAC | P2 | Multi-user product goal is adopted |
-| PMVP-008 | Flaky-test or defect-priority ML model | P2 | Suitable labeled dataset exists |
-| PMVP-009 | Fine-tuning | P2 | Prompt/retrieval baselines plateau and data quality is sufficient |
-| PMVP-010 | Kubernetes | P2 | Operational scale, not portfolio breadth, justifies it |
+| ID       | Candidate                                   | Priority after release | Entry criterion                                                   |
+|----------|---------------------------------------------|------------------------|-------------------------------------------------------------------|
+| PMVP-001 | Playwright generation and browser execution | P1                     | API workflow release gates pass                                   |
+| PMVP-002 | Postman collection import/export            | P1                     | User feedback shows demand                                        |
+| PMVP-003 | Linear issue creation                       | P2                     | Write-action approval design is extended safely                   |
+| PMVP-004 | Second model provider and fallback          | P1                     | Measured resilience or cost need                                  |
+| PMVP-005 | Retrieval reranker                          | P1                     | Retrieval benchmark shows meaningful gap                          |
+| PMVP-006 | Single Agents SDK orchestrator              | P2                     | Direct workflow has measurable state/HITL complexity              |
+| PMVP-007 | Team collaboration and RBAC                 | P2                     | Multi-user product goal is adopted                                |
+| PMVP-008 | Flaky-test or defect-priority ML model      | P2                     | Suitable labeled dataset exists                                   |
+| PMVP-009 | Fine-tuning                                 | P2                     | Prompt/retrieval baselines plateau and data quality is sufficient |
+| PMVP-010 | Kubernetes                                  | P2                     | Operational scale, not portfolio breadth, justifies it            |
+
+### Post-MVP — Test-result ingestion and normalization
+
+- Generic JSON test-result ingestion.
+- JUnit XML and other XML test-result ingestion.
+- Versioned normalization schemas for supported test-report formats.
+- Parser-security fixtures and provenance requirements for each added format.
+- Integration with failure analysis only after evaluation demonstrates value.
 
 ## 12. Definition of Ready
 
@@ -795,10 +884,16 @@ If the schedule slips:
 1. Remove P1 visual polish.
 2. Reduce supported file-format breadth.
 3. Reduce public UI surface while retaining the preloaded workflow.
-4. Defer optional model routing or ablations after preserving one baseline comparison.
+4. Do not enable B2 routing or routing ablations before an immutable B1
+   reference run and comparison evidence; defer them rather than altering the
+   initial B1/v1 configuration.
 5. Do not remove approval, SSRF protection, evaluation hard gates, provenance, or reproducible deployment.
 6. Do not merge a user-reachable HTTP execution route, worker, queue consumer, UI control, or outbound HTTP client until FND-007 through FND-009, SEC-001, EXEC-000, EXEC-002, EXEC-003, and EXEC-004 are complete and green in pull-request CI.
 
 ## 15. Immediate next issue
 
-**FND-007 — Freeze parser and untrusted-content security contract** becomes the next security prerequisite after the ADR process is established. No parser or execution implementation may begin until FND-007, FND-008, and FND-009 are complete.
+FND-002 and FND-004 must be externally verified before Phase 0 can close.
+After those blockers and the FND-006 dependency are resolved,
+**FND-007 — Freeze parser and untrusted-content security contract** is the
+next security prerequisite. No parser or execution implementation may begin
+until FND-007, FND-008, and FND-009 are complete.

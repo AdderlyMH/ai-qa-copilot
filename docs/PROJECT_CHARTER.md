@@ -1,11 +1,12 @@
 # Project Charter — AI Quality Engineering Copilot
 
-**Document status:** Approved working baseline
+**Document status:** Working baseline — Phase 0 closeout pending
 **Version:** 0.2
 **Start date:** 2026-07-17
-**Target portfolio release:** 2026-11-15
+**Target portfolio release:** 2026-12-20
 **Owner:** Project owner
-**Issue tracker:** Linear
+**Issue tracker:** [Linear workspace](https://linear.app/ai-qa-copilot) —
+project-specific verification pending FND-002
 
 ## 1. Mission
 
@@ -84,7 +85,7 @@ The product user and portfolio audience are deliberately separate. Product behav
 ### In scope
 
 - Project creation and history.
-- Upload of Markdown, text, PDF, OpenAPI YAML/JSON, JSON test results, and JUnit XML.
+- Upload of Markdown (`.md`), plain text (`.txt`), bounded PDF (`.pdf`), and OpenAPI 3.0.x/3.1.x documents in YAML (`.yaml`, `.yml`) or JSON (`.json`) form.
 - Safe file validation and document storage.
 - Requirement and OpenAPI parsing.
 - Chunking, embeddings, indexing, retrieval, and source citations.
@@ -118,6 +119,9 @@ The product user and portfolio audience are deliberately separate. Product behav
 - Large multi-agent hierarchies.
 - Automatic defect creation.
 - Support for every file format.
+- Generic JSON test-result ingestion.
+- JUnit XML and other XML test-result ingestion.
+- Broad test-report normalization across third-party formats.
 
 Post-MVP work must not begin until all MVP release gates pass.
 
@@ -142,45 +146,60 @@ Post-MVP work must not begin until all MVP release gates pass.
 
 ### Quality and safety gates
 
-| Measure | Initial release target |
-|---|---:|
-| Structured-output schema validity | 100% |
-| Correct traceability links | ≥95% |
-| Citation precision | ≥90% |
-| Human-accepted generated tests | ≥85% |
-| Core workflow success rate | ≥85% |
-| Unsupported-claim rate | ≤5% |
-| Unsafe execution attempts blocked in defined critical cases | 100% |
-| Critical prompt-injection cases blocked | 100% |
-| Secrets committed to repository | 0 |
-| Critical unresolved security findings | 0 |
+| Measure                                                     | Initial release target |
+|-------------------------------------------------------------|-----------------------:|
+| Structured-output schema validity                           |                   100% |
+| Correct traceability links                                  |                   ≥95% |
+| Citation precision                                          |                   ≥90% |
+| Human-accepted generated tests                              |                   ≥85% |
+| Core workflow success rate                                  |                   ≥85% |
+| Unsupported-claim rate                                      |                    ≤5% |
+| Unsafe execution attempts blocked in defined critical cases |                   100% |
+| Critical prompt-injection cases blocked                     |                   100% |
+| Secrets committed to repository                             |                      0 |
+| Critical unresolved security findings                       |                      0 |
 
 ### Operational and portfolio targets
 
-| Measure | Initial release target |
-|---|---:|
-| Versioned evaluation scenarios | 100 |
-| Standard workflow cost | ≤ USD 0.50 per successful workflow |
-| Monthly normal operating target | ≤ USD 35 |
-| Monthly hard project budget | USD 50 |
-| End-to-end smoke test | Passing in CI |
-| Backend core-path test coverage | ≥80% |
-| Public demo data | 100% synthetic or public |
-| Local startup | Reproducible from documented commands |
-| Live deployment | Available and monitored |
-| Demo video | 3–5 minutes |
+| Measure                         |                Initial release target |
+|---------------------------------|--------------------------------------:|
+| Versioned evaluation scenarios  |                                   100 |
+| Standard workflow cost          |    ≤ USD 0.50 per successful workflow |
+| Monthly normal operating target |                              ≤ USD 35 |
+| Monthly hard project budget     |                                USD 50 |
+| End-to-end smoke test           |                         Passing in CI |
+| Backend core-path test coverage |                                  ≥80% |
+| Public demo data                |              100% synthetic or public |
+| Local startup                   | Reproducible from documented commands |
+| Live deployment                 |               Available and monitored |
+| Demo video                      |                           3–5 minutes |
 
 Targets are project decisions, not universal benchmarks. They may be changed only through a recorded decision supported by evidence.
 
 ## 9. Delivery constraints
 
 - Approximate capacity: 12 hours per week; 8 hours is the sustainable minimum.
-- Target date: 2026-11-15.
+- Target date: 2026-12-20.
 - Monthly budget: USD 35 target and USD 50 hard limit.
 - Synthetic or public data only.
 - Public repository with no employer intellectual property.
 - One flagship project; no parallel portfolio project until release.
 - Deeper technical implementation must come from quality, reliability, evaluation, security, and deployment—not uncontrolled feature growth.
+
+### Capacity and scope decision — 2026-07-20
+
+**Decision owner:** Project owner<br>
+**Decision:** Retain the sustainable 12-hours-per-week capacity and revise the
+portfolio-release target to 2026-12-20. Keep the planned 231-hour scope,
+including all P0 controls and the current P1 portfolio-quality work; no P1
+item is deferred by this decision.
+
+From 2026-07-20 through 2026-12-20 there are 22 delivery weeks, or 264 hours
+at 12 hours/week. That leaves a 33-hour (about 14%) contingency against the
+231-hour plan. This is preferred to increasing the weekly commitment or
+removing validation, security, provenance, or portfolio evidence. B2 routing
+remains a later candidate after B1 comparison evidence, not a separate scope
+reduction.
 
 ## 10. Technical principles
 
@@ -229,16 +248,16 @@ A proposed feature enters the MVP only when it is necessary for a release gate o
 
 ## 13. Principal risks
 
-| Risk | Probability | Impact | Response |
-|---|---|---|---|
-| Scope exceeds available time | High | High | Fixed MVP, milestone gates, one next action, explicit deferrals |
-| AI output appears impressive but is not measurable | Medium | High | Versioned benchmark, baseline comparison, human rubric, failure analysis |
-| Public execution feature creates security exposure | Medium | Critical | Allowlist, SSRF controls, approval snapshot, quotas, redaction, audit log |
-| AWS database cost exceeds budget | Medium | High | Auto-pause, budget alarms, cost ADR, local fallback, usage caps |
-| UI receives too much attention | Medium | Medium | Functional, accessible interface only; prioritize workflow evidence |
-| Multi-agent design creates complexity without value | Medium | Medium | One workflow first; require evaluation evidence for additional agents |
-| Portfolio positioning becomes too broad | Medium | Medium | AI Engineer primary; ML/data-science evidence only in support of product |
-| Deadline slips because of learning overhead | Medium | High | Weekly vertical slices, strict dependency order, reduce breadth before quality |
+| Risk                                                | Probability | Impact   | Response                                                                       |
+|-----------------------------------------------------|-------------|----------|--------------------------------------------------------------------------------|
+| Scope exceeds available time                        | High        | High     | Fixed MVP, milestone gates, one next action, explicit deferrals                |
+| AI output appears impressive but is not measurable  | Medium      | High     | Versioned benchmark, baseline comparison, human rubric, failure analysis       |
+| Public execution feature creates security exposure  | Medium      | Critical | Allowlist, SSRF controls, approval snapshot, quotas, redaction, audit log      |
+| AWS database cost exceeds budget                    | Medium      | High     | Auto-pause, budget alarms, cost ADR, local fallback, usage caps                |
+| UI receives too much attention                      | Medium      | Medium   | Functional, accessible interface only; prioritize workflow evidence            |
+| Multi-agent design creates complexity without value | Medium      | Medium   | One workflow first; require evaluation evidence for additional agents          |
+| Portfolio positioning becomes too broad             | Medium      | Medium   | AI Engineer primary; ML/data-science evidence only in support of product       |
+| Deadline slips because of learning overhead         | Medium      | High     | Weekly vertical slices, strict dependency order, reduce breadth before quality |
 
 ## 14. Milestone gates
 
