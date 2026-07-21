@@ -2180,6 +2180,25 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
                 "manifest changes when a covered file uses CRLF line endings"
             )
 
+        binary_original_root = temporary_root / "binary-original-manifest"
+        binary_mutated_root = temporary_root / "binary-mutated-manifest"
+        _copy_repository_inputs(root, binary_original_root)
+        _copy_repository_inputs(root, binary_mutated_root)
+        relative_capture = Path(
+            "docs/evidence/github-security-2026-07-21/advanced-security-overview.png"
+        )
+        binary_capture = (binary_mutated_root / relative_capture).read_bytes()
+        if b"\r\n" not in binary_capture:
+            failures.append("binary manifest self-test fixture lacks CRLF bytes")
+        else:
+            (binary_mutated_root / relative_capture).write_bytes(
+                binary_capture.replace(b"\r\n", b"\n", 1)
+            )
+            if build_manifest(binary_original_root) == build_manifest(
+                binary_mutated_root
+            ):
+                failures.append("manifest ignores a binary evidence-byte change")
+
         adr_root = temporary_root / "empty-adr-section"
         _copy_repository_inputs(root, adr_root)
         _empty_adr_decision(
@@ -2368,6 +2387,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Documentation validator self-tests passed:")
         print("- stale manifest detected")
         print("- CRLF manifest normalization is stable")
+        print("- binary evidence bytes are manifest-sensitive")
         print("- empty ADR section detected")
         print("- broken traceability reference detected")
         print("- broken Markdown anchor detected")

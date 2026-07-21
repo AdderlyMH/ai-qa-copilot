@@ -1,12 +1,12 @@
 # Project Charter — AI Quality Engineering Copilot
 
-**Document status:** Working baseline — Phase 0 closeout pending
+**Document status:** Working baseline — Phase 0 closeout verified; Phase 1 not started
 **Version:** 0.2
 **Start date:** 2026-07-17
 **Target portfolio release:** 2026-12-20
 **Owner:** Project owner
-**Issue tracker:** [Linear workspace](https://linear.app/ai-qa-copilot) —
-project-specific verification pending FND-002
+**Issue tracker:** [AI Quality Engineering Copilot — Portfolio Release](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview)
+— project-specific verification completed 2026-07-21
 
 ## 1. Mission
 

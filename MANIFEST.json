@@ -1,7 +1,7 @@
 {
   "schema_version": "docs-manifest/v2",
   "inclusion_policy": {
-    "description": "Canonical Phase 0 documents, repository-governance artifacts, fixtures, ADRs, validation scripts, dependency locks, and validation workflow",
+    "description": "Canonical Phase 0 documents, repository-governance artifacts, fixtures, ADRs, preserved governance-evidence assets, validation scripts, dependency locks, and validation workflow",
     "self_hash_policy": "MANIFEST.json is excluded to prevent circular hashing"
   },
   "files": [
@@ -67,8 +67,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 2625,
-      "sha256": "6f199b77dc79fdeda1f2ca0b153a36c2f681b0755575991e88383df15a3b007d"
+      "bytes": 2863,
+      "sha256": "fe5188d0d4f7057c89a8f966d6cbb4b94abbd173cded235b643d18c35468e8eb"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -77,8 +77,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 43486,
-      "sha256": "4ff7ccb30878f3b607adb0a5ef9874af4ed17a4695ac0a0c9027e3cd83900b6a"
+      "bytes": 45404,
+      "sha256": "bf401682df0e0fa95479cd5bfe7b926f916e31e8cd43a73de265b88523840728"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -97,18 +97,18 @@
     },
     {
       "path": "docs/PROJECT_CHARTER.md",
-      "bytes": 15333,
-      "sha256": "2e72b119da4e8d99a74bb5412564d89bf8c45c90608bb119a29ab58f697d0552"
+      "bytes": 15469,
+      "sha256": "9235442d17d3306fa05989bbb67f1fb65868c56cdbaa5b02bd356a7f9a3447e8"
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 3205,
-      "sha256": "1134acb5a0a078243593df4515db78c3b7905a8bc30fd827a0bcd2e55a5a3235"
+      "bytes": 4957,
+      "sha256": "c34b84eb2da1271756edaee120162eeb6f43373aa14040bc68ee27013db0aadc"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
-      "bytes": 3500,
-      "sha256": "9e165e279c364a202e118ff05a6ea26a007ffd7ee931dea04920e3f1a35911c9"
+      "bytes": 6075,
+      "sha256": "cf751c96758e51e9da3f24c7a4772ca9be058495985a883dfc694f6d58deba71"
     },
     {
       "path": "docs/SKILLS_PROFILE.md",
@@ -176,6 +176,26 @@
       "sha256": "4e9e5c9f30aeae54ddd7d4da59930423aa8cdb2b824e258790d46a2b8d790638"
     },
     {
+      "path": "docs/evidence/github-security-2026-07-21/README.md",
+      "bytes": 2983,
+      "sha256": "b44147d72e7c7f830f714ff0a5dfef7fb0f8d284f3037450f4d5f4d7f94b3edf"
+    },
+    {
+      "path": "docs/evidence/github-security-2026-07-21/advanced-security-overview.png",
+      "bytes": 110814,
+      "sha256": "68dac624c4742bd5b0feffc444993814323f004102b5068f8418268854522b7c"
+    },
+    {
+      "path": "docs/evidence/github-security-2026-07-21/dependabot-updates.png",
+      "bytes": 94341,
+      "sha256": "9d9d1b5f3909bd7b19a33bd15ffb268d0e542c2bcecba6bf84ef5e907c413417"
+    },
+    {
+      "path": "docs/evidence/github-security-2026-07-21/secret-protection.png",
+      "bytes": 74750,
+      "sha256": "a4414385f226b5f5049b43c93db4c5a46152b9376d3edb65cef7e3fb244a468c"
+    },
+    {
       "path": "fixtures/benchmark/README.md",
       "bytes": 7343,
       "sha256": "9be1f746f9ff8a1f04fac0d6647437f5b917e073d6d9f5d7be1610730eaafe42"
@@ -217,13 +237,13 @@
     },
     {
       "path": "scripts/docs_integrity.py",
-      "bytes": 4494,
-      "sha256": "989d5c31a19307797eaba362f7f3769cde23621cbc79e3e2b1139c276d6405b6"
+      "bytes": 4661,
+      "sha256": "abcb92cad65e88c2c12ad241e3ff878489d41e2a46238f14aa2ef38984a966dd"
     },
     {
       "path": "scripts/generate_manifest.py",
-      "bytes": 7953,
-      "sha256": "820d7bda78feefb57d5a1269dec657f648b30511353aa2a7dbb060f9a5ea065c"
+      "bytes": 8214,
+      "sha256": "4c970a361e036da3388bc4902b6112a38c90e97db4e769624446fe7c1c134976"
     },
     {
       "path": "scripts/tasks.py",
@@ -232,8 +252,8 @@
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 93285,
-      "sha256": "a528c66ab3ff8d9535c74ea760353d7d1d15c1039e32d9eaff2412b6214ed539"
+      "bytes": 94305,
+      "sha256": "47b97aca59ad4b0910843f678322b663c4bbfe8ec045ccff6f03cee6f2ebef6a"
     }
   ]
 }

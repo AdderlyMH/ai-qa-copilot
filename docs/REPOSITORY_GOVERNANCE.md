@@ -1,7 +1,7 @@
 # Repository Governance Evidence
 
-**Status:** External controls pending verification<br>
-**Last checked:** 2026-07-20
+**Status:** FND-002 and FND-004 verified with preserved external evidence<br>
+**Last checked:** 2026-07-21
 
 This document distinguishes committed governance artifacts from repository-host
 settings that must be verified through their authoritative external systems.
@@ -10,41 +10,66 @@ file exists.
 
 ## GitHub controls
 
-| Control                       | Committed evidence                                                    | External verification status                                                                                                    |
-|-------------------------------|-----------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| Pull-request and issue intake | `.github/pull_request_template.md` and `.github/ISSUE_TEMPLATE/`      | Present in the repository; no external enablement needed.                                                                       |
-| Ownership                     | `.github/CODEOWNERS` assigns the repository to `@AdderlyMH`.          | Present in the repository.                                                                                                      |
-| Dependency updates            | `.github/dependabot.yml` schedules weekly `pip` updates.              | Configuration is committed; GitHub must still show Dependabot version updates active.                                           |
-| `main` CI enforcement         | `docs-validation` workflow and the required check name are committed. | **Blocked:** on 2026-07-20, `main` was unprotected, required status checks were off, and the repository returned zero rulesets. |
-| Secret scanning               | No repository file can enable this control.                           | **Blocked:** authoritative GitHub settings evidence has not been recorded.                                                      |
+| Control                       | Committed evidence                                                    | External verification status                                                                                                                                                                                                                                                      |
+|-------------------------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Pull-request and issue intake | `.github/pull_request_template.md` and `.github/ISSUE_TEMPLATE/`      | Present in the repository; no external enablement needed.                                                                                                                                                                                                                         |
+| Ownership                     | `.github/CODEOWNERS` assigns the repository to `@AdderlyMH`.          | Present in the repository.                                                                                                                                                                                                                                                        |
+| Dependency updates            | `.github/dependabot.yml` schedules weekly `pip` updates.              | **Verified 2026-07-21:** [preserved settings captures](evidence/github-security-2026-07-21/README.md) show Dependency graph, Dependabot alerts, and Dependabot security updates enabled; successful bot update runs show the committed version-update configuration is processed. |
+| `main` CI enforcement         | `docs-validation` workflow and the required check name are committed. | **Verified 2026-07-21:** `main` is protected by active ruleset `19300108`, which targets the default branch, requires strict `docs-validation`, requires resolved review threads, and rejects deletion and non-fast-forward updates.                                              |
+| Secret scanning               | No repository file can enable this control.                           | **Verified 2026-07-21:** the [preserved Secret Protection capture](evidence/github-security-2026-07-21/secret-protection.png) shows Secret Protection and Push protection enabled.                                                                                                |
 
-The authoritative public observations are the [main branch metadata](https://api.github.com/repos/AdderlyMH/ai-qa-copilot/branches/main) and the [repository rulesets](https://api.github.com/repos/AdderlyMH/ai-qa-copilot/rulesets).
+The public GitHub API verified that `main` is protected and that the active
+[`main-protection` ruleset](https://github.com/AdderlyMH/ai-qa-copilot/rules/19300108)
+has the controls stated above. The historical public endpoints remain the
+[main branch metadata](https://api.github.com/repos/AdderlyMH/ai-qa-copilot/branches/main)
+and [repository rulesets](https://api.github.com/repos/AdderlyMH/ai-qa-copilot/rulesets).
 
-To satisfy FND-004, a repository administrator must configure and verify all
-of the following:
+The [preserved evidence bundle](evidence/github-security-2026-07-21/README.md)
+contains the original settings captures, their SHA-256 values, and the public
+Dependabot bot-run links. The captures are manifest-covered so their exact
+bytes are checked by documentation CI. This makes the supplied source evidence
+inspectable from the repository while preserving the distinction between a
+captured settings view and a live authorized API response.
 
-1. A branch rule or ruleset targeting `main` that requires the
-   `docs-validation` check before merge, rejects force pushes and deletion, and
-   applies to administrators.
-2. GitHub secret scanning (and push protection where available) enabled for
-   the public repository.
-3. Dependabot version updates visibly enabled with the committed configuration.
+[`docs-validation` run #12](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29805545011)
+succeeded for the latest committed branch tip,
+[`4b2e7dd`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4b2e7ddf70faa2683de59f576536a395e9b04433).
+[`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572)
+remains the successful `main` run for
+[`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
 
-Record the resulting settings URL/API evidence and the verification date in
-this document and `PROJECT_STATUS.md`. Do not mark FND-004 complete until all
-three checks are evidenced.
+FND-004 is resolved. This evidence verifies the repository-host controls as
+captured and independently inspectable on 2026-07-21; a later audit must
+repeat the live settings check. It does not verify application runtime,
+deployment, evaluation, or security-test outcomes.
 
 ## Linear evidence
 
-The supplied Linear workspace URL is
-[`https://linear.app/ai-qa-copilot`](https://linear.app/ai-qa-copilot).
-It resolves, but it is not a project-specific URL or ID and public access does
-not expose the milestones or issue ownership needed to verify FND-002.
+**Verification date:** 2026-07-21<br>
+**Verifier:** Project owner supplied the export; Codex performed the
+field-level repository verification.<br>
+**Project:** [AI Quality Engineering Copilot — Portfolio Release](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview)<br>
+**Project ID:** `1b646e03-e34c-490b-bbe0-1c631acaad56`
 
-FND-002 remains blocked until an authorized Linear view or a project-specific
-URL/ID records:
+The supplied project export contains all 68 P0 issues. Each has assignee
+`addrmh@gmail.com`, a Linear estimate, the named project, a milestone, and
+acceptance criteria in its description. The export shows all required
+milestones:
 
-1. The named project and its Phase 0 through Phase 7 milestones.
-2. Every P0 issue, including its owner, milestone, estimate, and acceptance
-   criteria.
-3. A verification date and the person who checked those fields.
+1. `0. Foundation`
+2. `1. Walking skeleton`
+3. `2. Ingestion and retrieval`
+4. `3. Analysis and test design`
+5. `4. Controlled execution`
+6. `5. Evaluation and observability`
+7. `6. Security and deployment`
+8. `7. Portfolio release`
+
+The verified estimate distribution is 2 issues at 1 point, 13 at 2 points, 45
+at 3 points, and 8 at 5 points. The exported issue descriptions retain the
+backlog's hour estimates and acceptance criteria. All 113 dependency edges
+whose prerequisite is among the imported P0 issues match the backlog.
+
+FND-002 is resolved. The export is external evidence and is not committed to
+this repository; its contents must be re-exported from Linear if a later audit
+needs the complete issue-level record.

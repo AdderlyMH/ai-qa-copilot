@@ -2,18 +2,22 @@
 
 ## Current state
 
-The repository is in Phase 0 foundation closeout. It contains working product,
-architecture, security, evaluation, fixture, ADR, traceability, and governance
-contracts under review; Phase 0 is not yet accepted or complete.
+The repository has completed its Phase 0 documentation and governance baseline.
+It contains working product, architecture, security, evaluation, fixture, ADR,
+traceability, and governance contracts. Phase 1 implementation work has not
+started.
 
 Application implementation has not started. No model integration, deployment,
 runtime evaluation, product metric, latency result, or cost result has been
 verified.
 
-Phase 0 acceptance remains blocked by external governance evidence: a verified
-Linear project with owned P0 work, and GitHub enforcement for `main`, secret
-scanning, and Dependabot. See [project status](docs/PROJECT_STATUS.md) and
-[repository governance evidence](docs/REPOSITORY_GOVERNANCE.md).
+The Phase 0 exit evidence is recorded: the Linear project contains owned P0
+work with milestones and estimates; GitHub enforces the required `main` CI
+rule with preserved secret-protection and Dependabot evidence; and FND-007
+through FND-009 have documented, validated contract evidence. This does not
+constitute application, deployment, evaluation, cost, latency, or security-test
+success. See [project status](docs/PROJECT_STATUS.md) and [repository
+governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 
 ## Canonical documents
 
@@ -56,10 +60,10 @@ and stages the manifest. It refuses a commit when related documentation files
 have unstaged or untracked changes, so the staged manifest always describes the
 staged documentation snapshot.
 
-The latest committed remote documentation evidence is
-[`docs-validation` run #8](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29787274484),
+The latest committed-branch remote documentation evidence is
+[`docs-validation` run #12](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29805545011),
 which succeeded for branch commit
-[`2c90cd1`](https://github.com/AdderlyMH/ai-qa-copilot/commit/2c90cd18ffc06231b3d9a15da022fc1be4270aab).
+[`4b2e7dd`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4b2e7ddf70faa2683de59f576536a395e9b04433).
 That result applies only to that commit; each later commit requires its own
 successful `docs-validation` run.
 

@@ -11,6 +11,7 @@ requirements-docs.txt text eol=lf
 MANIFEST.json text eol=lf
 
 docs/**/*.md text eol=lf
+docs/evidence/**/*.png binary
 fixtures/**/*.md text eol=lf
 fixtures/**/*.yaml text eol=lf
 fixtures/**/*.yml text eol=lf

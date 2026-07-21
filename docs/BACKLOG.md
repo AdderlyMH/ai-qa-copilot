@@ -1,13 +1,13 @@
 # Delivery Backlog — AI Quality Engineering Copilot
 
-**Document status:** Working baseline — Phase 0 closeout pending
+**Document status:** Working baseline — Phase 0 closeout verified
 **Version:** 0.2
 **Planning date:** 2026-07-17
 **Target release:** 2026-12-20
 **Capacity assumption:** 12 hours/week; 231 planned hours and 264 available
 hours through the revised release date
-**Issue tracker:** [Linear workspace](https://linear.app/ai-qa-copilot) —
-project-specific URL/ID and FND-002 verification are pending
+**Issue tracker:** [AI Quality Engineering Copilot — Portfolio Release](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview)
+— FND-002 verification completed 2026-07-21
 
 ## 1. Delivery strategy
 
@@ -112,10 +112,11 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** FND-001
 - **Deliverable:** Linear project with phases, dates, labels, and initial issues.
 - **Acceptance:** Every P0 item has owner, milestone, estimate, and acceptance criteria.
-- **Evidence status (2026-07-20):** The workspace URL
-  `https://linear.app/ai-qa-copilot` is recorded, but it is not a
-  project-specific identifier and does not expose milestones or P0 ownership.
-  See `REPOSITORY_GOVERNANCE.md`; this item remains unverified.
+- **Evidence status (2026-07-21):** **Resolved.** The project-specific Linear
+  URL and project ID `1b646e03-e34c-490b-bbe0-1c631acaad56` are recorded in
+  `REPOSITORY_GOVERNANCE.md`. A project-owner-supplied export was checked: all
+  68 P0 issues have an assignee, estimate, project, one of the eight required
+  milestones, and acceptance criteria.
 
 #### FND-003 — Initialize decision-record process
 
@@ -132,11 +133,13 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** None
 - **Deliverable:** Repository, branch protection, issue/PR templates, CODEOWNERS if useful, license decision.
 - **Acceptance:** Main branch requires CI; secret scanning and dependency updates are enabled.
-- **Evidence status (2026-07-20):** Templates, CODEOWNERS, MIT license, and
-  Dependabot configuration are committed. Main branch protection, secret
-  scanning, and external Dependabot enablement remain unverified; do not close
-  this item until the external evidence in `REPOSITORY_GOVERNANCE.md` is
-  updated.
+- **Evidence status (2026-07-21):** **Resolved.** The active
+  [`main-protection` ruleset](https://github.com/AdderlyMH/ai-qa-copilot/rules/19300108)
+  requires the strict `docs-validation` check and prevents deletion and
+  non-fast-forward updates. Project-owner-supplied GitHub settings screenshots
+  verify secret scanning, push protection, Dependabot alerts, and Dependabot
+  security updates; the committed Dependabot version-update configuration has
+  also produced successful update jobs. See `REPOSITORY_GOVERNANCE.md`.
 
 #### FND-005 — Define engineering commands and standards
 
@@ -145,9 +148,9 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** FND-004
 - **Deliverable:** `AGENTS.md`, `CONTRIBUTING.md`, Makefile/task runner contract.
 - **Acceptance:** Formatting, lint, type-check, test, and dev commands have stable names.
-- **Evidence status (2026-07-20):** The files and stable command contract are
-  committed and validated locally. Formal completion remains dependent on
-  FND-004 external repository-control verification.
+- **Evidence status (2026-07-21):** **Resolved.** The files and stable command
+  contract are committed and validated; FND-004 external repository-control
+  verification is complete.
 
 #### FND-006 — Re-estimate schedule, capacity, and budget after mandatory P0 additions
 
@@ -159,8 +162,8 @@ other P0 gates remain non-negotiable.
 - **Acceptance:** The owner explicitly selects additional capacity, a revised release date, and/or specific P1 deferrals. P0 authentication, parser isolation, executor isolation, reporting, and security validation remain in scope. The resulting changes are propagated to the charter, backlog, and project status.
 - **Decision recorded (2026-07-20):** Retain 12 hours/week, revise the release
   date to 2026-12-20, retain the 231-hour scope, and make no P1 deferrals.
-  This provides 264 available hours and 33 hours of contingency. Formal
-  completion remains dependent on FND-002 verification.
+  This provides 264 available hours and 33 hours of contingency. FND-002
+  verification is complete.
 
 #### FND-007 — Freeze parser and untrusted-content security contract
 
@@ -169,6 +172,13 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** FND-001, FND-003
 - **Deliverable:** Approved parser-policy table, rejection taxonomy, quarantine-first boundary, untrusted-content contract, and links among product requirements, architecture, threat model, ADRs, and evaluation plan.
 - **Acceptance:** Every supported format has explicit size, structure, alias, reference, decompression, timeout, isolation, and failure behavior. Unsupported XML/JUnit scope is explicitly deferred. No unresolved parser-security decision blocks safe implementation.
+- **Evidence status (2026-07-21):** **Resolved as a Phase 0 contract.**
+  `PRODUCT_REQUIREMENTS.md` §10.1 defines supported formats, hard limits,
+  aliases, references, decompression, timeouts, isolation, and rejection
+  behavior; `ARCHITECTURE.md` defines the parser trust boundary;
+  `THREAT_MODEL.md` §11 defines file-security policy; and accepted ADR-009
+  records parser isolation and the XML/JUnit exclusion. This is design and
+  fixture-contract evidence, not executed parser-runtime evidence.
 
 #### FND-008 — Seed adversarial security fixture catalog and expected outcomes
 
@@ -177,6 +187,14 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** FND-007
 - **Deliverable:** Versioned fixture catalog for parser, prompt-injection, SSRF, approval, redaction, and isolation cases, including threat ID, expected status, source/variant locator, ground-truth linkage where applicable, expected boundary, expected side effects, and CI lane.
 - **Acceptance:** Every Critical or High threat has at least one fixture ID, expected deterministic outcome, source reference where applicable, and planned CI execution. The manifest validator rejects any parser/security fixture without its required status, per-ID source/variant locator, valid ground-truth linkage or explicit non-applicability reason, expected boundary, or complete side-effect vector. Deny cases explicitly require zero unexpected model, DNS, HTTP, target-mutation, approval-mutation, or secret-exposure side effects.
+- **Evidence status (2026-07-21):** **Resolved as a Phase 0 contract.**
+  `fixtures/benchmark/fixture-manifest.v1.yaml` and
+  `fixtures/benchmark/ground-truth.v1.yaml` provide the catalog and expected
+  outcomes. `scripts/validate_docs.py` deterministically rejects missing
+  status, source/variant locators, ground-truth linkage or explicit
+  non-applicability, expected boundaries, and incomplete side-effect vectors;
+  its negative self-tests exercise those rejection paths. No application
+  security fixture has yet executed against a runtime.
 
 #### FND-009 — Define objective security release-gate matrix
 
@@ -185,8 +203,19 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** FND-007, FND-008
 - **Deliverable:** Gate-to-threat-to-fixture matrix for SG-01 through SG-08, with fixed denominators, evidence requirements, and CI/release exit behavior.
 - **Acceptance:** No hard gate relies solely on LLM judgment, manual interpretation, or a selected-pull-request workflow.
+- **Evidence status (2026-07-21):** **Resolved as a Phase 0 contract.**
+  `CONTROL_TRACEABILITY_MATRIX.md` defines CT-SG-01 through CT-SG-08 with
+  deterministic fixture, scanner, policy, or deployment validators, and maps
+  every Critical and High threat. `scripts/validate_docs.py` requires every
+  SG row and its traceability references. The matrix is a release-gate design;
+  no future application security gate is claimed to have executed or passed.
 
-**Phase 0 exit:** Canonical documents, repository governance, Linear plan, ADRs, parser/untrusted-content contract, adversarial fixture catalog, and objective security release-gate matrix are committed. No parser or HTTP-execution implementation may start before FND-007 through FND-009 are complete.
+**Phase 0 exit (verified 2026-07-21):** Canonical documents, repository
+governance, Linear plan, ADRs, parser/untrusted-content contract, adversarial
+fixture catalog, and objective security release-gate matrix are committed and
+validated. This closes the Phase 0 documentation/governance baseline only; it
+does not claim that any application runtime, deployment, evaluation, or
+security release gate has executed or passed.
 
 ## 4. Phase 1 — Walking skeleton
 
@@ -892,8 +921,7 @@ If the schedule slips:
 
 ## 15. Immediate next issue
 
-FND-002 and FND-004 must be externally verified before Phase 0 can close.
-After those blockers and the FND-006 dependency are resolved,
-**FND-007 — Freeze parser and untrusted-content security contract** is the
-next security prerequisite. No parser or execution implementation may begin
-until FND-007, FND-008, and FND-009 are complete.
+FND-001 through FND-009 have recorded Phase 0 evidence. The next work is
+**SKEL-001 — Initialize monorepo** in Phase 1. Application implementation has
+not started; later parser and execution work remains subject to its own
+documented dependencies and deterministic verification.
