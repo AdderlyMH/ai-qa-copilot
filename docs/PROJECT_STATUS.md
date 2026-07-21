@@ -1,16 +1,16 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-07-20<br>
-**Overall state:** Foundation closeout blocked by external governance verification<br>
+**Status date:** 2026-07-21<br>
+**Overall state:** External governance blockers resolved; Phase 0 foundation work remains active<br>
 **Current phase:** Phase 0 — Foundation<br>
-**Health:** Red — local governance corrections are in place, but required GitHub and Linear evidence is incomplete
+**Health:** Green for external governance verification; remaining Phase 0 work is not implementation-ready until its own prerequisites are complete
 
 ## Current status
 
-The repository has a working Phase 0 contract set, not an approved or complete
-Phase 0 baseline. Exact-commit documentation CI is green for `2c90cd1`, but
-that does not prove branch protection, secret scanning, Dependabot enablement,
-or Linear project ownership.
+The repository has a verified Phase 0 governance baseline. FND-002 and
+FND-004 are resolved with recorded external evidence. Phase 0 is not yet
+complete: the remaining foundation contracts and their acceptance criteria must
+still be completed before parser or execution implementation begins.
 
 ### Verified locally
 
@@ -30,27 +30,36 @@ or Linear project ownership.
 
 ### Verified remotely
 
-- [`docs-validation` run #8](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29787274484)
+- [`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572)
   succeeded for branch commit
-  [`2c90cd1`](https://github.com/AdderlyMH/ai-qa-copilot/commit/2c90cd18ffc06231b3d9a15da022fc1be4270aab).
-- This evidence applies only to `2c90cd1`; any later commit needs its own
+  [`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
+  This evidence applies only to that commit; each later commit needs its own
   successful run.
+- The public GitHub API verified `main` is protected and that active ruleset
+  [`19300108`](https://github.com/AdderlyMH/ai-qa-copilot/rules/19300108)
+  requires strict `docs-validation`, resolved review threads, and blocks
+  deletion and non-fast-forward updates.
+- Project-owner-supplied GitHub Advanced Security settings evidence shows
+  secret scanning, push protection, Dependabot alerts, and Dependabot security
+  updates enabled. Successful Dependabot `pip` update jobs evidence that the
+  committed version-update configuration is processed.
+- A project-owner-supplied Linear export verifies the project-specific
+  [Portfolio Release project](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview),
+  all eight milestones, and all 68 P0 issues with owners, Linear estimates,
+  milestones, and acceptance criteria.
 
-## Remaining Phase 0 gate blockers
+## Resolved external gate blockers
 
-1. **FND-002 — Linear plan verification.** The recorded
-   [workspace URL](https://linear.app/ai-qa-copilot) is not a project-specific
-   URL or ID, and it does not evidence milestones or owned P0 issues. Record
-   the project URL/ID, milestone list, P0 owners, estimates, acceptance
-   criteria, verification date, and verifier.
-2. **FND-004 — GitHub repository controls.** On 2026-07-20, live GitHub
-   metadata showed `main` unprotected, required checks off, and zero rulesets.
-   Secret scanning and enabled Dependabot state also lack authoritative
-   evidence. A repository administrator must configure and verify these
-   controls as described in [repository governance evidence](REPOSITORY_GOVERNANCE.md).
+1. **FND-002 — Linear plan verification:** **Resolved 2026-07-21.** The
+   project ID, milestone set, owned P0 issues, estimates, and acceptance
+   criteria are recorded in `REPOSITORY_GOVERNANCE.md`.
+2. **FND-004 — GitHub repository controls:** **Resolved 2026-07-21.** The
+   active `main` ruleset, secret protection, and Dependabot evidence are
+   recorded in `REPOSITORY_GOVERNANCE.md`.
 
-FND-005 has local evidence but remains formally dependent on FND-004. FND-006
-has a recorded owner decision but remains formally dependent on FND-002.
+The FND-005 repository-control dependency and the FND-006 Linear-verification
+dependency are therefore satisfied. This does not mark uncompleted Foundation
+issues as done.
 
 ## Not started
 
@@ -63,7 +72,7 @@ has a recorded owner decision but remains formally dependent on FND-002.
 
 ## Next action
 
-Configure and verify the required GitHub controls, then provide an authorized
-Linear project-specific URL/ID or verification export. Update the external
-evidence records, run CI for the resulting exact commit, and only then
-reassess Phase 0 acceptance and merge safety.
+Commit the evidence-record update and obtain successful exact-commit CI. Then
+complete **FND-007 — Freeze parser and untrusted-content security contract**,
+followed by FND-008 and FND-009. No parser or execution implementation may
+begin until those prerequisites are complete and verified.

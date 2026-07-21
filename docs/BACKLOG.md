@@ -1,13 +1,13 @@
 # Delivery Backlog — AI Quality Engineering Copilot
 
-**Document status:** Working baseline — Phase 0 closeout pending
+**Document status:** Working baseline — Phase 0 active
 **Version:** 0.2
 **Planning date:** 2026-07-17
 **Target release:** 2026-12-20
 **Capacity assumption:** 12 hours/week; 231 planned hours and 264 available
 hours through the revised release date
-**Issue tracker:** [Linear workspace](https://linear.app/ai-qa-copilot) —
-project-specific URL/ID and FND-002 verification are pending
+**Issue tracker:** [AI Quality Engineering Copilot — Portfolio Release](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview)
+— FND-002 verification completed 2026-07-21
 
 ## 1. Delivery strategy
 
@@ -112,10 +112,11 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** FND-001
 - **Deliverable:** Linear project with phases, dates, labels, and initial issues.
 - **Acceptance:** Every P0 item has owner, milestone, estimate, and acceptance criteria.
-- **Evidence status (2026-07-20):** The workspace URL
-  `https://linear.app/ai-qa-copilot` is recorded, but it is not a
-  project-specific identifier and does not expose milestones or P0 ownership.
-  See `REPOSITORY_GOVERNANCE.md`; this item remains unverified.
+- **Evidence status (2026-07-21):** **Resolved.** The project-specific Linear
+  URL and project ID `1b646e03-e34c-490b-bbe0-1c631acaad56` are recorded in
+  `REPOSITORY_GOVERNANCE.md`. A project-owner-supplied export was checked: all
+  68 P0 issues have an assignee, estimate, project, one of the eight required
+  milestones, and acceptance criteria.
 
 #### FND-003 — Initialize decision-record process
 
@@ -132,11 +133,13 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** None
 - **Deliverable:** Repository, branch protection, issue/PR templates, CODEOWNERS if useful, license decision.
 - **Acceptance:** Main branch requires CI; secret scanning and dependency updates are enabled.
-- **Evidence status (2026-07-20):** Templates, CODEOWNERS, MIT license, and
-  Dependabot configuration are committed. Main branch protection, secret
-  scanning, and external Dependabot enablement remain unverified; do not close
-  this item until the external evidence in `REPOSITORY_GOVERNANCE.md` is
-  updated.
+- **Evidence status (2026-07-21):** **Resolved.** The active
+  [`main-protection` ruleset](https://github.com/AdderlyMH/ai-qa-copilot/rules/19300108)
+  requires the strict `docs-validation` check and prevents deletion and
+  non-fast-forward updates. Project-owner-supplied GitHub settings screenshots
+  verify secret scanning, push protection, Dependabot alerts, and Dependabot
+  security updates; the committed Dependabot version-update configuration has
+  also produced successful update jobs. See `REPOSITORY_GOVERNANCE.md`.
 
 #### FND-005 — Define engineering commands and standards
 
@@ -145,9 +148,9 @@ other P0 gates remain non-negotiable.
 - **Dependencies:** FND-004
 - **Deliverable:** `AGENTS.md`, `CONTRIBUTING.md`, Makefile/task runner contract.
 - **Acceptance:** Formatting, lint, type-check, test, and dev commands have stable names.
-- **Evidence status (2026-07-20):** The files and stable command contract are
-  committed and validated locally. Formal completion remains dependent on
-  FND-004 external repository-control verification.
+- **Evidence status (2026-07-21):** **Resolved.** The files and stable command
+  contract are committed and validated; FND-004 external repository-control
+  verification is complete.
 
 #### FND-006 — Re-estimate schedule, capacity, and budget after mandatory P0 additions
 
@@ -159,8 +162,8 @@ other P0 gates remain non-negotiable.
 - **Acceptance:** The owner explicitly selects additional capacity, a revised release date, and/or specific P1 deferrals. P0 authentication, parser isolation, executor isolation, reporting, and security validation remain in scope. The resulting changes are propagated to the charter, backlog, and project status.
 - **Decision recorded (2026-07-20):** Retain 12 hours/week, revise the release
   date to 2026-12-20, retain the 231-hour scope, and make no P1 deferrals.
-  This provides 264 available hours and 33 hours of contingency. Formal
-  completion remains dependent on FND-002 verification.
+  This provides 264 available hours and 33 hours of contingency. FND-002
+  verification is complete.
 
 #### FND-007 — Freeze parser and untrusted-content security contract
 
@@ -892,8 +895,7 @@ If the schedule slips:
 
 ## 15. Immediate next issue
 
-FND-002 and FND-004 must be externally verified before Phase 0 can close.
-After those blockers and the FND-006 dependency are resolved,
-**FND-007 — Freeze parser and untrusted-content security contract** is the
-next security prerequisite. No parser or execution implementation may begin
-until FND-007, FND-008, and FND-009 are complete.
+FND-002 and FND-004 external verification is complete, and the FND-006
+decision is recorded. **FND-007 — Freeze parser and untrusted-content
+security contract** is the next security prerequisite. No parser or execution
+implementation may begin until FND-007, FND-008, and FND-009 are complete.

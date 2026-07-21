@@ -2,17 +2,20 @@
 
 ## Current state
 
-The repository is in Phase 0 foundation closeout. It contains working product,
+The repository is in Phase 0 foundation work. It contains working product,
 architecture, security, evaluation, fixture, ADR, traceability, and governance
-contracts under review; Phase 0 is not yet accepted or complete.
+contracts. External governance verification is complete; Phase 0 itself remains
+active until its remaining foundation issues are completed and verified.
 
 Application implementation has not started. No model integration, deployment,
 runtime evaluation, product metric, latency result, or cost result has been
 verified.
 
-Phase 0 acceptance remains blocked by external governance evidence: a verified
-Linear project with owned P0 work, and GitHub enforcement for `main`, secret
-scanning, and Dependabot. See [project status](docs/PROJECT_STATUS.md) and
+The external governance blockers are resolved: the Linear project contains
+owned P0 work with milestones and estimates, and GitHub enforces the required
+`main` CI rule with secret protection and Dependabot evidence recorded. This
+does not constitute application, deployment, evaluation, cost, latency, or
+security-test success. See [project status](docs/PROJECT_STATUS.md) and
 [repository governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 
 ## Canonical documents
@@ -57,9 +60,9 @@ have unstaged or untracked changes, so the staged manifest always describes the
 staged documentation snapshot.
 
 The latest committed remote documentation evidence is
-[`docs-validation` run #8](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29787274484),
+[`docs-validation` run #11](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29789916572),
 which succeeded for branch commit
-[`2c90cd1`](https://github.com/AdderlyMH/ai-qa-copilot/commit/2c90cd18ffc06231b3d9a15da022fc1be4270aab).
+[`f3b1ec4`](https://github.com/AdderlyMH/ai-qa-copilot/commit/f3b1ec4f448c5dc8e602ac468c3437c1cff41f9e).
 That result applies only to that commit; each later commit requires its own
 successful `docs-validation` run.
 
