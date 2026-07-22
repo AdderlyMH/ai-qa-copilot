@@ -42,18 +42,18 @@
     },
     {
       "path": ".github/workflows/docs-validation.yml",
-      "bytes": 1924,
-      "sha256": "de041d37e10fa3a41ff641558833f0e8470690434660581d8113be5dd69d04d6"
+      "bytes": 2358,
+      "sha256": "74d43f13bbea482bcf1a6e9d6f7f0b09db8bcf11e709e02a875f072d48fd7f34"
     },
     {
       "path": "AGENTS.md",
-      "bytes": 2188,
-      "sha256": "07f5cd7f88a5c6109f7f4cdcfd2e3bda9e45d2fdb1dd032f6c1569addae9522f"
+      "bytes": 2399,
+      "sha256": "26f8b866ba2ed4db4c3b84a8b5434933600a00f93b4985f308b3c14003755d28"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 2913,
-      "sha256": "b6cf5a3f0b7d5907dbdd5b1b3ce42c4ce206dacc2e765ad81522f914656be61e"
+      "bytes": 2955,
+      "sha256": "3bbbe0dbaec6655adade9ea48c64cebb6820a52b8a165ae0ec172ef141a24926"
     },
     {
       "path": "LICENSE",
@@ -62,13 +62,13 @@
     },
     {
       "path": "Makefile",
-      "bytes": 551,
-      "sha256": "24877567ded1b17c55885ff46ec204227c76edbe1abae428e29be6df1277f8c3"
+      "bytes": 627,
+      "sha256": "72c11c82c686f85676b28377f0af3262b3170d48f3529c8f17d838219afbbb5a"
     },
     {
       "path": "README.md",
-      "bytes": 3164,
-      "sha256": "d42e2207600731e950aad0474ecc2c849c7ccd599a91bcbb66e4cb94954ad9e8"
+      "bytes": 4104,
+      "sha256": "b4b53f5fd423cb3757a8e36efde5879ebbb13d6398ef0c6eac78683ab5456fc9"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 4991,
-      "sha256": "af932a2349e3a1f7022bd1ab2a43a4b44714d94ce6188b0616f6a91d1daf7161"
+      "bytes": 7025,
+      "sha256": "f8ba8c695b27d5a82d013fbc65950f5c69614705d7025e74b28d16826308c10e"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -222,8 +222,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 313,
-      "sha256": "c54bdd7927ebed5c4e66e90247f17c86c61ca666e3c04927d79f389185cc7ac2"
+      "bytes": 946,
+      "sha256": "548f48e321fd213400d2b6a10437b52006792d4d1c6e5629b1ee370095ea059e"
     },
     {
       "path": "requirements-dev.txt",
@@ -247,13 +247,13 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 3292,
-      "sha256": "5678175884fdc5bd2b636aaab469271349d8837bd3c81f65d19225a38798c4fe"
+      "bytes": 8206,
+      "sha256": "f22326a47ca7d3b5ace0546bc9b8d27be7d9ede78a49cbbb1dff79535748b38c"
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 94305,
-      "sha256": "47b97aca59ad4b0910843f678322b663c4bbfe8ec045ccff6f03cee6f2ebef6a"
+      "bytes": 94409,
+      "sha256": "3133af592ee8d1db2c89eaf0103afe5bef91d10830e82b388355e9a5c4169c6d"
     }
   ]
 }

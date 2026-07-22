@@ -1,20 +1,35 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-07-21<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 not started<br>
-**Current phase:** Phase 1 — Walking skeleton (not started)<br>
-**Health:** Green — Phase 0 acceptance contracts and external governance evidence are recorded; no application runtime exists
+**Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
+**Current phase:** Phase 1 — Walking skeleton (SKEL-001 locally verified)<br>
+**Health:** Green — the scoped walking skeleton and local engineering contract have direct evidence; no later capability or production readiness is claimed
 
 ## Current status
 
-The repository has a verified Phase 0 documentation/governance baseline.
+The repository has a verified Phase 0 documentation/governance baseline, and
+SKEL-001 is locally verified on `feat/skel-001-monorepo`.
 FND-001 through FND-009 have recorded acceptance evidence. This closes the
-Phase 0 contract and governance gate; it does not claim that an application,
-deployment, evaluation run, cost/latency measurement, or security release gate
-has executed or passed.
+Phase 0 contract and governance gate. SKEL-001 adds only a FastAPI health
+endpoint, a Next.js walking-skeleton page, a versioned health contract, locked
+dependencies, and the expanded local command contract. It does not claim a
+deployment, evaluation run, cost/latency measurement, production benchmark, or
+security release gate has executed or passed.
 
 ### Verified locally
 
+- SKEL-001 direct evidence on 2026-07-21 used Python 3.13.11, uv 0.11.16,
+  Node.js 24.18.0, and npm 11.16.0. `uv lock --check`, clean `npm ci`, and
+  `python scripts/tasks.py ci` exited successfully. The aggregate CI command
+  passed Ruff, frontend ESLint, strict MyPy, strict TypeScript, documentation
+  self-tests, one backend pytest, manifest freshness, and documentation
+  validation.
+- The combined `dev` target started both applications. `GET
+  http://127.0.0.1:8000/health` returned HTTP 200 with exactly
+  `{"status":"ok","service":"ai-qa-copilot-api"}`. The Next.js root at
+  `http://localhost:3000` returned HTTP 200 and contained both required strings,
+  `AI Quality Engineering Copilot` and `Walking skeleton`. Both development
+  processes were then stopped and ports 8000 and 3000 had no listeners.
 - B1/v1 is now one pinned configuration: OpenAI Responses API,
   `gpt-5.6-terra`, `reasoning.effort: medium`, and no task-to-model routing.
   B2 is reserved for a later evidence-based comparison.
@@ -30,11 +45,25 @@ has executed or passed.
   isolation and limits, adversarial fixture and side-effect contracts, and the
   objective SG-01 through SG-08 traceability matrix are committed and covered
   by deterministic documentation validation.
-- No application implementation, model integration, deployment, runtime
-  benchmark, product metric, cost baseline, or latency baseline is claimed.
+- No application capability beyond this walking skeleton, model integration,
+  deployment, runtime benchmark, product metric, cost baseline, or latency
+  baseline is claimed.
+
+### Open local dependency risk
+
+- The valid Next.js 16.2.11 dependency graph passes clean installation and
+  `npm ls`, but the registry audit reports three propagated production-tree
+  findings: a moderate PostCSS advisory, a high sharp advisory, and the
+  resulting high Next.js finding. No unsupported override was retained; the
+  patched PostCSS and sharp releases fall outside Next.js's declared dependency
+  ranges. The walking skeleton has no user-controlled CSS or image-processing
+  capability, but that is not a security verification. Resolve this upstream
+  dependency risk before any production-readiness claim.
 
 ### Verified remotely
 
+- No remote workflow run covers the SKEL-001 branch changes yet. The following
+  evidence remains limited to the named Phase 0 commits.
 - **Evidence snapshot (2026-07-21):** [`docs-validation` run
   #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
   succeeded for pull-request branch commit
@@ -76,11 +105,12 @@ has executed or passed.
 
 The FND-005 repository-control dependency and the FND-006 Linear-verification
 dependency are satisfied. Phase 0 is complete as a documentation/governance
-baseline, not as a runtime or release milestone.
+baseline. The local SKEL-001 walking skeleton is not a runtime benchmark or
+release milestone.
 
 ## Not started
 
-- Application implementation.
+- SKEL-002 and every later implementation item.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -89,7 +119,8 @@ baseline, not as a runtime or release milestone.
 
 ## Next action
 
-Start **SKEL-001 — Initialize monorepo** when implementation work is approved.
-Every later implementation, parser, execution, evaluation, deployment, and
-security-release claim remains subject to its own documented dependencies and
-deterministic verification.
+Review the locally verified **SKEL-001 — Initialize monorepo** change and its
+recorded evidence. Do not start SKEL-002 or any later item until this scoped
+change is accepted. Every later implementation, parser, execution, evaluation,
+deployment, and security-release claim remains subject to its own documented
+dependencies and deterministic verification.

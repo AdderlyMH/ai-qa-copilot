@@ -2,40 +2,39 @@
 
 ## Scope and prerequisites
 
-The repository is currently in Phase 0. Contributions should improve the
-governance and documented contracts unless a Phase 1 issue has explicitly been
-approved. Python 3.13 is the supported local toolchain for the current
-validation suite.
+Phase 1 is active. Contributions must remain within an explicitly approved
+backlog item and preserve the verified Phase 0 contracts. SKEL-001 uses Python
+3.13, uv 0.11.16, Node.js 24 LTS, and npm 11.16.0.
 
-Create an isolated environment and install the repository tooling:
+Install the locked Python and JavaScript dependencies:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe scripts/tasks.py bootstrap
+python scripts/tasks.py bootstrap
 ```
 
-On macOS or Linux, replace the second command with
-`.venv/bin/python scripts/tasks.py bootstrap`.
+uv manages `.venv`; npm installs the root workspace lock. If Python 3.13 is not
+already exposed as `python`, use `uv run --locked python scripts/tasks.py
+bootstrap` for the first invocation.
 
 ## Command contract
 
 Use `python scripts/tasks.py <target>` on every platform. `make <target>` is a
 convenience alias when GNU Make is available.
 
-| Target           | Current Phase 0 behavior                                            |
-|------------------|---------------------------------------------------------------------|
-| `bootstrap`      | Installs pinned documentation, lint, and type-check dependencies.   |
-| `format`         | Formats `scripts/` and regenerates the canonical manifest.          |
-| `lint`           | Runs Ruff against repository Python tooling.                        |
-| `typecheck`      | Runs MyPy against repository Python tooling.                        |
-| `test`           | Runs isolated negative tests for the documentation validator.       |
-| `docs-check`     | Checks manifest freshness and validates canonical documentation.    |
-| `docs-self-test` | Runs validator negative tests directly.                             |
-| `ci`             | Runs lint, type check, tests, and documentation validation.         |
-| `dev`            | Serves a static Phase 0 repository preview on port 8000 by default. |
+| Target           | Current behavior                                                     |
+|------------------|----------------------------------------------------------------------|
+| `bootstrap`      | Syncs Python from `uv.lock` and installs npm from `package-lock.json`.|
+| `format`         | Formats repository Python and regenerates the canonical manifest.    |
+| `lint`           | Runs Ruff and the Next.js ESLint configuration.                      |
+| `typecheck`      | Runs strict MyPy and TypeScript checks.                              |
+| `test`           | Runs documentation self-tests and the backend pytest suite.         |
+| `docs-check`     | Checks manifest freshness and validates canonical documentation.     |
+| `docs-self-test` | Runs validator negative tests directly.                              |
+| `ci`             | Runs lint, type checks, tests, and documentation validation.         |
+| `dev`            | Starts FastAPI on port 8000 and Next.js on port 3000 by default.     |
 
-The contract names are stable. Phase 1 may extend the targets to application
-code but must not silently change their purpose.
+The contract names are stable. Targets may be extended by approved backlog
+work, but their documented purpose must not be silently narrowed or replaced.
 
 ## Contribution process
 

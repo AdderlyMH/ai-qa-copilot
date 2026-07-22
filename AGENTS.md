@@ -2,10 +2,12 @@
 
 ## Current boundary
 
-This repository is in Phase 0 closeout. It contains governance, product,
-architecture, security, evaluation, and fixture contracts; application runtime
-implementation has not started. Do not describe an unimplemented feature,
-deployment, benchmark, cost, latency result, or security control as verified.
+Phase 1 is active. The repository retains its verified Phase 0 governance and
+documentation baseline while implementation proceeds one approved backlog item
+at a time. SKEL-001 is limited to the FastAPI and Next.js walking skeleton, its
+health contract, dependency locks, and engineering commands. Do not describe a
+later feature, deployment, benchmark, cost, latency result, or security control
+as implemented or verified.
 
 The authoritative Phase 0 sources are `README.md`, `docs/`, `fixtures/`, the
 repository-governance files, and `MANIFEST.json`. `docs/PROJECT_STATUS.md`
@@ -30,9 +32,10 @@ Before handing off a change to any manifest-covered file, run:
 python scripts/tasks.py ci
 ```
 
-`format` applies the Python formatter to validation/task-runner code and then
-regenerates `MANIFEST.json`. `dev` is a Phase 0 static repository preview, not
-an application server.
+`bootstrap` synchronizes the committed Python and npm lockfiles. `format`
+applies the Python formatter to validation, task-runner, and API code and then
+regenerates `MANIFEST.json`. `dev` starts the FastAPI and Next.js development
+servers and stops both on interruption.
 
 ## Change rules
 

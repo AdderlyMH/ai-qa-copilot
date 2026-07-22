@@ -2120,6 +2120,10 @@ def _copy_repository_inputs(root: Path, destination: Path) -> None:
         ignore=shutil.ignore_patterns(
             ".git",
             ".idea",
+            ".mypy_cache",
+            ".next",
+            ".node-runtime",
+            ".ruff_cache",
             ".venv",
             "__pycache__",
             ".pytest_cache",
