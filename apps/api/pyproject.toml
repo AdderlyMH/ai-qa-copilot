@@ -1,0 +1,14 @@
+[project]
+name = "ai-qa-copilot-api"
+version = "0.0.0"
+description = "FastAPI walking skeleton for AI Quality Engineering Copilot"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi==0.139.2",
+    "pydantic==2.13.4",
+    "uvicorn==0.51.0",
+]
+
+[build-system]
+requires = ["uv_build==0.11.16"]
+build-backend = "uv_build"

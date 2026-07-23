@@ -2,14 +2,14 @@
 
 ## Current state
 
-The repository has completed its Phase 0 documentation and governance baseline.
-It contains working product, architecture, security, evaluation, fixture, ADR,
-traceability, and governance contracts. Phase 1 implementation work has not
-started.
+The repository has completed its Phase 0 documentation and governance baseline,
+and Phase 1 is active. SKEL-001 is limited to a FastAPI health endpoint, a
+Next.js walking-skeleton page, a versioned shared health contract, dependency
+locks, and the stable local engineering commands.
 
-Application implementation has not started. No model integration, deployment,
+No database, model integration, authentication, retrieval, worker, deployment,
 runtime evaluation, product metric, latency result, or cost result has been
-verified.
+implemented or verified.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
 work with milestones and estimates; GitHub enforces the required `main` CI
@@ -46,6 +46,39 @@ the same targets where GNU Make is available.
 
 `MANIFEST.json` is generated from canonical repository files and excludes
 itself to avoid circular hashing.
+
+## Local walking skeleton
+
+Prerequisites:
+
+- Python 3.13.11 (`.python-version` pins the local interpreter).
+- uv 0.11.16.
+- Node.js 24 LTS (`.node-version` pins 24.18.0).
+- npm 11.16.0 (pinned by the root `packageManager` field).
+
+Install exactly the committed dependency graphs and start both applications:
+
+```powershell
+python scripts/tasks.py bootstrap
+python scripts/tasks.py dev
+```
+
+The development command uses `http://127.0.0.1:8000` for FastAPI and
+`http://localhost:3000` for Next.js. Pass `--port` and `--web-port` to override
+those defaults. Press `Ctrl+C` once to stop both processes.
+
+To run the servers in separate terminals instead, use:
+
+```powershell
+uv run --locked uvicorn ai_qa_copilot_api.main:app --host 127.0.0.1 --port 8000 --reload
+npm run dev:web -- --hostname localhost --port 3000
+```
+
+Run the complete local validation contract with:
+
+```powershell
+python scripts/tasks.py ci
+```
 
 ### Automatic manifest refresh before commits
 

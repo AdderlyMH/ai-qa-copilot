@@ -1,20 +1,81 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-07-21<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 not started<br>
-**Current phase:** Phase 1 — Walking skeleton (not started)<br>
-**Health:** Green — Phase 0 acceptance contracts and external governance evidence are recorded; no application runtime exists
+**Status date:** 2026-07-23<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
+**Current phase:** Phase 1 — SKEL-001 dependency correction locally verified; re-review pending<br>
+**Health:** Yellow — clean locked bootstrap and CI pass for `5de3e6780107eeb184bba86bbd7130494fc8f0ce`; exact-SHA remote documentation evidence and test-client deprecation resolution remain pending
 
 ## Current status
 
-The repository has a verified Phase 0 documentation/governance baseline.
-FND-001 through FND-009 have recorded acceptance evidence. This closes the
-Phase 0 contract and governance gate; it does not claim that an application,
-deployment, evaluation run, cost/latency measurement, or security release gate
+The repository has a verified Phase 0 documentation/governance baseline. The
+scoped SKEL-001 tree now includes dependency-correction commit
+`5de3e6780107eeb184bba86bbd7130494fc8f0ce` on top of implementation commit
+`9a63271737596b2bf569bb553b8efa69c06f42ae`. Clean locked bootstrap and CI
+evidence for the dependency correction is anchored to the former; the earlier
+fixed-port runtime evidence remains anchored to the latter. The dependency
+correction replaces `httpx2` with pinned `httpx==0.28.1` and regenerates the
+Python lock and repository manifest. The earlier corrections cover lexical
+manifest exclusions, complete development-process cleanup, frontend formatting,
+one uv-managed Python dependency source, and restoration of the existing
+workflow to documentation-only validation. Reviewer approval and exact-SHA
+remote documentation evidence remain pending.
+FND-001 through FND-009 retain their recorded acceptance evidence. SKEL-001
+adds only a FastAPI health endpoint, a Next.js walking-skeleton page, a
+versioned health contract, locked dependencies, and the expanded local command
+contract. It does not claim application CI, deployment, an evaluation run,
+cost/latency measurement, a production benchmark, or a security release gate
 has executed or passed.
 
 ### Verified locally
 
+- Exact-commit dependency verification on 2026-07-23 used Python 3.13.11,
+  uv 0.11.16, Node.js 24.18.0, and npm 11.6.2 at
+  `5de3e6780107eeb184bba86bbd7130494fc8f0ce`. From a Python environment whose
+  path did not exist before the command, exact
+  `python scripts/tasks.py bootstrap` installed the 31-package locked
+  environment, including `httpx==0.28.1` and no `httpx2`. Exact
+  `python scripts/tasks.py ci` then exited successfully with an empty
+  `git status --porcelain=v1` before and after the run. The aggregate command
+  passed Ruff, frontend ESLint, strict MyPy, strict TypeScript, nine executed
+  documentation self-checks plus one explicit Windows symlink-privilege skip,
+  three pytest cases, 53-file manifest freshness, and documentation
+  validation. Pytest reported one Starlette test-client deprecation warning,
+  recorded under the open dependency risks below. The external-target `.venv`
+  symlink regression remains active on symlink-capable hosts; this Windows host
+  did not falsely report the skipped case as executed.
+- Earlier fixed-port runtime evidence at
+  `9a63271737596b2bf569bb553b8efa69c06f42ae` invoked
+  `.\.venv\Scripts\python.exe scripts/tasks.py dev --port 8123 --web-port 3124`
+  twice on the same ports. On both cycles, `GET
+  http://127.0.0.1:8123/health` returned HTTP 200 with exactly
+  `{"status":"ok","service":"ai-qa-copilot-api"}`, and `GET
+  http://localhost:3124/` returned HTTP 200 containing both `AI Quality
+  Engineering Copilot` and `Walking skeleton`. After each interruption both
+  ports rejected connections; the second start succeeded. Final checks found
+  zero project development processes, zero listeners on ports 8123/3124, and
+  no `apps/web/.next/dev/lock`.
+- The exact-commit CI run executed the lifecycle regression, which starts each
+  app in an isolated POSIX process group or a verified Windows kill-on-close
+  Job Object. It proves a failed Windows Job assignment cannot release the
+  gated target, both endpoint ports are released, and an immediate second
+  `dev` start succeeds on identical ports. Strict MyPy checks passed for both
+  `win32` and `linux`; the earlier real two-cycle runtime test above was
+  executed on Windows at `9a63271737596b2bf569bb553b8efa69c06f42ae`.
+- `pyproject.toml`, the API member project, and `uv.lock` are now the only
+  active Python dependency declarations; the duplicate legacy requirements
+  files are retired. The root development group pins `httpx==0.28.1` for the
+  FastAPI health test. The `format` target runs both Ruff and pinned Prettier
+  3.9.6 before regenerating the manifest.
+- The local command sequence from `docs-validation` passed using
+  `uv sync --locked --only-dev`, scripts-only Ruff/MyPy, validator self-tests,
+  manifest freshness, and documentation validation. It installed no
+  application runtime and ran no Node or application checks. The workflow
+  remains documentation-only; the SKEL-006 application CI baseline is not
+  implemented.
+- After the pre-existing ignored `apps/web/tsconfig.tsbuildinfo` was removed,
+  `npm run typecheck:web` passed and left no `*.tsbuildinfo` beneath
+  `apps/web`. Incremental TypeScript compilation is explicitly disabled in the
+  checked-in configuration.
 - B1/v1 is now one pinned configuration: OpenAI Responses API,
   `gpt-5.6-terra`, `reasoning.effort: medium`, and no task-to-model routing.
   B2 is reserved for a later evidence-based comparison.
@@ -30,11 +91,37 @@ has executed or passed.
   isolation and limits, adversarial fixture and side-effect contracts, and the
   objective SG-01 through SG-08 traceability matrix are committed and covered
   by deterministic documentation validation.
-- No application implementation, model integration, deployment, runtime
-  benchmark, product metric, cost baseline, or latency baseline is claimed.
+- No application capability beyond this walking skeleton, model integration,
+  deployment, runtime benchmark, product metric, cost baseline, or latency
+  baseline is claimed.
+
+### Open local dependency risks
+
+- The exact-commit CI run emitted one `StarletteDeprecationWarning`: locked
+  Starlette 1.3.1 accepts `httpx==0.28.1` as a fallback but currently prefers
+  `httpx2`. The required health test still passed with its exact response
+  assertion. Treat the warning as open compatibility debt and resolve the
+  upstream test-client dependency direction before a later framework upgrade.
+
+- The valid Next.js 16.2.11 dependency graph passes clean installation and
+  `npm ls`. On 2026-07-23, `npm audit --omit=dev --json` against the committed
+  `package-lock.json` with Node.js 24.18.0 and npm 11.16.0 reported three
+  production-tree package findings, all high, and zero critical, moderate, or
+  low package findings. PostCSS aggregates one moderate and one high advisory;
+  sharp carries one high advisory; and Next.js is high through PostCSS and
+  sharp. No unsupported override was retained; the patched PostCSS and sharp
+  releases fall outside Next.js's declared dependency ranges. The walking
+  skeleton has no user-controlled CSS or image-processing capability, but that
+  is not a security verification. Resolve this upstream dependency risk before
+  any production-readiness claim.
 
 ### Verified remotely
 
+- No remote workflow run covers locally verified dependency-correction commit
+  `5de3e6780107eeb184bba86bbd7130494fc8f0ce` yet. The existing
+  `docs-validation` check is documentation-only and is not evidence of the
+  SKEL-006 application CI baseline. The following evidence remains limited to
+  the named Phase 0 commits.
 - **Evidence snapshot (2026-07-21):** [`docs-validation` run
   #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
   succeeded for pull-request branch commit
@@ -76,11 +163,13 @@ has executed or passed.
 
 The FND-005 repository-control dependency and the FND-006 Linear-verification
 dependency are satisfied. Phase 0 is complete as a documentation/governance
-baseline, not as a runtime or release milestone.
+baseline. The local SKEL-001 walking skeleton is not a runtime benchmark or
+release milestone.
 
 ## Not started
 
-- Application implementation.
+- SKEL-002 and every later implementation item, including the SKEL-006
+  application CI baseline.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -89,7 +178,12 @@ baseline, not as a runtime or release milestone.
 
 ## Next action
 
-Start **SKEL-001 — Initialize monorepo** when implementation work is approved.
-Every later implementation, parser, execution, evaluation, deployment, and
+Re-review the corrected **SKEL-001 — Initialize monorepo** change with clean
+locked bootstrap and CI evidence anchored to
+`5de3e6780107eeb184bba86bbd7130494fc8f0ce`, retain the earlier runtime evidence
+boundary at `9a63271737596b2bf569bb553b8efa69c06f42ae`, and obtain a successful
+exact-SHA remote `docs-validation` run for the evidence-record correction. Do
+not start SKEL-002 or any later item until this scoped change is accepted. Every
+later implementation, parser, execution, evaluation, deployment, and
 security-release claim remains subject to its own documented dependencies and
 deterministic verification.

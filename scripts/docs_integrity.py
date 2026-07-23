@@ -15,21 +15,30 @@ SCHEMA_VERSION = "docs-manifest/v2"
 INCLUSION_DESCRIPTION = (
     "Canonical Phase 0 documents, repository-governance artifacts, fixtures, "
     "ADRs, preserved governance-evidence assets, validation scripts, dependency "
-    "locks, and validation workflow"
+    "locks, toolchain version pins, and validation workflow"
 )
 SELF_HASH_POLICY = "MANIFEST.json is excluded to prevent circular hashing"
-
-_ROOT_FILES = frozenset(
+DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES = frozenset(
     {
-        "AGENTS.md",
-        "CONTRIBUTING.md",
-        "LICENSE",
-        "Makefile",
-        "README.md",
-        "pyproject.toml",
-        "requirements-dev.txt",
-        "requirements-docs.txt",
+        ".node-version",
+        ".python-version",
+        "package-lock.json",
+        "uv.lock",
     }
+)
+
+_ROOT_FILES = (
+    frozenset(
+        {
+            "AGENTS.md",
+            "CONTRIBUTING.md",
+            "LICENSE",
+            "Makefile",
+            "README.md",
+            "pyproject.toml",
+        }
+    )
+    | DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES
 )
 _SCRIPT_FILES = frozenset(
     {
@@ -104,11 +113,11 @@ def is_included(relative_path: PurePosixPath) -> bool:
     if is_excluded(relative_path):
         return False
 
-    if len(relative_path.parts) == 1:
-        return relative_path.name in _ROOT_FILES
-
     if relative_path in _GOVERNANCE_PATHS:
         return True
+
+    if len(relative_path.parts) == 1:
+        return relative_path.name in _ROOT_FILES
 
     if relative_path.parts[0] == "docs":
         return relative_path.suffix == ".md" or (
@@ -135,9 +144,11 @@ def discover_included_files(root: Path | None = None) -> list[Path]:
     selected_root = (root or repository_root()).resolve()
     included: list[tuple[str, Path]] = []
     for path in selected_root.rglob("*"):
+        relative = PurePosixPath(path.relative_to(selected_root).as_posix())
+        if is_excluded(relative):
+            continue
         if not path.is_file():
             continue
-        relative = relative_posix(selected_root, path)
         if is_included(relative):
             included.append((relative.as_posix(), path))
     return [path for _, path in sorted(included, key=lambda item: item[0])]
