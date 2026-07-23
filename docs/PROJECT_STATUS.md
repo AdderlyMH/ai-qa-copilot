@@ -2,19 +2,19 @@
 
 **Status date:** 2026-07-23<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
-**Current phase:** Phase 1 — SKEL-001 corrective working tree locally verified; commit and re-review pending<br>
-**Health:** Yellow — the Windows post-bootstrap contract passes; a final correction SHA and exact-SHA remote documentation run remain pending
+**Current phase:** Phase 1 — SKEL-001 corrective commit locally verified; re-review pending<br>
+**Health:** Yellow — the Windows post-bootstrap contract passes for `9a63271737596b2bf569bb553b8efa69c06f42ae`; exact-SHA remote documentation evidence remains pending
 
 ## Current status
 
 The repository has a verified Phase 0 documentation/governance baseline. The
-current SKEL-001 corrections are an uncommitted working tree based on reviewed
-branch head `3e437e56d343750df150038492d559da5f8114ce`; that commit itself is
-not correction evidence, and no final correction SHA exists yet. The local
-corrections cover lexical manifest exclusions, complete development-process
-cleanup, frontend formatting, one uv-managed Python dependency source, and
-restoration of the existing workflow to documentation-only validation.
-Reviewer approval and exact-SHA remote documentation evidence remain pending.
+corrected SKEL-001 tree is committed at reviewed branch head
+`9a63271737596b2bf569bb553b8efa69c06f42ae`, and the local startup and command
+evidence below is anchored to that commit. The corrections cover lexical
+manifest exclusions, complete development-process cleanup, frontend formatting,
+one uv-managed Python dependency source, and restoration of the existing
+workflow to documentation-only validation. Reviewer approval and exact-SHA
+remote documentation evidence remain pending.
 FND-001 through FND-009 retain their recorded acceptance evidence. SKEL-001
 adds only a FastAPI health endpoint, a Next.js walking-skeleton page, a
 versioned health contract, locked dependencies, and the expanded local command
@@ -101,10 +101,11 @@ has executed or passed.
 
 ### Verified remotely
 
-- No remote workflow run covers the corrected SKEL-001 working tree yet. The
-  existing `docs-validation` check is documentation-only and is not evidence
-  of the SKEL-006 application CI baseline. The following evidence remains
-  limited to the named Phase 0 commits.
+- No remote workflow run covers locally verified SKEL-001 commit
+  `9a63271737596b2bf569bb553b8efa69c06f42ae` yet. The existing
+  `docs-validation` check is documentation-only and is not evidence of the
+  SKEL-006 application CI baseline. The following evidence remains limited to
+  the named Phase 0 commits.
 - **Evidence snapshot (2026-07-21):** [`docs-validation` run
   #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
   succeeded for pull-request branch commit
@@ -161,10 +162,11 @@ release milestone.
 
 ## Next action
 
-Commit the locally corrected **SKEL-001 — Initialize monorepo** tree, replace
-the explicit base-SHA limitation above with the runtime-tested correction SHA,
-and obtain a successful exact-SHA remote `docs-validation` run before
-re-review. Do not start SKEL-002 or any later item until this scoped change is
-accepted. Every later implementation, parser, execution, evaluation,
-deployment, and security-release claim remains subject to its own documented
-dependencies and deterministic verification.
+Re-review the corrected **SKEL-001 — Initialize monorepo** change with local
+runtime evidence anchored to
+`9a63271737596b2bf569bb553b8efa69c06f42ae`, and obtain a successful exact-SHA
+remote `docs-validation` run for the evidence-record correction. Do not start
+SKEL-002 or any later item until this scoped change is accepted. Every later
+implementation, parser, execution, evaluation, deployment, and
+security-release claim remains subject to its own documented dependencies and
+deterministic verification.
