@@ -2,15 +2,19 @@
 
 **Status date:** 2026-07-23<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
-**Current phase:** Phase 1 — SKEL-001 corrective commit locally verified; re-review pending<br>
-**Health:** Yellow — the Windows post-bootstrap contract passes for `9a63271737596b2bf569bb553b8efa69c06f42ae`; exact-SHA remote documentation evidence remains pending
+**Current phase:** Phase 1 — SKEL-001 dependency correction locally verified; re-review pending<br>
+**Health:** Yellow — clean locked bootstrap and CI pass for `5de3e6780107eeb184bba86bbd7130494fc8f0ce`; exact-SHA remote documentation evidence and test-client deprecation resolution remain pending
 
 ## Current status
 
 The repository has a verified Phase 0 documentation/governance baseline. The
-corrected SKEL-001 tree is committed at reviewed branch head
-`9a63271737596b2bf569bb553b8efa69c06f42ae`, and the local startup and command
-evidence below is anchored to that commit. The corrections cover lexical
+scoped SKEL-001 tree now includes dependency-correction commit
+`5de3e6780107eeb184bba86bbd7130494fc8f0ce` on top of implementation commit
+`9a63271737596b2bf569bb553b8efa69c06f42ae`. Clean locked bootstrap and CI
+evidence for the dependency correction is anchored to the former; the earlier
+fixed-port runtime evidence remains anchored to the latter. The dependency
+correction replaces `httpx2` with pinned `httpx==0.28.1` and regenerates the
+Python lock and repository manifest. The earlier corrections cover lexical
 manifest exclusions, complete development-process cleanup, frontend formatting,
 one uv-managed Python dependency source, and restoration of the existing
 workflow to documentation-only validation. Reviewer approval and exact-SHA
@@ -24,19 +28,23 @@ has executed or passed.
 
 ### Verified locally
 
-- Corrective verification on 2026-07-23 used Python 3.13.11, uv 0.11.16,
-  Node.js 24.18.0, and npm 11.16.0. With the task-runner executable overrides
-  pointed at those repository-local tools, `uv lock --check` and the exact commands
-  `.\.venv\Scripts\python.exe scripts/tasks.py bootstrap`,
-  `.\.venv\Scripts\python.exe scripts/tasks.py format`, and
-  `.\.venv\Scripts\python.exe scripts/tasks.py ci` exited successfully. The
-  aggregate command passed Ruff, frontend ESLint, strict MyPy, strict
-  TypeScript, nine executed documentation self-checks plus one explicit
-  Windows symlink-privilege skip, three pytest cases, 53-file manifest
-  freshness, and documentation validation. The external-target `.venv`
+- Exact-commit dependency verification on 2026-07-23 used Python 3.13.11,
+  uv 0.11.16, Node.js 24.18.0, and npm 11.6.2 at
+  `5de3e6780107eeb184bba86bbd7130494fc8f0ce`. From a Python environment whose
+  path did not exist before the command, exact
+  `python scripts/tasks.py bootstrap` installed the 31-package locked
+  environment, including `httpx==0.28.1` and no `httpx2`. Exact
+  `python scripts/tasks.py ci` then exited successfully with an empty
+  `git status --porcelain=v1` before and after the run. The aggregate command
+  passed Ruff, frontend ESLint, strict MyPy, strict TypeScript, nine executed
+  documentation self-checks plus one explicit Windows symlink-privilege skip,
+  three pytest cases, 53-file manifest freshness, and documentation
+  validation. Pytest reported one Starlette test-client deprecation warning,
+  recorded under the open dependency risks below. The external-target `.venv`
   symlink regression remains active on symlink-capable hosts; this Windows host
   did not falsely report the skipped case as executed.
-- The fixed-port runtime probe invoked
+- Earlier fixed-port runtime evidence at
+  `9a63271737596b2bf569bb553b8efa69c06f42ae` invoked
   `.\.venv\Scripts\python.exe scripts/tasks.py dev --port 8123 --web-port 3124`
   twice on the same ports. On both cycles, `GET
   http://127.0.0.1:8123/health` returned HTTP 200 with exactly
@@ -46,15 +54,17 @@ has executed or passed.
   ports rejected connections; the second start succeeded. Final checks found
   zero project development processes, zero listeners on ports 8123/3124, and
   no `apps/web/.next/dev/lock`.
-- The lifecycle regression starts each app in an isolated POSIX process group
-  or a verified Windows kill-on-close Job Object. It proves a failed Windows
-  Job assignment cannot release the gated target, both endpoint ports are
-  released, and an immediate second `dev` start succeeds on identical ports.
-  Strict MyPy checks passed for both `win32` and `linux`; the real two-cycle
-  runtime test above was executed on Windows.
+- The exact-commit CI run executed the lifecycle regression, which starts each
+  app in an isolated POSIX process group or a verified Windows kill-on-close
+  Job Object. It proves a failed Windows Job assignment cannot release the
+  gated target, both endpoint ports are released, and an immediate second
+  `dev` start succeeds on identical ports. Strict MyPy checks passed for both
+  `win32` and `linux`; the earlier real two-cycle runtime test above was
+  executed on Windows at `9a63271737596b2bf569bb553b8efa69c06f42ae`.
 - `pyproject.toml`, the API member project, and `uv.lock` are now the only
   active Python dependency declarations; the duplicate legacy requirements
-  files are retired. The `format` target runs both Ruff and pinned Prettier
+  files are retired. The root development group pins `httpx==0.28.1` for the
+  FastAPI health test. The `format` target runs both Ruff and pinned Prettier
   3.9.6 before regenerating the manifest.
 - The local command sequence from `docs-validation` passed using
   `uv sync --locked --only-dev`, scripts-only Ruff/MyPy, validator self-tests,
@@ -85,7 +95,13 @@ has executed or passed.
   deployment, runtime benchmark, product metric, cost baseline, or latency
   baseline is claimed.
 
-### Open local dependency risk
+### Open local dependency risks
+
+- The exact-commit CI run emitted one `StarletteDeprecationWarning`: locked
+  Starlette 1.3.1 accepts `httpx==0.28.1` as a fallback but currently prefers
+  `httpx2`. The required health test still passed with its exact response
+  assertion. Treat the warning as open compatibility debt and resolve the
+  upstream test-client dependency direction before a later framework upgrade.
 
 - The valid Next.js 16.2.11 dependency graph passes clean installation and
   `npm ls`. On 2026-07-23, `npm audit --omit=dev --json` against the committed
@@ -101,8 +117,8 @@ has executed or passed.
 
 ### Verified remotely
 
-- No remote workflow run covers locally verified SKEL-001 commit
-  `9a63271737596b2bf569bb553b8efa69c06f42ae` yet. The existing
+- No remote workflow run covers locally verified dependency-correction commit
+  `5de3e6780107eeb184bba86bbd7130494fc8f0ce` yet. The existing
   `docs-validation` check is documentation-only and is not evidence of the
   SKEL-006 application CI baseline. The following evidence remains limited to
   the named Phase 0 commits.
@@ -162,11 +178,12 @@ release milestone.
 
 ## Next action
 
-Re-review the corrected **SKEL-001 — Initialize monorepo** change with local
-runtime evidence anchored to
-`9a63271737596b2bf569bb553b8efa69c06f42ae`, and obtain a successful exact-SHA
-remote `docs-validation` run for the evidence-record correction. Do not start
-SKEL-002 or any later item until this scoped change is accepted. Every later
-implementation, parser, execution, evaluation, deployment, and
+Re-review the corrected **SKEL-001 — Initialize monorepo** change with clean
+locked bootstrap and CI evidence anchored to
+`5de3e6780107eeb184bba86bbd7130494fc8f0ce`, retain the earlier runtime evidence
+boundary at `9a63271737596b2bf569bb553b8efa69c06f42ae`, and obtain a successful
+exact-SHA remote `docs-validation` run for the evidence-record correction. Do
+not start SKEL-002 or any later item until this scoped change is accepted. Every
+later implementation, parser, execution, evaluation, deployment, and
 security-release claim remains subject to its own documented dependencies and
 deterministic verification.
