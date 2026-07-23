@@ -2,17 +2,17 @@
 
 **Status date:** 2026-07-23<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
-**Current phase:** Phase 1 — Walking skeleton (SKEL-001 packaging correction locally verified; review pending)<br>
+**Current phase:** Phase 1 — Walking skeleton (SKEL-001 packaging and non-emitting type-check corrections locally verified; review pending)<br>
 **Health:** Yellow — the corrected walking skeleton and local engineering contract have direct evidence; reviewer approval and exact-SHA remote evidence remain pending
 
 ## Current status
 
 The repository has a verified Phase 0 documentation/governance baseline, and
-the SKEL-001 packaging correction is locally verified on
-`feat/skel-001-monorepo`. The API is an installable uv workspace package and
-an explicit dependency of the virtual root project; pytest, MyPy, and Uvicorn
-resolve it without `pythonpath`, `mypy_path`, or `--app-dir`. Reviewer approval
-and exact-SHA remote workflow evidence remain pending.
+the SKEL-001 packaging and non-emitting type-check corrections are locally
+verified on `feat/skel-001-monorepo`. The API is an installable uv workspace
+package and an explicit dependency of the virtual root project; pytest, MyPy,
+and Uvicorn resolve it without `pythonpath`, `mypy_path`, or `--app-dir`.
+Reviewer approval and exact-SHA remote workflow evidence remain pending.
 FND-001 through FND-009 have recorded acceptance evidence. This closes the
 Phase 0 contract and governance gate. SKEL-001 adds only a FastAPI health
 endpoint, a Next.js walking-skeleton page, a versioned health contract, locked
@@ -30,6 +30,10 @@ security release gate has executed or passed.
   TypeScript, documentation self-tests, one backend pytest, 55-file manifest
   freshness, and documentation validation. The manifest now covers
   `.node-version`, `.python-version`, `package-lock.json`, and `uv.lock`.
+- After the pre-existing ignored `apps/web/tsconfig.tsbuildinfo` was removed,
+  `npm run typecheck:web` passed and left no `*.tsbuildinfo` beneath
+  `apps/web`. Incremental TypeScript compilation is explicitly disabled in the
+  checked-in configuration.
 - An isolated `uv run --locked python -I -c "..."` metadata probe read the
   installed distribution version, `direct_url.json`, and module path. It
   reported `ai-qa-copilot-api==0.0.0`, the `apps/api` file URL with
@@ -64,13 +68,16 @@ security release gate has executed or passed.
 ### Open local dependency risk
 
 - The valid Next.js 16.2.11 dependency graph passes clean installation and
-  `npm ls`, but the registry audit reports three propagated production-tree
-  findings: a moderate PostCSS advisory, a high sharp advisory, and the
-  resulting high Next.js finding. No unsupported override was retained; the
-  patched PostCSS and sharp releases fall outside Next.js's declared dependency
-  ranges. The walking skeleton has no user-controlled CSS or image-processing
-  capability, but that is not a security verification. Resolve this upstream
-  dependency risk before any production-readiness claim.
+  `npm ls`. On 2026-07-23, `npm audit --omit=dev --json` against the committed
+  `package-lock.json` with Node.js 24.18.0 and npm 11.16.0 reported three
+  production-tree package findings, all high, and zero critical, moderate, or
+  low package findings. PostCSS aggregates one moderate and one high advisory;
+  sharp carries one high advisory; and Next.js is high through PostCSS and
+  sharp. No unsupported override was retained; the patched PostCSS and sharp
+  releases fall outside Next.js's declared dependency ranges. The walking
+  skeleton has no user-controlled CSS or image-processing capability, but that
+  is not a security verification. Resolve this upstream dependency risk before
+  any production-readiness claim.
 
 ### Verified remotely
 
