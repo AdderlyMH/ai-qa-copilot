@@ -4,9 +4,7 @@ version = "0.0.0"
 description = "AI Quality Engineering Copilot walking skeleton"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-    "fastapi==0.139.2",
-    "pydantic==2.13.4",
-    "uvicorn==0.51.0",
+    "ai-qa-copilot-api==0.0.0",
 ]
 
 [dependency-groups]
@@ -23,6 +21,12 @@ dev = [
 package = false
 required-version = "==0.11.16"
 
+[tool.uv.sources]
+ai-qa-copilot-api = { workspace = true }
+
+[tool.uv.workspace]
+members = ["apps/api"]
+
 [tool.ruff]
 target-version = "py313"
 extend-exclude = [".uv-cache", ".uv-python", ".venv"]
@@ -33,7 +37,6 @@ ignore = ["E501"]
 
 [tool.mypy]
 files = ["scripts", "apps/api/src", "apps/api/tests"]
-mypy_path = ["apps/api/src"]
 python_version = "3.13"
 strict = true
 check_untyped_defs = true
@@ -43,4 +46,3 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests"]
-pythonpath = ["apps/api/src"]

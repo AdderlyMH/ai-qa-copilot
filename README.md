@@ -51,7 +51,7 @@ itself to avoid circular hashing.
 
 Prerequisites:
 
-- Python 3.13.
+- Python 3.13.11 (`.python-version` pins the local interpreter).
 - uv 0.11.16.
 - Node.js 24 LTS (`.node-version` pins 24.18.0).
 - npm 11.16.0 (pinned by the root `packageManager` field).
@@ -70,7 +70,7 @@ those defaults. Press `Ctrl+C` once to stop both processes.
 To run the servers in separate terminals instead, use:
 
 ```powershell
-uv run --locked uvicorn ai_qa_copilot_api.main:app --app-dir apps/api/src --host 127.0.0.1 --port 8000 --reload
+uv run --locked uvicorn ai_qa_copilot_api.main:app --host 127.0.0.1 --port 8000 --reload
 npm run dev:web -- --hostname localhost --port 3000
 ```
 

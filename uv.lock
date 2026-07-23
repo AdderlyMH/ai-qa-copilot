@@ -2,14 +2,18 @@ version = 1
 revision = 3
 requires-python = "==3.13.*"
 
+[manifest]
+members = [
+    "ai-qa-copilot",
+    "ai-qa-copilot-api",
+]
+
 [[package]]
 name = "ai-qa-copilot"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "fastapi" },
-    { name = "pydantic" },
-    { name = "uvicorn" },
+    { name = "ai-qa-copilot-api" },
 ]
 
 [package.dev-dependencies]
@@ -23,11 +27,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = "==0.139.2" },
-    { name = "pydantic", specifier = "==2.13.4" },
-    { name = "uvicorn", specifier = "==0.51.0" },
-]
+requires-dist = [{ name = "ai-qa-copilot-api", editable = "apps/api" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -37,6 +37,23 @@ dev = [
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "ruff", specifier = "==0.15.22" },
     { name = "types-pyyaml", specifier = "==6.0.12.20260518" },
+]
+
+[[package]]
+name = "ai-qa-copilot-api"
+version = "0.0.0"
+source = { editable = "apps/api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "pydantic" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = "==0.139.2" },
+    { name = "pydantic", specifier = "==2.13.4" },
+    { name = "uvicorn", specifier = "==0.51.0" },
 ]
 
 [[package]]

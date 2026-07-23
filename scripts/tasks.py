@@ -109,7 +109,7 @@ def bootstrap() -> None:
     """Synchronize the locked Python and JavaScript dependencies."""
 
     verify_node_major()
-    run(uv(), "sync", "--locked", "--python", "3.13")
+    run(uv(), "sync", "--locked")
     run(npm(), "ci", env=node_environment())
 
 
@@ -138,7 +138,7 @@ def test() -> None:
     """Run documentation self-tests and backend tests."""
 
     docs_self_test()
-    uv_run("pytest", "apps/api/tests")
+    uv_run("pytest")
 
 
 def docs_check() -> None:
@@ -191,8 +191,6 @@ def dev(api_port: int, web_port: int) -> None:
             "--locked",
             "uvicorn",
             "ai_qa_copilot_api.main:app",
-            "--app-dir",
-            "apps/api/src",
             "--host",
             "127.0.0.1",
             "--port",

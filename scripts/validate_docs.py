@@ -18,6 +18,7 @@ from urllib.parse import unquote
 import yaml
 
 from docs_integrity import (
+    DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES,
     MANIFEST_FILENAME,
     SCHEMA_VERSION,
     SELF_HASH_POLICY,
@@ -56,6 +57,7 @@ REQUIRED_FILES = (
     "pyproject.toml",
     "requirements-dev.txt",
     "requirements-docs.txt",
+    *sorted(DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES),
     ".github/workflows/docs-validation.yml",
     "docs/PROJECT_CHARTER.md",
     "docs/PRODUCT_REQUIREMENTS.md",
@@ -2052,6 +2054,19 @@ def validate_repository_manifest(root: Path, errors: list[str]) -> int:
         for difference in differences:
             add_error(errors, f"Repository manifest: {difference}")
     expected = build_manifest(root)
+    expected_paths = {
+        entry["path"]
+        for entry in expected["files"]
+        if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+    }
+    required_manifest_paths = set(REQUIRED_FILES) - {MANIFEST_FILENAME}
+    missing_required_coverage = required_manifest_paths - expected_paths
+    if missing_required_coverage:
+        add_error(
+            errors,
+            "Repository manifest: required-file coverage is missing "
+            f"{', '.join(sorted(missing_required_coverage))}",
+        )
     if expected.get("schema_version") != SCHEMA_VERSION:
         add_error(errors, "Repository manifest: unexpected schema version")
     policy = expected.get("inclusion_policy", {})

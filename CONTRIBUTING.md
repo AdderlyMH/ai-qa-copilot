@@ -4,7 +4,8 @@
 
 Phase 1 is active. Contributions must remain within an explicitly approved
 backlog item and preserve the verified Phase 0 contracts. SKEL-001 uses Python
-3.13, uv 0.11.16, Node.js 24 LTS, and npm 11.16.0.
+3.13.11 (pinned by `.python-version`), uv 0.11.16, Node.js 24 LTS, and npm
+11.16.0.
 
 Install the locked Python and JavaScript dependencies:
 
@@ -12,8 +13,8 @@ Install the locked Python and JavaScript dependencies:
 python scripts/tasks.py bootstrap
 ```
 
-uv manages `.venv`; npm installs the root workspace lock. If Python 3.13 is not
-already exposed as `python`, use `uv run --locked python scripts/tasks.py
+uv manages `.venv`; npm installs the root workspace lock. If Python 3.13.11 is
+not already exposed as `python`, use `uv run --locked python scripts/tasks.py
 bootstrap` for the first invocation.
 
 ## Command contract

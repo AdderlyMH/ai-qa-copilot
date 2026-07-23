@@ -1,14 +1,19 @@
 {
   "schema_version": "docs-manifest/v2",
   "inclusion_policy": {
-    "description": "Canonical Phase 0 documents, repository-governance artifacts, fixtures, ADRs, preserved governance-evidence assets, validation scripts, dependency locks, and validation workflow",
+    "description": "Canonical Phase 0 documents, repository-governance artifacts, fixtures, ADRs, preserved governance-evidence assets, validation scripts, dependency locks, toolchain version pins, and validation workflow",
     "self_hash_policy": "MANIFEST.json is excluded to prevent circular hashing"
   },
   "files": [
     {
+      "path": ".gitattributes",
+      "bytes": 1420,
+      "sha256": "d47332b95d6ba7bd047851b04f97f9524003242d09b92bbbaebea83f5d4a3028"
+    },
+    {
       "path": ".githooks/pre-commit",
-      "bytes": 1509,
-      "sha256": "2597fb65a1879fe727aa630166118f5c34bdddf5c8b0f890e5efdbdfa2f16172"
+      "bytes": 1565,
+      "sha256": "59b44f293333a7a0e217c873f9c95ef82a59315baf30bca134f564ef2e32c8f6"
     },
     {
       "path": ".github/CODEOWNERS",
@@ -42,8 +47,18 @@
     },
     {
       "path": ".github/workflows/docs-validation.yml",
-      "bytes": 2358,
-      "sha256": "74d43f13bbea482bcf1a6e9d6f7f0b09db8bcf11e709e02a875f072d48fd7f34"
+      "bytes": 2426,
+      "sha256": "664384834c5f0dc0053649606083b0afc77493f312825f0037aa41adfa2f3435"
+    },
+    {
+      "path": ".node-version",
+      "bytes": 8,
+      "sha256": "55075b5ec4e8b31936cbbc282b8829116d1fd48f2f2f1856dee592a6650700ce"
+    },
+    {
+      "path": ".python-version",
+      "bytes": 8,
+      "sha256": "9fa33d932bbf6e5784f15b467a9a10e4ce43993c2341ee742f23ce0196fd73e9"
     },
     {
       "path": "AGENTS.md",
@@ -52,8 +67,8 @@
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 2955,
-      "sha256": "3bbbe0dbaec6655adade9ea48c64cebb6820a52b8a165ae0ec172ef141a24926"
+      "bytes": 2991,
+      "sha256": "4029cdfa6064e159c545a8d0b929147c7aa611038f147363992c6f62f256ae59"
     },
     {
       "path": "LICENSE",
@@ -67,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 4104,
-      "sha256": "b4b53f5fd423cb3757a8e36efde5879ebbb13d6398ef0c6eac78683ab5456fc9"
+      "bytes": 4131,
+      "sha256": "e75220c7c8d74537f8a9a52ba681a4613ec438555e44b833713b556f5b572980"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -102,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 7025,
-      "sha256": "f8ba8c695b27d5a82d013fbc65950f5c69614705d7025e74b28d16826308c10e"
+      "bytes": 7971,
+      "sha256": "0f72b8bf436fadd58729f2bdae8ce47c9ddceb77af5b35647838db588823a2a7"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -221,9 +236,14 @@
       "sha256": "414635e6c030d9a2a6ec6857128697a29514d49698f2b63d72649f191db36e4a"
     },
     {
+      "path": "package-lock.json",
+      "bytes": 212646,
+      "sha256": "e1906c8192c49c790ac8d5ff8a15eea3bf158fedd5706f3e1c1bda53781211bc"
+    },
+    {
       "path": "pyproject.toml",
-      "bytes": 946,
-      "sha256": "548f48e321fd213400d2b6a10437b52006792d4d1c6e5629b1ee370095ea059e"
+      "bytes": 952,
+      "sha256": "16d4db1bc513e9ba5a9a8f5bfdb7c8b6f27ea42a8ea0981c5d0ae92bb0ab4a4b"
     },
     {
       "path": "requirements-dev.txt",
@@ -237,8 +257,8 @@
     },
     {
       "path": "scripts/docs_integrity.py",
-      "bytes": 4661,
-      "sha256": "abcb92cad65e88c2c12ad241e3ff878489d41e2a46238f14aa2ef38984a966dd"
+      "bytes": 4950,
+      "sha256": "93bae9df94c1ab2b598b2a93d8a0bf357036715d7fb8f6628e2ee90e629c5257"
     },
     {
       "path": "scripts/generate_manifest.py",
@@ -247,13 +267,18 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 8206,
-      "sha256": "f22326a47ca7d3b5ace0546bc9b8d27be7d9ede78a49cbbb1dff79535748b38c"
+      "bytes": 8115,
+      "sha256": "9af34b7599056b9b0a5867f9a956865545876b89fdbb2368f5e7ae0c5123c3c4"
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 94409,
-      "sha256": "3133af592ee8d1db2c89eaf0103afe5bef91d10830e82b388355e9a5c4169c6d"
+      "bytes": 95033,
+      "sha256": "364a3641c696dac2d4ab672c27453a942592d76abc18f7f0472b6885b2fd8baf"
+    },
+    {
+      "path": "uv.lock",
+      "bytes": 47803,
+      "sha256": "6f0078143e21ef06586f293e835d80274fc7be6cae5d23df0a16aefdf514fd8c"
     }
   ]
 }

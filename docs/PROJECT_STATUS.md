@@ -1,14 +1,18 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-07-21<br>
+**Status date:** 2026-07-23<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
-**Current phase:** Phase 1 — Walking skeleton (SKEL-001 locally verified)<br>
-**Health:** Green — the scoped walking skeleton and local engineering contract have direct evidence; no later capability or production readiness is claimed
+**Current phase:** Phase 1 — Walking skeleton (SKEL-001 packaging correction locally verified; review pending)<br>
+**Health:** Yellow — the corrected walking skeleton and local engineering contract have direct evidence; reviewer approval and exact-SHA remote evidence remain pending
 
 ## Current status
 
 The repository has a verified Phase 0 documentation/governance baseline, and
-SKEL-001 is locally verified on `feat/skel-001-monorepo`.
+the SKEL-001 packaging correction is locally verified on
+`feat/skel-001-monorepo`. The API is an installable uv workspace package and
+an explicit dependency of the virtual root project; pytest, MyPy, and Uvicorn
+resolve it without `pythonpath`, `mypy_path`, or `--app-dir`. Reviewer approval
+and exact-SHA remote workflow evidence remain pending.
 FND-001 through FND-009 have recorded acceptance evidence. This closes the
 Phase 0 contract and governance gate. SKEL-001 adds only a FastAPI health
 endpoint, a Next.js walking-skeleton page, a versioned health contract, locked
@@ -18,18 +22,26 @@ security release gate has executed or passed.
 
 ### Verified locally
 
-- SKEL-001 direct evidence on 2026-07-21 used Python 3.13.11, uv 0.11.16,
-  Node.js 24.18.0, and npm 11.16.0. `uv lock --check`, clean `npm ci`, and
-  `python scripts/tasks.py ci` exited successfully. The aggregate CI command
-  passed Ruff, frontend ESLint, strict MyPy, strict TypeScript, documentation
-  self-tests, one backend pytest, manifest freshness, and documentation
-  validation.
-- The combined `dev` target started both applications. `GET
-  http://127.0.0.1:8000/health` returned HTTP 200 with exactly
+- Corrected SKEL-001 evidence on 2026-07-23 used Python 3.13.11, uv 0.11.16,
+  Node.js 24.18.0, and npm 11.16.0. `uv lock --check`,
+  `.\.venv\Scripts\python.exe scripts/tasks.py bootstrap`, and
+  `.\.venv\Scripts\python.exe scripts/tasks.py ci` exited successfully. The
+  aggregate CI command passed Ruff, frontend ESLint, strict MyPy, strict
+  TypeScript, documentation self-tests, one backend pytest, 55-file manifest
+  freshness, and documentation validation. The manifest now covers
+  `.node-version`, `.python-version`, `package-lock.json`, and `uv.lock`.
+- An isolated `uv run --locked python -I -c "..."` metadata probe read the
+  installed distribution version, `direct_url.json`, and module path. It
+  reported `ai-qa-copilot-api==0.0.0`, the `apps/api` file URL with
+  `editable=true`, and the package under `apps/api/src`.
+  `uv run --locked pytest` and `uv run --locked mypy` passed without the
+  removed import-path settings. Uvicorn started without `--app-dir`; `GET
+  http://127.0.0.1:8123/health` returned HTTP 200 with exactly
   `{"status":"ok","service":"ai-qa-copilot-api"}`. The Next.js root at
-  `http://localhost:3000` returned HTTP 200 and contained both required strings,
-  `AI Quality Engineering Copilot` and `Walking skeleton`. Both development
-  processes were then stopped and ports 8000 and 3000 had no listeners.
+  `http://localhost:3124` returned HTTP 200 through the combined `dev` target
+  and contained both required strings, `AI Quality Engineering Copilot` and
+  `Walking skeleton`. All test processes were stopped, and the API and web test
+  ports had no remaining listeners.
 - B1/v1 is now one pinned configuration: OpenAI Responses API,
   `gpt-5.6-terra`, `reasoning.effort: medium`, and no task-to-model routing.
   B2 is reserved for a later evidence-based comparison.
@@ -62,8 +74,8 @@ security release gate has executed or passed.
 
 ### Verified remotely
 
-- No remote workflow run covers the SKEL-001 branch changes yet. The following
-  evidence remains limited to the named Phase 0 commits.
+- No remote workflow run covers the corrected SKEL-001 changes yet. The
+  following evidence remains limited to the named Phase 0 commits.
 - **Evidence snapshot (2026-07-21):** [`docs-validation` run
   #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
   succeeded for pull-request branch commit
@@ -119,8 +131,8 @@ release milestone.
 
 ## Next action
 
-Review the locally verified **SKEL-001 — Initialize monorepo** change and its
-recorded evidence. Do not start SKEL-002 or any later item until this scoped
-change is accepted. Every later implementation, parser, execution, evaluation,
-deployment, and security-release claim remains subject to its own documented
-dependencies and deterministic verification.
+Re-review the locally corrected **SKEL-001 — Initialize monorepo** change and
+obtain a successful exact-SHA remote workflow run. Do not start SKEL-002 or any
+later item until this scoped change is accepted. Every later implementation,
+parser, execution, evaluation, deployment, and security-release claim remains
+subject to its own documented dependencies and deterministic verification.

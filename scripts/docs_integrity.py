@@ -15,21 +15,32 @@ SCHEMA_VERSION = "docs-manifest/v2"
 INCLUSION_DESCRIPTION = (
     "Canonical Phase 0 documents, repository-governance artifacts, fixtures, "
     "ADRs, preserved governance-evidence assets, validation scripts, dependency "
-    "locks, and validation workflow"
+    "locks, toolchain version pins, and validation workflow"
 )
 SELF_HASH_POLICY = "MANIFEST.json is excluded to prevent circular hashing"
-
-_ROOT_FILES = frozenset(
+DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES = frozenset(
     {
-        "AGENTS.md",
-        "CONTRIBUTING.md",
-        "LICENSE",
-        "Makefile",
-        "README.md",
-        "pyproject.toml",
-        "requirements-dev.txt",
-        "requirements-docs.txt",
+        ".node-version",
+        ".python-version",
+        "package-lock.json",
+        "uv.lock",
     }
+)
+
+_ROOT_FILES = (
+    frozenset(
+        {
+            "AGENTS.md",
+            "CONTRIBUTING.md",
+            "LICENSE",
+            "Makefile",
+            "README.md",
+            "pyproject.toml",
+            "requirements-dev.txt",
+            "requirements-docs.txt",
+        }
+    )
+    | DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES
 )
 _SCRIPT_FILES = frozenset(
     {
@@ -104,11 +115,11 @@ def is_included(relative_path: PurePosixPath) -> bool:
     if is_excluded(relative_path):
         return False
 
-    if len(relative_path.parts) == 1:
-        return relative_path.name in _ROOT_FILES
-
     if relative_path in _GOVERNANCE_PATHS:
         return True
+
+    if len(relative_path.parts) == 1:
+        return relative_path.name in _ROOT_FILES
 
     if relative_path.parts[0] == "docs":
         return relative_path.suffix == ".md" or (
