@@ -243,7 +243,7 @@
     {
       "path": "pyproject.toml",
       "bytes": 952,
-      "sha256": "16d4db1bc513e9ba5a9a8f5bfdb7c8b6f27ea42a8ea0981c5d0ae92bb0ab4a4b"
+      "sha256": "6875c340c57d0de6d2a38af0a9cdc79119825ad5bfa47444476544e8492ffd3e"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -267,8 +267,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 47803,
-      "sha256": "6f0078143e21ef06586f293e835d80274fc7be6cae5d23df0a16aefdf514fd8c"
+      "bytes": 47797,
+      "sha256": "39e4556adbab07d89bd6ba7ee52ac5e88636c19e9a4f601bab9616660fcbca7d"
     }
   ]
 }
