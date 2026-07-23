@@ -33,9 +33,10 @@ python scripts/tasks.py ci
 ```
 
 `bootstrap` synchronizes the committed Python and npm lockfiles. `format`
-applies the Python formatter to validation, task-runner, and API code and then
-regenerates `MANIFEST.json`. `dev` starts the FastAPI and Next.js development
-servers and stops both on interruption.
+applies Ruff to validation, task-runner, and API code, applies Prettier to the
+frontend workspace, and then regenerates `MANIFEST.json`. `dev` starts the
+FastAPI and Next.js development servers and stops both process trees on
+interruption.
 
 ## Change rules
 

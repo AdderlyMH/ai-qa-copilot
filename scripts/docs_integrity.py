@@ -36,8 +36,6 @@ _ROOT_FILES = (
             "Makefile",
             "README.md",
             "pyproject.toml",
-            "requirements-dev.txt",
-            "requirements-docs.txt",
         }
     )
     | DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES
@@ -146,9 +144,11 @@ def discover_included_files(root: Path | None = None) -> list[Path]:
     selected_root = (root or repository_root()).resolve()
     included: list[tuple[str, Path]] = []
     for path in selected_root.rglob("*"):
+        relative = PurePosixPath(path.relative_to(selected_root).as_posix())
+        if is_excluded(relative):
+            continue
         if not path.is_file():
             continue
-        relative = relative_posix(selected_root, path)
         if is_included(relative):
             included.append((relative.as_posix(), path))
     return [path for _, path in sorted(included, key=lambda item: item[0])]

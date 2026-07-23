@@ -25,14 +25,14 @@ convenience alias when GNU Make is available.
 | Target           | Current behavior                                                     |
 |------------------|----------------------------------------------------------------------|
 | `bootstrap`      | Syncs Python from `uv.lock` and installs npm from `package-lock.json`.|
-| `format`         | Formats repository Python and regenerates the canonical manifest.    |
+| `format`         | Formats repository Python and frontend files, then regenerates the manifest. |
 | `lint`           | Runs Ruff and the Next.js ESLint configuration.                      |
 | `typecheck`      | Runs strict MyPy and TypeScript checks.                              |
 | `test`           | Runs documentation self-tests and the backend pytest suite.         |
 | `docs-check`     | Checks manifest freshness and validates canonical documentation.     |
 | `docs-self-test` | Runs validator negative tests directly.                              |
 | `ci`             | Runs lint, type checks, tests, and documentation validation.         |
-| `dev`            | Starts FastAPI on port 8000 and Next.js on port 3000 by default.     |
+| `dev`            | Starts both apps and stops their complete process trees on exit.     |
 
 The contract names are stable. Targets may be extended by approved backlog
 work, but their documented purpose must not be silently narrowed or replaced.

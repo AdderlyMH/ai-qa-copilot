@@ -7,13 +7,13 @@
   "files": [
     {
       "path": ".gitattributes",
-      "bytes": 1420,
-      "sha256": "d47332b95d6ba7bd047851b04f97f9524003242d09b92bbbaebea83f5d4a3028"
+      "bytes": 1353,
+      "sha256": "0e01858e94a5c61e332e999f2386717586f556a6515d0b2928e03ba92fdd966d"
     },
     {
       "path": ".githooks/pre-commit",
-      "bytes": 1565,
-      "sha256": "59b44f293333a7a0e217c873f9c95ef82a59315baf30bca134f564ef2e32c8f6"
+      "bytes": 1522,
+      "sha256": "df3dea322fc9b376e7a53f9ca24e11365c34f7e997d92d66613cf285a9cf2d12"
     },
     {
       "path": ".github/CODEOWNERS",
@@ -47,8 +47,8 @@
     },
     {
       "path": ".github/workflows/docs-validation.yml",
-      "bytes": 2426,
-      "sha256": "664384834c5f0dc0053649606083b0afc77493f312825f0037aa41adfa2f3435"
+      "bytes": 2414,
+      "sha256": "15e516e1ed75b937f85fc7d2416999f7b6f288b594dd4fdb7c8b344fbbe0353d"
     },
     {
       "path": ".node-version",
@@ -62,13 +62,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 2399,
-      "sha256": "26f8b866ba2ed4db4c3b84a8b5434933600a00f93b4985f308b3c14003755d28"
+      "bytes": 2442,
+      "sha256": "5264a7ab5804e3dff8ae76793d73e273e848804f34622f19834816b489752f60"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 2991,
-      "sha256": "4029cdfa6064e159c545a8d0b929147c7aa611038f147363992c6f62f256ae59"
+      "bytes": 2999,
+      "sha256": "57a1ce4616f395732d69313a9423fe52416e84322faf1e869c90caa7d1f58c9c"
     },
     {
       "path": "LICENSE",
@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 45404,
-      "sha256": "bf401682df0e0fa95479cd5bfe7b926f916e31e8cd43a73de265b88523840728"
+      "bytes": 45449,
+      "sha256": "879dab2aa43dba050c3cf22c287e12692eceef280fa9bdda4fe077c71c386419"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 8496,
-      "sha256": "d7ca5fb0a34d78a3cdea629edb3bfbf1272b96c611ef8a6d0c3c83b67dd05110"
+      "bytes": 10016,
+      "sha256": "c8005205ed22b59dacac6a1895e7911f495ed5037cbc273ad5e11aba88bb8e0f"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -237,8 +237,8 @@
     },
     {
       "path": "package-lock.json",
-      "bytes": 212646,
-      "sha256": "e1906c8192c49c790ac8d5ff8a15eea3bf158fedd5706f3e1c1bda53781211bc"
+      "bytes": 213183,
+      "sha256": "01141140302d8b3b23417949391bdbf276000b6d86b2e9d478ea3c4b3e39a9d9"
     },
     {
       "path": "pyproject.toml",
@@ -246,19 +246,9 @@
       "sha256": "16d4db1bc513e9ba5a9a8f5bfdb7c8b6f27ea42a8ea0981c5d0ae92bb0ab4a4b"
     },
     {
-      "path": "requirements-dev.txt",
-      "bytes": 81,
-      "sha256": "ce261dc68d8c31f96e649a810e38b5bd65ba19a14622a7622bd0c22e99f3e023"
-    },
-    {
-      "path": "requirements-docs.txt",
-      "bytes": 14,
-      "sha256": "0969da99a0bc2a1b71ed50584560f4588a37567ac63af3ddbaf3c4617ca5621a"
-    },
-    {
       "path": "scripts/docs_integrity.py",
-      "bytes": 4950,
-      "sha256": "93bae9df94c1ab2b598b2a93d8a0bf357036715d7fb8f6628e2ee90e629c5257"
+      "bytes": 4954,
+      "sha256": "c672efad2eb3f6ff25060a63cb9fde0ce1a1a39e0b98918b7ed042a80489550a"
     },
     {
       "path": "scripts/generate_manifest.py",
@@ -267,13 +257,13 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 8115,
-      "sha256": "9af34b7599056b9b0a5867f9a956865545876b89fdbb2368f5e7ae0c5123c3c4"
+      "bytes": 18857,
+      "sha256": "4c4cbef217e40448a65c66de7ca51e8705040301ae6b28d47404feb535ff81ba"
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 95033,
-      "sha256": "364a3641c696dac2d4ab672c27453a942592d76abc18f7f0472b6885b2fd8baf"
+      "bytes": 96700,
+      "sha256": "afb0639685798230ac0a2ac6c147db8f8065f30667c92b963ee02350af5b1bcb"
     },
     {
       "path": "uv.lock",

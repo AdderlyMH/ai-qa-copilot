@@ -2,50 +2,70 @@
 
 **Status date:** 2026-07-23<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
-**Current phase:** Phase 1 — Walking skeleton (SKEL-001 packaging and non-emitting type-check corrections locally verified; review pending)<br>
-**Health:** Yellow — the corrected walking skeleton and local engineering contract have direct evidence; reviewer approval and exact-SHA remote evidence remain pending
+**Current phase:** Phase 1 — SKEL-001 corrective working tree locally verified; commit and re-review pending<br>
+**Health:** Yellow — the Windows post-bootstrap contract passes; a final correction SHA and exact-SHA remote documentation run remain pending
 
 ## Current status
 
-The repository has a verified Phase 0 documentation/governance baseline, and
-the SKEL-001 packaging and non-emitting type-check corrections are locally
-verified on `feat/skel-001-monorepo`. The API is an installable uv workspace
-package and an explicit dependency of the virtual root project; pytest, MyPy,
-and Uvicorn resolve it without `pythonpath`, `mypy_path`, or `--app-dir`.
-Reviewer approval and exact-SHA remote workflow evidence remain pending.
-FND-001 through FND-009 have recorded acceptance evidence. This closes the
-Phase 0 contract and governance gate. SKEL-001 adds only a FastAPI health
-endpoint, a Next.js walking-skeleton page, a versioned health contract, locked
-dependencies, and the expanded local command contract. It does not claim a
-deployment, evaluation run, cost/latency measurement, production benchmark, or
-security release gate has executed or passed.
+The repository has a verified Phase 0 documentation/governance baseline. The
+current SKEL-001 corrections are an uncommitted working tree based on reviewed
+branch head `3e437e56d343750df150038492d559da5f8114ce`; that commit itself is
+not correction evidence, and no final correction SHA exists yet. The local
+corrections cover lexical manifest exclusions, complete development-process
+cleanup, frontend formatting, one uv-managed Python dependency source, and
+restoration of the existing workflow to documentation-only validation.
+Reviewer approval and exact-SHA remote documentation evidence remain pending.
+FND-001 through FND-009 retain their recorded acceptance evidence. SKEL-001
+adds only a FastAPI health endpoint, a Next.js walking-skeleton page, a
+versioned health contract, locked dependencies, and the expanded local command
+contract. It does not claim application CI, deployment, an evaluation run,
+cost/latency measurement, a production benchmark, or a security release gate
+has executed or passed.
 
 ### Verified locally
 
-- Corrected SKEL-001 evidence on 2026-07-23 used Python 3.13.11, uv 0.11.16,
-  Node.js 24.18.0, and npm 11.16.0. `uv lock --check`,
-  `.\.venv\Scripts\python.exe scripts/tasks.py bootstrap`, and
+- Corrective verification on 2026-07-23 used Python 3.13.11, uv 0.11.16,
+  Node.js 24.18.0, and npm 11.16.0. With the task-runner executable overrides
+  pointed at those repository-local tools, `uv lock --check` and the exact commands
+  `.\.venv\Scripts\python.exe scripts/tasks.py bootstrap`,
+  `.\.venv\Scripts\python.exe scripts/tasks.py format`, and
   `.\.venv\Scripts\python.exe scripts/tasks.py ci` exited successfully. The
-  aggregate CI command passed Ruff, frontend ESLint, strict MyPy, strict
-  TypeScript, documentation self-tests, one backend pytest, 55-file manifest
-  freshness, and documentation validation. The manifest now covers
-  `.node-version`, `.python-version`, `package-lock.json`, and `uv.lock`.
+  aggregate command passed Ruff, frontend ESLint, strict MyPy, strict
+  TypeScript, nine executed documentation self-checks plus one explicit
+  Windows symlink-privilege skip, three pytest cases, 53-file manifest
+  freshness, and documentation validation. The external-target `.venv`
+  symlink regression remains active on symlink-capable hosts; this Windows host
+  did not falsely report the skipped case as executed.
+- The fixed-port runtime probe invoked
+  `.\.venv\Scripts\python.exe scripts/tasks.py dev --port 8123 --web-port 3124`
+  twice on the same ports. On both cycles, `GET
+  http://127.0.0.1:8123/health` returned HTTP 200 with exactly
+  `{"status":"ok","service":"ai-qa-copilot-api"}`, and `GET
+  http://localhost:3124/` returned HTTP 200 containing both `AI Quality
+  Engineering Copilot` and `Walking skeleton`. After each interruption both
+  ports rejected connections; the second start succeeded. Final checks found
+  zero project development processes, zero listeners on ports 8123/3124, and
+  no `apps/web/.next/dev/lock`.
+- The lifecycle regression starts each app in an isolated POSIX process group
+  or a verified Windows kill-on-close Job Object. It proves a failed Windows
+  Job assignment cannot release the gated target, both endpoint ports are
+  released, and an immediate second `dev` start succeeds on identical ports.
+  Strict MyPy checks passed for both `win32` and `linux`; the real two-cycle
+  runtime test above was executed on Windows.
+- `pyproject.toml`, the API member project, and `uv.lock` are now the only
+  active Python dependency declarations; the duplicate legacy requirements
+  files are retired. The `format` target runs both Ruff and pinned Prettier
+  3.9.6 before regenerating the manifest.
+- The local command sequence from `docs-validation` passed using
+  `uv sync --locked --only-dev`, scripts-only Ruff/MyPy, validator self-tests,
+  manifest freshness, and documentation validation. It installed no
+  application runtime and ran no Node or application checks. The workflow
+  remains documentation-only; the SKEL-006 application CI baseline is not
+  implemented.
 - After the pre-existing ignored `apps/web/tsconfig.tsbuildinfo` was removed,
   `npm run typecheck:web` passed and left no `*.tsbuildinfo` beneath
   `apps/web`. Incremental TypeScript compilation is explicitly disabled in the
   checked-in configuration.
-- An isolated `uv run --locked python -I -c "..."` metadata probe read the
-  installed distribution version, `direct_url.json`, and module path. It
-  reported `ai-qa-copilot-api==0.0.0`, the `apps/api` file URL with
-  `editable=true`, and the package under `apps/api/src`.
-  `uv run --locked pytest` and `uv run --locked mypy` passed without the
-  removed import-path settings. Uvicorn started without `--app-dir`; `GET
-  http://127.0.0.1:8123/health` returned HTTP 200 with exactly
-  `{"status":"ok","service":"ai-qa-copilot-api"}`. The Next.js root at
-  `http://localhost:3124` returned HTTP 200 through the combined `dev` target
-  and contained both required strings, `AI Quality Engineering Copilot` and
-  `Walking skeleton`. All test processes were stopped, and the API and web test
-  ports had no remaining listeners.
 - B1/v1 is now one pinned configuration: OpenAI Responses API,
   `gpt-5.6-terra`, `reasoning.effort: medium`, and no task-to-model routing.
   B2 is reserved for a later evidence-based comparison.
@@ -81,8 +101,10 @@ security release gate has executed or passed.
 
 ### Verified remotely
 
-- No remote workflow run covers the corrected SKEL-001 changes yet. The
-  following evidence remains limited to the named Phase 0 commits.
+- No remote workflow run covers the corrected SKEL-001 working tree yet. The
+  existing `docs-validation` check is documentation-only and is not evidence
+  of the SKEL-006 application CI baseline. The following evidence remains
+  limited to the named Phase 0 commits.
 - **Evidence snapshot (2026-07-21):** [`docs-validation` run
   #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
   succeeded for pull-request branch commit
@@ -129,7 +151,8 @@ release milestone.
 
 ## Not started
 
-- SKEL-002 and every later implementation item.
+- SKEL-002 and every later implementation item, including the SKEL-006
+  application CI baseline.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -138,8 +161,10 @@ release milestone.
 
 ## Next action
 
-Re-review the locally corrected **SKEL-001 — Initialize monorepo** change and
-obtain a successful exact-SHA remote workflow run. Do not start SKEL-002 or any
-later item until this scoped change is accepted. Every later implementation,
-parser, execution, evaluation, deployment, and security-release claim remains
-subject to its own documented dependencies and deterministic verification.
+Commit the locally corrected **SKEL-001 — Initialize monorepo** tree, replace
+the explicit base-SHA limitation above with the runtime-tested correction SHA,
+and obtain a successful exact-SHA remote `docs-validation` run before
+re-review. Do not start SKEL-002 or any later item until this scoped change is
+accepted. Every later implementation, parser, execution, evaluation,
+deployment, and security-release claim remains subject to its own documented
+dependencies and deterministic verification.

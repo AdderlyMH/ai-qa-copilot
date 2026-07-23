@@ -921,7 +921,8 @@ If the schedule slips:
 
 ## 15. Immediate next issue
 
-FND-001 through FND-009 have recorded Phase 0 evidence. The next work is
-**SKEL-001 — Initialize monorepo** in Phase 1. Application implementation has
-not started; later parser and execution work remains subject to its own
-documented dependencies and deterministic verification.
+FND-001 through FND-009 have recorded Phase 0 evidence. The immediate work is
+corrective review of **SKEL-001 — Initialize monorepo** in Phase 1. SKEL-002
+and every later implementation item remain unstarted; later parser and
+execution work remains subject to its own documented dependencies and
+deterministic verification.

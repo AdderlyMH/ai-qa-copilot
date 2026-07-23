@@ -5,7 +5,9 @@ export const metadata: Metadata = {
   title: "AI Quality Engineering Copilot",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <body>{children}</body>
