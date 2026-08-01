@@ -1,24 +1,33 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-07-23<br>
+**Status date:** 2026-08-01<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
-**Current phase:** Phase 1 — SKEL-001 dependency correction locally verified; re-review pending<br>
-**Health:** Yellow — clean locked bootstrap and CI pass for `5de3e6780107eeb184bba86bbd7130494fc8f0ce`; exact-SHA remote documentation evidence and test-client deprecation resolution remain pending
+**Current phase:** Phase 1 — SKEL-001 final gate; final acceptance pending<br>
+**Health:** Yellow — recorded local validation, remote documentation validation, and synchronized review evidence are positive through `ed04597402da3670960c7e0ef2076be7f0867541`; final acceptance is governed by one unchanged live head, application CI/SKEL-006 remains not started, and test-client compatibility debt remains open
 
 ## Current status
 
 The repository has a verified Phase 0 documentation/governance baseline. The
-scoped SKEL-001 tree now includes dependency-correction commit
-`5de3e6780107eeb184bba86bbd7130494fc8f0ce` on top of implementation commit
-`9a63271737596b2bf569bb553b8efa69c06f42ae`. Clean locked bootstrap and CI
-evidence for the dependency correction is anchored to the former; the earlier
-fixed-port runtime evidence remains anchored to the latter. The dependency
-correction replaces `httpx2` with pinned `httpx==0.28.1` and regenerates the
-Python lock and repository manifest. The earlier corrections cover lexical
-manifest exclusions, complete development-process cleanup, frontend formatting,
-one uv-managed Python dependency source, and restoration of the existing
-workflow to documentation-only validation. Reviewer approval and exact-SHA
-remote documentation evidence remain pending.
+scoped SKEL-001 implementation correction is anchored to
+`ed04597402da3670960c7e0ef2076be7f0867541`, on top of dependency-correction
+commit `5de3e6780107eeb184bba86bbd7130494fc8f0ce` and implementation commit
+`9a63271737596b2bf569bb553b8efa69c06f42ae`. Recorded local full-CI evidence,
+three submitted specialist PASS reviews, and independently executed remote
+documentation validation all target `ed04597402da3670960c7e0ef2076be7f0867541`.
+That correction removes the lifecycle test's `sys.path` mutation, imports
+`scripts.tasks` by its qualified module name, and runs pytest through
+`python -m pytest` for normal repository-root module resolution.
+The remote workflow covers documentation tooling only; it is not application
+CI or SKEL-006 evidence. This manifest-covered status synchronization is a
+documentation-only successor to that implementation commit. Final acceptance
+is a separate decision after the unchanged live head satisfies the exact-SHA
+gate. PR #5 remains a draft, and no final approval is claimed.
+
+The dependency correction replaces `httpx2` with pinned `httpx==0.28.1` and
+regenerates the Python lock and repository manifest. The earlier corrections
+cover lexical manifest exclusions, complete development-process cleanup,
+frontend formatting, one uv-managed Python dependency source, and restoration
+of the existing workflow to documentation-only validation.
 FND-001 through FND-009 retain their recorded acceptance evidence. SKEL-001
 adds only a FastAPI health endpoint, a Next.js walking-skeleton page, a
 versioned health contract, locked dependencies, and the expanded local command
@@ -26,8 +35,17 @@ contract. It does not claim application CI, deployment, an evaluation run,
 cost/latency measurement, a production benchmark, or a security release gate
 has executed or passed.
 
-### Verified locally
+### Recorded local validation
 
+- Recorded exact-commit correction verification on 2026-08-01 used Python
+  3.13.11, uv 0.11.16, Node.js 24.18.0, and npm 11.16.0 at
+  `ed04597402da3670960c7e0ef2076be7f0867541`. The stable
+  `python scripts/tasks.py ci` target, invoked with the locked `.venv`
+  interpreter on Windows, passed Ruff, frontend ESLint, strict MyPy, strict
+  TypeScript, documentation self-tests, all three pytest cases, 53-file
+  manifest freshness, and documentation validation. The commit and worktree
+  were unchanged and clean before and after the run. This is recorded local
+  validation evidence; it is not remote application-CI evidence.
 - Exact-commit dependency verification on 2026-07-23 used Python 3.13.11,
   uv 0.11.16, Node.js 24.18.0, and npm 11.6.2 at
   `5de3e6780107eeb184bba86bbd7130494fc8f0ce`. From a Python environment whose
@@ -54,11 +72,13 @@ has executed or passed.
   ports rejected connections; the second start succeeded. Final checks found
   zero project development processes, zero listeners on ports 8123/3124, and
   no `apps/web/.next/dev/lock`.
-- The exact-commit CI run executed the lifecycle regression, which starts each
-  app in an isolated POSIX process group or a verified Windows kill-on-close
-  Job Object. It proves a failed Windows Job assignment cannot release the
-  gated target, both endpoint ports are released, and an immediate second
-  `dev` start succeeds on identical ports. Strict MyPy checks passed for both
+- The 2026-08-01 exact-commit CI run at
+  `ed04597402da3670960c7e0ef2076be7f0867541` executed the lifecycle regression,
+  which starts each app in an isolated POSIX process group or a verified
+  Windows kill-on-close Job Object. It proves a failed Windows Job assignment
+  cannot release the gated target, both endpoint ports are released, and an
+  immediate second `dev` start succeeds on identical ports. The test imports
+  `scripts.tasks` without path mutation. Strict MyPy checks passed for both
   `win32` and `linux`; the earlier real two-cycle runtime test above was
   executed on Windows at `9a63271737596b2bf569bb553b8efa69c06f42ae`.
 - `pyproject.toml`, the API member project, and `uv.lock` are now the only
@@ -97,11 +117,13 @@ has executed or passed.
 
 ### Open local dependency risks
 
-- The exact-commit CI run emitted one `StarletteDeprecationWarning`: locked
-  Starlette 1.3.1 accepts `httpx==0.28.1` as a fallback but currently prefers
-  `httpx2`. The required health test still passed with its exact response
-  assertion. Treat the warning as open compatibility debt and resolve the
-  upstream test-client dependency direction before a later framework upgrade.
+- The recorded local full-CI run at
+  `ed04597402da3670960c7e0ef2076be7f0867541` emitted one
+  `StarletteDeprecationWarning`: locked Starlette 1.3.1 accepts
+  `httpx==0.28.1` as a fallback but currently prefers `httpx2`. The required
+  health test still passed with its exact response assertion. Treat the warning
+  as open compatibility debt and resolve the upstream test-client dependency
+  direction before a later framework upgrade.
 
 - The valid Next.js 16.2.11 dependency graph passes clean installation and
   `npm ls`. On 2026-07-23, `npm audit --omit=dev --json` against the committed
@@ -117,12 +139,26 @@ has executed or passed.
 
 ### Verified remotely
 
-- No remote workflow run covers locally verified dependency-correction commit
-  `5de3e6780107eeb184bba86bbd7130494fc8f0ce` yet. The existing
-  `docs-validation` check is documentation-only and is not evidence of the
-  SKEL-006 application CI baseline. The following evidence remains limited to
-  the named Phase 0 commits.
-- **Evidence snapshot (2026-07-21):** [`docs-validation` run
+- **SKEL-001 documentation evidence (2026-08-01):**
+  [`docs-validation` run #27](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/30714970773)
+  succeeded for pull-request commit
+  [`ed045974`](https://github.com/AdderlyMH/ai-qa-copilot/commit/ed04597402da3670960c7e0ef2076be7f0867541).
+  GitHub Actions independently executed the documentation-tooling workflow:
+  it synchronized documentation dependencies, linted and type-checked the
+  validation scripts, ran validator self-tests, checked manifest freshness,
+  and validated the documentation contract. It installed no application
+  runtime and ran no API, lifecycle, frontend, or full-application CI checks;
+  it is not evidence of the SKEL-006 application CI baseline.
+- PR #5 records submitted common-tip PASS reviews for
+  [backend/shared contracts](https://github.com/AdderlyMH/ai-qa-copilot/pull/5#pullrequestreview-4835581606),
+  [frontend](https://github.com/AdderlyMH/ai-qa-copilot/pull/5#pullrequestreview-4835581643),
+  and [monorepo/tooling/docs](https://github.com/AdderlyMH/ai-qa-copilot/pull/5#pullrequestreview-4835581676)
+  at `ed04597402da3670960c7e0ef2076be7f0867541`. These submitted review
+  records establish a synchronized review tip; they are not final PR approval
+  or application-CI evidence. Because this status synchronization changes a
+  manifest-covered file, the successor head is subject to the same synchronized
+  reviews and exact-SHA documentation workflow before final acceptance.
+- **Historical Phase 0 evidence snapshot (2026-07-21):** [`docs-validation` run
   #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
   succeeded for pull-request branch commit
   [`dac1f24`](https://github.com/AdderlyMH/ai-qa-copilot/commit/dac1f241dc85936ebd4c7d44163ea0370aee3b9c).
@@ -130,8 +166,8 @@ has executed or passed.
   #19](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811327018)
   succeeded for merged `main` commit
   [`5645582`](https://github.com/AdderlyMH/ai-qa-copilot/commit/56455820b2aa22c5de075112babbe35a3c29d61c).
-  Each result applies only to its recorded commit; later commits need their
-  own successful run.
+  Each historical result applies only to its recorded commit; run #27 above is
+  the separately scoped documentation evidence for `ed04597402da3670960c7e0ef2076be7f0867541`.
 - The public GitHub API verified `main` is protected and that active ruleset
   [`19300108`](https://github.com/AdderlyMH/ai-qa-copilot/rules/19300108)
   requires strict `docs-validation`, resolved review threads, and blocks
@@ -178,12 +214,13 @@ release milestone.
 
 ## Next action
 
-Re-review the corrected **SKEL-001 — Initialize monorepo** change with clean
-locked bootstrap and CI evidence anchored to
-`5de3e6780107eeb184bba86bbd7130494fc8f0ce`, retain the earlier runtime evidence
-boundary at `9a63271737596b2bf569bb553b8efa69c06f42ae`, and obtain a successful
-exact-SHA remote `docs-validation` run for the evidence-record correction. Do
-not start SKEL-002 or any later item until this scoped change is accepted. Every
-later implementation, parser, execution, evaluation, deployment, and
-security-release claim remains subject to its own documented dependencies and
-deterministic verification.
+For the unchanged live PR head, advance through the first incomplete gate step:
+record clean local full-CI evidence; obtain a successful documentation-only
+`docs-validation` run on the same exact SHA; obtain synchronized reviews from
+backend/shared-contracts, frontend, and monorepo/tooling/docs specialists on
+that SHA and proceed only if all three verdicts are PASS; then submit the
+unchanged head for final acceptance. Keep PR #5 in draft through the evidence
+steps. Do not start SKEL-002 or any later item until this scoped change is
+accepted. Every later implementation, parser, execution, evaluation,
+deployment, and security-release claim remains subject to its own documented
+dependencies and deterministic verification.
