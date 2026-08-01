@@ -10,7 +10,6 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from types import ModuleType
 
 import pytest
 
@@ -21,18 +20,7 @@ SHUTDOWN_TIMEOUT_SECONDS = 15.0
 PORT_RELEASE_TIMEOUT_SECONDS = 1.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 POSIX_FORCE_KILL_SIGNAL = 9
-
-
-def load_task_runner() -> ModuleType:
-    scripts_path = str(ROOT / "scripts")
-    sys.path.insert(0, scripts_path)
-    try:
-        return importlib.import_module("tasks")
-    finally:
-        sys.path.remove(scripts_path)
-
-
-TASK_RUNNER = load_task_runner()
+TASK_RUNNER = importlib.import_module("scripts.tasks")
 
 
 def available_port() -> int:

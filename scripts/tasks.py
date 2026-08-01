@@ -161,7 +161,7 @@ def test() -> None:
     """Run documentation self-tests and backend tests."""
 
     docs_self_test()
-    uv_run("pytest")
+    uv_run("python", "-m", "pytest")
 
 
 def docs_check() -> None:
