@@ -1,27 +1,26 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-01<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; Phase 1 active<br>
-**Current phase:** Phase 1 — SKEL-001 final gate; final acceptance pending<br>
-**Health:** Yellow — recorded local validation, remote documentation validation, and synchronized review evidence are positive through `ed04597402da3670960c7e0ef2076be7f0867541`; final acceptance is governed by one unchanged live head, application CI/SKEL-006 remains not started, and test-client compatibility debt remains open
+**Status date:** 2026-08-04<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 verified on `main`<br>
+**Current phase:** Phase 1 — SKEL-001 accepted; SKEL-002 not started<br>
+**Health:** Green — SKEL-001 final acceptance passed on merged `main` `4599587b9ac30e2580ec6814eb039591da2e83a1`; verified remote documentation-CI evidence and final specialist review evidence apply to the unchanged merged tree
 
 ## Current status
 
-The repository has a verified Phase 0 documentation/governance baseline. The
-scoped SKEL-001 implementation correction is anchored to
-`ed04597402da3670960c7e0ef2076be7f0867541`, on top of dependency-correction
-commit `5de3e6780107eeb184bba86bbd7130494fc8f0ce` and implementation commit
-`9a63271737596b2bf569bb553b8efa69c06f42ae`. Recorded local full-CI evidence,
-three submitted specialist PASS reviews, and independently executed remote
-documentation validation all target `ed04597402da3670960c7e0ef2076be7f0867541`.
-That correction removes the lifecycle test's `sys.path` mutation, imports
-`scripts.tasks` by its qualified module name, and runs pytest through
-`python -m pytest` for normal repository-root module resolution.
-The remote workflow covers documentation tooling only; it is not application
-CI or SKEL-006 evidence. This manifest-covered status synchronization is a
-documentation-only successor to that implementation commit. Final acceptance
-is a separate decision after the unchanged live head satisfies the exact-SHA
-gate. PR #5 remains a draft, and no final approval is claimed.
+The repository has a verified Phase 0 documentation/governance baseline. SKEL-001
+has passed final acceptance on merged `main`
+`4599587b9ac30e2580ec6814eb039591da2e83a1`. PR #5 is merged, not a draft.
+The final acceptance gate compared the merged tree with final reviewed source
+`b5fdd478fdea07b9c8b51ffde9ad8184bf173b65` and found no changed files, so
+the reviewed implementation evidence remains applicable to the merged main tree.
+
+Verified CI evidence is documentation-only `docs-validation` run
+[#28](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/30716077078),
+which succeeded for exact reviewed source
+`b5fdd478fdea07b9c8b51ffde9ad8184bf173b65`. It is valid evidence for the
+unchanged merged tree; it is not application CI and is not SKEL-006 evidence.
+The three synchronized specialist reviews on that source were PASS, and the
+final main acceptance gate is PASS. SKEL-002 has not started.
 
 The dependency correction replaces `httpx2` with pinned `httpx==0.28.1` and
 regenerates the Python lock and repository manifest. The earlier corrections
@@ -139,25 +138,17 @@ has executed or passed.
 
 ### Verified remotely
 
-- **SKEL-001 documentation evidence (2026-08-01):**
-  [`docs-validation` run #27](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/30714970773)
-  succeeded for pull-request commit
-  [`ed045974`](https://github.com/AdderlyMH/ai-qa-copilot/commit/ed04597402da3670960c7e0ef2076be7f0867541).
-  GitHub Actions independently executed the documentation-tooling workflow:
-  it synchronized documentation dependencies, linted and type-checked the
-  validation scripts, ran validator self-tests, checked manifest freshness,
-  and validated the documentation contract. It installed no application
-  runtime and ran no API, lifecycle, frontend, or full-application CI checks;
-  it is not evidence of the SKEL-006 application CI baseline.
-- PR #5 records submitted common-tip PASS reviews for
-  [backend/shared contracts](https://github.com/AdderlyMH/ai-qa-copilot/pull/5#pullrequestreview-4835581606),
-  [frontend](https://github.com/AdderlyMH/ai-qa-copilot/pull/5#pullrequestreview-4835581643),
-  and [monorepo/tooling/docs](https://github.com/AdderlyMH/ai-qa-copilot/pull/5#pullrequestreview-4835581676)
-  at `ed04597402da3670960c7e0ef2076be7f0867541`. These submitted review
-  records establish a synchronized review tip; they are not final PR approval
-  or application-CI evidence. Because this status synchronization changes a
-  manifest-covered file, the successor head is subject to the same synchronized
-  reviews and exact-SHA documentation workflow before final acceptance.
+- **SKEL-001 final acceptance evidence:** `docs-validation` run
+  [#28](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/30716077078)
+  succeeded for the exact reviewed PR source
+  [`b5fdd478`](https://github.com/AdderlyMH/ai-qa-copilot/commit/b5fdd478fdea07b9c8b51ffde9ad8184bf173b65).
+  The final acceptance gate compared that source with merged
+  [`main` `4599587`](https://github.com/AdderlyMH/ai-qa-copilot/commit/4599587b9ac30e2580ec6814eb039591da2e83a1)
+  and found no changed files. Accordingly, run #28 and the synchronized
+  backend/shared-contracts, frontend, and monorepo/tooling/docs PASS reviews
+  are verified evidence for the merged SKEL-001 tree. This workflow is
+  documentation-only; it is not application CI and is not SKEL-006 evidence.
+
 - **Historical Phase 0 evidence snapshot (2026-07-21):** [`docs-validation` run
   #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002)
   succeeded for pull-request branch commit
@@ -214,13 +205,7 @@ release milestone.
 
 ## Next action
 
-For the unchanged live PR head, advance through the first incomplete gate step:
-record clean local full-CI evidence; obtain a successful documentation-only
-`docs-validation` run on the same exact SHA; obtain synchronized reviews from
-backend/shared-contracts, frontend, and monorepo/tooling/docs specialists on
-that SHA and proceed only if all three verdicts are PASS; then submit the
-unchanged head for final acceptance. Keep PR #5 in draft through the evidence
-steps. Do not start SKEL-002 or any later item until this scoped change is
-accepted. Every later implementation, parser, execution, evaluation,
-deployment, and security-release claim remains subject to its own documented
-dependencies and deterministic verification.
+Review and merge this documentation-only status update. After it merges, decide
+separately whether to authorize a scoped SKEL-002 branch; SKEL-002 has not
+started and is not implemented here.
+
