@@ -18,6 +18,7 @@ from urllib.parse import unquote
 import yaml
 
 from docs_integrity import (
+    DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES,
     MANIFEST_FILENAME,
     SCHEMA_VERSION,
     SELF_HASH_POLICY,
@@ -54,8 +55,7 @@ REQUIRED_FILES = (
     "README.md",
     MANIFEST_FILENAME,
     "pyproject.toml",
-    "requirements-dev.txt",
-    "requirements-docs.txt",
+    *sorted(DEPENDENCY_LOCK_AND_TOOLCHAIN_PIN_FILES),
     ".github/workflows/docs-validation.yml",
     "docs/PROJECT_CHARTER.md",
     "docs/PRODUCT_REQUIREMENTS.md",
@@ -2052,6 +2052,19 @@ def validate_repository_manifest(root: Path, errors: list[str]) -> int:
         for difference in differences:
             add_error(errors, f"Repository manifest: {difference}")
     expected = build_manifest(root)
+    expected_paths = {
+        entry["path"]
+        for entry in expected["files"]
+        if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+    }
+    required_manifest_paths = set(REQUIRED_FILES) - {MANIFEST_FILENAME}
+    missing_required_coverage = required_manifest_paths - expected_paths
+    if missing_required_coverage:
+        add_error(
+            errors,
+            "Repository manifest: required-file coverage is missing "
+            f"{', '.join(sorted(missing_required_coverage))}",
+        )
     if expected.get("schema_version") != SCHEMA_VERSION:
         add_error(errors, "Repository manifest: unexpected schema version")
     policy = expected.get("inclusion_policy", {})
@@ -2120,6 +2133,10 @@ def _copy_repository_inputs(root: Path, destination: Path) -> None:
         ignore=shutil.ignore_patterns(
             ".git",
             ".idea",
+            ".mypy_cache",
+            ".next",
+            ".node-runtime",
+            ".ruff_cache",
             ".venv",
             "__pycache__",
             ".pytest_cache",
@@ -2141,12 +2158,46 @@ def _empty_adr_decision(path: Path) -> None:
     path.write_text(replacement, encoding="utf-8", newline="\n")
 
 
-def run_self_tests(root: Path) -> tuple[bool, list[str]]:
+def run_self_tests(root: Path) -> tuple[bool, list[str], bool]:
     """Run isolated validation and manifest-stability checks in temporary copies."""
 
     failures: list[str] = []
+    external_symlink_tested = False
     with tempfile.TemporaryDirectory(prefix="docs-validator-") as temporary:
         temporary_root = Path(temporary)
+
+        symlink_root = temporary_root / "excluded-external-symlink"
+        symlink_root.mkdir()
+        symlink_readme = symlink_root / "README.md"
+        symlink_readme.write_text(
+            "Manifest discovery symlink regression fixture.\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        external_target = temporary_root / "external-python"
+        external_target.write_bytes(b"external target")
+        excluded_symlink = symlink_root / ".venv" / "bin" / "python"
+        excluded_symlink.parent.mkdir(parents=True)
+        try:
+            excluded_symlink.symlink_to(external_target)
+        except OSError as error:
+            if sys.platform != "win32" or getattr(error, "winerror", None) != 1314:
+                failures.append(
+                    f"could not construct external-target symlink fixture: {error}"
+                )
+        else:
+            external_symlink_tested = True
+            try:
+                discovered = discover_included_files(symlink_root)
+            except ValueError:
+                failures.append(
+                    "manifest discovery resolved an excluded external-target symlink"
+                )
+            else:
+                if discovered != [symlink_readme]:
+                    failures.append(
+                        "manifest discovery included a file beneath excluded .venv"
+                    )
 
         stale_root = temporary_root / "stale-manifest"
         _copy_repository_inputs(root, stale_root)
@@ -2355,7 +2406,7 @@ def run_self_tests(root: Path) -> tuple[bool, list[str]]:
                 for expected_error in expected_errors
             ):
                 failures.append("missing fixture traceability was not detected")
-    return not failures, failures
+    return not failures, failures, external_symlink_tested
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -2378,7 +2429,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     root = repository_root()
     if args.self_test:
-        passed, failures = run_self_tests(root)
+        passed, failures, external_symlink_tested = run_self_tests(root)
         if not passed:
             print("Documentation validator self-tests failed:")
             for failure in failures:
@@ -2386,6 +2437,12 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print("Documentation validator self-tests passed:")
         print("- stale manifest detected")
+        if external_symlink_tested:
+            print("- excluded external-target symlink ignored")
+        else:
+            print(
+                "- external-target symlink test skipped (Windows privilege unavailable)"
+            )
         print("- CRLF manifest normalization is stable")
         print("- binary evidence bytes are manifest-sensitive")
         print("- empty ADR section detected")

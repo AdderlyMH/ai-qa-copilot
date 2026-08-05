@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ai-qa-copilot:contracts:health-response:v1",
+  "title": "Health Response v1",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "const": "ok"
+    },
+    "service": {
+      "type": "string",
+      "const": "ai-qa-copilot-api"
+    }
+  },
+  "required": [
+    "status",
+    "service"
+  ],
+  "additionalProperties": false
+}

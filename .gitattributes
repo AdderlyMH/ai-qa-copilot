@@ -1,14 +1,19 @@
 # MANIFEST.json hashes LF-canonical bytes. Keep every manifest-covered text
 # file LF-normalized so its digest is identical in Windows and Linux checkouts.
+.gitattributes text eol=lf
+.gitignore text eol=lf
 README.md text eol=lf
 AGENTS.md text eol=lf
 CONTRIBUTING.md text eol=lf
 LICENSE text eol=lf
 Makefile text eol=lf
 pyproject.toml text eol=lf
-requirements-dev.txt text eol=lf
-requirements-docs.txt text eol=lf
 MANIFEST.json text eol=lf
+.node-version text eol=lf
+.python-version text eol=lf
+package.json text eol=lf
+package-lock.json text eol=lf
+uv.lock text eol=lf
 
 docs/**/*.md text eol=lf
 docs/evidence/**/*.png binary
@@ -21,6 +26,14 @@ scripts/docs_integrity.py text eol=lf
 scripts/generate_manifest.py text eol=lf
 scripts/tasks.py text eol=lf
 scripts/validate_docs.py text eol=lf
+apps/**/*.json text eol=lf
+apps/**/*.mjs text eol=lf
+apps/**/*.py text eol=lf
+apps/**/*.toml text eol=lf
+apps/**/*.ts text eol=lf
+apps/**/*.tsx text eol=lf
+packages/**/*.json text eol=lf
+packages/**/*.md text eol=lf
 .github/CODEOWNERS text eol=lf
 .github/dependabot.yml text eol=lf
 .github/pull_request_template.md text eol=lf
