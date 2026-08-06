@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-04<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 verified on `main`<br>
-**Current phase:** Phase 1 — SKEL-001 accepted; SKEL-002 not started<br>
-**Health:** Green — SKEL-001 final acceptance passed on merged `main` `4599587b9ac30e2580ec6814eb039591da2e83a1`; verified remote documentation-CI evidence and final specialist review evidence apply to the unchanged merged tree
+**Status date:** 2026-08-06<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 verified on `main`; SKEL-002 implementation in progress<br>
+**Current phase:** Phase 1 — SKEL-002 local PostgreSQL and migration baseline<br>
+**Health:** Yellow — SKEL-002 implementation is in progress and is not verified; Docker/PostgreSQL integration evidence is still required, and no SKEL-006 application-CI claim is made
 
 ## Current status
 
@@ -20,7 +20,24 @@ which succeeded for exact reviewed source
 `b5fdd478fdea07b9c8b51ffde9ad8184bf173b65`. It is valid evidence for the
 unchanged merged tree; it is not application CI and is not SKEL-006 evidence.
 The three synchronized specialist reviews on that source were PASS, and the
-final main acceptance gate is PASS. SKEL-002 has not started.
+final main acceptance gate is PASS. The current SKEL-002 branch is based on
+current `main` `4fa6bb827047ee4a2faac104bd8c694a03d796d0`, which includes the
+documentation-only SKEL-001 verification merge from PR #11.
+
+SKEL-002 implementation is now in progress. Its scope is one local
+PostgreSQL/pgvector Compose service, an Alembic migration baseline that creates
+only the `vector` extension, environment-only migration connectivity, stable
+database task targets, and focused migration tests. It does not add FastAPI
+database connectivity, project/domain tables, CRUD, application routes, UI
+behavior, cloud infrastructure, or SKEL-003+ functionality. The existing `ci`
+target remains Docker-free and the GitHub `docs-validation` workflow remains
+documentation-only; neither is SKEL-006 application-CI evidence.
+
+The implementation environment used for this change does not provide a Docker
+CLI/daemon. Accordingly, the required real `db-check` lifecycle has not been
+verified here and SKEL-002 must remain unverified until the exact branch
+revision passes that check on a Docker-enabled host. Source inspection or unit
+tests must not be substituted for that integration evidence.
 
 The dependency correction replaces `httpx2` with pinned `httpx==0.28.1` and
 regenerates the Python lock and repository manifest. The earlier corrections
@@ -36,6 +53,19 @@ has executed or passed.
 
 ### Recorded local validation
 
+- SKEL-002 implementation-worktree validation on 2026-08-06 used Python
+  3.13.11 through the repository-required uv 0.11.16. After redirecting this
+  environment's tool caches to writable temporary storage, exact
+  `python scripts/tasks.py bootstrap` completed successfully and exact
+  `python scripts/tasks.py ci` passed Ruff, frontend ESLint, strict MyPy,
+  strict TypeScript, documentation self-tests, five pytest cases with one
+  platform-specific skip, the 53-file manifest check, and documentation
+  validation. The existing Starlette `httpx` deprecation warning remains.
+  Exact `docker compose config` could not run because this environment has no
+  `docker` executable; exact `python scripts/tasks.py db-check` therefore also
+  stopped immediately with `Required executable is not on PATH: docker` before
+  creating resources. These results are not Docker/PostgreSQL integration
+  evidence and do not verify SKEL-002.
 - Recorded exact-commit correction verification on 2026-08-01 used Python
   3.13.11, uv 0.11.16, Node.js 24.18.0, and npm 11.16.0 at
   `ed04597402da3670960c7e0ef2076be7f0867541`. The stable
@@ -195,8 +225,8 @@ release milestone.
 
 ## Not started
 
-- SKEL-002 and every later implementation item, including the SKEL-006
-  application CI baseline.
+- SKEL-003 and every later implementation item, including the SKEL-006
+  application CI baseline; SKEL-002 is in progress but not verified.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -205,7 +235,6 @@ release milestone.
 
 ## Next action
 
-Review and merge this documentation-only status update. After it merges, decide
-separately whether to authorize a scoped SKEL-002 branch; SKEL-002 has not
-started and is not implemented here.
-
+Run `docker compose config` and `python scripts/tasks.py db-check` against the
+exact SKEL-002 branch revision on a Docker-enabled host, attach the successful
+integration evidence to its draft PR, and then request SKEL-002 final review.
