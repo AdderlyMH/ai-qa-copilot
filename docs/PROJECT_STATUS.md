@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-06<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 verified on `main`; SKEL-002 awaiting final acceptance<br>
-**Current phase:** Phase 1 — SKEL-002 local PostgreSQL and migration baseline<br>
-**Health:** Yellow — SKEL-002 implementation and required Docker/PostgreSQL integration evidence are complete, but final acceptance is pending and no SKEL-006 application-CI claim is made
+**Status date:** 2026-08-07<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 and SKEL-002 verified on `main`; SKEL-003 not started<br>
+**Current phase:** Phase 1 — SKEL-002 accepted; SKEL-003 not started<br>
+**Health:** Green — SKEL-002 final acceptance passed on merged `main` `e4bc22e991d9851bc1999775aa2a4cba455ee457`; the successful Docker/PostgreSQL integration evidence and reviewed branch evidence apply to the unchanged merged tree
 
 ## Current status
 
@@ -20,12 +20,16 @@ which succeeded for exact reviewed source
 `b5fdd478fdea07b9c8b51ffde9ad8184bf173b65`. It is valid evidence for the
 unchanged merged tree; it is not application CI and is not SKEL-006 evidence.
 The three synchronized specialist reviews on that source were PASS, and the
-final main acceptance gate is PASS. The current SKEL-002 branch is based on
-current `main` `4fa6bb827047ee4a2faac104bd8c694a03d796d0`, which includes the
-documentation-only SKEL-001 verification merge from PR #11.
+final main acceptance gate is PASS.
 
-The SKEL-002 implementation candidate is complete and awaiting final acceptance.
-Its scope is one local
+SKEL-002 has passed final acceptance on merged `main`
+`e4bc22e991d9851bc1999775aa2a4cba455ee457`. PR #12 is merged. The final
+acceptance gate compared the merged tree with final reviewed source
+`fc52090b62806a7b959364e426a0e69e8938ca47` and found no changed files, so the
+reviewed implementation and migration evidence remains applicable to the
+merged main tree. SKEL-003 has not started.
+
+The verified SKEL-002 scope is one local
 PostgreSQL/pgvector Compose service, an Alembic migration baseline that creates
 only the `vector` extension, environment-only migration connectivity, stable
 database task targets, and focused migration tests. It does not add FastAPI
@@ -37,11 +41,13 @@ documentation-only; neither is SKEL-006 application-CI evidence.
 The required real `db-check` lifecycle passed on a Docker-enabled Windows host
 against exact implementation candidate
 `604f2381f9df3dfb3fdafd4744d83bca7155816b`. The same candidate subsequently
-passed the repository's Docker-free `ci` target. This supplies the previously
-missing Docker/PostgreSQL integration evidence; SKEL-002 remains unverified
-until final acceptance covers that candidate plus this documentation-only
-correction. Neither local `ci` nor the documentation workflow is SKEL-006
-application-CI evidence.
+passed the repository's Docker-free `ci` target. The final reviewed source
+`fc52090b62806a7b959364e426a0e69e8938ca47` changes only `README.md`,
+`docs/PROJECT_STATUS.md`, and `MANIFEST.json` relative to that Docker-validated
+candidate, and `docs-validation` run #39 succeeded on that reviewed source.
+The merged main tree has no file differences from the reviewed source, so this
+evidence carries forward and SKEL-002 is verified on `main`. Neither local
+`ci` nor the documentation workflow is SKEL-006 application-CI evidence.
 
 The dependency correction replaces `httpx2` with pinned `httpx==0.28.1` and
 regenerates the Python lock and repository manifest. The earlier corrections
@@ -68,9 +74,9 @@ has executed or passed.
   53-file manifest check, and documentation validation. The run reported the
   existing Starlette test-client deprecation warning, a Windows pytest-cache
   permission warning, and the explicit Windows symlink-privilege self-test
-  skip; none failed the command. This is local SKEL-002 integration and
-  validation evidence, not SKEL-006 application-CI evidence. SKEL-002 is still
-  pending final acceptance.
+  skip; none failed the command. This is accepted SKEL-002 integration and
+  validation evidence for the unchanged merged tree, not SKEL-006
+  application-CI evidence.
 - Earlier SKEL-002 implementation-worktree validation on 2026-08-06 used Python
   3.13.11 through the repository-required uv 0.11.16. After redirecting this
   environment's tool caches to writable temporary storage, exact
@@ -186,6 +192,21 @@ has executed or passed.
 
 ### Verified remotely
 
+- **SKEL-002 final acceptance evidence:** `docs-validation` run
+  [#39](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/31148627487)
+  succeeded for the exact final reviewed PR source
+  [`fc52090b`](https://github.com/AdderlyMH/ai-qa-copilot/commit/fc52090b62806a7b959364e426a0e69e8938ca47).
+  The final main acceptance gate compared that source with merged
+  [`main` `e4bc22e`](https://github.com/AdderlyMH/ai-qa-copilot/commit/e4bc22e991d9851bc1999775aa2a4cba455ee457)
+  and found no changed files. The real Docker/PostgreSQL `db-check` and full
+  local `ci` passed on implementation candidate
+  [`604f238`](https://github.com/AdderlyMH/ai-qa-copilot/commit/604f2381f9df3dfb3fdafd4744d83bca7155816b),
+  and the only later changes before the reviewed source were documentation and
+  manifest corrections. Accordingly, that integration evidence and the final
+  backend/migration PASS review apply to the merged SKEL-002 tree. The GitHub
+  workflow remains documentation-only; it is not application CI and is not
+  SKEL-006 evidence.
+
 - **SKEL-001 final acceptance evidence:** `docs-validation` run
   [#28](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/30716077078)
   succeeded for the exact reviewed PR source
@@ -244,8 +265,8 @@ release milestone.
 ## Not started
 
 - SKEL-003 and every later implementation item, including the SKEL-006
-  application CI baseline; SKEL-002 is awaiting final acceptance and is not
-  yet verified.
+  application CI baseline. SKEL-002 is verified on `main`; none of these later
+  items is claimed as started or verified.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -254,7 +275,5 @@ release milestone.
 
 ## Next action
 
-Request SKEL-002 final review against the exact documentation-corrected branch
-revision, carrying forward the successful `604f238` Docker/PostgreSQL
-integration evidence because this correction changes documentation and the
-manifest only.
+Merge this documentation-only SKEL-002 verification closeout, then begin
+SKEL-003 from the resulting current `main` without adding later-scope work.
