@@ -922,7 +922,7 @@ If the schedule slips:
 ## 15. Immediate next issue
 
 FND-001 through FND-009 have recorded Phase 0 evidence. The immediate work is
-corrective review of **SKEL-001 — Initialize monorepo** in Phase 1. SKEL-002
-and every later implementation item remain unstarted; later parser and
-execution work remains subject to its own documented dependencies and
-deterministic verification.
+**SKEL-002 — Add local PostgreSQL and migrations** in Phase 1 after verified
+SKEL-001 acceptance. SKEL-003 and every later implementation item remain
+unstarted; later parser and execution work remains subject to its own documented
+dependencies and deterministic verification.

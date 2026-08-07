@@ -3,13 +3,13 @@
 ## Current state
 
 The repository has completed its Phase 0 documentation and governance baseline,
-and Phase 1 is active. SKEL-001 is limited to a FastAPI health endpoint, a
-Next.js walking-skeleton page, a versioned shared health contract, dependency
-locks, and the stable local engineering commands.
+and Phase 1 is active. SKEL-001 is verified on `main`. SKEL-002 adds the
+local-only PostgreSQL/pgvector and Alembic migration baseline while leaving the
+FastAPI application disconnected from the database.
 
-No database, model integration, authentication, retrieval, worker, deployment,
-runtime evaluation, product metric, latency result, or cost result has been
-implemented or verified.
+No project persistence/entity, model integration, authentication, retrieval,
+worker, deployment, runtime evaluation, product metric, latency result, or cost
+result has been implemented or verified.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
 work with milestones and estimates; GitHub enforces the required `main` CI
@@ -55,6 +55,7 @@ Prerequisites:
 - uv 0.11.16.
 - Node.js 24 LTS (`.node-version` pins 24.18.0).
 - npm 11.16.0 (pinned by the root `packageManager` field).
+- Docker Engine with Docker Compose v2 for the SKEL-002 local database targets.
 
 Install exactly the committed dependency graphs and start both applications:
 
@@ -79,6 +80,64 @@ Run the complete local validation contract with:
 ```powershell
 python scripts/tasks.py ci
 ```
+
+`ci` deliberately remains Docker-free. Docker/PostgreSQL migration integration
+coverage is provided separately by `db-check`; the SKEL-006 application-CI
+baseline is not implemented by this target.
+
+## Local PostgreSQL and migrations
+
+The root `compose.yaml` runs one PostgreSQL 17 service with pgvector 0.8.6. The
+image is immutable-pinned as
+`pgvector/pgvector:0.8.6-pg17-bookworm@sha256:7ae6051efd0e60444282c27c7e141af07f322ce033300e727a49c3dd11075e38`.
+Its database port is published only on `127.0.0.1`; its named data volume and
+default bridge network are scoped by the Compose project.
+
+The defaults in `compose.yaml` and `.env.example` are development-only example
+credentials, not production secrets. Alembic does not contain a database URL;
+it reads `DATABASE_URL` from the process environment and fails closed when the
+variable is absent. The task runner does not load `.env` into the shell for
+Alembic.
+
+With Docker running, start the database and apply the initial migration in
+PowerShell:
+
+```powershell
+python scripts/tasks.py bootstrap
+python scripts/tasks.py db-up
+$env:DATABASE_URL = "postgresql+psycopg://ai_qa_copilot:ai_qa_copilot_dev@127.0.0.1:5432/ai_qa_copilot"
+python scripts/tasks.py migrate
+```
+
+Rollback to an empty Alembic base, recreate the migration, and stop the local
+database while preserving its development volume:
+
+```powershell
+python scripts/tasks.py migrate-down
+python scripts/tasks.py migrate
+python scripts/tasks.py db-down
+```
+
+To intentionally remove the local development data volume and recreate a clean
+database, run:
+
+```powershell
+docker compose down --volumes
+python scripts/tasks.py db-up
+python scripts/tasks.py migrate
+```
+
+For the SKEL-002 integration proof, use:
+
+```powershell
+python scripts/tasks.py db-check
+```
+
+`db-check` creates its own isolated Compose project and named volume, waits for
+PostgreSQL health, runs `upgrade head`, verifies the Alembic revision and
+`vector` extension through SQL, runs `downgrade base` and verifies rollback,
+then applies `upgrade head` again. Its cleanup path always requests removal of
+that check project's containers and volumes.
 
 ### Automatic manifest refresh before commits
 

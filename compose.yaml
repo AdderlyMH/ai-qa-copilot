@@ -1,0 +1,26 @@
+name: ai-qa-copilot
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg17-bookworm@sha256:7ae6051efd0e60444282c27c7e141af07f322ce033300e727a49c3dd11075e38
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ai_qa_copilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_qa_copilot_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-ai_qa_copilot}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -p 5432 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 2s
+
+volumes:
+  postgres-data:

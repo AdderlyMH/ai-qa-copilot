@@ -2,6 +2,7 @@
 # file LF-normalized so its digest is identical in Windows and Linux checkouts.
 .gitattributes text eol=lf
 .gitignore text eol=lf
+.env.example text eol=lf
 README.md text eol=lf
 AGENTS.md text eol=lf
 CONTRIBUTING.md text eol=lf
@@ -14,6 +15,7 @@ MANIFEST.json text eol=lf
 package.json text eol=lf
 package-lock.json text eol=lf
 uv.lock text eol=lf
+compose.yaml text eol=lf
 
 docs/**/*.md text eol=lf
 docs/evidence/**/*.png binary
@@ -27,6 +29,8 @@ scripts/generate_manifest.py text eol=lf
 scripts/tasks.py text eol=lf
 scripts/validate_docs.py text eol=lf
 apps/**/*.json text eol=lf
+apps/**/*.ini text eol=lf
+apps/**/*.mako text eol=lf
 apps/**/*.mjs text eol=lf
 apps/**/*.py text eol=lf
 apps/**/*.toml text eol=lf

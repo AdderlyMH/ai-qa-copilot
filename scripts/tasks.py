@@ -6,6 +6,7 @@ import argparse
 import os
 import signal
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -17,6 +18,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_NODE_MAJOR = 24
 EXECUTABLE_OVERRIDE_PREFIX = "AI_QA_COPILOT"
+ALEMBIC_CONFIG = "apps/api/alembic.ini"
+COMPOSE_FILE = "compose.yaml"
+DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
+DB_CHECK_NAME = "ai_qa_copilot_check"
+DB_CHECK_USER = "ai_qa_copilot_check"
+DB_CHECK_PASSWORD = "ai_qa_copilot_check"
+DB_CHECK_REVISION = "0001_enable_pgvector"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -42,6 +50,20 @@ def run(*command: str, env: dict[str, str] | None = None) -> None:
     """Run one repository command and propagate a nonzero exit status."""
 
     subprocess.run(command, cwd=ROOT, check=True, env=env)
+
+
+def run_capture(*command: str, env: dict[str, str] | None = None) -> str:
+    """Run one command and return its stripped standard output."""
+
+    completed = subprocess.run(
+        command,
+        cwd=ROOT,
+        check=True,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
 
 
 def require_executable(command: str, override_name: str) -> str:
@@ -82,6 +104,12 @@ def node() -> str:
     return require_executable("node", f"{EXECUTABLE_OVERRIDE_PREFIX}_NODE")
 
 
+def docker() -> str:
+    """Return the Docker CLI required by local database targets."""
+
+    return require_executable("docker", f"{EXECUTABLE_OVERRIDE_PREFIX}_DOCKER")
+
+
 def verify_node_major() -> None:
     """Fail when commands are not running on the supported Node.js major."""
 
@@ -114,10 +142,10 @@ def node_environment() -> dict[str, str]:
     return environment
 
 
-def uv_run(*command: str) -> None:
+def uv_run(*command: str, env: dict[str, str] | None = None) -> None:
     """Run a command in the locked Python project environment."""
 
-    run(uv(), "run", "--locked", *command)
+    run(uv(), "run", "--locked", *command, env=env)
 
 
 def npm_run(script: str) -> None:
@@ -184,6 +212,221 @@ def ci() -> None:
     typecheck()
     test()
     docs_check()
+
+
+def compose_command(project_name: str | None = None) -> tuple[str, ...]:
+    """Build the root Docker Compose command with an optional isolated project."""
+
+    command = [docker(), "compose", "--file", COMPOSE_FILE]
+    if project_name is not None:
+        command.extend(("--project-name", project_name))
+    return tuple(command)
+
+
+def db_up() -> None:
+    """Start the local PostgreSQL/pgvector service and wait for health."""
+
+    run(*compose_command(), "up", "--detach", "--wait", "postgres")
+
+
+def db_down() -> None:
+    """Stop the local database while preserving its named development volume."""
+
+    run(*compose_command(), "down", "--remove-orphans")
+
+
+def migrate() -> None:
+    """Upgrade the DATABASE_URL-selected database to the Alembic head."""
+
+    uv_run("alembic", "-c", ALEMBIC_CONFIG, "upgrade", "head")
+
+
+def migrate_down() -> None:
+    """Downgrade the DATABASE_URL-selected database to the Alembic base."""
+
+    uv_run("alembic", "-c", ALEMBIC_CONFIG, "downgrade", "base")
+
+
+def available_loopback_port() -> int:
+    """Ask the operating system for an unused IPv4 loopback TCP port."""
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
+def db_check_environment(port: int) -> dict[str, str]:
+    """Build isolated, development-only settings for the database integration check."""
+
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "POSTGRES_DB": DB_CHECK_NAME,
+            "POSTGRES_USER": DB_CHECK_USER,
+            "POSTGRES_PASSWORD": DB_CHECK_PASSWORD,
+            "POSTGRES_PORT": str(port),
+        }
+    )
+    return environment
+
+
+def migration_environment(port: int) -> dict[str, str]:
+    """Select the isolated db-check database for Alembic."""
+
+    environment = os.environ.copy()
+    environment["DATABASE_URL"] = (
+        f"postgresql+psycopg://{DB_CHECK_USER}:{DB_CHECK_PASSWORD}"
+        f"@127.0.0.1:{port}/{DB_CHECK_NAME}"
+    )
+    return environment
+
+
+def query_check_database(
+    compose: tuple[str, ...], environment: dict[str, str], query: str
+) -> str:
+    """Run one fail-fast SQL assertion query inside the isolated PostgreSQL service."""
+
+    return run_capture(
+        *compose,
+        "exec",
+        "-T",
+        "--env",
+        f"PGPASSWORD={DB_CHECK_PASSWORD}",
+        "postgres",
+        "psql",
+        "--username",
+        DB_CHECK_USER,
+        "--dbname",
+        DB_CHECK_NAME,
+        "--set",
+        "ON_ERROR_STOP=1",
+        "--tuples-only",
+        "--no-align",
+        "--command",
+        query,
+        env=environment,
+    )
+
+
+def require_database_value(label: str, actual: str, expected: str) -> None:
+    """Fail db-check when an observed SQL value does not match its contract."""
+
+    if actual != expected:
+        raise RuntimeError(f"{label}: expected {expected!r}, found {actual!r}")
+
+
+def verify_migrated_database(
+    compose: tuple[str, ...], environment: dict[str, str]
+) -> None:
+    """Verify both Alembic head state and the pgvector extension through SQL."""
+
+    require_database_value(
+        "Alembic revision",
+        query_check_database(
+            compose, environment, "SELECT version_num FROM alembic_version;"
+        ),
+        DB_CHECK_REVISION,
+    )
+    require_database_value(
+        "pgvector extension",
+        query_check_database(
+            compose,
+            environment,
+            "SELECT extname FROM pg_extension WHERE extname = 'vector';",
+        ),
+        "vector",
+    )
+
+
+def verify_rolled_back_database(
+    compose: tuple[str, ...], environment: dict[str, str]
+) -> None:
+    """Verify downgrade base removed both the revision row and pgvector extension."""
+
+    require_database_value(
+        "Alembic base revision count",
+        query_check_database(
+            compose, environment, "SELECT count(*) FROM alembic_version;"
+        ),
+        "0",
+    )
+    require_database_value(
+        "pgvector rollback count",
+        query_check_database(
+            compose,
+            environment,
+            "SELECT count(*) FROM pg_extension WHERE extname = 'vector';",
+        ),
+        "0",
+    )
+
+
+def db_check() -> None:
+    """Exercise clean create, migrate, rollback, recreate, and guaranteed cleanup."""
+
+    project_name = f"{DB_CHECK_PROJECT_PREFIX}-{os.getpid()}"
+    database_port = available_loopback_port()
+    environment = db_check_environment(database_port)
+    alembic_environment = migration_environment(database_port)
+    compose = compose_command(project_name)
+    try:
+        print(f"db-check: creating isolated Compose project {project_name}", flush=True)
+        run(
+            *compose,
+            "up",
+            "--detach",
+            "--wait",
+            "--wait-timeout",
+            "60",
+            "postgres",
+            env=environment,
+        )
+        require_database_value(
+            "initial pgvector extension count",
+            query_check_database(
+                compose,
+                environment,
+                "SELECT count(*) FROM pg_extension WHERE extname = 'vector';",
+            ),
+            "0",
+        )
+
+        print("db-check: upgrading empty database to Alembic head", flush=True)
+        uv_run(
+            "alembic",
+            "-c",
+            ALEMBIC_CONFIG,
+            "upgrade",
+            "head",
+            env=alembic_environment,
+        )
+        verify_migrated_database(compose, environment)
+
+        print("db-check: downgrading database to Alembic base", flush=True)
+        uv_run(
+            "alembic",
+            "-c",
+            ALEMBIC_CONFIG,
+            "downgrade",
+            "base",
+            env=alembic_environment,
+        )
+        verify_rolled_back_database(compose, environment)
+
+        print("db-check: recreating Alembic head after rollback", flush=True)
+        uv_run(
+            "alembic",
+            "-c",
+            ALEMBIC_CONFIG,
+            "upgrade",
+            "head",
+            env=alembic_environment,
+        )
+        verify_migrated_database(compose, environment)
+        print("db-check: integration lifecycle passed", flush=True)
+    finally:
+        print(f"db-check: cleaning Compose project {project_name}", flush=True)
+        run(*compose, "down", "--volumes", "--remove-orphans", env=environment)
 
 
 def windows_kernel32() -> object:
@@ -556,7 +799,10 @@ def print_help() -> None:
     """Print the stable target names without relying on Make availability."""
 
     print("Available targets:")
-    print("  bootstrap format lint typecheck test dev docs-check docs-self-test ci")
+    print(
+        "  bootstrap format lint typecheck test dev db-up db-down migrate "
+        "migrate-down db-check docs-check docs-self-test ci"
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -573,6 +819,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "typecheck",
             "test",
             "dev",
+            "db-up",
+            "db-down",
+            "migrate",
+            "migrate-down",
+            "db-check",
             "docs-check",
             "docs-self-test",
             "ci",
@@ -595,6 +846,11 @@ def main(argv: list[str] | None = None) -> int:
         "lint": lint,
         "typecheck": typecheck,
         "test": test,
+        "db-up": db_up,
+        "db-down": db_down,
+        "migrate": migrate,
+        "migrate-down": migrate_down,
+        "db-check": db_check,
         "docs-check": docs_check,
         "docs-self-test": docs_self_test,
         "ci": ci,

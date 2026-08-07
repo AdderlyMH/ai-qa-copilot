@@ -7,8 +7,8 @@
   "files": [
     {
       "path": ".gitattributes",
-      "bytes": 1353,
-      "sha256": "0e01858e94a5c61e332e999f2386717586f556a6515d0b2928e03ba92fdd966d"
+      "bytes": 1456,
+      "sha256": "188e21ed7010871663e0ff8ccd8f5d63550f25e79fcef74abade0195eb8e7036"
     },
     {
       "path": ".githooks/pre-commit",
@@ -62,13 +62,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 2442,
-      "sha256": "5264a7ab5804e3dff8ae76793d73e273e848804f34622f19834816b489752f60"
+      "bytes": 2937,
+      "sha256": "980e15e1f8c4c835cdc8da3cd67b76e248ca8e8a465a3e0ef8d9187d850fe8ae"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 2999,
-      "sha256": "57a1ce4616f395732d69313a9423fe52416e84322faf1e869c90caa7d1f58c9c"
+      "bytes": 4106,
+      "sha256": "2e37343ee261277777ddbe91991852e3635c06fbd3ca8c71b0fb66361c869183"
     },
     {
       "path": "LICENSE",
@@ -77,13 +77,13 @@
     },
     {
       "path": "Makefile",
-      "bytes": 627,
-      "sha256": "72c11c82c686f85676b28377f0af3262b3170d48f3529c8f17d838219afbbb5a"
+      "bytes": 909,
+      "sha256": "3d0a52d133db043d83970d3b3b8f91fb586cd9afbd4d41a433d5785e6eefeedc"
     },
     {
       "path": "README.md",
-      "bytes": 4131,
-      "sha256": "e75220c7c8d74537f8a9a52ba681a4613ec438555e44b833713b556f5b572980"
+      "bytes": 6359,
+      "sha256": "a2ba6c0ce43a56e8f2679c483f9cd9796d509d9330da1e81d3136acbeeccad9e"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 45449,
-      "sha256": "879dab2aa43dba050c3cf22c287e12692eceef280fa9bdda4fe077c71c386419"
+      "bytes": 45479,
+      "sha256": "805014a88de231fcca964e2c232334d59feb0250c240adc1b8de43f51907f918"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 12640,
-      "sha256": "a8a5c353beec0738526b7259a759d86420b40365180f592fbb945363a44bd96d"
+      "bytes": 16058,
+      "sha256": "f8b5b4bf4240c417887b0208473475531a042cc6b44c5369eeff67e862b11c47"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +242,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 952,
-      "sha256": "6875c340c57d0de6d2a38af0a9cdc79119825ad5bfa47444476544e8492ffd3e"
+      "bytes": 1025,
+      "sha256": "5d6e3d257c86119ff6d959bce3ce3a07a34fc246d545943dcdf3bf7743cb013c"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -257,8 +257,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 18873,
-      "sha256": "290413a85202f43c4a63179995402604faa883aa5d2da44be6b1276580b1cc2f"
+      "bytes": 26387,
+      "sha256": "cd871168a82207b4f8dfbbac218676389ef9cfcb72b1fac8cfe4cba37c735e5e"
     },
     {
       "path": "scripts/validate_docs.py",
@@ -267,8 +267,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 47797,
-      "sha256": "39e4556adbab07d89bd6ba7ee52ac5e88636c19e9a4f601bab9616660fcbca7d"
+      "bytes": 68663,
+      "sha256": "55fecb9d4d929c5c7c748a5166d594fe91b7cac0c639f6aedb3da29861760e87"
     }
   ]
 }
