@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-08-06<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 verified on `main`; SKEL-002 implementation in progress<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 verified on `main`; SKEL-002 awaiting final acceptance<br>
 **Current phase:** Phase 1 — SKEL-002 local PostgreSQL and migration baseline<br>
-**Health:** Yellow — SKEL-002 implementation is in progress and is not verified; Docker/PostgreSQL integration evidence is still required, and no SKEL-006 application-CI claim is made
+**Health:** Yellow — SKEL-002 implementation and required Docker/PostgreSQL integration evidence are complete, but final acceptance is pending and no SKEL-006 application-CI claim is made
 
 ## Current status
 
@@ -24,7 +24,8 @@ final main acceptance gate is PASS. The current SKEL-002 branch is based on
 current `main` `4fa6bb827047ee4a2faac104bd8c694a03d796d0`, which includes the
 documentation-only SKEL-001 verification merge from PR #11.
 
-SKEL-002 implementation is now in progress. Its scope is one local
+The SKEL-002 implementation candidate is complete and awaiting final acceptance.
+Its scope is one local
 PostgreSQL/pgvector Compose service, an Alembic migration baseline that creates
 only the `vector` extension, environment-only migration connectivity, stable
 database task targets, and focused migration tests. It does not add FastAPI
@@ -33,11 +34,14 @@ behavior, cloud infrastructure, or SKEL-003+ functionality. The existing `ci`
 target remains Docker-free and the GitHub `docs-validation` workflow remains
 documentation-only; neither is SKEL-006 application-CI evidence.
 
-The implementation environment used for this change does not provide a Docker
-CLI/daemon. Accordingly, the required real `db-check` lifecycle has not been
-verified here and SKEL-002 must remain unverified until the exact branch
-revision passes that check on a Docker-enabled host. Source inspection or unit
-tests must not be substituted for that integration evidence.
+The required real `db-check` lifecycle passed on a Docker-enabled Windows host
+against exact implementation candidate
+`604f2381f9df3dfb3fdafd4744d83bca7155816b`. The same candidate subsequently
+passed the repository's Docker-free `ci` target. This supplies the previously
+missing Docker/PostgreSQL integration evidence; SKEL-002 remains unverified
+until final acceptance covers that candidate plus this documentation-only
+correction. Neither local `ci` nor the documentation workflow is SKEL-006
+application-CI evidence.
 
 The dependency correction replaces `httpx2` with pinned `httpx==0.28.1` and
 regenerates the Python lock and repository manifest. The earlier corrections
@@ -53,7 +57,21 @@ has executed or passed.
 
 ### Recorded local validation
 
-- SKEL-002 implementation-worktree validation on 2026-08-06 used Python
+- Exact SKEL-002 integration validation on 2026-08-06 ran against
+  `604f2381f9df3dfb3fdafd4744d83bca7155816b` on a Docker-enabled Windows host.
+  Exact `python scripts/tasks.py db-check` created an isolated Compose project,
+  waited for healthy PostgreSQL, applied `upgrade head`, applied `downgrade
+  base`, applied a second `upgrade head`, passed the task's SQL assertions, and
+  removed the check container, named volume, and network during cleanup. Exact
+  `python scripts/tasks.py ci` then passed Ruff, frontend ESLint, strict MyPy,
+  strict TypeScript, documentation self-tests, all six pytest cases, the
+  53-file manifest check, and documentation validation. The run reported the
+  existing Starlette test-client deprecation warning, a Windows pytest-cache
+  permission warning, and the explicit Windows symlink-privilege self-test
+  skip; none failed the command. This is local SKEL-002 integration and
+  validation evidence, not SKEL-006 application-CI evidence. SKEL-002 is still
+  pending final acceptance.
+- Earlier SKEL-002 implementation-worktree validation on 2026-08-06 used Python
   3.13.11 through the repository-required uv 0.11.16. After redirecting this
   environment's tool caches to writable temporary storage, exact
   `python scripts/tasks.py bootstrap` completed successfully and exact
@@ -64,8 +82,8 @@ has executed or passed.
   Exact `docker compose config` could not run because this environment has no
   `docker` executable; exact `python scripts/tasks.py db-check` therefore also
   stopped immediately with `Required executable is not on PATH: docker` before
-  creating resources. These results are not Docker/PostgreSQL integration
-  evidence and do not verify SKEL-002.
+  creating resources. That earlier run is retained as environment history; it
+  does not supersede the successful `604f238` integration evidence above.
 - Recorded exact-commit correction verification on 2026-08-01 used Python
   3.13.11, uv 0.11.16, Node.js 24.18.0, and npm 11.16.0 at
   `ed04597402da3670960c7e0ef2076be7f0867541`. The stable
@@ -226,7 +244,8 @@ release milestone.
 ## Not started
 
 - SKEL-003 and every later implementation item, including the SKEL-006
-  application CI baseline; SKEL-002 is in progress but not verified.
+  application CI baseline; SKEL-002 is awaiting final acceptance and is not
+  yet verified.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -235,6 +254,7 @@ release milestone.
 
 ## Next action
 
-Run `docker compose config` and `python scripts/tasks.py db-check` against the
-exact SKEL-002 branch revision on a Docker-enabled host, attach the successful
-integration evidence to its draft PR, and then request SKEL-002 final review.
+Request SKEL-002 final review against the exact documentation-corrected branch
+revision, carrying forward the successful `604f238` Docker/PostgreSQL
+integration evidence because this correction changes documentation and the
+manifest only.

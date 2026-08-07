@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 6370,
-      "sha256": "feccca08bacc17b923c4741d9b90acecc8eb57b304f988a6d960182fb0c27daf"
+      "bytes": 6359,
+      "sha256": "a2ba6c0ce43a56e8f2679c483f9cd9796d509d9330da1e81d3136acbeeccad9e"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 14772,
-      "sha256": "d09d6b089512ddd5e8e1882c50adfa56b4b0b5dc2b230e987eaedb4c6d29c404"
+      "bytes": 16058,
+      "sha256": "f8b5b4bf4240c417887b0208473475531a042cc6b44c5369eeff67e862b11c47"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",

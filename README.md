@@ -90,8 +90,8 @@ baseline is not implemented by this target.
 The root `compose.yaml` runs one PostgreSQL 17 service with pgvector 0.8.6. The
 image is immutable-pinned as
 `pgvector/pgvector:0.8.6-pg17-bookworm@sha256:7ae6051efd0e60444282c27c7e141af07f322ce033300e727a49c3dd11075e38`.
-Its database port is published only on `127.0.0.1`, its named data volume is
-scoped by the Compose project, and its container network is internal.
+Its database port is published only on `127.0.0.1`; its named data volume and
+default bridge network are scoped by the Compose project.
 
 The defaults in `compose.yaml` and `.env.example` are development-only example
 credentials, not production secrets. Alembic does not contain a database URL;
