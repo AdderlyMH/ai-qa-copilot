@@ -3,13 +3,15 @@
 ## Current state
 
 The repository has completed its Phase 0 documentation and governance baseline,
-and Phase 1 is active. SKEL-001 is verified on `main`. SKEL-002 adds the
-local-only PostgreSQL/pgvector and Alembic migration baseline while leaving the
-FastAPI application disconnected from the database.
+and Phase 1 is active. SKEL-001 and SKEL-002 are verified on `main`. IAM-001 is
+in progress and adds the typed FastAPI authentication boundary, Cognito access-
+token validation, immutable server-side owner mapping, and local-environment
+bypass guard. Final IAM-001 acceptance has not run.
 
-No project persistence/entity, model integration, authentication, retrieval,
-worker, deployment, runtime evaluation, product metric, latency result, or cost
-result has been implemented or verified.
+No project persistence/entity, IAM-002 project authorization or demo
+publication route, model integration, retrieval, worker, deployment, runtime
+evaluation, product metric, latency result, or cost result has been implemented
+or verified.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
 work with milestones and estimates; GitHub enforces the required `main` CI
@@ -84,6 +86,46 @@ python scripts/tasks.py ci
 `ci` deliberately remains Docker-free. Docker/PostgreSQL migration integration
 coverage is provided separately by `db-check`; the SKEL-006 application-CI
 baseline is not implemented by this target.
+
+## IAM-001 authentication boundary
+
+Application startup requires an explicit `APP_ENV` value of `local`, `preview`,
+or `production`. The local authentication bypass is disabled unless
+`LOCAL_AUTH_BYPASS_ENABLED=true`, and that setting is accepted only with
+`APP_ENV=local`. Preview and production refuse startup when the bypass is
+enabled; they also require complete Cognito configuration.
+
+The owner mapping is configured server-side with `COGNITO_ISSUER`,
+`COGNITO_CLIENT_ID`, and `COGNITO_OWNER_SUBJECT`. Owner authorization compares
+only the fully validated token's `(issuer, subject)` with that configured pair;
+email, display name, Cognito groups, client-supplied roles, and identity headers
+do not grant ownership. The API accepts Cognito access tokens only after
+verifying the issuer, the access-token `client_id`, the JWKS-backed signature,
+the fixed `RS256` algorithm, expiration, `nbf` when present, and
+`token_use=access`. Amazon Cognito documents that access tokens use `client_id`
+for the app-client binding while ID tokens use `aud`; IAM-001 intentionally
+accepts access tokens only. See the [AWS token-verification
+guide](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html).
+
+For local development, configure the environment explicitly before starting
+the API. For example, PowerShell can run the application with bypass-disabled
+local settings:
+
+```powershell
+$env:APP_ENV = "local"
+$env:LOCAL_AUTH_BYPASS_ENABLED = "false"
+python scripts/tasks.py dev
+```
+
+Set `LOCAL_AUTH_BYPASS_ENABLED=true` only for an intentional local bypass. If
+the bypass is false and Cognito owner access is needed, set all three
+`COGNITO_*` values in the process environment. `.env.example` documents the
+names but the task runner does not load `.env` automatically.
+
+IAM-001 defines an anonymous guest principal as read-only and scoped only to a
+server-selected demo publication. It deliberately exposes no guest resource or
+`DemoPublication` route yet; the server-side publication lookup, project
+authorization, and authorization audit policy remain IAM-002 work.
 
 ## Local PostgreSQL and migrations
 

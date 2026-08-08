@@ -53,12 +53,20 @@ def start_dev(api_port: int, web_port: int, log_path: Path) -> subprocess.Popen[
         "--web-port",
         str(web_port),
     )
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "APP_ENV": "local",
+            "LOCAL_AUTH_BYPASS_ENABLED": "false",
+        }
+    )
     log = log_path.open("ab")
     try:
         if os.name == "nt":
             return subprocess.Popen(
                 command,
                 cwd=ROOT,
+                env=environment,
                 stdout=log,
                 stderr=subprocess.STDOUT,
                 creationflags=WINDOWS_CREATE_NEW_PROCESS_GROUP,
@@ -66,6 +74,7 @@ def start_dev(api_port: int, web_port: int, log_path: Path) -> subprocess.Popen[
         return subprocess.Popen(
             command,
             cwd=ROOT,
+            env=environment,
             stdout=log,
             stderr=subprocess.STDOUT,
             start_new_session=True,

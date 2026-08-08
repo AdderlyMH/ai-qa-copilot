@@ -4,11 +4,13 @@
 
 Phase 1 is active. The repository retains its verified Phase 0 governance and
 documentation baseline while implementation proceeds one approved backlog item
-at a time. SKEL-001 is verified on `main`; SKEL-002 is limited to the local
-PostgreSQL/pgvector Compose service, Alembic baseline, migration commands, and
-their focused tests. Do not add a project entity, FastAPI database dependency,
-or describe a later feature, deployment, benchmark, cost, latency result, or
-security control as implemented or verified.
+at a time. SKEL-001 and SKEL-002 are verified on `main`. IAM-001 is the active
+implementation boundary: Cognito access-token validation, the immutable
+server-configured owner `(issuer, subject)` mapping, typed owner/guest
+principals, and the local-only authentication bypass guard. Do not add IAM-002
+project authorization, a project entity, FastAPI database dependency, guest
+publication data access, or describe a later feature, deployment, benchmark,
+cost, latency result, or security gate as implemented or verified.
 
 The authoritative Phase 0 sources are `README.md`, `docs/`, `fixtures/`, the
 repository-governance files, and `MANIFEST.json`. `docs/PROJECT_STATUS.md`
@@ -45,6 +47,14 @@ documentation workflow or local `ci` as SKEL-006 application-CI evidence.
 ## Change rules
 
 - Preserve LF line endings for manifest-covered files.
+- Derive owner authority only from a fully validated Cognito access token whose
+  `(issuer, subject)` equals the server configuration. Never authorize from
+  email, display name, Cognito groups, client roles, identity headers, or other
+  mutable/client-controlled fields.
+- Keep anonymous guests read-only and scoped to the future server-selected
+  immutable `DemoPublication`; IAM-001 must not create a generic guest resource
+  path. A local authentication bypass is permitted only with `APP_ENV=local`,
+  and preview/production must refuse startup when it is enabled.
 - Keep security and approval boundaries deterministic; a model may propose but
   never authorize or execute a side effect.
 - B1/v1 is the initial single-model configuration. Do not introduce B2 routing
@@ -60,6 +70,7 @@ documentation workflow or local `ci` as SKEL-006 application-CI evidence.
 Each change must state the command evidence that supports it. Security,
 evaluation, and deployment claims require the relevant deterministic fixture,
 CI, or release evidence; local documentation validation alone is not runtime
-or production evidence. SKEL-002 migration verification requires an actual
-successful `db-check` on a Docker-enabled host; source inspection is not a
-substitute.
+or production evidence. IAM-001 unit/API tests are component evidence only and
+do not verify SG-05, IAM-002, deployment policy, or the full security harness.
+SKEL-002 migration verification requires an actual successful `db-check` on a
+Docker-enabled host; source inspection is not a substitute.
