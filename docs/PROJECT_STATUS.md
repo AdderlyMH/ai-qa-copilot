@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-07<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 and SKEL-002 verified on `main`; SKEL-003 not started<br>
-**Current phase:** Phase 1 — SKEL-002 accepted; SKEL-003 not started<br>
-**Health:** Green — SKEL-002 final acceptance passed on merged `main` `e4bc22e991d9851bc1999775aa2a4cba455ee457`; the successful Docker/PostgreSQL integration evidence and reviewed branch evidence apply to the unchanged merged tree
+**Status date:** 2026-08-08<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 and SKEL-002 verified on `main`; IAM-001 in progress; IAM-002 and SKEL-003 not started<br>
+**Current phase:** Phase 1 — IAM-001 implementation and branch validation<br>
+**Health:** Green — IAM-001 has focused local component evidence on `feat/iam-001`; final branch review and acceptance are pending, and no IAM-002 or SKEL-003 scope is claimed
 
 ## Current status
 
@@ -28,6 +28,24 @@ acceptance gate compared the merged tree with final reviewed source
 `fc52090b62806a7b959364e426a0e69e8938ca47` and found no changed files, so the
 reviewed implementation and migration evidence remains applicable to the
 merged main tree. SKEL-003 has not started.
+
+IAM-001 is now in progress on `feat/iam-001`, created from current `main`
+`8b9a68d172b22d9304372b461632aa5e4cf5e411`. The implementation adds a typed
+FastAPI authentication boundary; Cognito access-token validation using
+issuer-derived JWKS and fixed `RS256`; exact server-side owner `(issuer,
+subject)` matching; explicit `401` versus `403` behavior; an anonymous
+read-only guest principal; and an `APP_ENV=local`-only authentication bypass.
+Email, display name, Cognito groups, client-supplied roles, and identity headers
+do not participate in the owner decision. Preview and production reject the
+local bypass during application startup. IAM-001 is not verified; final branch
+review and acceptance remain pending.
+
+This slice does not add a `DemoPublication` model or route. The guest principal
+is scoped for the future server-selected immutable demo publication but has no
+application resource path in IAM-001. IAM-002 remains responsible for the
+central project authorization policy, immutable demo-publication selection,
+and authorization-sensitive audit events. IAM-002 and SKEL-003 have not
+started.
 
 The verified SKEL-002 scope is one local
 PostgreSQL/pgvector Compose service, an Alembic migration baseline that creates
@@ -63,6 +81,20 @@ has executed or passed.
 
 ### Recorded local validation
 
+- IAM-001 worktree validation on 2026-08-08 used Python 3.13.11, uv 0.11.16,
+  Node.js 24.18.0, and npm 11.16.0. The repository `bootstrap`, `lint`, and
+  `typecheck` targets passed. After updating the existing development-lifecycle
+  test to declare its local environment explicitly, the full `test` target
+  passed with 22 tests passed and one Windows-specific lifecycle case skipped
+  on Linux. The 17 focused IAM-001 tests cover configured owner success,
+  missing credentials, client-identity-header spoofing, valid non-owner denial,
+  malformed/wrong-issuer/wrong-client/wrong-token-use/expired/future-`nbf`
+  tokens, invalid signature, forbidden algorithm, anonymous guest read-only
+  behavior, local bypass, and preview/production bypass refusal. These tests use
+  generated in-memory RSA keys and a static JWK provider; they do not call a
+  live Cognito user pool. This is local component evidence only: IAM-001 final
+  acceptance, SG-05, SG-08, IAM-002, deployment policy, and SKEL-006 remain
+  unverified.
 - Exact SKEL-002 integration validation on 2026-08-06 ran against
   `604f2381f9df3dfb3fdafd4744d83bca7155816b` on a Docker-enabled Windows host.
   Exact `python scripts/tasks.py db-check` created an isolated Compose project,
@@ -264,9 +296,9 @@ release milestone.
 
 ## Not started
 
-- SKEL-003 and every later implementation item, including the SKEL-006
-  application CI baseline. SKEL-002 is verified on `main`; none of these later
-  items is claimed as started or verified.
+- IAM-002, SKEL-003, and every later implementation item, including the
+  SKEL-006 application CI baseline. SKEL-002 retains its prior verified status
+  on `main`; IAM-001 is in progress and is not verified.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -275,5 +307,5 @@ release milestone.
 
 ## Next action
 
-Merge this documentation-only SKEL-002 verification closeout, then begin
-SKEL-003 from the resulting current `main` without adding later-scope work.
+Complete IAM-001 branch validation and final review on `feat/iam-001`. Do not
+begin IAM-002 or SKEL-003 until IAM-001 passes its own acceptance gate.

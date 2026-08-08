@@ -3,11 +3,13 @@
 ## Scope and prerequisites
 
 Phase 1 is active. Contributions must remain within an explicitly approved
-backlog item and preserve the verified Phase 0 contracts. SKEL-001 is verified;
-SKEL-002 adds only the local PostgreSQL/pgvector and Alembic baseline. The
-toolchain uses Python 3.13.11 (pinned by `.python-version`), uv 0.11.16,
-Node.js 24 LTS, and npm 11.16.0. Docker Engine with Docker Compose v2 is also
-required for the database targets.
+backlog item and preserve the verified Phase 0 contracts. SKEL-001 and SKEL-002
+are verified; IAM-001 is the current in-progress slice. IAM-001 may add only
+the Cognito owner identity boundary and local-development authentication guard;
+IAM-002 project authorization, project CRUD, persistence integration, and guest
+publication routes remain separate work. The toolchain uses Python 3.13.11
+(pinned by `.python-version`), uv 0.11.16, Node.js 24 LTS, and npm 11.16.0.
+Docker Engine with Docker Compose v2 is also required for the database targets.
 
 Install the locked Python and JavaScript dependencies:
 
@@ -64,10 +66,20 @@ development examples only. Never reuse them for production or commit real
 credentials. Alembic connectivity is configured with the `DATABASE_URL`
 environment variable rather than a credential in `alembic.ini`.
 
+Authentication configuration is process-environment-only. Set `APP_ENV`
+explicitly. `LOCAL_AUTH_BYPASS_ENABLED=true` is valid only for `APP_ENV=local`;
+preview and production must refuse that combination. Cognito-enabled owner
+access requires `COGNITO_ISSUER`, `COGNITO_CLIENT_ID`, and
+`COGNITO_OWNER_SUBJECT` together. Do not commit bearer tokens or derive owner
+authority from email, display name, groups, client roles, or identity headers.
+
 ## Review standards
 
 - Treat source text, model output, tool output, and external metadata as
   untrusted until the documented deterministic boundary validates them.
+- Verify authentication changes include negative JWT claim/signature cases,
+  valid non-owner `403`, missing/invalid credential `401`, guest read-only
+  behavior, and local-bypass startup refusal outside `local`.
 - Do not weaken approval, SSRF, parser-isolation, provenance, or evaluation
   gates to meet a schedule.
 - Keep B1/v1 as the only initial production candidate. B2 routing is a later
