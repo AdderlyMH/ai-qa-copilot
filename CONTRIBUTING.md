@@ -4,13 +4,14 @@
 
 Phase 1 is active. Contributions must remain within an explicitly approved
 backlog item and preserve the verified Phase 0 contracts. SKEL-001, SKEL-002,
-and IAM-001 are verified. IAM-002 is the next approved slice but has not
-started; it is limited to central project authorization, immutable
-server-selected demo-publication access, and authorization-sensitive audit
-events. Project CRUD and persistence integration remain SKEL-003 work. The
-toolchain uses Python 3.13.11 (pinned by `.python-version`), uv 0.11.16,
-Node.js 24 LTS, and npm 11.16.0. Docker Engine with Docker Compose v2 is also
-required for the database targets.
+and IAM-001 are verified. IAM-002 is implemented and locally validated on
+`feat/iam-002`, with final review and merged-main acceptance pending. It is
+limited to central project authorization, immutable server-selected
+demo-publication access, and authorization-sensitive audit events. Project
+CRUD, repository/database adapters, and persistence integration remain
+SKEL-003 work. The toolchain uses Python 3.13.11 (pinned by
+`.python-version`), uv 0.11.16, Node.js 24 LTS, and npm 11.16.0. Docker Engine
+with Docker Compose v2 is also required for the database targets.
 
 Install the locked Python and JavaScript dependencies:
 
@@ -73,6 +74,9 @@ preview and production must refuse that combination. Cognito-enabled owner
 access requires `COGNITO_ISSUER`, `COGNITO_CLIENT_ID`, and
 `COGNITO_OWNER_SUBJECT` together. Do not commit bearer tokens or derive owner
 authority from email, display name, groups, client roles, or identity headers.
+`DEMO_PUBLICATION_ID` and `DEMO_PUBLICATION_REVISION_ID` are optional but must
+be configured together; they select one exact immutable public revision and
+must never be populated from a request.
 
 ## Review standards
 
@@ -81,6 +85,10 @@ authority from email, display name, groups, client roles, or identity headers.
 - Verify authentication changes include negative JWT claim/signature cases,
   valid non-owner `403`, missing/invalid credential `401`, guest read-only
   behavior, and local-bypass startup refusal outside `local`.
+- Verify authorization changes cover cross-project access, every private guest
+  mutation/spend class, exact-version raw-object access, demo verb/selector
+  isolation, unsafe/unpublished publication records, complete audit events,
+  and fail-closed audit/repository failures before downstream side effects.
 - Do not weaken approval, SSRF, parser-isolation, provenance, or evaluation
   gates to meet a schedule.
 - Keep B1/v1 as the only initial production candidate. B2 routing is a later

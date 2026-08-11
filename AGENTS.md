@@ -5,12 +5,14 @@
 Phase 1 is active. The repository retains its verified Phase 0 governance and
 documentation baseline while implementation proceeds one approved backlog item
 at a time. SKEL-001, SKEL-002, and IAM-001 are verified on `main`. IAM-002 is
-the next approved implementation boundary but has not started: central
-project-scoped authorization, immutable server-selected demo-publication
-access, and authorization-sensitive audit events. Keep project CRUD and
-persistence integration in SKEL-003, and do not describe IAM-002 or any later
-feature, deployment, benchmark, cost, latency result, or security gate as
-implemented or verified before its own evidence and acceptance exist.
+implemented and locally validated on `feat/iam-002`, but final review and
+merged-main acceptance are pending. Its boundary is central project-scoped
+authorization, immutable server-selected demo-publication access, and
+authorization-sensitive audit events. Keep project CRUD, repository/database
+adapters, and persistence integration in SKEL-003, and do not describe IAM-002
+as verified or describe any later feature, deployment, benchmark, cost,
+latency result, or security gate as implemented or verified before its own
+evidence and acceptance exist.
 
 The authoritative Phase 0 sources are `README.md`, `docs/`, `fixtures/`, the
 repository-governance files, and `MANIFEST.json`. `docs/PROJECT_STATUS.md`
@@ -51,10 +53,16 @@ documentation workflow or local `ci` as SKEL-006 application-CI evidence.
   `(issuer, subject)` equals the server configuration. Never authorize from
   email, display name, Cognito groups, client roles, identity headers, or other
   mutable/client-controlled fields.
-- Keep anonymous guests read-only and scoped to the future server-selected
-  immutable `DemoPublication`; IAM-001 must not create a generic guest resource
-  path. A local authentication bypass is permitted only with `APP_ENV=local`,
-  and preview/production must refuse startup when it is enabled.
+- Keep anonymous guests read-only and scoped to the server-selected immutable
+  `DemoPublication`. `/demo` must never accept a client-selected publication or
+  expose project/raw-object identifiers; only an exact server-configured,
+  immutable, published, sanitized synthetic/public revision may be returned. A
+  local authentication bypass is permitted only with `APP_ENV=local`, and
+  preview/production must refuse startup when it is enabled.
+- Route private resources through the central project policy before mutation,
+  raw-object access, model/queue work, approval, or execution. Preserve safe
+  `404` denials for cross-project/private resource existence and audit every
+  authorization decision without credentials or raw content.
 - Keep security and approval boundaries deterministic; a model may propose but
   never authorize or execute a side effect.
 - B1/v1 is the initial single-model configuration. Do not introduce B2 routing
@@ -70,7 +78,8 @@ documentation workflow or local `ci` as SKEL-006 application-CI evidence.
 Each change must state the command evidence that supports it. Security,
 evaluation, and deployment claims require the relevant deterministic fixture,
 CI, or release evidence; local documentation validation alone is not runtime
-or production evidence. IAM-001 unit/API tests are component evidence only and
-do not verify SG-05, IAM-002, deployment policy, or the full security harness.
+or production evidence. IAM-001 and IAM-002 unit/API tests are component
+evidence only and do not verify SG-05, durable audit persistence, deployment
+policy, or the full security harness.
 SKEL-002 migration verification requires an actual successful `db-check` on a
 Docker-enabled host; source inspection is not a substitute.
