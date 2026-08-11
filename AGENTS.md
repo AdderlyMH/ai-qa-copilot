@@ -4,13 +4,13 @@
 
 Phase 1 is active. The repository retains its verified Phase 0 governance and
 documentation baseline while implementation proceeds one approved backlog item
-at a time. SKEL-001 and SKEL-002 are verified on `main`. IAM-001 is the active
-implementation boundary: Cognito access-token validation, the immutable
-server-configured owner `(issuer, subject)` mapping, typed owner/guest
-principals, and the local-only authentication bypass guard. Do not add IAM-002
-project authorization, a project entity, FastAPI database dependency, guest
-publication data access, or describe a later feature, deployment, benchmark,
-cost, latency result, or security gate as implemented or verified.
+at a time. SKEL-001, SKEL-002, and IAM-001 are verified on `main`. IAM-002 is
+the next approved implementation boundary but has not started: central
+project-scoped authorization, immutable server-selected demo-publication
+access, and authorization-sensitive audit events. Keep project CRUD and
+persistence integration in SKEL-003, and do not describe IAM-002 or any later
+feature, deployment, benchmark, cost, latency result, or security gate as
+implemented or verified before its own evidence and acceptance exist.
 
 The authoritative Phase 0 sources are `README.md`, `docs/`, `fixtures/`, the
 repository-governance files, and `MANIFEST.json`. `docs/PROJECT_STATUS.md`

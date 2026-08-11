@@ -3,10 +3,10 @@
 ## Current state
 
 The repository has completed its Phase 0 documentation and governance baseline,
-and Phase 1 is active. SKEL-001 and SKEL-002 are verified on `main`. IAM-001 is
-in progress and adds the typed FastAPI authentication boundary, Cognito access-
-token validation, immutable server-side owner mapping, and local-environment
-bypass guard. Final IAM-001 acceptance has not run.
+and Phase 1 is active. SKEL-001, SKEL-002, and IAM-001 are verified on `main`.
+IAM-001 supplies the typed FastAPI authentication boundary, Cognito access-token
+validation, immutable server-side owner mapping, and local-environment bypass
+guard. IAM-002 is the next approved implementation item but has not started.
 
 No project persistence/entity, IAM-002 project authorization or demo
 publication route, model integration, retrieval, worker, deployment, runtime
