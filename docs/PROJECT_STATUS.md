@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-08<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 and SKEL-002 verified on `main`; IAM-001 in progress; IAM-002 and SKEL-003 not started<br>
-**Current phase:** Phase 1 — IAM-001 implementation and branch validation<br>
-**Health:** Green — IAM-001 has focused local component evidence on `feat/iam-001`; final branch review and acceptance are pending, and no IAM-002 or SKEL-003 scope is claimed
+**Status date:** 2026-08-10<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, and IAM-001 verified on `main`; IAM-002 and SKEL-003 not started<br>
+**Current phase:** Phase 1 — IAM-001 accepted; IAM-002 is the next issue and has not started<br>
+**Health:** Green — IAM-001 final security/backend acceptance passed on merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`; the reviewed head and merged tree are identical, while live Cognito/deployment evidence and SG-05/SG-08 remain unverified
 
 ## Current status
 
@@ -29,16 +29,22 @@ acceptance gate compared the merged tree with final reviewed source
 reviewed implementation and migration evidence remains applicable to the
 merged main tree. SKEL-003 has not started.
 
-IAM-001 is now in progress on `feat/iam-001`, created from current `main`
-`8b9a68d172b22d9304372b461632aa5e4cf5e411`. The implementation adds a typed
-FastAPI authentication boundary; Cognito access-token validation using
-issuer-derived JWKS and fixed `RS256`; exact server-side owner `(issuer,
-subject)` matching; explicit `401` versus `403` behavior; an anonymous
-read-only guest principal; and an `APP_ENV=local`-only authentication bypass.
-Email, display name, Cognito groups, client-supplied roles, and identity headers
-do not participate in the owner decision. Preview and production reject the
-local bypass during application startup. IAM-001 is not verified; final branch
-review and acceptance remain pending.
+IAM-001 has passed final security/backend acceptance on merged `main`
+`b577542cf6c2fb2681141eb3b69571aa7ec36503`. PR #15 is merged. The final gate
+compared reviewed head `89d633849ff7379f0854096f68846587cf77a653`, whose
+tree is `eb918e885f759e436fd5c7e33e08a710fdf8f4e0`, with the merge commit and
+found zero changed files; current `main` was identical to that merge. The
+reviewed implementation and validation evidence therefore applies unchanged,
+and IAM-001 is verified on `main` at its component acceptance boundary.
+
+The accepted implementation adds a typed FastAPI authentication boundary;
+Cognito access-token validation using issuer-derived JWKS and fixed `RS256`;
+exact server-side owner `(issuer, subject)` matching; explicit `401` versus
+`403` behavior; an anonymous read-only guest principal; and an
+`APP_ENV=local`-only authentication bypass. Email, display name, Cognito groups,
+client-supplied roles, and identity headers do not participate in the owner
+decision. Preview and production reject the local bypass during application
+startup. Live Cognito/deployment evidence, SG-05, and SG-08 remain unverified.
 
 This slice does not add a `DemoPublication` model or route. The guest principal
 is scoped for the future server-selected immutable demo publication but has no
@@ -92,9 +98,9 @@ has executed or passed.
   tokens, invalid signature, forbidden algorithm, anonymous guest read-only
   behavior, local bypass, and preview/production bypass refusal. These tests use
   generated in-memory RSA keys and a static JWK provider; they do not call a
-  live Cognito user pool. This is local component evidence only: IAM-001 final
-  acceptance, SG-05, SG-08, IAM-002, deployment policy, and SKEL-006 remain
-  unverified.
+  live Cognito user pool. This is accepted component evidence for the unchanged
+  merged IAM-001 tree; it does not verify live Cognito, SG-05, SG-08, IAM-002,
+  deployment policy, or SKEL-006.
 - Exact SKEL-002 integration validation on 2026-08-06 ran against
   `604f2381f9df3dfb3fdafd4744d83bca7155816b` on a Docker-enabled Windows host.
   Exact `python scripts/tasks.py db-check` created an isolated Compose project,
@@ -224,6 +230,21 @@ has executed or passed.
 
 ### Verified remotely
 
+- **IAM-001 final acceptance evidence:** `docs-validation` run
+  [#45](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/31283758092)
+  succeeded for exact reviewed PR head
+  [`89d63384`](https://github.com/AdderlyMH/ai-qa-copilot/commit/89d633849ff7379f0854096f68846587cf77a653),
+  whose tree is `eb918e885f759e436fd5c7e33e08a710fdf8f4e0`. The final
+  security/backend review independently reproduced repository `bootstrap` and
+  full `ci`, including 22 passed pytest cases and one platform-specific skip,
+  and reported no findings. The final main acceptance gate compared that source
+  with merged [`main` `b577542c`](https://github.com/AdderlyMH/ai-qa-copilot/commit/b577542cf6c2fb2681141eb3b69571aa7ec36503)
+  and found zero changed files; current `main` was identical. Accordingly, the
+  reviewed component evidence applies to the merged IAM-001 tree. The JWT tests
+  use generated RSA/JWK fixtures rather than a live Cognito pool, and the
+  GitHub workflow remains documentation-only; SG-05, SG-08, deployment, and
+  SKEL-006 application CI are not verified by this evidence.
+
 - **SKEL-002 final acceptance evidence:** `docs-validation` run
   [#39](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/31148627487)
   succeeded for the exact final reviewed PR source
@@ -297,8 +318,8 @@ release milestone.
 ## Not started
 
 - IAM-002, SKEL-003, and every later implementation item, including the
-  SKEL-006 application CI baseline. SKEL-002 retains its prior verified status
-  on `main`; IAM-001 is in progress and is not verified.
+  SKEL-006 application CI baseline. IAM-001 retains its verified status on
+  `main`; none of these later items is claimed as started or verified.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -307,5 +328,7 @@ release milestone.
 
 ## Next action
 
-Complete IAM-001 branch validation and final review on `feat/iam-001`. Do not
-begin IAM-002 or SKEL-003 until IAM-001 passes its own acceptance gate.
+Merge this documentation-only IAM-001 verification closeout, then create
+`feat/iam-002` from the resulting current `main` and implement IAM-002 project
+authorization, demo publication, and audit policy. Do not begin SKEL-003 until
+IAM-002 passes its own acceptance gate.

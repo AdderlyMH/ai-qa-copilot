@@ -294,7 +294,12 @@ security release gate has executed or passed.
 - **Dependencies:** SKEL-001
 - **Deliverable:** Cognito identity validation, server-side configured owner `(issuer, subject)` mapping, and a local-only authentication guard.
 - **Acceptance:** Missing or invalid Cognito access credentials return `401`; a valid non-owner identity returns `403`; validation checks the configured issuer and app client, JWKS-backed `RS256` signature, expiry, `nbf` when present, and `token_use=access`; owner authority comes only from the configured `(issuer, subject)` pair; preview and production reject a local auth bypass at startup.
-- **Implementation status (2026-08-08):** In progress on `feat/iam-001`; final acceptance is pending. IAM-002 and SKEL-003 have not started.
+- **Verification status (2026-08-08):** **Verified on merged `main`**
+  `b577542cf6c2fb2681141eb3b69571aa7ec36503` after the final security/backend
+  PASS on reviewed head `89d633849ff7379f0854096f68846587cf77a653`;
+  the merge tree had zero file differences from that reviewed source. Live
+  Cognito/deployment evidence and SG-05/SG-08 remain unverified. IAM-002 and
+  SKEL-003 have not started.
 
 #### IAM-002 — Implement project authorization, demo publication, and audit policy
 
@@ -922,8 +927,10 @@ If the schedule slips:
 
 ## 15. Immediate next issue
 
-FND-001 through FND-009 have recorded Phase 0 evidence. The immediate work is
-**IAM-001 — Implement Cognito owner identity and local-development guard** in
-Phase 1 after verified SKEL-001 and SKEL-002 acceptance. IAM-002 and SKEL-003
-remain unstarted; later parser and execution work remains subject to its own
-documented dependencies and deterministic verification.
+FND-001 through FND-009 have recorded Phase 0 evidence. IAM-001 is verified on
+merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`. After this
+documentation-only closeout, the immediate next issue is **IAM-002 — Implement
+project authorization, demo publication, and audit policy**, created from the
+resulting current `main`. IAM-002 and SKEL-003 remain unstarted; later parser
+and execution work remains subject to its own documented dependencies and
+deterministic verification.

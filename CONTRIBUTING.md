@@ -3,13 +3,14 @@
 ## Scope and prerequisites
 
 Phase 1 is active. Contributions must remain within an explicitly approved
-backlog item and preserve the verified Phase 0 contracts. SKEL-001 and SKEL-002
-are verified; IAM-001 is the current in-progress slice. IAM-001 may add only
-the Cognito owner identity boundary and local-development authentication guard;
-IAM-002 project authorization, project CRUD, persistence integration, and guest
-publication routes remain separate work. The toolchain uses Python 3.13.11
-(pinned by `.python-version`), uv 0.11.16, Node.js 24 LTS, and npm 11.16.0.
-Docker Engine with Docker Compose v2 is also required for the database targets.
+backlog item and preserve the verified Phase 0 contracts. SKEL-001, SKEL-002,
+and IAM-001 are verified. IAM-002 is the next approved slice but has not
+started; it is limited to central project authorization, immutable
+server-selected demo-publication access, and authorization-sensitive audit
+events. Project CRUD and persistence integration remain SKEL-003 work. The
+toolchain uses Python 3.13.11 (pinned by `.python-version`), uv 0.11.16,
+Node.js 24 LTS, and npm 11.16.0. Docker Engine with Docker Compose v2 is also
+required for the database targets.
 
 Install the locked Python and JavaScript dependencies:
 
