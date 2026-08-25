@@ -1,13 +1,13 @@
-# Delivery Backlog â AI Quality Engineering Copilot
+# Delivery Backlog — AI Quality Engineering Copilot
 
-**Document status:** Working baseline â Phase 0 closeout verified
+**Document status:** Working baseline — Phase 0 closeout verified
 **Version:** 0.2
 **Planning date:** 2026-07-17
 **Target release:** 2026-12-20
 **Capacity assumption:** 12 hours/week; 231 planned hours and 264 available
 hours through the revised release date
-**Issue tracker:** [AI Quality Engineering Copilot â Portfolio Release](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview)
-â FND-002 verification completed 2026-07-21
+**Issue tracker:** [AI Quality Engineering Copilot — Portfolio Release](https://linear.app/adderly/project/ai-quality-engineering-copilot-portfolio-release-b998035b4e5e/overview)
+— FND-002 verification completed 2026-07-21
 
 ## 1. Delivery strategy
 
@@ -58,32 +58,32 @@ configuration consumed by that workflow.
 
 ## 2. Milestone calendar
 
-### Revised delivery calendar â decision recorded 2026-07-20
+### Revised delivery calendar — decision recorded 2026-07-20
 
 | Phase                           | Dates         | Planned effort | Exit result                                         |
 |---------------------------------|---------------|---------------:|-----------------------------------------------------|
-| 0. Foundation                   | Jul 20âAug 2  |           22 h | Verified Phase 0 baseline and repository governance |
-| 1. Walking skeleton             | Aug 3âAug 23  |           28 h | UI â API â model â persistence â CI                 |
-| 2. Ingestion and retrieval      | Aug 24âSep 13 |           34 h | Versioned documents, hybrid retrieval, citations    |
-| 3. Analysis and test design     | Sep 14âOct 4  |           34 h | Findings, structured tests, traceability            |
-| 4. Controlled execution         | Oct 5âOct 25  |           34 h | Approval, sandbox execution, evidence               |
-| 5. Evaluation and observability | Oct 26âNov 22 |           37 h | 100-case benchmark, traces, cost/latency gates      |
-| 6. Security and deployment      | Nov 23âDec 6  |           24 h | Terraform, live deployment, hardening, rollback     |
-| 7. Portfolio release            | Dec 7âDec 20  |           18 h | Public repo, demo, video, case study                |
+| 0. Foundation                   | Jul 20–Aug 2  |           22 h | Verified Phase 0 baseline and repository governance |
+| 1. Walking skeleton             | Aug 3–Aug 23  |           28 h | UI → API → model → persistence → CI                 |
+| 2. Ingestion and retrieval      | Aug 24–Sep 13 |           34 h | Versioned documents, hybrid retrieval, citations    |
+| 3. Analysis and test design     | Sep 14–Oct 4  |           34 h | Findings, structured tests, traceability            |
+| 4. Controlled execution         | Oct 5–Oct 25  |           34 h | Approval, sandbox execution, evidence               |
+| 5. Evaluation and observability | Oct 26–Nov 22 |           37 h | 100-case benchmark, traces, cost/latency gates      |
+| 6. Security and deployment      | Nov 23–Dec 6  |           24 h | Terraform, live deployment, hardening, rollback     |
+| 7. Portfolio release            | Dec 7–Dec 20  |           18 h | Public repo, demo, video, case study                |
 | **Total**                       |               |      **231 h** |                                                     |
 
 ### Superseded initial planning calendar
 
 | Phase                           | Dates         | Planned effort | Exit result                                      |
 |---------------------------------|---------------|---------------:|--------------------------------------------------|
-| 0. Foundation                   | Jul 17âJul 26 |           22 h | Approved baseline docs and repository plan       |
-| 1. Walking skeleton             | Jul 27âAug 9  |           28 h | UI â API â model â persistence â CI              |
-| 2. Ingestion and retrieval      | Aug 10âAug 30 |           34 h | Versioned documents, hybrid retrieval, citations |
-| 3. Analysis and test design     | Aug 31âSep 20 |           34 h | Findings, structured tests, traceability         |
-| 4. Controlled execution         | Sep 21âOct 4  |           34 h | Approval, sandbox execution, evidence            |
-| 5. Evaluation and observability | Oct 5âOct 25  |           37 h | 100-case benchmark, traces, cost/latency gates   |
-| 6. Security and deployment      | Oct 26âNov 8  |           24 h | Terraform, live deployment, hardening, rollback  |
-| 7. Portfolio release            | Nov 9âNov 15  |           18 h | Public repo, demo, video, case study             |
+| 0. Foundation                   | Jul 17–Jul 26 |           22 h | Approved baseline docs and repository plan       |
+| 1. Walking skeleton             | Jul 27–Aug 9  |           28 h | UI → API → model → persistence → CI              |
+| 2. Ingestion and retrieval      | Aug 10–Aug 30 |           34 h | Versioned documents, hybrid retrieval, citations |
+| 3. Analysis and test design     | Aug 31–Sep 20 |           34 h | Findings, structured tests, traceability         |
+| 4. Controlled execution         | Sep 21–Oct 4  |           34 h | Approval, sandbox execution, evidence            |
+| 5. Evaluation and observability | Oct 5–Oct 25  |           37 h | 100-case benchmark, traces, cost/latency gates   |
+| 6. Security and deployment      | Oct 26–Nov 8  |           24 h | Terraform, live deployment, hardening, rollback  |
+| 7. Portfolio release            | Nov 9–Nov 15  |           18 h | Public repo, demo, video, case study             |
 | **Total**                       |               |      **231 h** |                                                  |
 
 **FND-006 decision recorded 2026-07-20:** retain 12 hours/week, keep the
@@ -93,11 +93,11 @@ particular, B2 routing remains a later candidate that cannot be enabled before
 B1 comparison evidence. Parser, approval, SSRF, evaluation, provenance, and
 other P0 gates remain non-negotiable.
 
-## 3. Phase 0 â Foundation
+## 3. Phase 0 — Foundation
 
-### Epic FND â Establish source of truth
+### Epic FND — Establish source of truth
 
-#### FND-001 â Add canonical project documents
+#### FND-001 — Add canonical project documents
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -105,7 +105,7 @@ other P0 gates remain non-negotiable.
 - **Deliverable:** Add this document pack to the repository.
 - **Acceptance:** Filenames and links resolve; documents are reviewed; assumptions requiring changes are recorded.
 
-#### FND-002 â Create Linear project and milestones
+#### FND-002 — Create Linear project and milestones
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -118,7 +118,7 @@ other P0 gates remain non-negotiable.
   68 P0 issues have an assignee, estimate, project, one of the eight required
   milestones, and acceptance criteria.
 
-#### FND-003 â Initialize decision-record process
+#### FND-003 — Initialize decision-record process
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -126,7 +126,7 @@ other P0 gates remain non-negotiable.
 - **Deliverable:** `docs/adr/README.md` and ADR-001 through ADR-010 in Proposed or Accepted state.
 - **Acceptance:** `docs/adr/README.md` indexes ADR-001 through ADR-010 and matches the status in each record. The decisions cover modular monolith, direct orchestration, hybrid retrieval, safe HTTP execution, AWS application tier and production database choice, public-demo data policy, three-level evaluation, Cognito authorization, parser isolation, and canonical QA-report revisions. ADR-001 through ADR-004 and ADR-006 through ADR-010 are Accepted. ADR-005 remains Proposed until its documented decision trigger is met: it must be accepted before production Terraform creates the database tier.
 
-#### FND-004 â Create public repository controls
+#### FND-004 — Create public repository controls
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -141,7 +141,7 @@ other P0 gates remain non-negotiable.
   security updates; the committed Dependabot version-update configuration has
   also produced successful update jobs. See `REPOSITORY_GOVERNANCE.md`.
 
-#### FND-005 â Define engineering commands and standards
+#### FND-005 — Define engineering commands and standards
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -152,7 +152,7 @@ other P0 gates remain non-negotiable.
   contract are committed and validated; FND-004 external repository-control
   verification is complete.
 
-#### FND-006 â Re-estimate schedule, capacity, and budget after mandatory P0 additions
+#### FND-006 — Re-estimate schedule, capacity, and budget after mandatory P0 additions
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -165,7 +165,7 @@ other P0 gates remain non-negotiable.
   This provides 264 available hours and 33 hours of contingency. FND-002
   verification is complete.
 
-#### FND-007 â Freeze parser and untrusted-content security contract
+#### FND-007 — Freeze parser and untrusted-content security contract
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -173,14 +173,14 @@ other P0 gates remain non-negotiable.
 - **Deliverable:** Approved parser-policy table, rejection taxonomy, quarantine-first boundary, untrusted-content contract, and links among product requirements, architecture, threat model, ADRs, and evaluation plan.
 - **Acceptance:** Every supported format has explicit size, structure, alias, reference, decompression, timeout, isolation, and failure behavior. Unsupported XML/JUnit scope is explicitly deferred. No unresolved parser-security decision blocks safe implementation.
 - **Evidence status (2026-07-21):** **Resolved as a Phase 0 contract.**
-  `PRODUCT_REQUIREMENTS.md` Â§10.1 defines supported formats, hard limits,
+  `PRODUCT_REQUIREMENTS.md` §10.1 defines supported formats, hard limits,
   aliases, references, decompression, timeouts, isolation, and rejection
   behavior; `ARCHITECTURE.md` defines the parser trust boundary;
-  `THREAT_MODEL.md` Â§11 defines file-security policy; and accepted ADR-009
+  `THREAT_MODEL.md` §11 defines file-security policy; and accepted ADR-009
   records parser isolation and the XML/JUnit exclusion. This is design and
   fixture-contract evidence, not executed parser-runtime evidence.
 
-#### FND-008 â Seed adversarial security fixture catalog and expected outcomes
+#### FND-008 — Seed adversarial security fixture catalog and expected outcomes
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -196,7 +196,7 @@ other P0 gates remain non-negotiable.
   its negative self-tests exercise those rejection paths. No application
   security fixture has yet executed against a runtime.
 
-#### FND-009 â Define objective security release-gate matrix
+#### FND-009 — Define objective security release-gate matrix
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -217,11 +217,11 @@ validated. This closes the Phase 0 documentation/governance baseline only; it
 does not claim that any application runtime, deployment, evaluation, or
 security release gate has executed or passed.
 
-## 4. Phase 1 â Walking skeleton
+## 4. Phase 1 — Walking skeleton
 
-### Epic SKEL â Prove the full technical path
+### Epic SKEL — Prove the full technical path
 
-#### SKEL-001 â Initialize monorepo
+#### SKEL-001 — Initialize monorepo
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -229,7 +229,7 @@ security release gate has executed or passed.
 - **Deliverable:** Next.js app, FastAPI app, shared contracts, dependency locks.
 - **Acceptance:** Both apps start locally; strict type checking is enabled.
 
-#### SKEL-002 â Add local PostgreSQL and migrations
+#### SKEL-002 — Add local PostgreSQL and migrations
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -237,7 +237,7 @@ security release gate has executed or passed.
 - **Deliverable:** Docker Compose PostgreSQL/pgvector and migration tool.
 - **Acceptance:** Empty database can be created, migrated, rolled back, and recreated.
 
-#### SKEL-003 â Implement project CRUD vertical slice
+#### SKEL-003 — Implement project CRUD vertical slice
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -246,7 +246,7 @@ security release gate has executed or passed.
 - **Deliverable:** Project entity, repository, API, and basic UI.
 - **Acceptance:** Create/list/view/archive works with integration tests.
 
-#### SKEL-004 â Implement model gateway proof
+#### SKEL-004 — Implement model gateway proof
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -254,7 +254,7 @@ security release gate has executed or passed.
 - **Deliverable:** Server-side OpenAI gateway with timeout, typed response, usage capture, and fake adapter.
 - **Acceptance:** One structured model call can run; fake adapter drives deterministic tests; no client-side secret.
 
-#### SKEL-005 â Persist and display one AI run
+#### SKEL-005 — Persist and display one AI run
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -262,7 +262,7 @@ security release gate has executed or passed.
 - **Deliverable:** User submits synthetic text; API runs analysis; result and configuration persist and display.
 - **Acceptance:** Refresh preserves result; errors have correlation IDs.
 
-#### SKEL-006 â Establish CI baseline
+#### SKEL-006 — Establish CI baseline
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -270,7 +270,7 @@ security release gate has executed or passed.
 - **Deliverable:** GitHub Actions for formatting, lint, frontend/backend type checks, unit tests, migration check.
 - **Acceptance:** Deliberate failures block merge; clean branch passes; secret/SCA/SAST checks and the deterministic security harness run on every pull request.
 
-#### SEC-001 â Build deterministic security regression harness
+#### SEC-001 — Build deterministic security regression harness
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -278,7 +278,7 @@ security release gate has executed or passed.
 - **Deliverable:** Fixture-manifest runner with fake resolver, transport, model, and storage adapters that can assert expected boundaries and downstream side effects.
 - **Acceptance:** The harness proves zero model, DNS, HTTP, target-mutation, approval-mutation, and secret-exposure side effects for deny cases. It produces stable machine-readable results in pull-request CI with zero AI spend.
 
-#### SKEL-007 â Add one Playwright end-to-end smoke test
+#### SKEL-007 — Add one Playwright end-to-end smoke test
 
 - **Priority:** P1
 - **Estimate:** 2 h
@@ -286,9 +286,9 @@ security release gate has executed or passed.
 - **Deliverable:** Create project and run fake-model analysis.
 - **Acceptance:** Test runs locally and in CI without paid model calls.
 
-### Epic IAM â Owner and guest access foundation
+### Epic IAM — Owner and guest access foundation
 
-#### IAM-001 â Implement Cognito owner identity and local-development guard
+#### IAM-001 — Implement Cognito owner identity and local-development guard
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -302,7 +302,7 @@ security release gate has executed or passed.
   Cognito/deployment evidence and SG-05/SG-08 remain unverified. IAM-002 and
   SKEL-003 have not started.
 
-#### IAM-002 â Implement project authorization, demo publication, and audit policy
+#### IAM-002 — Implement project authorization, demo publication, and audit policy
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -317,13 +317,13 @@ security release gate has executed or passed.
   differences from that reviewed source. Component evidence does not verify
   SG-05, durable audit persistence, live Cognito, deployment, or SKEL-006.
 
-**Phase 1 exit:** A reviewer can trace UI â authenticated API â typed model adapter â database â UI, with CI evidence. Owner-only routes are authorized server-side, guest access is limited to the configured read-only demo publication, and production rejects the local authentication bypass.
+**Phase 1 exit:** A reviewer can trace UI → authenticated API → typed model adapter → database → UI, with CI evidence. Owner-only routes are authorized server-side, guest access is limited to the configured read-only demo publication, and production rejects the local authentication bypass.
 
-## 5. Phase 2 â Ingestion and retrieval
+## 5. Phase 2 — Ingestion and retrieval
 
-### Epic ING â Versioned document ingestion
+### Epic ING — Versioned document ingestion
 
-#### ING-001 â Define document and source-location schemas
+#### ING-001 — Define document and source-location schemas
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -331,7 +331,7 @@ security release gate has executed or passed.
 - **Deliverable:** Document, version, section, chunk, parser-version models.
 - **Acceptance:** Migrations and schema tests cover provenance and project ownership.
 
-#### ING-002 â Implement quarantine-first upload policy and object-storage adapter
+#### ING-002 — Implement quarantine-first upload policy and object-storage adapter
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -339,7 +339,7 @@ security release gate has executed or passed.
 - **Deliverable:** Private quarantine storage adapter, streamed size/type limits, generated object keys, hashes, immutable accepted versions, and sanitized rejection outcomes.
 - **Acceptance:** Unsupported, mismatched, oversized, malformed, and policy-rejected files fail before processing; reject paths prove zero chunks, embeddings, model calls, execution candidates, DNS, HTTP, and parser retries; deletion is tested.
 
-#### ING-003 â Parse Markdown and text requirements
+#### ING-003 — Parse Markdown and text requirements
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -347,7 +347,7 @@ security release gate has executed or passed.
 - **Deliverable:** Heading, requirement-ID, and line-location parser.
 - **Acceptance:** Markdown/text parser passes applicable SEC-PARSE-* fixtures and produces stable normalized units/locations only for accepted inputs.
 
-#### ING-004 â Parse and validate OpenAPI YAML/JSON
+#### ING-004 — Parse and validate OpenAPI YAML/JSON
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -355,7 +355,7 @@ security release gate has executed or passed.
 - **Deliverable:** Contract validation and normalized operations/schemas/security.
 - **Acceptance:** malformed and external-reference specs fail safely; schema-valid synthetic semantic defects remain ingestible; all applicable OpenAPI parser/security fixtures pass.
 
-#### ING-005 â Parse bounded PDF input
+#### ING-005 — Parse bounded PDF input
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -363,7 +363,7 @@ security release gate has executed or passed.
 - **Deliverable:** Page-aware text extraction with page and size limits.
 - **Acceptance:** normal, encrypted, active-content, oversized, malformed, and decompression-abuse fixtures receive explicit expected outcomes with zero downstream side effects on rejection.
 
-#### ING-006 â Complete parser-adversarial regression matrix
+#### ING-006 — Complete parser-adversarial regression matrix
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -371,9 +371,9 @@ security release gate has executed or passed.
 - **Deliverable:** Deterministic parser-security suite for Markdown/text, JSON, YAML, OpenAPI, and PDF fixtures.
 - **Acceptance:** Every `SEC-PARSE-*` case passes with the expected accept/reject boundary. Rejected cases prove zero chunks, embeddings, model calls, execution candidates, DNS calls, HTTP sends, and automatic retries.
 
-### Epic RAG â Hybrid retrieval and citations
+### Epic RAG — Hybrid retrieval and citations
 
-#### RAG-001 â Implement chunking and embedding pipeline
+#### RAG-001 — Implement chunking and embedding pipeline
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -381,7 +381,7 @@ security release gate has executed or passed.
 - **Deliverable:** Versioned chunking and embedding jobs with cache by content hash.
 - **Acceptance:** Reprocessing identical content avoids duplicate embedding cost.
 
-#### RAG-002 â Implement project-scoped lexical retrieval
+#### RAG-002 — Implement project-scoped lexical retrieval
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -389,7 +389,7 @@ security release gate has executed or passed.
 - **Deliverable:** PostgreSQL full-text search with filters.
 - **Acceptance:** Exact requirement IDs, fields, and statuses retrieve expected sources.
 
-#### RAG-003 â Implement pgvector retrieval and rank fusion
+#### RAG-003 — Implement pgvector retrieval and rank fusion
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -397,7 +397,7 @@ security release gate has executed or passed.
 - **Deliverable:** Semantic candidates and documented fusion.
 - **Acceptance:** Cross-project results are impossible; retrieval trace records inputs/scores.
 
-#### RAG-004 â Build citation objects and source viewer
+#### RAG-004 — Build citation objects and source viewer
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -405,7 +405,7 @@ security release gate has executed or passed.
 - **Deliverable:** Validated citation IDs and UI source passage view.
 - **Acceptance:** Invalid or foreign citation IDs are rejected.
 
-#### RAG-005 â Create first retrieval benchmark
+#### RAG-005 — Create first retrieval benchmark
 
 - **Priority:** P1
 - **Estimate:** 1 h
@@ -415,11 +415,11 @@ security release gate has executed or passed.
 
 **Phase 2 exit:** Uploaded requirements and OpenAPI files produce versioned, project-scoped retrieval with navigable citations.
 
-## 6. Phase 3 â Analysis and test design
+## 6. Phase 3 — Analysis and test design
 
-### Epic ANA â Grounded quality analysis
+### Epic ANA — Grounded quality analysis
 
-#### ANA-001 â Define finding schema and taxonomy
+#### ANA-001 — Define finding schema and taxonomy
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -427,7 +427,7 @@ security release gate has executed or passed.
 - **Deliverable:** `RequirementFindingV1` and deterministic validators.
 - **Acceptance:** Schema covers evidence, analysis, confidence, severity, recommendation, and unsupported state.
 
-#### ANA-002 â Implement deterministic OpenAPI extraction and diff facts
+#### ANA-002 — Implement deterministic OpenAPI extraction and diff facts
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -435,7 +435,7 @@ security release gate has executed or passed.
 - **Deliverable:** Operations, parameters, schemas, responses, security, enums, and limits as facts.
 - **Acceptance:** Known sample mismatches can be represented without an LLM.
 
-#### ANA-003 â Implement requirement-quality workflow
+#### ANA-003 — Implement requirement-quality workflow
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -443,7 +443,7 @@ security release gate has executed or passed.
 - **Deliverable:** Ambiguity, contradiction, missing-criteria, and risk analysis.
 - **Acceptance:** Output is typed, cited, persisted, and reviewable.
 
-#### ANA-004 â Implement requirement/OpenAPI consistency workflow
+#### ANA-004 — Implement requirement/OpenAPI consistency workflow
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -451,7 +451,7 @@ security release gate has executed or passed.
 - **Deliverable:** Field, response, enum, security, operation, and limit mismatch findings.
 - **Acceptance:** Seeded defects are detected at a measurable baseline.
 
-#### ANA-005 â Add finding review feedback
+#### ANA-005 — Add finding review feedback
 
 - **Priority:** P1
 - **Estimate:** 2 h
@@ -459,9 +459,9 @@ security release gate has executed or passed.
 - **Deliverable:** Accept/reject/annotate UI and API.
 - **Acceptance:** Feedback retains reviewer and source/run provenance.
 
-### Epic TST â Structured test design
+### Epic TST — Structured test design
 
-#### TST-001 â Define generated-test and assertion schemas
+#### TST-001 — Define generated-test and assertion schemas
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -469,7 +469,7 @@ security release gate has executed or passed.
 - **Deliverable:** `GeneratedTestCaseV1`, typed request template, typed assertion operators.
 - **Acceptance:** Arbitrary scripts and unsupported operators cannot appear.
 
-#### TST-002 â Implement grounded test-generation workflow
+#### TST-002 — Implement grounded test-generation workflow
 
 - **Priority:** P0
 - **Estimate:** 5 h
@@ -477,7 +477,7 @@ security release gate has executed or passed.
 - **Deliverable:** Positive, negative, boundary, authorization, contract, and state tests.
 - **Acceptance:** Tests have evidence links and pass deterministic eligibility validation.
 
-#### TST-003 â Implement duplicate detection and normalization
+#### TST-003 — Implement duplicate detection and normalization
 
 - **Priority:** P1
 - **Estimate:** 3 h
@@ -485,7 +485,7 @@ security release gate has executed or passed.
 - **Deliverable:** Deterministic normalization plus semantic duplicate candidate grouping.
 - **Acceptance:** Duplicate fixtures are grouped without deleting user choices.
 
-#### TST-004 â Implement traceability matrices
+#### TST-004 — Implement traceability matrices
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -493,7 +493,7 @@ security release gate has executed or passed.
 - **Deliverable:** Requirement/test and operation/test matrices with stale-state handling.
 - **Acceptance:** Source revision marks affected links stale.
 
-#### TST-005 â Add test editing and revision history
+#### TST-005 — Add test editing and revision history
 
 - **Priority:** P1
 - **Estimate:** 3 h
@@ -503,11 +503,11 @@ security release gate has executed or passed.
 
 **Phase 3 exit:** The system produces reviewed findings, executable typed test proposals, and correct traceability.
 
-## 7. Phase 4 â Controlled execution
+## 7. Phase 4 — Controlled execution
 
-### Epic EXEC â Human-approved HTTP execution
+### Epic EXEC — Human-approved HTTP execution
 
-#### EXEC-000 â Establish execution-policy adversarial suite before network capability
+#### EXEC-000 — Establish execution-policy adversarial suite before network capability
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -515,7 +515,7 @@ security release gate has executed or passed.
 - **Deliverable:** Versioned SSRF, redirect, DNS-rebinding, malformed URL, forbidden-header, approval-mutation, approval-replay, response-bomb, and metadata-target fixtures using fake resolver and transport adapters.
 - **Acceptance:** Default-deny behavior is verified without a reachable executor. Every deny case proves zero transport sends and records its expected blocking boundary.
 
-#### EXEC-001 â Build synthetic mock order API
+#### EXEC-001 — Build synthetic mock order API
 
 - **Priority:** P0
 - **Estimate:** 5 h
@@ -523,7 +523,7 @@ security release gate has executed or passed.
 - **Deliverable:** Local and deployable mock service with seeded behaviors.
 - **Acceptance:** Service matches intended contract except controlled runtime defect fixtures; contract tests pass.
 
-#### EXEC-002 â Implement target registry and URL/network policy
+#### EXEC-002 — Implement target registry and URL/network policy
 
 - **Priority:** P0
 - **Estimate:** 5 h
@@ -531,7 +531,7 @@ security release gate has executed or passed.
 - **Deliverable:** Server-side target IDs, scheme/host/port/IP validation, redirects disabled.
 - **Acceptance:** SSRF matrix covers IPv4, IPv6, metadata, private, loopback, alternate notation, and rebinding simulation.
 
-#### EXEC-003 â Implement immutable execution plans
+#### EXEC-003 — Implement immutable execution plans
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -539,7 +539,7 @@ security release gate has executed or passed.
 - **Deliverable:** Canonical plan, SHA-256 hash, limits, estimate, and UI review.
 - **Acceptance:** Any material mutation changes the hash and invalidates approval.
 
-#### EXEC-004 â Implement one-time approval state
+#### EXEC-004 — Implement one-time approval state
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -547,7 +547,7 @@ security release gate has executed or passed.
 - **Deliverable:** Actor-bound, expiring, one-time approval.
 - **Acceptance:** Missing, expired, altered, replayed, and concurrent approvals fail closed.
 
-#### EXEC-005 â Implement restricted execution worker and outbound HTTP client
+#### EXEC-005 — Implement restricted execution worker and outbound HTTP client
 
 - **Priority:** P0
 - **Estimate:** 5 h
@@ -555,7 +555,7 @@ security release gate has executed or passed.
 - **Deliverable:** Approved-execution queue consumer, restricted worker entry point, bounded outbound HTTP client, deterministic assertions, cancellation, redacted evidence, and audit records.
 - **Acceptance:** This is the first issue permitted to introduce an outbound HTTP client. The worker executes only a valid, unexpired, one-time-approved immutable plan against a server-side allowlisted target. All `SEC-NET-*` and approval-integrity fixtures pass at 100% before the route or worker is enabled.
 
-#### EXEC-006 â Implement redaction and evidence viewer
+#### EXEC-006 — Implement redaction and evidence viewer
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -563,7 +563,7 @@ security release gate has executed or passed.
 - **Deliverable:** Request/response/assertion/timing display with sensitive-field masking.
 - **Acceptance:** Canary secrets do not appear in database display, logs, traces, or reports.
 
-#### EXEC-007 â Implement grounded failure analysis
+#### EXEC-007 — Implement grounded failure analysis
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -571,38 +571,38 @@ security release gate has executed or passed.
 - **Deliverable:** Observations, hypotheses, alternatives, and next checks.
 - **Acceptance:** Root cause is not asserted when fixture evidence is insufficient.
 
-#### EXEC-008 â Complete full end-to-end workflow test
+#### EXEC-008 — Complete full end-to-end workflow test
 
 - **Priority:** P0
 - **Estimate:** 2 h
 - **Dependencies:** EXEC-007, REP-004
-- **Deliverable:** Upload â analyze â generate â approve â execute â report.
+- **Deliverable:** Upload → analyze → generate → approve → execute → report.
 - **Acceptance:** Runs in CI with a fake model or deterministic fixture and local mock API; it produces a schema-valid, cited, immutable, redacted report revision.
 
-### Epic REP â Cited, immutable QA reporting
+### Epic REP — Cited, immutable QA reporting
 
-#### REP-001 â Define canonical QA report contract
+#### REP-001 — Define canonical QA report contract
 
 - **Priority:** P0
 - **Estimate:** 2 h
 - **Dependencies:** ANA-003, TST-004
 - **Acceptance:** `QualityReportV1` validates; every material claim has valid evidence or an explicit unsupported state.
 
-#### REP-002 â Assemble immutable QA evidence snapshots
+#### REP-002 — Assemble immutable QA evidence snapshots
 
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** REP-001, EXEC-006, EXEC-007, ING-006
 - **Acceptance:** Summary counts reconcile with detailed records; no-execution and insufficient-evidence states are explicit.
 
-#### REP-003 â Render and publish safe reports
+#### REP-003 — Render and publish safe reports
 
 - **Priority:** P0
 - **Estimate:** 2 h
 - **Dependencies:** REP-002, IAM-002
 - **Acceptance:** Web, Markdown, and JSON derive from canonical JSON; guests see only published sanitized revisions.
 
-#### REP-004 â Verify report integrity, citations, and redaction
+#### REP-004 — Verify report integrity, citations, and redaction
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -611,11 +611,11 @@ security release gate has executed or passed.
 
 **Phase 4 exit:** The core product workflow produces controlled execution evidence and a schema-valid, cited, immutable, redacted QA report.
 
-## 8. Phase 5 â Evaluation and observability
+## 8. Phase 5 — Evaluation and observability
 
-### Epic EVAL â Versioned benchmark
+### Epic EVAL — Versioned benchmark
 
-#### EVAL-001 â Implement evaluation case schema and runner
+#### EVAL-001 — Implement evaluation case schema and runner
 
 - **Priority:** P0
 - **Estimate:** 5 h
@@ -623,7 +623,7 @@ security release gate has executed or passed.
 - **Deliverable:** Filterable, resumable evaluation CLI and machine-readable results.
 - **Acceptance:** Runs selected cases with budget/concurrency caps and stable provenance.
 
-#### EVAL-002 â Implement deterministic scorers
+#### EVAL-002 — Implement deterministic scorers
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -631,7 +631,7 @@ security release gate has executed or passed.
 - **Deliverable:** Schema, citation existence, traceability, policy, cost, and latency scorers.
 - **Acceptance:** Scorers have unit tests and explicit denominators.
 
-#### EVAL-003 â Implement human-review and independent-adjudication workflow
+#### EVAL-003 — Implement human-review and independent-adjudication workflow
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -644,7 +644,7 @@ security release gate has executed or passed.
   - Material disagreements remain visible and require documented adjudication.
   - Unresolved disagreement cannot be represented as an approved final label.
 
-#### EVAL-004 â Build B0 naive baseline
+#### EVAL-004 — Build B0 naive baseline
 
 - **Priority:** P1
 - **Estimate:** 3 h
@@ -652,7 +652,7 @@ security release gate has executed or passed.
 - **Deliverable:** Single-prompt baseline configuration.
 - **Acceptance:** Results document why it succeeds or fails relative to grounded workflow.
 
-#### EVAL-005 â Expand development benchmark to 60 cases
+#### EVAL-005 — Expand development benchmark to 60 cases
 
 - **Priority:** P0
 - **Estimate:** 5 h
@@ -660,7 +660,7 @@ security release gate has executed or passed.
 - **Deliverable:** Balanced development cases and labels.
 - **Acceptance:** No prohibited/private data; category counts match plan.
 
-#### EVAL-006 â Add 20 validation and 20 holdout cases
+#### EVAL-006 — Add 20 validation and 20 holdout cases
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -673,12 +673,12 @@ security release gate has executed or passed.
   - The selection method and seed are versioned before release-candidate evaluation.
   - Selected cases cannot be replaced because of poor candidate performance or reviewer disagreement.
 
-#### EVAL-007 â Implement AI smoke and release workflows
+#### EVAL-007 — Implement AI smoke and release workflows
 
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** EVAL-002, EVAL-004, EVAL-006
-- **Deliverable:** GitHub Actions workflows for a 5â10 case AI smoke evaluation and a protected full release evaluation over the pinned baseline, complete versioned 100-case corpus, scorer versions, and configuration revisions.
+- **Deliverable:** GitHub Actions workflows for a 5–10 case AI smoke evaluation and a protected full release evaluation over the pinned baseline, complete versioned 100-case corpus, scorer versions, and configuration revisions.
 - **Acceptance:**
   - The smoke workflow runs only the configured representative subset under its documented cost ceiling.
   - The full release workflow refuses to start when the B0 baseline, complete 60/20/20 corpus, ground-truth registry, scorer versions, or immutable artifact hashes are missing or inconsistent.
@@ -695,9 +695,9 @@ security release gate has executed or passed.
   - No manual override or expected-failure status may convert an EG-09 failure into a passing release.
   - Workflow creation alone is not evidence that any evaluation gate has executed or passed.
 
-### Epic OBS â Trace, cost, and reliability evidence
+### Epic OBS — Trace, cost, and reliability evidence
 
-#### OBS-001 â Add end-to-end structured tracing
+#### OBS-001 — Add end-to-end structured tracing
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -705,7 +705,7 @@ security release gate has executed or passed.
 - **Deliverable:** Correlated API, job, retrieval, model, approval, execution, and evaluation spans.
 - **Acceptance:** One workflow can be followed without exposing secrets.
 
-#### OBS-002 â Add metrics and cost accounting
+#### OBS-002 — Add metrics and cost accounting
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -713,7 +713,7 @@ security release gate has executed or passed.
 - **Deliverable:** Tokens, cost, p50/p95, retries, failures, and cost/success report.
 - **Acceptance:** Calculations are unit-tested and traceable to provider usage.
 
-#### OBS-003 â Run routing and retrieval ablations
+#### OBS-003 — Run routing and retrieval ablations
 
 - **Priority:** P1
 - **Estimate:** 2 h
@@ -723,11 +723,11 @@ security release gate has executed or passed.
 
 **Phase 5 exit:** A 100-case benchmark, CI gates, traces, and cost/latency evidence support the release candidate.
 
-## 9. Phase 6 â Security and deployment
+## 9. Phase 6 — Security and deployment
 
-### Epic INFRA â AWS and Terraform
+### Epic INFRA — AWS and Terraform
 
-#### INFRA-001 â Build Terraform foundation
+#### INFRA-001 — Build Terraform foundation
 
 - **Priority:** P0
 - **Estimate:** 5 h
@@ -735,7 +735,7 @@ security release gate has executed or passed.
 - **Deliverable:** Remote-state strategy, providers, naming, tags, IAM, environment structure.
 - **Acceptance:** `fmt`, `validate`, and policy scan pass; secrets are not in state inputs.
 
-#### INFRA-002 â Deploy frontend, API, queue, worker, object storage, and auth
+#### INFRA-002 — Deploy frontend, API, queue, worker, object storage, and auth
 
 - **Priority:** P0
 - **Estimate:** 6 h
@@ -743,7 +743,7 @@ security release gate has executed or passed.
 - **Deliverable:** AWS application tier.
 - **Acceptance:** Owner workflow and guest read-only demo operate over HTTPS.
 
-#### INFRA-003 â Select and deploy production PostgreSQL
+#### INFRA-003 — Select and deploy production PostgreSQL
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -751,7 +751,7 @@ security release gate has executed or passed.
 - **Deliverable:** Cost ADR and pgvector-capable production database.
 - **Acceptance:** Idle/resume behavior, migration, connectivity, backup/export, and monthly estimate are verified.
 
-#### INFRA-004 â Deploy mock sandbox target
+#### INFRA-004 — Deploy mock sandbox target
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -759,9 +759,9 @@ security release gate has executed or passed.
 - **Deliverable:** Allowlisted public sandbox API.
 - **Acceptance:** Executor can reach only configured target and security suite passes live.
 
-### Epic HARD â Release hardening
+### Epic HARD — Release hardening
 
-#### HARD-001 â Complete automated security tooling
+#### HARD-001 — Complete automated security tooling
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -769,7 +769,7 @@ security release gate has executed or passed.
 - **Deliverable:** Secret, SAST, dependency, container, and IaC scanning.
 - **Acceptance:** Findings are triaged; critical/high unresolved findings block release.
 
-#### HARD-002 â Run threat-model verification matrix
+#### HARD-002 — Run threat-model verification matrix
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -783,7 +783,7 @@ security release gate has executed or passed.
   - The evaluation uses the completed `EVAL-007` release workflow rather than treating corpus existence as execution evidence.
   - A completed corpus, workflow definition, or scanner configuration is not itself evidence that the gate passed.
 
-#### HARD-003 â Configure alarms, quotas, budgets, and circuit breakers
+#### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
 - **Priority:** P0
 - **Estimate:** 1 h
@@ -791,7 +791,7 @@ security release gate has executed or passed.
 - **Deliverable:** Operational and financial controls.
 - **Acceptance:** Test alarm and quota rejection are observed.
 
-#### HARD-004 â Exercise migration, rollback, and incident procedures
+#### HARD-004 — Exercise migration, rollback, and incident procedures
 
 - **Priority:** P1
 - **Estimate:** 1 h
@@ -801,11 +801,11 @@ security release gate has executed or passed.
 
 **Phase 6 exit:** The live application is deployed through Terraform, monitored, cost-controlled, and passes the threat-model gates.
 
-## 10. Phase 7 â Portfolio release
+## 10. Phase 7 — Portfolio release
 
-### Epic PORT â Make engineering evidence reviewable
+### Epic PORT — Make engineering evidence reviewable
 
-#### PORT-001 â Write production README
+#### PORT-001 — Write production README
 
 - **Priority:** P0
 - **Estimate:** 3 h
@@ -813,7 +813,7 @@ security release gate has executed or passed.
 - **Deliverable:** Problem, demo, architecture, setup, evaluation, security, limitations, and costs.
 - **Acceptance:** New reviewer can understand the product and run local demo.
 
-#### PORT-002 â Produce architecture and sequence diagrams
+#### PORT-002 — Produce architecture and sequence diagrams
 
 - **Priority:** P1
 - **Estimate:** 2 h
@@ -821,7 +821,7 @@ security release gate has executed or passed.
 - **Deliverable:** Context, deployment, RAG, and approval/execution diagrams.
 - **Acceptance:** Diagrams match deployed system.
 
-#### PORT-003 â Publish final evaluation report
+#### PORT-003 — Publish final evaluation report
 
 - **Priority:** P0
 - **Estimate:** 4 h
@@ -829,7 +829,7 @@ security release gate has executed or passed.
 - **Deliverable:** Baseline/candidate, safety, quality, cost, latency, and limitations.
 - **Acceptance:** Every public quantitative claim links to a result artifact.
 
-#### PORT-004 â Create public demo scenario and reset process
+#### PORT-004 — Create public demo scenario and reset process
 
 - **Priority:** P0
 - **Estimate:** 2 h
@@ -837,15 +837,15 @@ security release gate has executed or passed.
 - **Deliverable:** Stable read-only project plus documented reset/seed command.
 - **Acceptance:** Guest cannot mutate or create spend.
 
-#### PORT-005 â Record 3â5 minute demo video
+#### PORT-005 — Record 3–5 minute demo video
 
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** PORT-001, PORT-004
-- **Deliverable:** Problem â upload â findings â tests â approval â execution â report â metrics.
+- **Deliverable:** Problem → upload → findings → tests → approval → execution → report → metrics.
 - **Acceptance:** Video matches deployed version and contains no secrets.
 
-#### PORT-006 â Write case study and interview narrative
+#### PORT-006 — Write case study and interview narrative
 
 - **Priority:** P1
 - **Estimate:** 2 h
@@ -853,7 +853,7 @@ security release gate has executed or passed.
 - **Deliverable:** Design choices, failures, trade-offs, and improvements.
 - **Acceptance:** Can be explained in 2-, 10-, and 30-minute formats.
 
-#### PORT-007 â Write evidence-backed rÃ©sumÃ© bullets
+#### PORT-007 — Write evidence-backed résumé bullets
 
 - **Priority:** P1
 - **Estimate:** 1 h
@@ -861,7 +861,7 @@ security release gate has executed or passed.
 - **Deliverable:** Three to five bullets using actual metrics.
 - **Acceptance:** No projected or unsupported number appears.
 
-#### PORT-008 â Conduct final recruiter and engineering review
+#### PORT-008 — Conduct final recruiter and engineering review
 
 - **Priority:** P0
 - **Estimate:** 1 h
@@ -886,7 +886,7 @@ security release gate has executed or passed.
 | PMVP-009 | Fine-tuning                                 | P2                     | Prompt/retrieval baselines plateau and data quality is sufficient |
 | PMVP-010 | Kubernetes                                  | P2                     | Operational scale, not portfolio breadth, justifies it            |
 
-### Post-MVP â Test-result ingestion and normalization
+### Post-MVP — Test-result ingestion and normalization
 
 - Generic JSON test-result ingestion.
 - JUnit XML and other XML test-result ingestion.
@@ -938,6 +938,6 @@ If the schedule slips:
 FND-001 through FND-009 have recorded Phase 0 evidence. IAM-001 is verified on
 merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`, and IAM-002 is
 verified on merged `main` `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`.
-The active issue is **SKEL-003 â Implement project CRUD vertical slice**.
+The active issue is **SKEL-003 — Implement project CRUD vertical slice**.
 SKEL-003 has not started; later parser and execution work remains subject to
 its documented dependencies and deterministic verification.
