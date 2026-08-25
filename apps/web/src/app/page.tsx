@@ -115,7 +115,7 @@ export default function Home() {
   return (
     <main style={{ fontFamily: "system-ui, sans-serif", margin: "3rem auto", maxWidth: 760 }}>
       <h1>AI Quality Engineering Copilot</h1>
-      <p>Project workspace â SKEL-003</p>
+      <p>Project workspace - SKEL-003</p>
 
       <form onSubmit={createProject} style={{ display: "grid", gap: "0.75rem" }}>
         <label>
