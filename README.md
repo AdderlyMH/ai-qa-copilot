@@ -4,17 +4,20 @@
 
 The repository has completed its Phase 0 documentation and governance baseline,
 and Phase 1 is active. SKEL-001, SKEL-002, IAM-001, and IAM-002 are verified
-on `main`. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
+on `main`. SKEL-003 is an implementation candidate on `feat/skel-003` and is
+not yet accepted or verified. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
 access-token validation, immutable server-side owner mapping, and
 local-environment bypass guard. IAM-002 supplies the central project
 authorization, immutable server-selected demo-publication, and
 authorization-sensitive audit boundaries.
 
-No project persistence/entity or CRUD route, persisted demo record, durable
-audit adapter, model integration, retrieval, worker, deployment, runtime
-evaluation, product metric, latency result, or cost result has been implemented
-or verified. IAM-002 remains component evidence, not SG-05 or production
-evidence.
+The SKEL-003 candidate adds the minimum project entity, PostgreSQL/SQLAlchemy
+repository, reversible migration, owner-only create/list/view/archive routes,
+and a basic local web UI. It deliberately does not add a persisted demo record,
+durable audit adapter, model integration, retrieval, worker, deployment,
+runtime evaluation, product metric, latency result, or cost result. Its
+integration evidence and review are pending; IAM-002 remains component
+evidence, not SG-05 or production evidence.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
 work with milestones and estimates; GitHub enforces the required `main` CI
@@ -175,6 +178,20 @@ python scripts/tasks.py db-up
 $env:DATABASE_URL = "postgresql+psycopg://ai_qa_copilot:ai_qa_copilot_dev@127.0.0.1:5432/ai_qa_copilot"
 python scripts/tasks.py migrate
 ```
+
+For the SKEL-003 project UI, also enable the intentional local owner bypass in
+the API process, then use `http://localhost:3000`. The Next.js development
+server proxies `/api/*` to `API_BASE_URL` (default `http://127.0.0.1:8000`) so
+the browser does not need client-side credentials or a permissive API CORS
+policy.
+
+```powershell
+$env:APP_ENV = "local"
+$env:LOCAL_AUTH_BYPASS_ENABLED = "true"
+python scripts/tasks.py dev
+```
+
+This bypass remains local-only and is rejected by preview and production.
 
 Rollback to an empty Alembic base, recreate the migration, and stop the local
 database while preserving its development volume:
