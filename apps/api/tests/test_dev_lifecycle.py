@@ -225,7 +225,7 @@ def test_dev_releases_both_ports_and_restarts(tmp_path: Path) -> None:
             wait_for_response(
                 process,
                 f"http://localhost:{web_port}/",
-                ("AI Quality Engineering Copilot", "Project workspace — SKEL-003"),
+                ("AI Quality Engineering Copilot", "Project workspace - SKEL-003"),
                 log_path,
             )
             stop_dev(process, log_path)
