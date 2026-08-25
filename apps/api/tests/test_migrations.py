@@ -10,7 +10,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0001_enable_pgvector"
+EXPECTED_REVISION = "0002_create_projects"
+INITIAL_REVISION = "0001_enable_pgvector"
 
 
 class MigrationOperations(Protocol):
@@ -25,10 +26,10 @@ class MigrationModule(Protocol):
     def downgrade(self) -> None: ...
 
 
-def migration_script() -> MigrationModule:
+def migration_script(revision_id: str) -> MigrationModule:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
-    revision = script.get_revision(EXPECTED_REVISION)
+    revision = script.get_revision(revision_id)
     assert revision is not None
     return cast(MigrationModule, revision.module)
 
@@ -41,7 +42,7 @@ def test_database_url_is_read_from_environment_only() -> None:
         database_url_from_environment({})
 
 
-def test_alembic_has_one_reversible_baseline_revision() -> None:
+def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
@@ -49,13 +50,16 @@ def test_alembic_has_one_reversible_baseline_revision() -> None:
     assert script.get_heads() == [EXPECTED_REVISION]
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision is None
+    assert revision.down_revision == INITIAL_REVISION
+    baseline = script.get_revision(INITIAL_REVISION)
+    assert baseline is not None
+    assert baseline.down_revision is None
 
 
 def test_initial_migration_enables_and_removes_pgvector(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = migration_script()
+    module = migration_script(INITIAL_REVISION)
     statements: list[str] = []
     monkeypatch.setattr(module.op, "execute", statements.append)
 
@@ -65,4 +69,42 @@ def test_initial_migration_enables_and_removes_pgvector(
     assert statements == [
         "CREATE EXTENSION IF NOT EXISTS vector",
         "DROP EXTENSION IF EXISTS vector",
+    ]
+
+
+def test_project_migration_creates_and_removes_the_minimum_durable_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(EXPECTED_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    monkeypatch.setattr(
+        module.op,
+        "create_table",
+        lambda *args, **kwargs: calls.append(("create_table", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "create_index",
+        lambda *args, **kwargs: calls.append(("create_index", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "drop_index",
+        lambda *args, **kwargs: calls.append(("drop_index", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "drop_table",
+        lambda *args, **kwargs: calls.append(("drop_table", args)),
+    )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "projects"),
+        ("create_index", "ix_projects_active_created_at"),
+        ("drop_index", "ix_projects_active_created_at"),
+        ("drop_table", "projects"),
     ]
