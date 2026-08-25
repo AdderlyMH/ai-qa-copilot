@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID
@@ -32,7 +33,7 @@ def local_bypass_settings() -> AuthSettings:
 
 
 @pytest.fixture
-def project_repository(tmp_path: Path) -> ProjectRepository:
+def project_repository(tmp_path: Path) -> Generator[ProjectRepository]:
     engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'projects.db'}")
     Base.metadata.create_all(engine)
     sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
