@@ -37,7 +37,6 @@ from ai_qa_copilot_api.demo import (
 )
 from ai_qa_copilot_api.projects import (
     PROJECTS_UNAVAILABLE_DETAIL,
-    Project,
     ProjectRepository,
     ProjectRepositoryUnavailable,
     project_repository_from_environment,
