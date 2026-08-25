@@ -62,13 +62,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 4275,
-      "sha256": "a54f17056bc02665f5781f282594373c80d75eda751b88ddec63e7c941b38716"
+      "bytes": 4276,
+      "sha256": "ff103fcf0a8fd09a50b6ac9e6124d9bbc66cc456aecd50e3496ee313f9918428"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 5477,
-      "sha256": "3815bfc7c02e5d1365a8aa3746f1ff90e8279bf8358db3d83ab4def179de2f27"
+      "bytes": 5478,
+      "sha256": "07976d5c2d1dd59674bec3158b862c143521747e1c12668f9d2761704d97dd57"
     },
     {
       "path": "LICENSE",
@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 10270,
-      "sha256": "9c8e3de3e2d03126597cdd42091fea6730e303e7f169b3195c787db3397e2fc7"
+      "bytes": 11052,
+      "sha256": "eb575ab3d271fcab401933dc99ba58939af0366b96f5264e8e31118dd6934ced"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -92,13 +92,13 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 46675,
-      "sha256": "9ec12443b83bd201188a70ca00dcf6670bcc506471b7295af27674c4128c6575"
+      "bytes": 46762,
+      "sha256": "30d8cddc7d38aa7746069792ce9d892d946ebd56c8e38de3fc28f09836b75c48"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 30368,
-      "sha256": "d4859970e45e0260af9411c8e0ef71598a0df5c67dc6f8061904d9d6fe3eee89"
+      "bytes": 30369,
+      "sha256": "2790199d17fa8053f15d2d4ec8df85bc1c2db912be4142baab57176ecba6c016"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 24199,
-      "sha256": "b9d529250d6d51e6babc5146b7aaad35069d67829da451f6cd6c8cfb6f5925c8"
+      "bytes": 25213,
+      "sha256": "63bdebcf159f5f610d861723d778e879bc1a6ec020dc73f7596a11fda1967234"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +242,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 1025,
-      "sha256": "5d6e3d257c86119ff6d959bce3ce3a07a34fc246d545943dcdf3bf7743cb013c"
+      "bytes": 995,
+      "sha256": "4e06fc05c0b7c42b2526375badc1d45d2a0c8199aee49710ef7c0dedcc13fc4c"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -257,8 +257,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 26387,
-      "sha256": "cd871168a82207b4f8dfbbac218676389ef9cfcb72b1fac8cfe4cba37c735e5e"
+      "bytes": 26848,
+      "sha256": "f0ecbfd02b19b003dee99ad0bd35b4ac29ec714142041ae0fdcf10e7011e869d"
     },
     {
       "path": "scripts/validate_docs.py",
@@ -267,8 +267,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 84074,
-      "sha256": "eb0965ceba8bc0838d14e9e5124cd2be4c72ce84d0b3306e9f34427d77a160e9"
+      "bytes": 68745,
+      "sha256": "b9edccf131d05f5e7b9b3b797f8ea778f019b16d17aeb30f43132fdc43b6342b"
     }
   ]
 }
