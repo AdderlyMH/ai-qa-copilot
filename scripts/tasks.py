@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0001_enable_pgvector"
+DB_CHECK_REVISION = "0002_create_projects"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -318,7 +318,7 @@ def require_database_value(label: str, actual: str, expected: str) -> None:
 def verify_migrated_database(
     compose: tuple[str, ...], environment: dict[str, str]
 ) -> None:
-    """Verify both Alembic head state and the pgvector extension through SQL."""
+    """Verify Alembic head, pgvector, and the durable project table through SQL."""
 
     require_database_value(
         "Alembic revision",
@@ -336,12 +336,21 @@ def verify_migrated_database(
         ),
         "vector",
     )
+    require_database_value(
+        "projects table",
+        query_check_database(
+            compose,
+            environment,
+            "SELECT to_regclass('public.projects');",
+        ),
+        "projects",
+    )
 
 
 def verify_rolled_back_database(
     compose: tuple[str, ...], environment: dict[str, str]
 ) -> None:
-    """Verify downgrade base removed both the revision row and pgvector extension."""
+    """Verify downgrade base removes revision, extension, and project schema."""
 
     require_database_value(
         "Alembic base revision count",
@@ -358,6 +367,15 @@ def verify_rolled_back_database(
             "SELECT count(*) FROM pg_extension WHERE extname = 'vector';",
         ),
         "0",
+    )
+    require_database_value(
+        "projects rollback table",
+        query_check_database(
+            compose,
+            environment,
+            "SELECT coalesce(to_regclass('public.projects')::text, '');",
+        ),
+        "",
     )
 
 
