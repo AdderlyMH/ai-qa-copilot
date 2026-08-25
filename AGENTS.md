@@ -4,15 +4,13 @@
 
 Phase 1 is active. The repository retains its verified Phase 0 governance and
 documentation baseline while implementation proceeds one approved backlog item
-at a time. SKEL-001, SKEL-002, and IAM-001 are verified on `main`. IAM-002 is
-implemented and locally validated on `feat/iam-002`, but final review and
-merged-main acceptance are pending. Its boundary is central project-scoped
+at a time. SKEL-001, SKEL-002, IAM-001, and IAM-002 are verified on `main`.
+IAM-002 is accepted at its component boundary: central project-scoped
 authorization, immutable server-selected demo-publication access, and
 authorization-sensitive audit events. Keep project CRUD, repository/database
-adapters, and persistence integration in SKEL-003, and do not describe IAM-002
-as verified or describe any later feature, deployment, benchmark, cost,
-latency result, or security gate as implemented or verified before its own
-evidence and acceptance exist.
+adapters, and persistence integration in SKEL-003, and do not describe any
+later feature, deployment, benchmark, cost, latency result, or security gate
+as implemented or verified before its own evidence and acceptance exists.
 
 The authoritative Phase 0 sources are `README.md`, `docs/`, `fixtures/`, the
 repository-governance files, and `MANIFEST.json`. `docs/PROJECT_STATUS.md`

@@ -308,12 +308,13 @@ security release gate has executed or passed.
 - **Dependencies:** IAM-001, SKEL-002
 - **Deliverable:** Central project-scoped authorization, immutable demo-publication allowlist, and authorization-sensitive audit events.
 - **Acceptance:** Cross-project, guest-write, guest-spend, and raw-object access fail closed; only selected sanitized demo revisions are public.
-- **Implementation status (2026-08-10):** **In progress on `feat/iam-002`**, based
-  on merged `main` `ebe81a71ffd2b6467e0e9ffd8a076966852b148d`. The component
-  policy, fail-closed `/demo` boundary, structured audit-event port/adapter,
-  and deterministic tests are implemented and locally validated. Final branch
-  security/backend review and merged-main acceptance remain pending; this does
-  not verify SG-05, durable audit persistence, deployment, or SKEL-006.
+- **Verification status (2026-08-25):** **Verified on merged `main`**
+  `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c` after the final
+  security/backend PASS on reviewed head
+  `c971c8adb511d5cb5719f63fbe15f46c2f34a763`, whose tree is
+  `e27130d7655c1913fff74d6df71b6fc711644f8f`; the merge tree had zero file
+  differences from that reviewed source. Component evidence does not verify
+  SG-05, durable audit persistence, live Cognito, deployment, or SKEL-006.
 
 **Phase 1 exit:** A reviewer can trace UI → authenticated API → typed model adapter → database → UI, with CI evidence. Owner-only routes are authorized server-side, guest access is limited to the configured read-only demo publication, and production rejects the local authentication bypass.
 
@@ -934,10 +935,8 @@ If the schedule slips:
 ## 15. Immediate next issue
 
 FND-001 through FND-009 have recorded Phase 0 evidence. IAM-001 is verified on
-merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`. The active issue is
-**IAM-002 — Implement project authorization, demo publication, and audit
-policy** on `feat/iam-002`, created from current `main`
-`ebe81a71ffd2b6467e0e9ffd8a076966852b148d`. IAM-002 final review and
-acceptance are pending. SKEL-003 remains unstarted and must not begin until
-IAM-002 passes its own gate; later parser and execution work remains subject to
+merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`, and IAM-002 is
+verified on merged `main` `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`.
+The active issue is **SKEL-003 — Implement project CRUD vertical slice**.
+SKEL-003 has not started; later parser and execution work remains subject to
 its documented dependencies and deterministic verification.
