@@ -1,8 +1,8 @@
-# Project Status â AI Quality Engineering Copilot
+# Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-08-25<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, IAM-001, and IAM-002 verified on `main`; SKEL-003 implementation is in progress and unverified<br>
-**Current phase:** Phase 1 â SKEL-003 implementation candidate on `feat/skel-003`; validation and review pending<br>
+**Current phase:** Phase 1 — SKEL-003 implementation candidate on `feat/skel-003`; validation and review pending<br>
 **Health:** Green for accepted `main`; SKEL-003 branch evidence is pending. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status
@@ -355,17 +355,17 @@ has executed or passed.
 
 ## Phase 0 gate results
 
-1. **FND-002 â Linear plan verification:** **Resolved 2026-07-21.** The
+1. **FND-002 — Linear plan verification:** **Resolved 2026-07-21.** The
    project ID, milestone set, owned P0 issues, estimates, and acceptance
    criteria are recorded in `REPOSITORY_GOVERNANCE.md`.
-2. **FND-004 â GitHub repository controls:** **Resolved 2026-07-21.** The
+2. **FND-004 — GitHub repository controls:** **Resolved 2026-07-21.** The
    active `main` ruleset, preserved security-settings captures, and Dependabot
    bot-run evidence are recorded in `REPOSITORY_GOVERNANCE.md`.
-3. **FND-007 â Parser and untrusted-content contract:** **Resolved
+3. **FND-007 — Parser and untrusted-content contract:** **Resolved
    2026-07-21** as documented Phase 0 design and fixture-contract evidence.
-4. **FND-008 â Adversarial fixture catalog:** **Resolved 2026-07-21** as
+4. **FND-008 — Adversarial fixture catalog:** **Resolved 2026-07-21** as
    versioned fixture and deterministic-validator evidence.
-5. **FND-009 â Objective security release-gate matrix:** **Resolved
+5. **FND-009 — Objective security release-gate matrix:** **Resolved
    2026-07-21** as the committed, validated SG-01 through SG-08 matrix.
 
 The FND-005 repository-control dependency and the FND-006 Linear-verification
