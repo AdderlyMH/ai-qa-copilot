@@ -62,13 +62,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 4275,
-      "sha256": "767e7abdfc957d0b1edfda1a21fe2238325e98f6eb92a98f53a1f886b92ff5fd"
+      "bytes": 4276,
+      "sha256": "ff103fcf0a8fd09a50b6ac9e6124d9bbc66cc456aecd50e3496ee313f9918428"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 5477,
-      "sha256": "08cf6cc62dd4b66b92791ce8ef106219008b5ada7c85ae4043cc7b68f8bd74e8"
+      "bytes": 5478,
+      "sha256": "07976d5c2d1dd59674bec3158b862c143521747e1c12668f9d2761704d97dd57"
     },
     {
       "path": "LICENSE",
@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 10270,
-      "sha256": "951c5f51d697f78af6398337fb983a3bc697a37dc21c5139af29599f880fc8b7"
+      "bytes": 10271,
+      "sha256": "8b51eb25a7d3021bbc13a1b5c1366a25b813dc72f1a1e4f649c3a7680fba98c1"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 46675,
-      "sha256": "d1a29e256f93f11adbdc262e92da2bd5257efde902ee9e6b9eb15202c191faa1"
+      "bytes": 46676,
+      "sha256": "d78275f7ef397c2350b28aa087163af19a39ff9898cc182a703a965c7536d491"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 24199,
-      "sha256": "dc97f74e8c00c1938cae5cb74956b433943a4bc5c283092dce1ea38f4f0c82e1"
+      "bytes": 24200,
+      "sha256": "98f2ce07d62e76d68cc9e5102165fc69f81bcc6d06041a7092005d69af7a4393"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
