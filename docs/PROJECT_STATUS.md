@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-10<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, and IAM-001 verified on `main`; IAM-002 implemented and locally validated on `feat/iam-002`; SKEL-003 not started<br>
-**Current phase:** Phase 1 — IAM-002 implementation and branch validation<br>
-**Health:** Green — IAM-002 component policy/API tests pass locally; final branch review and merged-main acceptance are pending, while durable audit persistence, SG-05, deployment, and SKEL-006 remain unverified
+**Status date:** 2026-08-25<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, IAM-001, and IAM-002 verified on `main`; SKEL-003 not started<br>
+**Current phase:** Phase 1 — IAM-002 accepted; SKEL-003 is the next issue<br>
+**Health:** Green — IAM-002 final security/backend acceptance passed on merged `main` `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`; durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status
 
@@ -46,32 +46,37 @@ client-supplied roles, and identity headers do not participate in the owner
 decision. Preview and production reject the local bypass during application
 startup. Live Cognito/deployment evidence, SG-05, and SG-08 remain unverified.
 
-IAM-002 is in progress on `feat/iam-002`, created exactly from current `main`
-`ebe81a71ffd2b6467e0e9ffd8a076966852b148d`. It adds a central project policy
-that returns an immutable owner capability only when the requested project ID
-matches the trusted resource reference. Cross-project, private guest mutation,
-raw-object, model, queue, approval, and execution actions fail closed with
-existence-hiding private denials before downstream work.
+IAM-002 has passed final security/backend acceptance on merged `main`
+`c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`. PR #22 is merged. The final
+gate compared reviewed head `c971c8adb511d5cb5719f63fbe15f46c2f34a763`,
+whose tree is `e27130d7655c1913fff74d6df71b6fc711644f8f`, with the merge
+commit and found zero changed files; current `main` is identical to that
+merge. The reviewed implementation and validation evidence therefore applies
+unchanged, and IAM-002 is verified on `main` at its component acceptance
+boundary.
 
-The new `/demo` boundary accepts only `GET` and `HEAD`; write verbs return
-`403` before a repository read. It exposes no project or raw-object identifier
-and ignores client query selectors. It can resolve only the exact
-`DEMO_PUBLICATION_ID` plus `DEMO_PUBLICATION_REVISION_ID` pair configured by
-the server. A repository record is public only when those IDs match and the
-record is immutable, published, sanitized, classified synthetic/public,
-content-hash pinned, and pinned to report, traceability, and redacted
-citation-excerpt revisions. Missing, unselected, private, draft, mutable, or
-unsanitized records return a safe `404`.
+IAM-002 adds a central project policy that returns an immutable owner capability
+only when the requested project ID matches the trusted resource reference.
+Cross-project, private guest mutation, raw-object, model, queue, approval, and
+execution actions fail closed with existence-hiding private denials before
+downstream work.
 
-Every policy outcome emits an immutable structured authorization event with
-principal type, actor ID when known, action, result, internal reason,
-resource/version, project scope, UTC timestamp, and server-generated
-correlation ID. Sink or demo-repository failure prevents public data from being
-returned. The default adapter writes structured JSON to the authorization
-audit logger; database-backed append-only audit and project/demo repositories,
-an owner publication workflow, and real sanitized report content remain later
-persistence/report work. IAM-002 is not verified; final branch review and
-merged-main acceptance remain pending. SKEL-003 has not started.
+The public `GET`/`HEAD /demo` boundary accepts no publication, project, or
+raw-object identifier from the client. It can resolve only the exact configured
+`DEMO_PUBLICATION_ID` plus `DEMO_PUBLICATION_REVISION_ID` pair and returns
+only an immutable, published, sanitized, synthetic/public, content-hash-pinned
+revision. Missing, unselected, private, draft, mutable, or unsanitized records
+return a safe `404`.
+
+Every policy outcome emits a structured authorization event with principal type,
+actor ID when known, action, result, safe resource/version reference, project
+scope, UTC timestamp, and server-generated correlation ID. Sink or
+demo-repository failure prevents a downstream allow. The default adapter is
+structured logging; database-backed append-only audit persistence, project/demo
+repositories, an owner publication workflow, and real sanitized report content
+remain later persistence/report work. IAM-002 component acceptance does not
+verify durable audit persistence, a real demo repository, SG-05, live Cognito,
+deployment, or SKEL-006. SKEL-003 has not started.
 
 The verified SKEL-002 scope is one local
 PostgreSQL/pgvector Compose service, an Alembic migration baseline that creates
@@ -123,9 +128,10 @@ has executed or passed.
   configuration, repository failure, invalid and non-owner bearer behavior,
   correlation/actor audit fields, and local-bypass identity.
   These use deterministic in-memory ports and do not prove durable audit
-  persistence, a real demo repository, SG-05, deployment, or SKEL-006. The
-  existing Starlette/httpx deprecation warning remains; final IAM-002 branch
-  review and merged-main acceptance are pending.
+  persistence, a real demo repository, SG-05, live Cognito, deployment, or
+  SKEL-006. The existing Starlette/httpx deprecation warning remains. The
+  final security/backend review PASS and zero-diff merged-main acceptance apply
+  only to this IAM-002 component boundary.
 - IAM-001 worktree validation on 2026-08-08 used Python 3.13.11, uv 0.11.16,
   Node.js 24.18.0, and npm 11.16.0. The repository `bootstrap`, `lint`, and
   `typecheck` targets passed. After updating the existing development-lifecycle
@@ -358,8 +364,8 @@ release milestone.
 
 - SKEL-003 and every later implementation item, including project/demo
   repository adapters, durable audit persistence, and the SKEL-006 application
-  CI baseline. IAM-001 retains its verified status on `main`; IAM-002 is in
-  progress and locally validated but is not verified.
+  CI baseline. IAM-001 and IAM-002 retain their verified component status on
+  `main`; SKEL-003 has not started.
 - Model integration or paid model calls.
 - Runtime benchmark.
 - AWS resources.
@@ -368,6 +374,7 @@ release milestone.
 
 ## Next action
 
-Complete full branch validation and final security/backend review of
-`feat/iam-002`. Do not begin SKEL-003 until IAM-002 passes its own acceptance
-gate on merged `main`.
+Create `feat/skel-003` from current `main` and implement only the
+project-CRUD vertical slice. Do not add durable audit persistence, a real demo
+publication repository, model integration, or later work before its own
+acceptance gate.

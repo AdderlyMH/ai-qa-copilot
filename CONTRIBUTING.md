@@ -4,12 +4,10 @@
 
 Phase 1 is active. Contributions must remain within an explicitly approved
 backlog item and preserve the verified Phase 0 contracts. SKEL-001, SKEL-002,
-and IAM-001 are verified. IAM-002 is implemented and locally validated on
-`feat/iam-002`, with final review and merged-main acceptance pending. It is
-limited to central project authorization, immutable server-selected
-demo-publication access, and authorization-sensitive audit events. Project
-CRUD, repository/database adapters, and persistence integration remain
-SKEL-003 work. The toolchain uses Python 3.13.11 (pinned by
+IAM-001, and IAM-002 are verified on `main`. IAM-002 is limited to central
+project authorization, immutable server-selected demo-publication access, and
+authorization-sensitive audit events. Project CRUD, repository/database
+adapters, and persistence integration remain SKEL-003 work. The toolchain uses Python 3.13.11 (pinned by
 `.python-version`), uv 0.11.16, Node.js 24 LTS, and npm 11.16.0. Docker Engine
 with Docker Compose v2 is also required for the database targets.
 
