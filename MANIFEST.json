@@ -62,13 +62,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 4276,
-      "sha256": "ff103fcf0a8fd09a50b6ac9e6124d9bbc66cc456aecd50e3496ee313f9918428"
+      "bytes": 4275,
+      "sha256": "a54f17056bc02665f5781f282594373c80d75eda751b88ddec63e7c941b38716"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 5478,
-      "sha256": "07976d5c2d1dd59674bec3158b862c143521747e1c12668f9d2761704d97dd57"
+      "bytes": 5477,
+      "sha256": "3815bfc7c02e5d1365a8aa3746f1ff90e8279bf8358db3d83ab4def179de2f27"
     },
     {
       "path": "LICENSE",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 30369,
-      "sha256": "2790199d17fa8053f15d2d4ec8df85bc1c2db912be4142baab57176ecba6c016"
+      "bytes": 30368,
+      "sha256": "d4859970e45e0260af9411c8e0ef71598a0df5c67dc6f8061904d9d6fe3eee89"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
