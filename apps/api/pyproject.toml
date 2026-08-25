@@ -5,8 +5,9 @@ description = "FastAPI walking skeleton for AI Quality Engineering Copilot"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "fastapi==0.139.2",
-    "pyjwt[crypto]==2.13.0",
     "pydantic==2.13.4",
+    "psycopg[binary]==3.3.4",
+    "sqlalchemy==2.0.51",
     "uvicorn==0.51.0",
 ]
 
