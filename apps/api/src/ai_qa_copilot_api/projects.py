@@ -69,13 +69,25 @@ class ProjectRecord(Base):
     )
 
 
+def _utc_timestamp(value: datetime) -> datetime:
+    """Normalize SQLite-naive and database-aware values to UTC."""
+    
+    if value.tzinfo is None or value.utcoffset() is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def _project_from_record(record: ProjectRecord) -> Project:
     return Project(
         id=record.id,
         name=record.name,
         description=record.description,
-        created_at=record.created_at,
-        archived_at=record.archived_at,
+        created_at=_utc_timestamp(record.created_at),
+        archived_at=(
+            _utc_timestamp(record.archived_at)
+            if record.archived_at is not None
+            else None
+        ),
     )
 
 
