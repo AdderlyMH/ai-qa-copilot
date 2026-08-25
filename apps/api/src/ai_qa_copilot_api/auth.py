@@ -6,7 +6,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Final, Literal, Never, Protocol
+from typing import Final, Literal, Protocol
 from urllib.parse import urlsplit
 
 import jwt
@@ -30,6 +30,41 @@ class AuthConfigurationError(RuntimeError):
 
 class InvalidCredentialsError(Exception):
     """Raised when a Cognito credential cannot be trusted."""
+
+
+class OwnerResolutionFailure(Exception):
+    """Trusted owner-resolution denial retained for API audit handling."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        detail: str,
+        reason: str,
+        actor_id: str | None = None,
+    ) -> None:
+        super().__init__(detail)
+        if status_code not in {
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        }:
+            raise ValueError("Owner resolution supports only 401 or 403 denials")
+        self.status_code = status_code
+        self.detail = detail
+        self.reason = reason
+        self.actor_id = actor_id
+
+    def as_http_exception(self) -> HTTPException:
+        headers = (
+            {"WWW-Authenticate": "Bearer"}
+            if self.status_code == status.HTTP_401_UNAUTHORIZED
+            else None
+        )
+        return HTTPException(
+            status_code=self.status_code,
+            detail=self.detail,
+            headers=headers,
+        )
 
 
 class AppEnvironment(StrEnum):
@@ -195,6 +230,9 @@ class AnonymousGuestPrincipal:
     read_only: Literal[True] = True
 
 
+PublicDemoPrincipal = OwnerPrincipal | AnonymousGuestPrincipal
+
+
 class JwkProvider(Protocol):
     """Minimum JWKS key-resolution interface used by the validator."""
 
@@ -296,31 +334,62 @@ class AuthBoundary:
             else None
         )
 
-    def require_owner(self, request: Request) -> OwnerPrincipal:
+    def resolve_owner(self, request: Request) -> OwnerPrincipal:
+        """Resolve an owner or raise an auditable trusted denial."""
+
         if self._settings.local_auth_bypass_enabled:
             return LocalDevelopmentOwnerPrincipal()
 
         token = self._bearer_token(request.headers.get("Authorization"))
         if token is None or self._token_validator is None:
-            self._raise_unauthorized()
+            raise OwnerResolutionFailure(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=INVALID_CREDENTIALS_DETAIL,
+                reason="invalid_or_missing_credentials",
+            )
 
         try:
             identity = self._token_validator.validate(token)
         except InvalidCredentialsError:
-            self._raise_unauthorized()
+            raise OwnerResolutionFailure(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=INVALID_CREDENTIALS_DETAIL,
+                reason="invalid_or_missing_credentials",
+            ) from None
 
         cognito = self._settings.cognito
         if cognito is None:
-            self._raise_unauthorized()
+            raise OwnerResolutionFailure(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=INVALID_CREDENTIALS_DETAIL,
+                reason="invalid_or_missing_credentials",
+            )
         if OwnerIdentity(identity.issuer, identity.subject) != cognito.owner_identity:
-            raise HTTPException(
+            raise OwnerResolutionFailure(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=OWNER_REQUIRED_DETAIL,
+                reason="valid_non_owner",
+                actor_id=identity.subject,
             )
         return CognitoOwnerPrincipal(
             issuer=identity.issuer,
             subject=identity.subject,
         )
+
+    def require_owner(self, request: Request) -> OwnerPrincipal:
+        try:
+            return self.resolve_owner(request)
+        except OwnerResolutionFailure as error:
+            raise error.as_http_exception() from None
+
+    def resolve_public_demo_principal(self, request: Request) -> PublicDemoPrincipal:
+        """Resolve an optional trusted owner; otherwise use the anonymous guest."""
+
+        if self._settings.local_auth_bypass_enabled:
+            return LocalDevelopmentOwnerPrincipal()
+        if request.headers.get("Authorization") is None:
+            return AnonymousGuestPrincipal()
+        return self.resolve_owner(request)
 
     @staticmethod
     def require_anonymous_guest_read(request: Request) -> AnonymousGuestPrincipal:
@@ -345,14 +414,6 @@ class AuthBoundary:
         ):
             return None
         return token
-
-    @staticmethod
-    def _raise_unauthorized() -> Never:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=INVALID_CREDENTIALS_DETAIL,
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
 
 def _boundary_from_request(request: Request) -> AuthBoundary:

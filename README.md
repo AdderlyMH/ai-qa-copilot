@@ -6,12 +6,13 @@ The repository has completed its Phase 0 documentation and governance baseline,
 and Phase 1 is active. SKEL-001, SKEL-002, and IAM-001 are verified on `main`.
 IAM-001 supplies the typed FastAPI authentication boundary, Cognito access-token
 validation, immutable server-side owner mapping, and local-environment bypass
-guard. IAM-002 is the next approved implementation item but has not started.
+guard. IAM-002 is implemented and locally validated on `feat/iam-002`; final
+security/backend review and merged-main acceptance are pending.
 
-No project persistence/entity, IAM-002 project authorization or demo
-publication route, model integration, retrieval, worker, deployment, runtime
+No project persistence/entity or CRUD route, persisted demo record, durable
+audit adapter, model integration, retrieval, worker, deployment, runtime
 evaluation, product metric, latency result, or cost result has been implemented
-or verified.
+or verified. IAM-002 is component evidence, not SG-05 or production evidence.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
 work with milestones and estimates; GitHub enforces the required `main` CI
@@ -87,7 +88,7 @@ python scripts/tasks.py ci
 coverage is provided separately by `db-check`; the SKEL-006 application-CI
 baseline is not implemented by this target.
 
-## IAM-001 authentication boundary
+## IAM-001 authentication and IAM-002 authorization boundaries
 
 Application startup requires an explicit `APP_ENV` value of `local`, `preview`,
 or `production`. The local authentication bypass is disabled unless
@@ -122,10 +123,32 @@ the bypass is false and Cognito owner access is needed, set all three
 `COGNITO_*` values in the process environment. `.env.example` documents the
 names but the task runner does not load `.env` automatically.
 
-IAM-001 defines an anonymous guest principal as read-only and scoped only to a
-server-selected demo publication. It deliberately exposes no guest resource or
-`DemoPublication` route yet; the server-side publication lookup, project
-authorization, and authorization audit policy remain IAM-002 work.
+IAM-002 adds a central project policy that returns an immutable authorization
+capability only after the trusted principal is an owner and the requested
+project matches the resource's repository-supplied `project_id`. Guest access,
+cross-project references, unversioned raw-object reads, and guest mutation,
+model, queue, approval, and execution actions fail closed before downstream
+work. Sensitive private denials use a safe `404` response strategy.
+
+The public `GET`/`HEAD /demo` boundary takes no publication identifier from the
+route. It reads only the exact `DEMO_PUBLICATION_ID` and
+`DEMO_PUBLICATION_REVISION_ID` pair selected in server configuration. Both
+variables must be valid non-zero UUIDs and must be configured together. When
+they are absent, the route returns a safe `404`. The selected repository record
+is exposed only if it matches both configured IDs and is immutable, published,
+sanitized, classified as synthetic/public, content-hash pinned, and pinned to
+report, traceability, and redacted citation-excerpt revisions. Client query
+parameters cannot replace that selection. Write verbs return `403` before a
+repository read.
+
+Every IAM-002 policy decision emits an immutable structured authorization event
+containing the principal type, actor ID when known, action, result, reason,
+resource and version, project scope, UTC timestamp, and server-generated
+correlation ID. The default adapter emits JSON through the authorization audit
+logger and fails closed if a configured sink rejects an event. A database-backed
+append-only sink, project/demo repositories, owner publication workflow, and
+real sanitized report content remain later persistence/report work; the current
+default repository deliberately serves no publication.
 
 ## Local PostgreSQL and migrations
 
