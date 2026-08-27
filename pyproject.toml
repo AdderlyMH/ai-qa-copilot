@@ -47,3 +47,6 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests"]
+markers = [
+    "postgres_integration: requires the isolated PostgreSQL database created by db-check",
+]

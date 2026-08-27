@@ -1,6 +1,6 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-25<br>
+**Status date:** 2026-08-27<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, IAM-001, and IAM-002 verified on `main`; SKEL-003 implementation is in progress and unverified<br>
 **Current phase:** Phase 1 — SKEL-003 implementation candidate on `feat/skel-003`; validation and review pending<br>
 **Health:** Green for accepted `main`; SKEL-003 branch evidence is pending. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
@@ -85,9 +85,11 @@ create/list/view/archive routes, and a minimal local Next.js UI. Create/list
 operations use an audited owner-only project-collection boundary; view/archive
 use the existing exact-project authorization boundary before repository work.
 The default repository fails closed with `503` when durable storage is absent
-or unavailable. A real PostgreSQL lifecycle run, repository/API integration
-validation, security review, pull-request checks, and merged-main acceptance
-remain pending. It does not add durable authorization-audit storage, a demo
+or unavailable. The updated isolated `db-check` task invokes create/list/view/
+archive through the FastAPI routes against the Alembic-migrated PostgreSQL
+database, but successful validation at this candidate head remains pending,
+along with security review, pull-request checks, and merged-main acceptance.
+It does not add durable authorization-audit storage, a demo
 publication repository, model/retrieval/worker behavior, deployment, SG-05,
 or SKEL-006.
 
@@ -388,7 +390,8 @@ release milestone.
 
 ## Next action
 
-Validate the `feat/skel-003` project-CRUD candidate against a migrated local
-PostgreSQL database, then obtain security/backend review before marking its PR
-ready. Do not add durable audit persistence, a real demo publication repository,
-model integration, or later work before its own acceptance gate.
+Run the updated `feat/skel-003` isolated PostgreSQL `db-check` and the complete
+Docker-free `ci` target, record the exact results, then obtain security/backend
+review before marking its PR ready. Do not add durable audit persistence, a
+real demo publication repository, model integration, or later work before its
+own acceptance gate.

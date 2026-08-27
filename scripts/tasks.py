@@ -380,7 +380,7 @@ def verify_rolled_back_database(
 
 
 def db_check() -> None:
-    """Exercise clean create, migrate, rollback, recreate, and guaranteed cleanup."""
+    """Exercise migrations and project CRUD on isolated PostgreSQL with cleanup."""
 
     project_name = f"{DB_CHECK_PROJECT_PREFIX}-{os.getpid()}"
     database_port = available_loopback_port()
@@ -419,6 +419,19 @@ def db_check() -> None:
             env=alembic_environment,
         )
         verify_migrated_database(compose, environment)
+
+        print("db-check: exercising project CRUD through the migrated API", flush=True)
+        project_api_environment = alembic_environment.copy()
+        project_api_environment["AI_QA_COPILOT_POSTGRES_INTEGRATION_DATABASE_URL"] = (
+            project_api_environment["DATABASE_URL"]
+        )
+        uv_run(
+            "python",
+            "-m",
+            "pytest",
+            "apps/api/tests/test_projects_postgres.py",
+            env=project_api_environment,
+        )
 
         print("db-check: downgrading database to Alembic base", flush=True)
         uv_run(

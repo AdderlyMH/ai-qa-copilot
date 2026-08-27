@@ -89,9 +89,9 @@ Run the complete local validation contract with:
 python scripts/tasks.py ci
 ```
 
-`ci` deliberately remains Docker-free. Docker/PostgreSQL migration integration
-coverage is provided separately by `db-check`; the SKEL-006 application-CI
-baseline is not implemented by this target.
+`ci` deliberately remains Docker-free. Docker/PostgreSQL migration and project
+CRUD integration coverage is provided separately by `db-check`; the SKEL-006
+application-CI baseline is not implemented by this target.
 
 ## IAM-001 authentication and IAM-002 authorization boundaries
 
@@ -218,10 +218,13 @@ python scripts/tasks.py db-check
 ```
 
 `db-check` creates its own isolated Compose project and named volume, waits for
-PostgreSQL health, runs `upgrade head`, verifies the Alembic revision and
-`vector` extension through SQL, runs `downgrade base` and verifies rollback,
-then applies `upgrade head` again. Its cleanup path always requests removal of
-that check project's containers and volumes.
+PostgreSQL health, runs `upgrade head`, verifies the Alembic revision, `vector`
+extension, and `projects` table through SQL, then runs create/list/view/archive
+through the FastAPI routes against that migrated database. It then runs
+`downgrade base` and verifies rollback before applying `upgrade head` again.
+Its cleanup path always requests removal of that check project's containers and
+volumes. The PostgreSQL CRUD test requires the task runner's explicit isolated
+database setting and is skipped by the Docker-free `ci` target.
 
 ### Automatic manifest refresh before commits
 
