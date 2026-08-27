@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from pathlib import Path
+from typing import overload
 from uuid import UUID, uuid4
 
 import pytest
@@ -82,6 +83,33 @@ def repositories(
         SqlAlchemyAnalysisRunRepository(sessions),
     )
     engine.dispose()
+
+
+@overload
+def app_client(
+    *,
+    project_repository: ProjectRepository,
+    analysis_run_repository: AnalysisRunRepository,
+    adapter: None = None,
+) -> tuple[TestClient, EchoFakeAdapter]: ...
+
+
+@overload
+def app_client(
+    *,
+    project_repository: ProjectRepository,
+    analysis_run_repository: AnalysisRunRepository,
+    adapter: EchoFakeAdapter,
+) -> tuple[TestClient, EchoFakeAdapter]: ...
+
+
+@overload
+def app_client(
+    *,
+    project_repository: ProjectRepository,
+    analysis_run_repository: AnalysisRunRepository,
+    adapter: FailingFakeAdapter,
+) -> tuple[TestClient, FailingFakeAdapter]: ...
 
 
 def app_client(
