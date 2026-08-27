@@ -62,8 +62,8 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 4275,
-      "sha256": "a54f17056bc02665f5781f282594373c80d75eda751b88ddec63e7c941b38716"
+      "bytes": 4365,
+      "sha256": "d143554d6e05fe2c983bc394677a6b1af099902e1ff973af8a4a881ad2a2b534"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 11326,
-      "sha256": "c2e77f89d34eb18778d4bd8788483246b6110b2609ad6f1907f65d6c807038ec"
+      "bytes": 11809,
+      "sha256": "b6471930da956afd0154556d77925c6ceca91d271c4f017068ea58994a77701b"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 47232,
-      "sha256": "92394cd760816569607a557f410e34bf21083a73f6bdbf7f093815389461b032"
+      "bytes": 47319,
+      "sha256": "d3f14397f0c1d068aedc0a046b16f52da80d7a7ab0f781c81f9643c699eab8e7"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 27884,
-      "sha256": "d64ffa593f9c20c51c07852ac6e39b1891ee624b3494eec6f1b2024b09e30e33"
+      "bytes": 27869,
+      "sha256": "a2b545f803fe91fdf8e1ed10a95c2c3fadd1d324460afc3ded8aba40fc1b3734"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -257,8 +257,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 27330,
-      "sha256": "8dc5712945497af9de406cf3eb56f77e6acf3b0c62451814c049db33b85dfaaa"
+      "bytes": 27880,
+      "sha256": "ce01f0cf30f2337dd3eca1c2346795295f04d988911f5838c431f125ae3d186d"
     },
     {
       "path": "scripts/validate_docs.py",

@@ -2,8 +2,8 @@
 
 **Status date:** 2026-08-27<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-004, IAM-001, and IAM-002 verified on `main`<br>
-**Current phase:** Phase 1 — SKEL-004 accepted; SKEL-005 is the next P0 item<br>
-**Health:** Green for accepted `main` at `9118e161622714d5f2bfe911c0e412ad51be0a56`. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
+**Current phase:** Phase 1 — SKEL-005 implementation in progress on `feat/skel-005`<br>
+**Health:** Green for accepted `main` at `2e906de4104f9d005ea9ead89447d66ca6cfe4d9`; SKEL-005 branch evidence is pending. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status
 
@@ -416,12 +416,12 @@ release milestone.
 
 ## Not started or unverified
 
-- Every implementation item after SKEL-004 remains unverified, including the
-  next P0 item SKEL-005, demo repositories, durable authorization-audit
-  persistence, model integration beyond the accepted gateway proof,
+- Every implementation item after the active SKEL-005 slice remains unverified,
+  including demo repositories, durable authorization-audit persistence, model
+  integration beyond the accepted gateway proof,
   retrieval, parser, worker, object-storage, safe execution, approval,
   deployment, evaluation, and metrics work, remains out of scope.
-- Model integration or paid model calls.
+- Paid-model validation or cost evidence.
 - Runtime benchmark.
 - AWS resources.
 - Product metrics.
@@ -429,9 +429,8 @@ release milestone.
 
 ## Next action
 
-Create `feat/skel-005` from accepted `main` and implement only one synthetic
-text submission that runs the accepted gateway, persists its result and
-configuration, and displays the persisted run. Refresh must preserve the
-result and errors must have correlation IDs. Do not add a production model
-call, durable audit persistence, worker, deployment, or later scope before
-SKEL-005 has its own acceptance gate.
+Implement and validate `feat/skel-005` as one synthetic-text submission that
+runs the accepted gateway, persists its result/configuration, and displays the
+persisted run. Refresh must preserve the result and errors must have correlation
+IDs. Do not add durable audit persistence, worker, deployment, or later scope
+before SKEL-005 has its own acceptance gate.

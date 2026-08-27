@@ -260,6 +260,7 @@ security release gate has executed or passed.
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** SKEL-003, SKEL-004
+- **Implementation status:** In progress on `feat/skel-005`; not accepted or verified.
 - **Deliverable:** User submits synthetic text; API runs analysis; result and configuration persist and display.
 - **Acceptance:** Refresh preserves result; errors have correlation IDs.
 
