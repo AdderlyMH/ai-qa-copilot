@@ -63,7 +63,9 @@ class ProjectRecord(Base):
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     archived_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -71,7 +73,7 @@ class ProjectRecord(Base):
 
 def _utc_timestamp(value: datetime) -> datetime:
     """Normalize SQLite-naive and database-aware values to UTC."""
-    
+
     if value.tzinfo is None or value.utcoffset() is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
@@ -133,7 +135,10 @@ class SqlAlchemyProjectRepository:
         )
         try:
             with self._session_factory() as session:
-                return [_project_from_record(record) for record in session.scalars(statement)]
+                return [
+                    _project_from_record(record)
+                    for record in session.scalars(statement)
+                ]
         except SQLAlchemyError as error:
             raise ProjectRepositoryUnavailable from error
 

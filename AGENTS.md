@@ -8,7 +8,9 @@ at a time. SKEL-001 through SKEL-004, IAM-001, and IAM-002 are verified on
 `main`.
 IAM-002 is accepted at its component boundary: central project-scoped
 authorization, immutable server-selected demo-publication access, and
-authorization-sensitive audit events. SKEL-005 is the active branch scope: one
+authorization-sensitive audit events. SKEL-006 is the active branch scope: an
+application CI baseline that runs formatting, lint, type checks, unit tests,
+and the disposable database migration lifecycle on every pull request.
 synthetic text submission may invoke the accepted typed model gateway, persist
 its result/configuration, and display the persisted run. Do not describe any
 later feature, deployment, benchmark, cost, latency result, or security gate as
@@ -28,7 +30,7 @@ python scripts/tasks.py <target>
 ```
 
 `make <target>` mirrors the same targets where GNU Make is available. The
-stable targets are `bootstrap`, `format`, `lint`, `typecheck`, `test`, `dev`,
+stable targets are `bootstrap`, `format`, `format-check`, `lint`, `typecheck`, `test`, `dev`,
 `db-up`, `db-down`, `migrate`, `migrate-down`, `db-check`, `docs-check`,
 `docs-self-test`, and `ci`.
 

@@ -2,7 +2,7 @@
 
 **Status date:** 2026-08-27<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-005, IAM-001, and IAM-002 verified on `main`<br>
-**Current phase:** Phase 1 — SKEL-005 accepted; SKEL-006 is the next P0 item<br>
+**Current phase:** Phase 1 — SKEL-005 accepted; SKEL-006 application-CI baseline in progress<br>
 **Health:** Green for accepted `main` at `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status

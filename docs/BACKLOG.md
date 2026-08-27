@@ -270,7 +270,7 @@ security release gate has executed or passed.
 - **Estimate:** 4 h
 - **Dependencies:** SKEL-001
 - **Deliverable:** GitHub Actions for formatting, lint, frontend/backend type checks, unit tests, migration check.
-- **Acceptance:** Deliberate failures block merge; clean branch passes; secret/SCA/SAST checks and the deterministic security harness run on every pull request.
+- **Acceptance:** Deliberate failures block merge; clean branches pass; formatting, lint, frontend/backend type checks, unit tests, migration check, and documentation validation run on every pull request. Secret/SCA/SAST checks and the deterministic security harness are implemented and required by SEC-001 after this baseline is accepted.
 
 #### SEC-001 — Build deterministic security regression harness
 

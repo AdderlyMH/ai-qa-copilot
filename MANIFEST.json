@@ -62,13 +62,13 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 4365,
-      "sha256": "d143554d6e05fe2c983bc394677a6b1af099902e1ff973af8a4a881ad2a2b534"
+      "bytes": 4528,
+      "sha256": "5f8db7a7d508ee15adcdcef9db0fac22c8bec1623a7c165bcd98723daa5c071b"
     },
     {
       "path": "CONTRIBUTING.md",
-      "bytes": 5477,
-      "sha256": "3815bfc7c02e5d1365a8aa3746f1ff90e8279bf8358db3d83ab4def179de2f27"
+      "bytes": 5565,
+      "sha256": "8f12f20772d436e5165c78fb30358fbbfc3decc442f0dd9ee1dc14c1e61a842a"
     },
     {
       "path": "LICENSE",
@@ -77,13 +77,13 @@
     },
     {
       "path": "Makefile",
-      "bytes": 909,
-      "sha256": "3d0a52d133db043d83970d3b3b8f91fb586cd9afbd4d41a433d5785e6eefeedc"
+      "bytes": 978,
+      "sha256": "cf012e95aca40202bee05ff379ec774f30538772e735b48566454513d21d8e6c"
     },
     {
       "path": "README.md",
-      "bytes": 11809,
-      "sha256": "b6471930da956afd0154556d77925c6ceca91d271c4f017068ea58994a77701b"
+      "bytes": 11822,
+      "sha256": "731b32b7855e3cc6721f3ca6f437bda3638e2fa343fedac87804e9871794bbe8"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 47508,
-      "sha256": "33a8e4d71acb4844e497dfc804922f46786ec7043c20aeb42326e26956da9c5c"
+      "bytes": 47687,
+      "sha256": "771e6e10b68b95ca3e5c072a23df183e2dcda832f50283cf8671cbcb4c77956c"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 29820,
-      "sha256": "1d0ffe4953df39412159108155482393330d312b9a077b9ae849f49a426c6a16"
+      "bytes": 29836,
+      "sha256": "febbeb5e07cd99245838aa27fd9fd75cac06c185bb2c79be5048047236bc27ab"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -257,8 +257,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 27880,
-      "sha256": "ce01f0cf30f2337dd3eca1c2346795295f04d988911f5838c431f125ae3d186d"
+      "bytes": 28176,
+      "sha256": "6414480810e979a556f9cf482101ac2305324b92a00fe0d37f4a0e7ae0daca18"
     },
     {
       "path": "scripts/validate_docs.py",

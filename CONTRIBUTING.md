@@ -30,6 +30,7 @@ convenience alias when GNU Make is available.
 |------------------|----------------------------------------------------------------------|
 | `bootstrap`      | Syncs Python from `uv.lock` and installs npm from `package-lock.json`.|
 | `format`         | Formats repository Python and frontend files, then regenerates the manifest. |
+| `format-check`   | Verifies Python and frontend formatting without modifying files. |
 | `lint`           | Runs Ruff and the Next.js ESLint configuration.                      |
 | `typecheck`      | Runs strict MyPy and TypeScript checks.                              |
 | `test`           | Runs documentation self-tests and the backend pytest suite.         |
