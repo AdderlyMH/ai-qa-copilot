@@ -251,7 +251,7 @@ security release gate has executed or passed.
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** SKEL-001
-- **Implementation status:** In progress on `feat/skel-004`; not accepted or verified.
+- **Implementation status:** Verified on `main` at `9118e161622714d5f2bfe911c0e412ad51be0a56` (PR #27). Final acceptance found the merged tree `4ae0855481ee4d7e54a69355c8fe8c4a91cad5f8` identical to reviewed head `1147ce28955e34138c86c2e295e93c9e498ba39e`.
 - **Deliverable:** Server-side OpenAI gateway with timeout, typed response, usage capture, and fake adapter.
 - **Acceptance:** One structured model call can run; fake adapter drives deterministic tests; no client-side secret.
 
@@ -939,6 +939,9 @@ If the schedule slips:
 FND-001 through FND-009 have recorded Phase 0 evidence. IAM-001 is verified on
 merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`, and IAM-002 is
 verified on merged `main` `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`.
-The active issue is **SKEL-003 — Implement project CRUD vertical slice**.
-SKEL-003 has not started; later parser and execution work remains subject to
-its documented dependencies and deterministic verification.
+SKEL-003 is verified on merged `main` `b889595905aba2a3db09a54c1cf5b35d1bf56784`.
+SKEL-004 is verified on merged `main` `9118e161622714d5f2bfe911c0e412ad51be0a56`.
+The active issue is **SKEL-005 — Persist and display one AI run**. It must use
+only synthetic input and the accepted gateway proof; later parser, worker, and
+execution work remains subject to its documented dependencies and deterministic
+verification.
