@@ -251,6 +251,7 @@ security release gate has executed or passed.
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** SKEL-001
+- **Implementation status:** In progress on `feat/skel-004`; not accepted or verified.
 - **Deliverable:** Server-side OpenAI gateway with timeout, typed response, usage capture, and fake adapter.
 - **Acceptance:** One structured model call can run; fake adapter drives deterministic tests; no client-side secret.
 

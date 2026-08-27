@@ -2,8 +2,8 @@
 
 **Status date:** 2026-08-27<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, SKEL-003, IAM-001, and IAM-002 verified on `main`<br>
-**Current phase:** Phase 1 — SKEL-003 accepted on `main`; SKEL-004 is the next P0 implementation item<br>
-**Health:** Green for accepted `main` at `b889595905aba2a3db09a54c1cf5b35d1bf56784`. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
+**Current phase:** Phase 1 — SKEL-004 implementation in progress on `feat/skel-004`<br>
+**Health:** Green for accepted `main` at `28654cdb1b544c58292183270d84375f97731734`; SKEL-004 branch evidence is pending. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status
 
@@ -399,7 +399,8 @@ release milestone.
 
 ## Next action
 
-Create `feat/skel-004` from `main` and implement only the server-side model
-gateway proof: timeout, typed response, usage capture, and deterministic fake
-adapter. Do not expose a client-side secret or add SKEL-005, durable audit
+Implement and validate `feat/skel-004` as the server-side model gateway proof:
+one strict structured OpenAI Responses API call with fixed timeout, typed
+response, usage capture, and deterministic fake adapter. Do not expose a
+client-side secret or add SKEL-005 persistence/UI flow, durable audit
 persistence, deployment, or other later work before its own acceptance gate.
