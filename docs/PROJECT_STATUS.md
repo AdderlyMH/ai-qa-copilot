@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-08-27<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, SKEL-003, IAM-001, and IAM-002 verified on `main`<br>
-**Current phase:** Phase 1 — SKEL-004 implementation in progress on `feat/skel-004`<br>
-**Health:** Green for accepted `main` at `28654cdb1b544c58292183270d84375f97731734`; SKEL-004 branch evidence is pending. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-004, IAM-001, and IAM-002 verified on `main`<br>
+**Current phase:** Phase 1 — SKEL-004 accepted; SKEL-005 is the next P0 item<br>
+**Health:** Green for accepted `main` at `9118e161622714d5f2bfe911c0e412ad51be0a56`. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status
 
@@ -102,6 +102,23 @@ SKEL-006 evidence. This slice does not add durable authorization-audit storage, 
 publication repository, model/retrieval/worker behavior, deployment, SG-05,
 or SKEL-006.
 
+SKEL-004 has passed final acceptance on merged `main`
+`9118e161622714d5f2bfe911c0e412ad51be0a56`. PR #27 is merged. The final
+acceptance gate compared the merged tree
+`4ae0855481ee4d7e54a69355c8fe8c4a91cad5f8` with the final reviewed PR head
+`1147ce28955e34138c86c2e295e93c9e498ba39e` and found no changed files, so
+the reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice is a server-side model-gateway proof only: it fixes the
+OpenAI Responses API configuration to `gpt-5.6-terra` with `medium` reasoning,
+uses one strict structured call with a fixed 10-second timeout, returns typed
+response and usage data, and supplies a deterministic fake adapter. It rejects
+missing configuration, provider and timeout failures, malformed provider
+bodies or structured output, unexpected models, and invalid usage. It does not
+add an API route, browser-side secret, persistence, UI flow, worker, deployment,
+paid-model validation, SG-05, or SKEL-006 application-CI evidence.
+
 The verified SKEL-002 scope is one local
 PostgreSQL/pgvector Compose service, an Alembic migration baseline that creates
 only the `vector` extension, environment-only migration connectivity, stable
@@ -136,6 +153,19 @@ has executed or passed.
 
 ### Recorded local validation
 
+- SKEL-004 branch validation on 2026-08-27 used Python 3.13.11 on Windows at
+  reviewed head `1147ce28955e34138c86c2e295e93c9e498ba39e`. Exact
+  `py scripts/tasks.py ci` passed Ruff, frontend ESLint, strict MyPy,
+  strict TypeScript, documentation validator self-tests, a fresh 53-file
+  manifest check, and documentation validation. Pytest collected 78 cases:
+  77 passed and one PostgreSQL integration test was intentionally skipped by
+  the Docker-free target. The nine focused gateway tests cover fixed request
+  construction and headers, fake-adapter behavior, missing configuration,
+  provider failure and timeout, malformed provider body and structured output,
+  unexpected model, and invalid usage. The run reported the existing Starlette
+  test-client deprecation and Windows pytest-cache permission warnings; neither
+  failed the command. This is component validation for the unchanged merged
+  tree, not paid-model, application-CI, deployment, SG-05, or SKEL-006 evidence.
 - IAM-002 branch validation on 2026-08-10 used Python 3.13.11, uv 0.11.16,
   Node.js 24.18.0, and npm 11.16.0. Exact repository `bootstrap`, `format`,
   `lint`, `typecheck`, `test`, `docs-self-test`, `docs-check`, and aggregate
@@ -386,9 +416,9 @@ release milestone.
 
 ## Not started or unverified
 
-- Every implementation item after SKEL-003 remains unverified, including the
-  next P0 item SKEL-004, demo repositories, durable authorization-audit
-  persistence, model,
+- Every implementation item after SKEL-004 remains unverified, including the
+  next P0 item SKEL-005, demo repositories, durable authorization-audit
+  persistence, model integration beyond the accepted gateway proof,
   retrieval, parser, worker, object-storage, safe execution, approval,
   deployment, evaluation, and metrics work, remains out of scope.
 - Model integration or paid model calls.
@@ -399,8 +429,9 @@ release milestone.
 
 ## Next action
 
-Implement and validate `feat/skel-004` as the server-side model gateway proof:
-one strict structured OpenAI Responses API call with fixed timeout, typed
-response, usage capture, and deterministic fake adapter. Do not expose a
-client-side secret or add SKEL-005 persistence/UI flow, durable audit
-persistence, deployment, or other later work before its own acceptance gate.
+Create `feat/skel-005` from accepted `main` and implement only one synthetic
+text submission that runs the accepted gateway, persists its result and
+configuration, and displays the persisted run. Refresh must preserve the
+result and errors must have correlation IDs. Do not add a production model
+call, durable audit persistence, worker, deployment, or later scope before
+SKEL-005 has its own acceptance gate.
