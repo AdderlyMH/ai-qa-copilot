@@ -194,6 +194,16 @@ def test_server_transport_normalizes_invalid_provider_json(
         )
 
 
+def test_server_transport_rejects_unpinned_urls_before_opening_them() -> None:
+    with pytest.raises(ModelGatewayConfigurationError, match="pinned OpenAI HTTPS"):
+        UrllibJsonHttpTransport().post(
+            url="http://127.0.0.1/internal",
+            headers={},
+            body={},
+            timeout_seconds=MODEL_GATEWAY_TIMEOUT_SECONDS,
+        )
+
+
 @pytest.mark.parametrize(
     "settings",
     [

@@ -212,6 +212,12 @@ def docs_self_test() -> None:
     uv_run("python", "scripts/validate_docs.py", "--self-test")
 
 
+def security_harness() -> None:
+    """Run deterministic security fixtures with fake adapters only."""
+
+    uv_run("python", "scripts/security_harness.py")
+
+
 def ci() -> None:
     """Run all noninteractive repository checks."""
 
@@ -219,6 +225,7 @@ def ci() -> None:
     lint()
     typecheck()
     test()
+    security_harness()
     docs_check()
 
 
@@ -861,7 +868,7 @@ def print_help() -> None:
     print("Available targets:")
     print(
         "  bootstrap format format-check lint typecheck test dev db-up db-down migrate "
-        "migrate-down db-check docs-check docs-self-test ci"
+        "migrate-down db-check docs-check docs-self-test security-harness ci"
     )
 
 
@@ -887,6 +894,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "db-check",
             "docs-check",
             "docs-self-test",
+            "security-harness",
             "ci",
         ),
         nargs="?",
@@ -915,6 +923,7 @@ def main(argv: list[str] | None = None) -> int:
         "db-check": db_check,
         "docs-check": docs_check,
         "docs-self-test": docs_self_test,
+        "security-harness": security_harness,
         "ci": ci,
     }
     if args.target == "help":

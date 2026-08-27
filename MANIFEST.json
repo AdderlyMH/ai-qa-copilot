@@ -77,8 +77,8 @@
     },
     {
       "path": "Makefile",
-      "bytes": 978,
-      "sha256": "cf012e95aca40202bee05ff379ec774f30538772e735b48566454513d21d8e6c"
+      "bytes": 1059,
+      "sha256": "c15f4adf539a7b97848476b012f6908071ba84573c959c9bb21400eec6473ff3"
     },
     {
       "path": "README.md",
@@ -257,13 +257,13 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 28176,
-      "sha256": "6414480810e979a556f9cf482101ac2305324b92a00fe0d37f4a0e7ae0daca18"
+      "bytes": 28452,
+      "sha256": "6f94b81f58f1ada6c33d28dcec2113a19b2146080f9b957d1039aad19b532d55"
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 96700,
-      "sha256": "afb0639685798230ac0a2ac6c147db8f8065f30667c92b963ee02350af5b1bcb"
+      "bytes": 96723,
+      "sha256": "021cb824e0b82f7c1011ac17d724a8f94c6e5d89e1689035cf2ce62aab324ad3"
     },
     {
       "path": "uv.lock",

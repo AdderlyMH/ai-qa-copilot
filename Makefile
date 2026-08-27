@@ -2,7 +2,7 @@ PYTHON ?= python
 API_PORT ?= 8000
 WEB_PORT ?= 3000
 
-.PHONY: help bootstrap format format-check lint typecheck test dev db-up db-down migrate migrate-down db-check docs-check docs-self-test ci
+.PHONY: help bootstrap format format-check lint typecheck test dev db-up db-down migrate migrate-down db-check docs-check docs-self-test security-harness ci
 
 help:
 	$(PYTHON) scripts/tasks.py help
@@ -48,6 +48,9 @@ docs-check:
 
 docs-self-test:
 	$(PYTHON) scripts/tasks.py docs-self-test
+
+security-harness:
+	$(PYTHON) scripts/tasks.py security-harness
 
 ci:
 	$(PYTHON) scripts/tasks.py ci
