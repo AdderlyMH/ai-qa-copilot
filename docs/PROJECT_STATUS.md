@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-08-27<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-004, IAM-001, and IAM-002 verified on `main`<br>
-**Current phase:** Phase 1 — SKEL-005 implementation in progress on `feat/skel-005`<br>
-**Health:** Green for accepted `main` at `2e906de4104f9d005ea9ead89447d66ca6cfe4d9`; SKEL-005 branch evidence is pending. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-005, IAM-001, and IAM-002 verified on `main`<br>
+**Current phase:** Phase 1 — SKEL-005 accepted; SKEL-006 is the next P0 item<br>
+**Health:** Green for accepted `main` at `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status
 
@@ -119,6 +119,23 @@ bodies or structured output, unexpected models, and invalid usage. It does not
 add an API route, browser-side secret, persistence, UI flow, worker, deployment,
 paid-model validation, SG-05, or SKEL-006 application-CI evidence.
 
+SKEL-005 has passed final acceptance on merged `main`
+`869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`. PR #29 is merged. The final
+acceptance gate compared the merged tree
+`1c5957b6b6bd1926a62bec6732bdea87a86ecb16` with the final reviewed PR head
+`1ec06d8a71b28b3e3d3ef04bab111df0fca68435` and found no changed files, so
+the reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice permits one owner-scoped synthetic-text submission through
+the accepted server-side gateway. It authorizes before model work, persists the
+synthetic input, structured output, model/configuration/prompt/schema
+provenance, usage, and timestamp in a reversible migration, and displays saved
+runs in the local UI. Missing configuration or unavailable provider/storage
+paths fail closed with a safe `503` and correlation ID. It does not establish
+paid-model validation, cost evidence, deployment, durable audit storage, SG-05,
+or SKEL-006 application-CI evidence.
+
 The verified SKEL-002 scope is one local
 PostgreSQL/pgvector Compose service, an Alembic migration baseline that creates
 only the `vector` extension, environment-only migration connectivity, stable
@@ -153,6 +170,20 @@ has executed or passed.
 
 ### Recorded local validation
 
+- SKEL-005 branch validation on 2026-08-27 used Python 3.13.11 on Windows.
+  The isolated PostgreSQL `db-check` passed on candidate
+  `20c0adccd7169a4c9e8ed2ec0dace26ce7b7b9f0`: Alembic upgraded an empty
+  database to head, exercised project CRUD and deterministic-fake synthetic
+  analysis through FastAPI, downgraded to base, recreated head, and cleaned its
+  Compose project. The later reviewed commit only narrowed test-helper types.
+  Exact reviewed head `1ec06d8a71b28b3e3d3ef04bab111df0fca68435` then passed
+  `py scripts/tasks.py ci`: Ruff, frontend ESLint, strict MyPy, strict
+  TypeScript, documentation validator self-tests, manifest and documentation
+  validation, plus 83 passing tests with one intentionally skipped PostgreSQL
+  integration test. The existing Starlette test-client deprecation and Windows
+  pytest-cache permission warnings were non-blocking. GitHub `docs-validation`
+  run #89 also passed on the reviewed head. This is deterministic fake-adapter
+  evidence, not paid-model, deployment, SG-05, or SKEL-006 evidence.
 - SKEL-004 branch validation on 2026-08-27 used Python 3.13.11 on Windows at
   reviewed head `1147ce28955e34138c86c2e295e93c9e498ba39e`. Exact
   `py scripts/tasks.py ci` passed Ruff, frontend ESLint, strict MyPy,
@@ -416,9 +447,9 @@ release milestone.
 
 ## Not started or unverified
 
-- Every implementation item after the active SKEL-005 slice remains unverified,
-  including demo repositories, durable authorization-audit persistence, model
-  integration beyond the accepted gateway proof,
+- Every implementation item after SKEL-005 remains unverified, including the
+  next P0 item SKEL-006, demo repositories, durable authorization-audit
+  persistence, model integration beyond the accepted gateway proof,
   retrieval, parser, worker, object-storage, safe execution, approval,
   deployment, evaluation, and metrics work, remains out of scope.
 - Paid-model validation or cost evidence.
@@ -429,8 +460,8 @@ release milestone.
 
 ## Next action
 
-Implement and validate `feat/skel-005` as one synthetic-text submission that
-runs the accepted gateway, persists its result/configuration, and displays the
-persisted run. Refresh must preserve the result and errors must have correlation
-IDs. Do not add durable audit persistence, worker, deployment, or later scope
-before SKEL-005 has its own acceptance gate.
+Create `feat/skel-006` from accepted `main` and establish the documented
+pull-request application-CI baseline. Deliberate failures must block merge and
+clean branches must pass; do not label the existing documentation-only workflow
+as application CI or SKEL-006 evidence before this item has its own acceptance
+gate.

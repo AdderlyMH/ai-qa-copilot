@@ -260,7 +260,7 @@ security release gate has executed or passed.
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** SKEL-003, SKEL-004
-- **Implementation status:** In progress on `feat/skel-005`; not accepted or verified.
+- **Implementation status:** Verified on `main` at `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb` (PR #29). Final acceptance found the merged tree `1c5957b6b6bd1926a62bec6732bdea87a86ecb16` identical to reviewed head `1ec06d8a71b28b3e3d3ef04bab111df0fca68435`.
 - **Deliverable:** User submits synthetic text; API runs analysis; result and configuration persist and display.
 - **Acceptance:** Refresh preserves result; errors have correlation IDs.
 
@@ -942,7 +942,7 @@ merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`, and IAM-002 is
 verified on merged `main` `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`.
 SKEL-003 is verified on merged `main` `b889595905aba2a3db09a54c1cf5b35d1bf56784`.
 SKEL-004 is verified on merged `main` `9118e161622714d5f2bfe911c0e412ad51be0a56`.
-The active issue is **SKEL-005 — Persist and display one AI run**. It must use
-only synthetic input and the accepted gateway proof; later parser, worker, and
-execution work remains subject to its documented dependencies and deterministic
-verification.
+SKEL-005 is verified on merged `main` `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`.
+The next P0 issue is **SKEL-006 — Establish CI baseline**. It must create
+pull-request application CI without misrepresenting the existing
+documentation-only workflow as SKEL-006 evidence.
