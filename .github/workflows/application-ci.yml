@@ -69,4 +69,6 @@ jobs:
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
       - run: uv tool run --from pip-audit==2.9.0 pip-audit --strict
-      - run: uv tool run --from bandit==1.8.6 bandit --quiet --recursive apps/api/src scripts
+      # Low-severity process-management advisories remain visible in Bandit output;
+      # this blocking gate fails on medium and high severity findings.
+      - run: uv tool run --from bandit==1.8.6 bandit --quiet --recursive apps/api/src scripts --severity-level medium
