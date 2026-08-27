@@ -13,7 +13,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from ai_qa_copilot_api.audit import AuthorizationAuditEvent, AuthorizationAuditSink
 from ai_qa_copilot_api.auth import AppEnvironment, AuthSettings
 from ai_qa_copilot_api.main import create_app
-from ai_qa_copilot_api.projects import Base, ProjectRepository, SqlAlchemyProjectRepository
+from ai_qa_copilot_api.projects import (
+    Base,
+    ProjectRepository,
+    SqlAlchemyProjectRepository,
+)
 
 
 class RecordingAuditSink(AuthorizationAuditSink):
@@ -89,7 +93,10 @@ def test_owner_can_create_list_view_and_archive_a_project(
     assert listed_after_archive.json() == []
     assert viewed_after_archive.status_code == 200
     assert viewed_after_archive.json()["archived_at"] == archived.json()["archived_at"]
-    assert [(event.action, event.result.value, event.resource_type) for event in audit_sink.events] == [
+    assert [
+        (event.action, event.result.value, event.resource_type)
+        for event in audit_sink.events
+    ] == [
         ("project.mutate", "allowed", "project_collection"),
         ("project.list", "allowed", "project_collection"),
         ("project.read", "allowed", "project"),
