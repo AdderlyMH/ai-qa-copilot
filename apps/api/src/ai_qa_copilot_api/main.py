@@ -13,6 +13,13 @@ from ai_qa_copilot_api.audit import (
     AuthorizationAuditor,
     StructuredLoggingAuditSink,
 )
+from ai_qa_copilot_api.analysis_runs import (
+    ANALYSIS_RUNS_UNAVAILABLE_DETAIL,
+    AnalysisRunService,
+    AnalysisRunUnavailable,
+    UnavailableAnalysisRunService,
+    analysis_run_service_from_environment,
+)
 from ai_qa_copilot_api.auth import (
     AuthBoundary,
     AuthSettings,
@@ -86,6 +93,34 @@ class ProjectResponse(BaseModel):
     archived_at: datetime | None
 
 
+class AnalysisRunCreateRequest(BaseModel):
+    """One explicitly synthetic input submitted for the SKEL-005 proof."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    synthetic_text: Annotated[str, Field(min_length=1, max_length=4_000)]
+
+
+class AnalysisRunResponse(BaseModel):
+    """Persisted result plus the fixed model-configuration projection."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    synthetic_text: str
+    output_json: dict[str, object]
+    provider_response_id: str
+    model_id: str
+    configuration_version: str
+    prompt_version: str
+    schema_name: str
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    created_at: datetime
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -94,6 +129,9 @@ def create_app(
     demo_publication_repository: DemoPublicationRepository | None = None,
     authorization_audit_sink: AuthorizationAuditSink | None = None,
     project_repository: ProjectRepository | None = None,
+    analysis_run_service: AnalysisRunService
+    | UnavailableAnalysisRunService
+    | None = None,
 ) -> FastAPI:
     """Build the API with identity and authorization initialized at startup."""
 
@@ -131,6 +169,11 @@ def create_app(
             project_repository
             if project_repository is not None
             else project_repository_from_environment()
+        )
+        application.state.analysis_run_service = (
+            analysis_run_service
+            if analysis_run_service is not None
+            else analysis_run_service_from_environment()
         )
         yield
 
@@ -289,6 +332,66 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return ProjectResponse.model_validate(project)
 
+    @application.post(
+        "/projects/{project_id}/analysis-runs",
+        status_code=status.HTTP_201_CREATED,
+        response_model=AnalysisRunResponse,
+    )
+    def create_analysis_run(
+        project_id: UUID,
+        payload: AnalysisRunCreateRequest,
+        request: Request,
+        response: Response,
+    ) -> AnalysisRunResponse:
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.INVOKE_MODEL,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+        service = _analysis_run_service(request)
+        try:
+            analysis_run = service.create(
+                project_id=project_id,
+                synthetic_text=payload.synthetic_text,
+                correlation_id=correlation_id,
+            )
+        except AnalysisRunUnavailable:
+            _raise_analysis_runs_unavailable(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return AnalysisRunResponse.model_validate(analysis_run)
+
+    @application.get(
+        "/projects/{project_id}/analysis-runs",
+        response_model=list[AnalysisRunResponse],
+    )
+    def list_analysis_runs(
+        project_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> list[AnalysisRunResponse]:
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+        service = _analysis_run_service(request)
+        try:
+            analysis_runs = service.list_for_project(project_id)
+        except AnalysisRunUnavailable:
+            _raise_analysis_runs_unavailable(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return [AnalysisRunResponse.model_validate(item) for item in analysis_runs]
+
     return application
 
 
@@ -308,6 +411,28 @@ def _project_dependencies(
     if not isinstance(boundary, ProjectAuthorizationBoundary) or repository is None:
         raise RuntimeError("Project boundaries were not initialized")
     return boundary, repository
+
+
+def _analysis_run_service(
+    request: Request,
+) -> AnalysisRunService | UnavailableAnalysisRunService:
+    service = getattr(request.app.state, "analysis_run_service", None)
+    if not isinstance(service, (AnalysisRunService, UnavailableAnalysisRunService)):
+        raise RuntimeError("Analysis-run boundary was not initialized")
+    return service
+
+
+def _require_project(
+    repository: ProjectRepository,
+    project_id: UUID,
+    correlation_id: UUID,
+) -> None:
+    try:
+        project = repository.get(project_id)
+    except ProjectRepositoryUnavailable:
+        _raise_projects_unavailable(correlation_id)
+    if project is None:
+        _raise_project_not_found(correlation_id)
 
 
 def _authorize_project_collection(
@@ -389,6 +514,14 @@ def _raise_projects_unavailable(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail=PROJECTS_UNAVAILABLE_DETAIL,
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_analysis_runs_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=ANALYSIS_RUNS_UNAVAILABLE_DETAIL,
         headers={"X-Correlation-ID": str(correlation_id)},
     )
 

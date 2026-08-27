@@ -3,21 +3,23 @@
 ## Current state
 
 The repository has completed its Phase 0 documentation and governance baseline,
-and Phase 1 is active. SKEL-001, SKEL-002, IAM-001, and IAM-002 are verified
-on `main`. SKEL-003 is an implementation candidate on `feat/skel-003` and is
-not yet accepted or verified. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
+and Phase 1 is active. SKEL-001 through SKEL-004, IAM-001, and IAM-002 are
+verified on `main`. SKEL-005 is an implementation candidate on
+`feat/skel-005` and is not yet accepted or verified. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
 access-token validation, immutable server-side owner mapping, and
 local-environment bypass guard. IAM-002 supplies the central project
 authorization, immutable server-selected demo-publication, and
 authorization-sensitive audit boundaries.
 
-The SKEL-003 candidate adds the minimum project entity, PostgreSQL/SQLAlchemy
-repository, reversible migration, owner-only create/list/view/archive routes,
-and a basic local web UI. It deliberately does not add a persisted demo record,
-durable audit adapter, model integration, retrieval, worker, deployment,
-runtime evaluation, product metric, latency result, or cost result. Its
-integration evidence and review are pending; IAM-002 remains component
-evidence, not SG-05 or production evidence.
+The accepted SKEL-003/004 slices add the minimum project entity,
+PostgreSQL/SQLAlchemy repository, reversible migrations, owner-only
+create/list/view/archive routes, a basic local web UI, and a server-only typed
+model gateway proof. The SKEL-005 candidate composes those seams for one
+synthetic text analysis run whose result and configuration persist and display.
+It deliberately does not add a persisted demo record, durable audit adapter,
+retrieval, worker, deployment, runtime evaluation, product metric, latency
+result, or cost result. Its integration evidence and review are pending;
+IAM-002 remains component evidence, not SG-05 or production evidence.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
 work with milestones and estimates; GitHub enforces the required `main` CI
@@ -179,11 +181,14 @@ $env:DATABASE_URL = "postgresql+psycopg://ai_qa_copilot:ai_qa_copilot_dev@127.0.
 python scripts/tasks.py migrate
 ```
 
-For the SKEL-003 project UI, also enable the intentional local owner bypass in
-the API process, then use `http://localhost:3000`. The Next.js development
-server proxies `/api/*` to `API_BASE_URL` (default `http://127.0.0.1:8000`) so
-the browser does not need client-side credentials or a permissive API CORS
-policy.
+For the SKEL-003/005 project UI, also enable the intentional local owner
+bypass in the API process, then use `http://localhost:3000`. The Next.js
+development server proxies `/api/*` to `API_BASE_URL` (default
+`http://127.0.0.1:8000`) so the browser does not need client-side credentials
+or a permissive API CORS policy. A submitted synthetic analysis run requires
+`OPENAI_API_KEY` in the API process only; without it, the route fails closed
+with a correlation ID. The integration test injects a deterministic fake model
+and never makes a paid provider call.
 
 ```powershell
 $env:APP_ENV = "local"
@@ -219,11 +224,12 @@ python scripts/tasks.py db-check
 
 `db-check` creates its own isolated Compose project and named volume, waits for
 PostgreSQL health, runs `upgrade head`, verifies the Alembic revision, `vector`
-extension, and `projects` table through SQL, then runs create/list/view/archive
-through the FastAPI routes against that migrated database. It then runs
-`downgrade base` and verifies rollback before applying `upgrade head` again.
-Its cleanup path always requests removal of that check project's containers and
-volumes. The PostgreSQL CRUD test requires the task runner's explicit isolated
+extension, `projects`, and `analysis_runs` tables through SQL, then runs
+create/list/view/archive plus a deterministic-fake synthetic analysis through
+the FastAPI routes against that migrated database. It then runs `downgrade
+base` and verifies rollback before applying `upgrade head` again. Its cleanup
+path always requests removal of that check project's containers and volumes.
+The PostgreSQL integration test requires the task runner's explicit isolated
 database setting and is skipped by the Docker-free `ci` target.
 
 ### Automatic manifest refresh before commits

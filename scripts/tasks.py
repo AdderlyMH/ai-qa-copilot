@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0002_create_projects"
+DB_CHECK_REVISION = "0003_create_analysis_runs"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -318,7 +318,7 @@ def require_database_value(label: str, actual: str, expected: str) -> None:
 def verify_migrated_database(
     compose: tuple[str, ...], environment: dict[str, str]
 ) -> None:
-    """Verify Alembic head, pgvector, and the durable project table through SQL."""
+    """Verify Alembic head, pgvector, projects, and analysis runs through SQL."""
 
     require_database_value(
         "Alembic revision",
@@ -345,12 +345,21 @@ def verify_migrated_database(
         ),
         "projects",
     )
+    require_database_value(
+        "analysis_runs table",
+        query_check_database(
+            compose,
+            environment,
+            "SELECT to_regclass('public.analysis_runs');",
+        ),
+        "analysis_runs",
+    )
 
 
 def verify_rolled_back_database(
     compose: tuple[str, ...], environment: dict[str, str]
 ) -> None:
-    """Verify downgrade base removes revision, extension, and project schema."""
+    """Verify downgrade base removes revision, extension, and durable schemas."""
 
     require_database_value(
         "Alembic base revision count",
@@ -374,6 +383,15 @@ def verify_rolled_back_database(
             compose,
             environment,
             "SELECT coalesce(to_regclass('public.projects')::text, '');",
+        ),
+        "",
+    )
+    require_database_value(
+        "analysis_runs rollback table",
+        query_check_database(
+            compose,
+            environment,
+            "SELECT coalesce(to_regclass('public.analysis_runs')::text, '');",
         ),
         "",
     )
@@ -420,7 +438,10 @@ def db_check() -> None:
         )
         verify_migrated_database(compose, environment)
 
-        print("db-check: exercising project CRUD through the migrated API", flush=True)
+        print(
+            "db-check: exercising project CRUD and synthetic analysis through the migrated API",
+            flush=True,
+        )
         project_api_environment = alembic_environment.copy()
         project_api_environment["AI_QA_COPILOT_POSTGRES_INTEGRATION_DATABASE_URL"] = (
             project_api_environment["DATABASE_URL"]
