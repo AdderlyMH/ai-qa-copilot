@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
+import ai_qa_copilot_api.model_gateway as model_gateway
 from ai_qa_copilot_api.model_gateway import (
     B1_MODEL_ID,
     MODEL_GATEWAY_TIMEOUT_SECONDS,
@@ -19,6 +20,7 @@ from ai_qa_copilot_api.model_gateway import (
     OpenAIResponsesAdapter,
     StructuredModelRequest,
     StructuredModelResponse,
+    UrllibJsonHttpTransport,
 )
 
 
@@ -163,6 +165,33 @@ def test_timeout_is_normalized_without_provider_detail() -> None:
 
     with pytest.raises(ModelGatewayTimeout, match="Model provider timed out"):
         adapter.generate(request())
+
+
+def test_server_transport_normalizes_invalid_provider_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class InvalidJsonResponse:
+        def __enter__(self) -> InvalidJsonResponse:
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b"not json"
+
+    def invalid_json_urlopen(*_: object, **__: object) -> InvalidJsonResponse:
+        return InvalidJsonResponse()
+
+    monkeypatch.setattr(model_gateway, "urlopen", invalid_json_urlopen)
+
+    with pytest.raises(ModelGatewayProtocolError, match="invalid response"):
+        UrllibJsonHttpTransport().post(
+            url="https://api.openai.com/v1/responses",
+            headers={},
+            body={},
+            timeout_seconds=MODEL_GATEWAY_TIMEOUT_SECONDS,
+        )
 
 
 @pytest.mark.parametrize(

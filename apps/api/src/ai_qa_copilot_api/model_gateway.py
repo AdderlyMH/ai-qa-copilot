@@ -140,6 +140,10 @@ class UrllibJsonHttpTransport:
                 payload = json.loads(response.read().decode("utf-8"))
         except TimeoutError as error:
             raise ModelGatewayTimeout("Model provider timed out") from error
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ModelGatewayProtocolError(
+                "Model provider returned an invalid response"
+            ) from error
         except (HTTPError, URLError, OSError) as error:
             raise ModelGatewayUnavailable("Model provider is unavailable") from error
         if not isinstance(payload, dict):
