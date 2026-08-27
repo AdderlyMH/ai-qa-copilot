@@ -39,6 +39,7 @@ class ProjectAction(StrEnum):
     ENQUEUE_JOB = "project.job.enqueue"
     APPROVE = "project.approval.mutate"
     EXECUTE = "project.execution.start"
+    LIST = "project.list"
 
 
 class ProjectResourceType(StrEnum):
@@ -98,6 +99,14 @@ class AuthorizedProjectScope:
     project_id: UUID
     action: ProjectAction
     resource: ProjectResourceReference
+
+
+@dataclass(frozen=True)
+class AuthorizedProjectCollectionScope:
+    """Capability returned only after owner access to the project collection."""
+
+    principal: OwnerPrincipal
+    action: ProjectAction
 
 
 class AuthorizationDenied(Exception):
@@ -232,6 +241,44 @@ class ProjectAuthorizationPolicy:
             resource=resource,
         )
 
+    def authorize_collection(
+        self,
+        *,
+        principal: ApplicationPrincipal,
+        action: ProjectAction,
+        correlation_id: UUID,
+    ) -> AuthorizedProjectCollectionScope:
+        """Authorize an owner-only operation before a project exists to scope."""
+
+        actor = actor_for_principal(principal)
+        if not isinstance(
+            principal,
+            (CognitoOwnerPrincipal, LocalDevelopmentOwnerPrincipal),
+        ):
+            self._auditor.record(
+                correlation_id=correlation_id,
+                actor=actor,
+                action=action.value,
+                result=AuditResult.DENIED,
+                reason="guest_private_project_collection_access",
+                resource_type="project_collection",
+            )
+            raise AuthorizationDenied(
+                disclosure=DenialDisclosure.NOT_FOUND,
+                public_detail=PRIVATE_RESOURCE_NOT_FOUND_DETAIL,
+                reason="guest_private_project_collection_access",
+            )
+
+        self._auditor.record(
+            correlation_id=correlation_id,
+            actor=actor,
+            action=action.value,
+            result=AuditResult.ALLOWED,
+            reason="owner_project_collection_access",
+            resource_type="project_collection",
+        )
+        return AuthorizedProjectCollectionScope(principal=principal, action=action)
+
     def _deny(
         self,
         *,
@@ -324,5 +371,33 @@ class ProjectAuthorizationBoundary:
             action=action,
             requested_project_id=requested_project_id,
             resource=resource,
+            correlation_id=correlation_id,
+        )
+
+    def authorize_collection_request(
+        self,
+        *,
+        request: Request,
+        action: ProjectAction,
+        correlation_id: UUID,
+    ) -> AuthorizedProjectCollectionScope:
+        """Resolve owner access before listing or creating project records."""
+
+        try:
+            principal = self._auth_boundary.resolve_owner(request)
+        except OwnerResolutionFailure as error:
+            self._auditor.record(
+                correlation_id=correlation_id,
+                actor=actor_for_owner_resolution_failure(error),
+                action=action.value,
+                result=AuditResult.DENIED,
+                reason=error.reason,
+                resource_type="project_collection",
+            )
+            raise
+
+        return self._policy.authorize_collection(
+            principal=principal,
+            action=action,
             correlation_id=correlation_id,
         )

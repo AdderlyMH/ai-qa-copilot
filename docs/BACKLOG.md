@@ -242,6 +242,7 @@ security release gate has executed or passed.
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** SKEL-002, IAM-002
+- **Implementation status:** In progress on `feat/skel-003`; not accepted or verified.
 - **Deliverable:** Project entity, repository, API, and basic UI.
 - **Acceptance:** Create/list/view/archive works with integration tests.
 

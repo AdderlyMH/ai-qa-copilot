@@ -1,10 +1,11 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Literal, Never
+from datetime import datetime
+from typing import Annotated, Literal, Never
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from ai_qa_copilot_api.audit import (
     AuthorizationAuditSink,
@@ -20,8 +21,10 @@ from ai_qa_copilot_api.auth import (
 )
 from ai_qa_copilot_api.authorization import (
     AuthorizationDenied,
+    ProjectAction,
     ProjectAuthorizationBoundary,
     ProjectAuthorizationPolicy,
+    ProjectResourceReference,
     actor_for_owner_resolution_failure,
 )
 from ai_qa_copilot_api.demo import (
@@ -31,6 +34,12 @@ from ai_qa_copilot_api.demo import (
     DemoPublicationSettings,
     DemoPublicationUnavailable,
     UnavailableDemoPublicationRepository,
+)
+from ai_qa_copilot_api.projects import (
+    PROJECTS_UNAVAILABLE_DETAIL,
+    ProjectRepository,
+    ProjectRepositoryUnavailable,
+    project_repository_from_environment,
 )
 
 
@@ -56,6 +65,27 @@ class PublicDemoResponse(BaseModel):
     content_hash: str
 
 
+class ProjectCreateRequest(BaseModel):
+    """Owner-supplied project fields; ownership remains server-controlled."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    description: Annotated[str | None, Field(max_length=2_000)] = None
+
+
+class ProjectResponse(BaseModel):
+    """Public owner projection for the minimal project vertical slice."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    name: str
+    description: str | None
+    created_at: datetime
+    archived_at: datetime | None
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -63,6 +93,7 @@ def create_app(
     demo_settings: DemoPublicationSettings | None = None,
     demo_publication_repository: DemoPublicationRepository | None = None,
     authorization_audit_sink: AuthorizationAuditSink | None = None,
+    project_repository: ProjectRepository | None = None,
 ) -> FastAPI:
     """Build the API with identity and authorization initialized at startup."""
 
@@ -95,6 +126,11 @@ def create_app(
                 else UnavailableDemoPublicationRepository()
             ),
             auditor,
+        )
+        application.state.project_repository = (
+            project_repository
+            if project_repository is not None
+            else project_repository_from_environment()
         )
         yield
 
@@ -157,6 +193,102 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return PublicDemoResponse.model_validate(publication)
 
+    @application.post(
+        "/projects",
+        status_code=status.HTTP_201_CREATED,
+        response_model=ProjectResponse,
+    )
+    def create_project(
+        payload: ProjectCreateRequest,
+        request: Request,
+        response: Response,
+    ) -> ProjectResponse:
+        correlation_id = uuid4()
+        boundary, repository = _project_dependencies(request)
+        _authorize_project_collection(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            correlation_id=correlation_id,
+        )
+        try:
+            project = repository.create(
+                name=payload.name,
+                description=payload.description,
+            )
+        except ProjectRepositoryUnavailable:
+            _raise_projects_unavailable(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return ProjectResponse.model_validate(project)
+
+    @application.get("/projects", response_model=list[ProjectResponse])
+    def list_projects(request: Request, response: Response) -> list[ProjectResponse]:
+        correlation_id = uuid4()
+        boundary, repository = _project_dependencies(request)
+        _authorize_project_collection(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.LIST,
+            correlation_id=correlation_id,
+        )
+        try:
+            projects = repository.list_active()
+        except ProjectRepositoryUnavailable:
+            _raise_projects_unavailable(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return [ProjectResponse.model_validate(project) for project in projects]
+
+    @application.get("/projects/{project_id}", response_model=ProjectResponse)
+    def get_project(
+        project_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> ProjectResponse:
+        correlation_id = uuid4()
+        boundary, repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        try:
+            project = repository.get(project_id)
+        except ProjectRepositoryUnavailable:
+            _raise_projects_unavailable(correlation_id)
+        if project is None:
+            _raise_project_not_found(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return ProjectResponse.model_validate(project)
+
+    @application.post(
+        "/projects/{project_id}/archive",
+        response_model=ProjectResponse,
+    )
+    def archive_project(
+        project_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> ProjectResponse:
+        correlation_id = uuid4()
+        boundary, repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        try:
+            project = repository.archive(project_id)
+        except ProjectRepositoryUnavailable:
+            _raise_projects_unavailable(correlation_id)
+        if project is None:
+            _raise_project_not_found(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return ProjectResponse.model_validate(project)
+
     return application
 
 
@@ -164,6 +296,99 @@ def _raise_service_unavailable(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail=DEMO_UNAVAILABLE_DETAIL,
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _project_dependencies(
+    request: Request,
+) -> tuple[ProjectAuthorizationBoundary, ProjectRepository]:
+    boundary = getattr(request.app.state, "project_authorization_boundary", None)
+    repository = getattr(request.app.state, "project_repository", None)
+    if not isinstance(boundary, ProjectAuthorizationBoundary) or repository is None:
+        raise RuntimeError("Project boundaries were not initialized")
+    return boundary, repository
+
+
+def _authorize_project_collection(
+    *,
+    boundary: ProjectAuthorizationBoundary,
+    request: Request,
+    action: ProjectAction,
+    correlation_id: UUID,
+) -> None:
+    try:
+        boundary.authorize_collection_request(
+            request=request,
+            action=action,
+            correlation_id=correlation_id,
+        )
+    except OwnerResolutionFailure as error:
+        _raise_owner_resolution_denial(error, correlation_id)
+    except AuthorizationDenied as error:
+        raise HTTPException(
+            status_code=error.status_code,
+            detail=error.public_detail,
+            headers={"X-Correlation-ID": str(correlation_id)},
+        ) from None
+    except AuthorizationAuditUnavailable:
+        _raise_projects_unavailable(correlation_id)
+
+
+def _authorize_project_resource(
+    *,
+    boundary: ProjectAuthorizationBoundary,
+    request: Request,
+    action: ProjectAction,
+    project_id: UUID,
+    correlation_id: UUID,
+) -> None:
+    try:
+        boundary.authorize_request(
+            request=request,
+            action=action,
+            requested_project_id=project_id,
+            resource=ProjectResourceReference.project(project_id),
+            correlation_id=correlation_id,
+        )
+    except OwnerResolutionFailure as error:
+        _raise_owner_resolution_denial(error, correlation_id)
+    except AuthorizationDenied as error:
+        raise HTTPException(
+            status_code=error.status_code,
+            detail=error.public_detail,
+            headers={"X-Correlation-ID": str(correlation_id)},
+        ) from None
+    except AuthorizationAuditUnavailable:
+        _raise_projects_unavailable(correlation_id)
+
+
+def _raise_owner_resolution_denial(
+    error: OwnerResolutionFailure,
+    correlation_id: UUID,
+) -> Never:
+    headers = {"X-Correlation-ID": str(correlation_id)}
+    if error.status_code == status.HTTP_401_UNAUTHORIZED:
+        headers["WWW-Authenticate"] = "Bearer"
+    raise HTTPException(
+        status_code=error.status_code,
+        detail=error.detail,
+        headers=headers,
+    )
+
+
+def _raise_project_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Project not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_projects_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=PROJECTS_UNAVAILABLE_DETAIL,
         headers={"X-Correlation-ID": str(correlation_id)},
     )
 

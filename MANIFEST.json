@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 10270,
-      "sha256": "9c8e3de3e2d03126597cdd42091fea6730e303e7f169b3195c787db3397e2fc7"
+      "bytes": 11326,
+      "sha256": "c2e77f89d34eb18778d4bd8788483246b6110b2609ad6f1907f65d6c807038ec"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 46675,
-      "sha256": "9ec12443b83bd201188a70ca00dcf6670bcc506471b7295af27674c4128c6575"
+      "bytes": 46762,
+      "sha256": "30d8cddc7d38aa7746069792ce9d892d946ebd56c8e38de3fc28f09836b75c48"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 24199,
-      "sha256": "b9d529250d6d51e6babc5146b7aaad35069d67829da451f6cd6c8cfb6f5925c8"
+      "bytes": 25384,
+      "sha256": "0f00b3791adf04630350a6d6254917ce533b459b0d3507225e13ac455ff058bb"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +242,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 1025,
-      "sha256": "5d6e3d257c86119ff6d959bce3ce3a07a34fc246d545943dcdf3bf7743cb013c"
+      "bytes": 1100,
+      "sha256": "1cfdf6a3cb4c869fddf58d983e295d79f476762cc5a42f9269058152e9590c95"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -257,8 +257,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 26387,
-      "sha256": "cd871168a82207b4f8dfbbac218676389ef9cfcb72b1fac8cfe4cba37c735e5e"
+      "bytes": 27330,
+      "sha256": "8dc5712945497af9de406cf3eb56f77e6acf3b0c62451814c049db33b85dfaaa"
     },
     {
       "path": "scripts/validate_docs.py",
@@ -267,8 +267,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 84074,
-      "sha256": "eb0965ceba8bc0838d14e9e5124cd2be4c72ce84d0b3306e9f34427d77a160e9"
+      "bytes": 84156,
+      "sha256": "e7deda1090dcc809975c680b7c9a5ec6b59904041d4f6cbbc804bde58e096da0"
     }
   ]
 }
