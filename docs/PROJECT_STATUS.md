@@ -1,9 +1,9 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-08-27<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, IAM-001, and IAM-002 verified on `main`; SKEL-003 implementation is in progress and unverified<br>
-**Current phase:** Phase 1 — SKEL-003 implementation candidate on `feat/skel-003`; validation and review pending<br>
-**Health:** Green for accepted `main`; SKEL-003 branch evidence is pending. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001, SKEL-002, SKEL-003, IAM-001, and IAM-002 verified on `main`<br>
+**Current phase:** Phase 1 — SKEL-003 accepted on `main`; SKEL-004 is the next P0 implementation item<br>
+**Health:** Green for accepted `main` at `b889595905aba2a3db09a54c1cf5b35d1bf56784`. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
 
 ## Current status
 
@@ -78,18 +78,27 @@ remain later persistence/report work. IAM-002 component acceptance does not
 verify durable audit persistence, a real demo repository, SG-05, live Cognito,
 deployment, or SKEL-006.
 
-SKEL-003 is now an implementation candidate on `feat/skel-003`, not accepted
-evidence. It introduces a durable `projects` table migration, a SQLAlchemy
+SKEL-003 has passed final acceptance on merged `main`
+`b889595905aba2a3db09a54c1cf5b35d1bf56784`. PR #24 is merged. The final
+acceptance gate compared the merged tree
+`e9d3c6399891981d7913e93a55b63e811f8a2797` with the final reviewed PR head
+`8df05035c1e591db533c3bd0853d6b56ceeb1551` and found no changed files, so
+the reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice introduces a durable `projects` table migration, a SQLAlchemy
 repository selected only when `DATABASE_URL` is explicitly configured, owner-only
 create/list/view/archive routes, and a minimal local Next.js UI. Create/list
 operations use an audited owner-only project-collection boundary; view/archive
 use the existing exact-project authorization boundary before repository work.
 The default repository fails closed with `503` when durable storage is absent
-or unavailable. The updated isolated `db-check` task invokes create/list/view/
-archive through the FastAPI routes against the Alembic-migrated PostgreSQL
-database, but successful validation at this candidate head remains pending,
-along with security review, pull-request checks, and merged-main acceptance.
-It does not add durable authorization-audit storage, a demo
+or unavailable. The isolated `db-check` task invokes create/list/view/archive
+through the FastAPI routes against the Alembic-migrated PostgreSQL database;
+the exact reviewed head passed this check, including rollback/recreate and
+Compose cleanup, and the Docker-free `ci` target passed with 68 tests passed
+and one intentional PostgreSQL integration-test skip. The documentation-only
+GitHub workflow also passed for the reviewed tree; it is not application CI or
+SKEL-006 evidence. This slice does not add durable authorization-audit storage, a demo
 publication repository, model/retrieval/worker behavior, deployment, SG-05,
 or SKEL-006.
 
@@ -377,9 +386,9 @@ release milestone.
 
 ## Not started or unverified
 
-- All SKEL-003 functionality remains unverified until its candidate has passed
-  the required validation and review. Every later implementation item,
-  including demo repositories, durable authorization-audit persistence, model,
+- Every implementation item after SKEL-003 remains unverified, including the
+  next P0 item SKEL-004, demo repositories, durable authorization-audit
+  persistence, model,
   retrieval, parser, worker, object-storage, safe execution, approval,
   deployment, evaluation, and metrics work, remains out of scope.
 - Model integration or paid model calls.
@@ -390,8 +399,7 @@ release milestone.
 
 ## Next action
 
-Run the updated `feat/skel-003` isolated PostgreSQL `db-check` and the complete
-Docker-free `ci` target, record the exact results, then obtain security/backend
-review before marking its PR ready. Do not add durable audit persistence, a
-real demo publication repository, model integration, or later work before its
-own acceptance gate.
+Create `feat/skel-004` from `main` and implement only the server-side model
+gateway proof: timeout, typed response, usage capture, and deterministic fake
+adapter. Do not expose a client-side secret or add SKEL-005, durable audit
+persistence, deployment, or other later work before its own acceptance gate.
