@@ -5,10 +5,10 @@ from copy import deepcopy
 from pathlib import Path
 from typing import cast
 
-from scripts.security_harness import load_cases, run_record
-
-
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from security_harness import load_cases, run_record  # noqa: E402
 
 
 def test_security_harness_is_deterministic_and_side_effect_free() -> None:
