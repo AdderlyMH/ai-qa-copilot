@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -107,7 +108,7 @@ def test_openai_adapter_uses_fixed_timeout_and_strict_json_schema() -> None:
 
     assert model_response.output_json == {"summary": "OK"}
     assert transport.calls[0]["timeout_seconds"] == MODEL_GATEWAY_TIMEOUT_SECONDS
-    body = transport.calls[0]["body"]
+    body = cast(Mapping[str, object], transport.calls[0]["body"])
     assert body["model"] == B1_MODEL_ID
     assert body["reasoning"] == {"effort": "medium"}
     assert body["text"] == {

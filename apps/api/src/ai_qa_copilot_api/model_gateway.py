@@ -284,9 +284,13 @@ def _usage_from_payload(value: object) -> ModelUsage:
     input_tokens = value.get("input_tokens")
     output_tokens = value.get("output_tokens")
     total_tokens = value.get("total_tokens")
-    if not all(
-        isinstance(count, int) and count >= 0
-        for count in (input_tokens, output_tokens, total_tokens)
+    if (
+        not isinstance(input_tokens, int)
+        or input_tokens < 0
+        or not isinstance(output_tokens, int)
+        or output_tokens < 0
+        or not isinstance(total_tokens, int)
+        or total_tokens < 0
     ):
         raise ModelGatewayProtocolError("Model provider response has invalid usage")
     return ModelUsage(
