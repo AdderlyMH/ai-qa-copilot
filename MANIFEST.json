@@ -262,8 +262,8 @@
     },
     {
       "path": "scripts/validate_docs.py",
-      "bytes": 96700,
-      "sha256": "afb0639685798230ac0a2ac6c147db8f8065f30667c92b963ee02350af5b1bcb"
+      "bytes": 96723,
+      "sha256": "021cb824e0b82f7c1011ac17d724a8f94c6e5d89e1689035cf2ce62aab324ad3"
     },
     {
       "path": "uv.lock",

@@ -1099,7 +1099,7 @@ def git_blob_sha1(raw_bytes: bytes) -> str:
     """Calculate the Git blob SHA-1 for raw bytes without invoking Git."""
 
     header = f"blob {len(raw_bytes)}\0".encode("utf-8")
-    return hashlib.sha1(header + raw_bytes).hexdigest()
+    return hashlib.sha1(header + raw_bytes, usedforsecurity=False).hexdigest()
 
 
 def _all_string_values(value: Any) -> Iterable[str]:

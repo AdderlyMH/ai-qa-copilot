@@ -133,10 +133,16 @@ class UrllibJsonHttpTransport:
         body: Mapping[str, object],
         timeout_seconds: float,
     ) -> Mapping[str, object]:
+        if url != OPENAI_RESPONSES_URL:
+            raise ModelGatewayConfigurationError(
+                "The model transport only permits the pinned OpenAI HTTPS endpoint"
+            )
         encoded_body = json.dumps(body).encode("utf-8")
         request = Request(url, data=encoded_body, headers=dict(headers), method="POST")
         try:
-            with urlopen(request, timeout=timeout_seconds) as response:
+            # The URL is compared with the pinned HTTPS endpoint above, so no other
+            # protocol or host can be opened here.
+            with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
                 payload = json.loads(response.read().decode("utf-8"))
         except TimeoutError as error:
             raise ModelGatewayTimeout("Model provider timed out") from error
