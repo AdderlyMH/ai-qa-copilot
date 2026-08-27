@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "format": "prettier --write --ignore-unknown --ignore-path ../../.gitignore .",
+    "format-check": "prettier --check --ignore-unknown --ignore-path ../../.gitignore .",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },

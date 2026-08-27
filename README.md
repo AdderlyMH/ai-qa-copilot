@@ -3,9 +3,9 @@
 ## Current state
 
 The repository has completed its Phase 0 documentation and governance baseline,
-and Phase 1 is active. SKEL-001 through SKEL-004, IAM-001, and IAM-002 are
-verified on `main`. SKEL-005 is an implementation candidate on
-`feat/skel-005` and is not yet accepted or verified. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
+and Phase 1 is active. SKEL-001 through SKEL-005, IAM-001, and IAM-002 are
+verified on `main`. SKEL-006 is the active implementation candidate and adds
+the first application CI baseline. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
 access-token validation, immutable server-side owner mapping, and
 local-environment bypass guard. IAM-002 supplies the central project
 authorization, immutable server-selected demo-publication, and
@@ -18,7 +18,7 @@ model gateway proof. The SKEL-005 candidate composes those seams for one
 synthetic text analysis run whose result and configuration persist and display.
 It deliberately does not add a persisted demo record, durable audit adapter,
 retrieval, worker, deployment, runtime evaluation, product metric, latency
-result, or cost result. Its integration evidence and review are pending;
+result, or cost result. Its integration evidence and review are recorded;
 IAM-002 remains component evidence, not SG-05 or production evidence.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
@@ -50,7 +50,7 @@ python scripts/tasks.py bootstrap
 python scripts/tasks.py ci
 ```
 
-`python scripts/tasks.py` exposes stable `format`, `lint`, `typecheck`,
+`python scripts/tasks.py` exposes stable `format`, `format-check`, `lint`, `typecheck`,
 `test`, `dev`, `docs-check`, `docs-self-test`, and `ci` commands. `make` offers
 the same targets where GNU Make is available.
 

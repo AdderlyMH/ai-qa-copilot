@@ -171,6 +171,13 @@ def format_code() -> None:
     uv_run("python", "scripts/generate_manifest.py", "--write")
 
 
+def format_check() -> None:
+    """Check Python and frontend formatting without modifying files."""
+
+    uv_run("ruff", "format", "--check", "scripts", "apps/api")
+    npm_run("format-check:web")
+
+
 def lint() -> None:
     """Run the repository Python and frontend lint gates."""
 
@@ -208,6 +215,7 @@ def docs_self_test() -> None:
 def ci() -> None:
     """Run all noninteractive repository checks."""
 
+    format_check()
     lint()
     typecheck()
     test()
@@ -852,7 +860,7 @@ def print_help() -> None:
 
     print("Available targets:")
     print(
-        "  bootstrap format lint typecheck test dev db-up db-down migrate "
+        "  bootstrap format format-check lint typecheck test dev db-up db-down migrate "
         "migrate-down db-check docs-check docs-self-test ci"
     )
 
@@ -867,6 +875,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "help",
             "bootstrap",
             "format",
+            "format-check",
             "lint",
             "typecheck",
             "test",
@@ -895,6 +904,7 @@ def main(argv: list[str] | None = None) -> int:
     commands: dict[str, Callable[[], None]] = {
         "bootstrap": bootstrap,
         "format": format_code,
+        "format-check": format_check,
         "lint": lint,
         "typecheck": typecheck,
         "test": test,
