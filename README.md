@@ -3,9 +3,10 @@
 ## Current state
 
 The repository has completed its Phase 0 documentation and governance baseline,
-and Phase 1 is active. SKEL-001 through SKEL-005, IAM-001, and IAM-002 are
-verified on `main`. SKEL-006 is the active implementation candidate and adds
-the first application CI baseline. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
+and Phase 1 is active. SKEL-001 through SKEL-006, IAM-001, IAM-002, and
+SEC-001 are verified on `main`. SKEL-006 supplies the application-CI baseline,
+and SEC-001 supplies a deterministic fixture-policy harness plus required
+dependency and static-analysis scans. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
 access-token validation, immutable server-side owner mapping, and
 local-environment bypass guard. IAM-002 supplies the central project
 authorization, immutable server-selected demo-publication, and
@@ -20,6 +21,8 @@ It deliberately does not add a persisted demo record, durable audit adapter,
 retrieval, worker, deployment, runtime evaluation, product metric, latency
 result, or cost result. Its integration evidence and review are recorded;
 IAM-002 remains component evidence, not SG-05 or production evidence.
+SEC-001 is fixture-contract evidence only; it does not verify future live
+ingestion, execution, or deployment paths.
 
 The Phase 0 exit evidence is recorded: the Linear project contains owned P0
 work with milestones and estimates; GitHub enforces the required `main` CI

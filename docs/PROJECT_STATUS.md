@@ -1,11 +1,27 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-27<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-005, IAM-001, and IAM-002 verified on `main`<br>
-**Current phase:** Phase 1 — SKEL-005 accepted; SKEL-006 application-CI baseline in progress<br>
-**Health:** Green for accepted `main` at `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`. Durable audit persistence, SG-05, live Cognito, deployment, and SKEL-006 remain unverified
+**Status date:** 2026-08-29<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, and SEC-001 verified on `main`<br>
+**Current phase:** Phase 1 — SEC-001 accepted; no later implementation item selected<br>
+**Health:** Green for accepted `main` at `3a011acfc690e735bfde327c9aac99871520468e`. Durable audit persistence, SG-05, live Cognito, live ingestion/execution, and deployment remain unverified
 
 ## Current status
+
+SKEL-006 and SEC-001 have passed final acceptance on merged `main`
+`3a011acfc690e735bfde327c9aac99871520468e`. SKEL-006 merged in PR #31 at
+`6353745c3d3ff7f51b6e959034d19f17d2ee4259`; SEC-001 merged in PR #33. The
+SEC-001 acceptance gate compared reviewed head
+`348e226a63789dc62de50a0325e0799618b7ce0d`, whose tree is
+`d9b934fb444e8e8af981caed2a0dd0b8586d4220`, with the merge commit and found
+the same tree. The reviewed evidence therefore applies to accepted `main`.
+
+The merged commit's required GitHub checks all passed: `quality`,
+`docs-validation`, `migration-check`, `security-harness`, and
+`security-scans`. The deterministic harness executes all 57 current fixture
+cases, comparing actual outcome, boundary, and full side-effect vector with
+the fixture contract. It uses fake resolver, transport, model, and storage
+adapters with zero AI spend. This is fixture-policy contract evidence, not
+evidence for future live ingestion, execution, or deployment paths.
 
 The repository has a verified Phase 0 documentation/governance baseline. SKEL-001
 has passed final acceptance on merged `main`
@@ -447,11 +463,10 @@ release milestone.
 
 ## Not started or unverified
 
-- Every implementation item after SKEL-005 remains unverified, including the
-  next P0 item SKEL-006, demo repositories, durable authorization-audit
-  persistence, model integration beyond the accepted gateway proof,
-  retrieval, parser, worker, object-storage, safe execution, approval,
-  deployment, evaluation, and metrics work, remains out of scope.
+- Every implementation item after SKEL-006 and SEC-001 remains unverified,
+  including demo repositories, durable authorization-audit persistence,
+  live ingestion/parser behavior, retrieval, worker, object-storage, safe
+  execution, approval, deployment, evaluation, and metrics work.
 - Paid-model validation or cost evidence.
 - Runtime benchmark.
 - AWS resources.
@@ -460,8 +475,6 @@ release milestone.
 
 ## Next action
 
-Create `feat/skel-006` from accepted `main` and establish the documented
-pull-request application-CI baseline. Deliberate failures must block merge and
-clean branches must pass; do not label the existing documentation-only workflow
-as application CI or SKEL-006 evidence before this item has its own acceptance
-gate.
+Select the next approved backlog item from accepted `main`. Preserve the
+required pull-request checks and do not treat the SEC-001 fixture harness as
+evidence for unimplemented live ingestion, execution, or deployment paths.

@@ -4,17 +4,17 @@
 
 Phase 1 is active. The repository retains its verified Phase 0 governance and
 documentation baseline while implementation proceeds one approved backlog item
-at a time. SKEL-001 through SKEL-004, IAM-001, and IAM-002 are verified on
-`main`.
+at a time. SKEL-001 through SKEL-006, IAM-001, IAM-002, and SEC-001 are
+verified on `main`.
 IAM-002 is accepted at its component boundary: central project-scoped
 authorization, immutable server-selected demo-publication access, and
-authorization-sensitive audit events. SKEL-006 is the active branch scope: an
-application CI baseline that runs formatting, lint, type checks, unit tests,
-and the disposable database migration lifecycle on every pull request.
-synthetic text submission may invoke the accepted typed model gateway, persist
-its result/configuration, and display the persisted run. Do not describe any
-later feature, deployment, benchmark, cost, latency result, or security gate as
-implemented or verified before its own evidence and acceptance exists.
+authorization-sensitive audit events. SKEL-006 provides the pull-request
+application-CI baseline. SEC-001 provides the deterministic fixture-policy
+harness and required dependency/SAST scans. The harness is contract evidence
+only: it does not verify future live ingestion, execution, or deployment paths.
+Do not describe any later feature, deployment, benchmark, cost, latency result,
+or security gate as implemented or verified before its own evidence and
+acceptance exists.
 
 The authoritative Phase 0 sources are `README.md`, `docs/`, `fixtures/`, the
 repository-governance files, and `MANIFEST.json`. `docs/PROJECT_STATUS.md`
@@ -32,7 +32,7 @@ python scripts/tasks.py <target>
 `make <target>` mirrors the same targets where GNU Make is available. The
 stable targets are `bootstrap`, `format`, `format-check`, `lint`, `typecheck`, `test`, `dev`,
 `db-up`, `db-down`, `migrate`, `migrate-down`, `db-check`, `docs-check`,
-`docs-self-test`, and `ci`.
+`docs-self-test`, `security-harness`, and `ci`.
 
 Before handing off a change to any manifest-covered file, run:
 

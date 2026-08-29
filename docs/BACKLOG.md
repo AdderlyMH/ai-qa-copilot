@@ -269,6 +269,7 @@ security release gate has executed or passed.
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** SKEL-001
+- **Implementation status:** Verified on `main` at `6353745c3d3ff7f51b6e959034d19f17d2ee4259` (PR #31). The application-CI baseline requires formatting, lint, type checks, tests, migration check, and documentation validation on pull requests.
 - **Deliverable:** GitHub Actions for formatting, lint, frontend/backend type checks, unit tests, migration check.
 - **Acceptance:** Deliberate failures block merge; clean branches pass; formatting, lint, frontend/backend type checks, unit tests, migration check, and documentation validation run on every pull request. Secret/SCA/SAST checks and the deterministic security harness are implemented and required by SEC-001 after this baseline is accepted.
 
@@ -277,6 +278,7 @@ security release gate has executed or passed.
 - **Priority:** P0
 - **Estimate:** 4 h
 - **Dependencies:** SKEL-001, SKEL-006, FND-008
+- **Verification status (2026-08-29):** **Verified on merged `main`** at `3a011acfc690e735bfde327c9aac99871520468e` (PR #33). Final acceptance found merged tree `d9b934fb444e8e8af981caed2a0dd0b8586d4220` identical to reviewed head `348e226a63789dc62de50a0325e0799618b7ce0d`. Required checks `quality`, `docs-validation`, `migration-check`, `security-harness`, and `security-scans` passed. The harness executes 57 current fixtures and compares actual outcome, boundary, and full side-effect vector against the fixture contract with fake adapters and zero AI spend. It does not verify future live ingestion, execution, or deployment behavior.
 - **Deliverable:** Fixture-manifest runner with fake resolver, transport, model, and storage adapters that can assert expected boundaries and downstream side effects.
 - **Acceptance:** The harness proves zero model, DNS, HTTP, target-mutation, approval-mutation, and secret-exposure side effects for deny cases. It produces stable machine-readable results in pull-request CI with zero AI spend.
 
@@ -943,6 +945,7 @@ verified on merged `main` `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`.
 SKEL-003 is verified on merged `main` `b889595905aba2a3db09a54c1cf5b35d1bf56784`.
 SKEL-004 is verified on merged `main` `9118e161622714d5f2bfe911c0e412ad51be0a56`.
 SKEL-005 is verified on merged `main` `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`.
-The next P0 issue is **SKEL-006 — Establish CI baseline**. It must create
-pull-request application CI without misrepresenting the existing
-documentation-only workflow as SKEL-006 evidence.
+SKEL-006 is verified on merged `main` `6353745c3d3ff7f51b6e959034d19f17d2ee4259`.
+SEC-001 is verified on merged `main` `3a011acfc690e735bfde327c9aac99871520468e`.
+The next implementation item has not yet been selected. Preserve the required
+pull-request security checks while selecting the next approved backlog item.
