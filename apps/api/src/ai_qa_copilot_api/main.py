@@ -42,6 +42,18 @@ from ai_qa_copilot_api.demo import (
     DemoPublicationUnavailable,
     UnavailableDemoPublicationRepository,
 )
+from ai_qa_copilot_api.ingestion import (
+    DOCUMENT_INTAKE_UNAVAILABLE_DETAIL,
+    DocumentIntake,
+    DocumentIntakeRepository,
+    DocumentIntakeService,
+    DocumentIntakeState,
+    DocumentIntakeUnavailable,
+    QuarantineStorage,
+    UploadPolicy,
+    UnavailableDocumentIntakeRepository,
+    UnavailableQuarantineStorage,
+)
 from ai_qa_copilot_api.projects import (
     PROJECTS_UNAVAILABLE_DETAIL,
     ProjectRepository,
@@ -121,6 +133,23 @@ class AnalysisRunResponse(BaseModel):
     created_at: datetime
 
 
+class DocumentIntakeResponse(BaseModel):
+    """Safe owner projection for a quarantined candidate or preflight rejection."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    state: DocumentIntakeState
+    document_id: UUID | None
+    document_version_id: UUID | None
+    byte_size: int
+    content_sha256: str | None
+    rejection_code: str | None
+    deduplicated: bool
+    created_at: datetime
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -129,6 +158,9 @@ def create_app(
     demo_publication_repository: DemoPublicationRepository | None = None,
     authorization_audit_sink: AuthorizationAuditSink | None = None,
     project_repository: ProjectRepository | None = None,
+    document_intake_repository: DocumentIntakeRepository | None = None,
+    quarantine_storage: QuarantineStorage | None = None,
+    document_intake_policy: UploadPolicy = UploadPolicy(),
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
     | None = None,
@@ -169,6 +201,19 @@ def create_app(
             project_repository
             if project_repository is not None
             else project_repository_from_environment()
+        )
+        application.state.document_intake_service = DocumentIntakeService(
+            (
+                document_intake_repository
+                if document_intake_repository is not None
+                else UnavailableDocumentIntakeRepository()
+            ),
+            (
+                quarantine_storage
+                if quarantine_storage is not None
+                else UnavailableQuarantineStorage()
+            ),
+            policy=document_intake_policy,
         )
         application.state.analysis_run_service = (
             analysis_run_service
@@ -333,6 +378,45 @@ def create_app(
         return ProjectResponse.model_validate(project)
 
     @application.post(
+        "/projects/{project_id}/documents",
+        status_code=status.HTTP_202_ACCEPTED,
+        response_model=DocumentIntakeResponse,
+    )
+    async def upload_document(
+        project_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> DocumentIntakeResponse:
+        """Accept raw bytes only after owner authorization and bounded preflight."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.INGEST,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+        service = _document_intake_service(request)
+        try:
+            intake = await service.receive(
+                project_id=project_id,
+                stream=request.stream(),
+                filename=request.headers.get("X-Upload-Filename"),
+                content_type=request.headers.get("Content-Type"),
+                content_encoding=request.headers.get("Content-Encoding"),
+                content_length=request.headers.get("Content-Length"),
+            )
+        except DocumentIntakeUnavailable:
+            _raise_document_intake_unavailable(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        if intake.state is DocumentIntakeState.REJECTED:
+            _raise_document_intake_rejected(intake, correlation_id)
+        return _document_intake_response(intake)
+
+    @application.post(
         "/projects/{project_id}/analysis-runs",
         status_code=status.HTTP_201_CREATED,
         response_model=AnalysisRunResponse,
@@ -419,6 +503,13 @@ def _analysis_run_service(
     service = getattr(request.app.state, "analysis_run_service", None)
     if not isinstance(service, (AnalysisRunService, UnavailableAnalysisRunService)):
         raise RuntimeError("Analysis-run boundary was not initialized")
+    return service
+
+
+def _document_intake_service(request: Request) -> DocumentIntakeService:
+    service = getattr(request.app.state, "document_intake_service", None)
+    if not isinstance(service, DocumentIntakeService):
+        raise RuntimeError("Document-intake boundary was not initialized")
     return service
 
 
@@ -522,6 +613,57 @@ def _raise_analysis_runs_unavailable(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail=ANALYSIS_RUNS_UNAVAILABLE_DETAIL,
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _document_intake_response(intake: DocumentIntake) -> DocumentIntakeResponse:
+    return DocumentIntakeResponse(
+        id=intake.id,
+        project_id=intake.project_id,
+        state=intake.state,
+        document_id=intake.document_id,
+        document_version_id=intake.document_version_id,
+        byte_size=intake.byte_size,
+        content_sha256=intake.content_sha256,
+        rejection_code=intake.rejection_code,
+        deduplicated=intake.deduplicated,
+        created_at=intake.created_at,
+    )
+
+
+def _raise_document_intake_rejected(
+    intake: DocumentIntake, correlation_id: UUID
+) -> Never:
+    if intake.rejection_code is None:
+        raise RuntimeError("Rejected intake must include a rejection code")
+    status_code = (
+        status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+        if intake.rejection_code in {"UPLOAD_SIZE_LIMIT", "UPLOAD_PROJECT_SIZE_LIMIT"}
+        else status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+        if intake.rejection_code
+        in {
+            "UPLOAD_TYPE_UNSUPPORTED",
+            "UPLOAD_TYPE_MISMATCH",
+            "UPLOAD_CONTENT_ENCODING_UNSUPPORTED",
+        }
+        else status.HTTP_400_BAD_REQUEST
+    )
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "code": intake.rejection_code,
+            "message": "Document upload was rejected",
+            "retryable": False,
+        },
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_document_intake_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=DOCUMENT_INTAKE_UNAVAILABLE_DETAIL,
         headers={"X-Correlation-ID": str(correlation_id)},
     )
 
