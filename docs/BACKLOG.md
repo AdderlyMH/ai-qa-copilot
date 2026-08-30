@@ -334,6 +334,14 @@ security release gate has executed or passed.
 - **Dependencies:** SKEL-002
 - **Deliverable:** Document, version, section, chunk, parser-version models.
 - **Acceptance:** Migrations and schema tests cover provenance and project ownership.
+- **Verification status (2026-08-30):** **Verified on merged `main`** at
+  `ac9ce6f5df724337c23805bca4d48c70a8d53888` (PR #35). Final acceptance
+  found the merge commit had zero file differences from reviewed head
+  `68782129ad4225a0e5e38dd66e092d63163cc635`. Local CI, the 57-case
+  deterministic security harness, the isolated PostgreSQL migration lifecycle,
+  and the `docs-validation` and `application-ci` workflows passed. This is
+  schema/provenance evidence only; upload, storage, parsing, embeddings, and
+  document API behavior remain later work.
 
 #### ING-002 — Implement quarantine-first upload policy and object-storage adapter
 
@@ -947,5 +955,6 @@ SKEL-004 is verified on merged `main` `9118e161622714d5f2bfe911c0e412ad51be0a56`
 SKEL-005 is verified on merged `main` `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`.
 SKEL-006 is verified on merged `main` `6353745c3d3ff7f51b6e959034d19f17d2ee4259`.
 SEC-001 is verified on merged `main` `3a011acfc690e735bfde327c9aac99871520468e`.
-The next implementation item has not yet been selected. Preserve the required
-pull-request security checks while selecting the next approved backlog item.
+ING-001 is verified on merged `main` `ac9ce6f5df724337c23805bca4d48c70a8d53888`.
+The next implementation item is ING-002 — quarantine-first upload policy and
+object-storage adapter. Preserve the required pull-request security checks.

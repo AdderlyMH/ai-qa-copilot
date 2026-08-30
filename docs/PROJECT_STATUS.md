@@ -1,11 +1,30 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-29<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, and SEC-001 verified on `main`<br>
-**Current phase:** Phase 1 — SEC-001 accepted; no later implementation item selected<br>
-**Health:** Green for accepted `main` at `3a011acfc690e735bfde327c9aac99871520468e`. Durable audit persistence, SG-05, live Cognito, live ingestion/execution, and deployment remain unverified
+**Status date:** 2026-08-30<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-001 verified on `main`<br>
+**Current phase:** Phase 2 — ING-001 accepted; ING-002 is next<br>
+**Health:** Green for accepted `main` at `ac9ce6f5df724337c23805bca4d48c70a8d53888`. Durable audit persistence, SG-05, live Cognito, live ingestion/execution, and deployment remain unverified
 
 ## Current status
+
+ING-001 has passed final acceptance on merged `main`
+`ac9ce6f5df724337c23805bca4d48c70a8d53888`. PR #35 is merged. The final
+acceptance gate compared reviewed head
+`68782129ad4225a0e5e38dd66e092d63163cc635` with the merge commit and found
+zero file differences, so the reviewed implementation and validation evidence
+applies to the merged main tree. The accepted scope is limited to project-owned
+document, immutable document-version, parser-version, source-location, section,
+and chunk schemas with same-version provenance constraints and reversible
+Alembic migration `0004_create_document_provenance`.
+
+The exact reviewed head passed local `ci` on Windows with 92 tests passed and
+one intentionally skipped PostgreSQL integration test; the deterministic
+security harness passed all 57 fixtures. Its isolated PostgreSQL `db-check`
+also upgraded an empty database to head, exercised the existing API integration
+path, downgraded to base, recreated head, and cleaned the Compose resources.
+GitHub `docs-validation` and `application-ci` both passed. ING-001 does not
+introduce uploads, raw-object storage, parsing, embeddings, model calls, or a
+user-facing document API; those remain later ingestion work.
 
 SKEL-006 and SEC-001 have passed final acceptance on merged `main`
 `3a011acfc690e735bfde327c9aac99871520468e`. SKEL-006 merged in PR #31 at
