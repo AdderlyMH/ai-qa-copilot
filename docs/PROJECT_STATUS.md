@@ -1,11 +1,35 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-08-30<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-001, and ING-002 verified on `main`<br>
-**Current phase:** Phase 2 — ING-002 accepted; ING-003 is next<br>
-**Health:** Green for accepted `main` at `70e9905f5251c56c4139eb0f54f8216c15aa66d8`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser/retrieval/execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-001 through ING-003 verified on `main`<br>
+**Current phase:** Phase 2 — ING-003 accepted; ING-004 is next<br>
+**Health:** Green for accepted `main` at `1e186446862c2a6edc0cdd9770895f894bf9975a`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
 
 ## Current status
+
+ING-003 has passed final acceptance on merged `main`
+`1e186446862c2a6edc0cdd9770895f894bf9975a`. PR #39 is merged. The final
+acceptance gate compared the merged tree
+`61c0ac4de5b43e183e3c54b2449f3eefcd010157` with the final reviewed PR head
+`c7f6e56e24a8fc5939adbff4eb92b73b069024e2` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice adds a deterministic, pure Markdown/text parser. It produces
+stable normalized requirement units, requirement IDs, heading context, and
+1-based line locations; enforces strict UTF-8, line-count, and line-size
+limits; and treats all embedded content as inert data. It has no filesystem,
+network, storage, model, retrieval, or execution capability, so terminal parser
+rejections cannot trigger downstream work. The required `docs-validation`
+workflow now runs on every pull request, preventing required-check deadlocks
+for code-only changes.
+
+The exact reviewed head passed Windows `ci` with 104 tests passed and one
+intentional PostgreSQL integration-test skip; the deterministic security
+harness passed all 57 fixtures; and the isolated PostgreSQL `db-check`
+lifecycle passed. GitHub `application-ci` run #31 and `docs-validation` run
+#122 both passed. The reported Starlette deprecations and Windows pytest-cache
+permission warning were non-blocking.
 
 ING-002 has passed final acceptance on merged `main`
 `70e9905f5251c56c4139eb0f54f8216c15aa66d8`. PR #37 is merged. The final

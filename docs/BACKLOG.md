@@ -966,5 +966,15 @@ quarantine-admission evidence only: production object storage, parsing,
 retrieval, embeddings, model calls, execution, public raw-object access, and
 network egress remain out of scope.
 
-The next implementation item is ING-003 — parse Markdown and text requirements.
+ING-003 is verified on merged `main` `1e186446862c2a6edc0cdd9770895f894bf9975a`.
+The reviewed tree `61c0ac4de5b43e183e3c54b2449f3eefcd010157` is identical to
+the final PR #39 head tree. Windows `ci` passed with 104 tests passed and one
+intentional PostgreSQL integration-test skip; the deterministic security
+harness passed all 57 fixtures; the isolated PostgreSQL migration lifecycle
+passed; and GitHub `application-ci` and `docs-validation` passed. This is
+pure Markdown/text parser evidence only: production object storage,
+parser-worker deployment, retrieval, embeddings, model calls, execution,
+public raw-object access, and network egress remain out of scope.
+
+The next implementation item is ING-004 — parse and validate OpenAPI YAML/JSON.
 Preserve the required pull-request security checks.
