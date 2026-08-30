@@ -27,29 +27,9 @@ on:
       - "scripts/**"
       - "uv.lock"
       - ".github/workflows/docs-validation.yml"
+  # Branch protection requires this check on every pull request. Do not apply a
+  # path filter here: a skipped workflow leaves the required check in Expected.
   pull_request:
-    paths:
-      - ".gitattributes"
-      - ".githooks/pre-commit"
-      - ".github/CODEOWNERS"
-      - ".github/dependabot.yml"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".github/pull_request_template.md"
-      - "README.md"
-      - "AGENTS.md"
-      - "CONTRIBUTING.md"
-      - "LICENSE"
-      - "Makefile"
-      - "MANIFEST.json"
-      - ".node-version"
-      - ".python-version"
-      - "package-lock.json"
-      - "pyproject.toml"
-      - "docs/**"
-      - "fixtures/**"
-      - "scripts/**"
-      - "uv.lock"
-      - ".github/workflows/docs-validation.yml"
   workflow_dispatch:
 
 permissions:
