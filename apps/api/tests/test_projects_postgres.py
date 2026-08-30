@@ -72,7 +72,13 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
     engine = create_engine(database_url)
     try:
         with engine.begin() as connection:
-            connection.execute(text("TRUNCATE TABLE analysis_runs, projects"))
+            connection.execute(
+                text(
+                    "TRUNCATE TABLE document_chunks, document_sections, "
+                    "source_locations, document_versions, documents, "
+                    "parser_versions, analysis_runs, projects"
+                )
+            )
 
         analysis_run_service = AnalysisRunService(
             SqlAlchemyAnalysisRunRepository.from_database_url(database_url),
@@ -139,5 +145,11 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         assert record.archived_at is not None
     finally:
         with engine.begin() as connection:
-            connection.execute(text("TRUNCATE TABLE analysis_runs, projects"))
+            connection.execute(
+                text(
+                    "TRUNCATE TABLE document_chunks, document_sections, "
+                    "source_locations, document_versions, documents, "
+                    "parser_versions, analysis_runs, projects"
+                )
+            )
         engine.dispose()

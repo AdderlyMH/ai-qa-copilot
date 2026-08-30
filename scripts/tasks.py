@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0003_create_analysis_runs"
+DB_CHECK_REVISION = "0004_create_document_provenance"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -333,7 +333,7 @@ def require_database_value(label: str, actual: str, expected: str) -> None:
 def verify_migrated_database(
     compose: tuple[str, ...], environment: dict[str, str]
 ) -> None:
-    """Verify Alembic head, pgvector, projects, and analysis runs through SQL."""
+    """Verify Alembic head, pgvector, and all durable schemas through SQL."""
 
     require_database_value(
         "Alembic revision",
@@ -369,6 +369,21 @@ def verify_migrated_database(
         ),
         "analysis_runs",
     )
+    for table_name in (
+        "parser_versions",
+        "documents",
+        "document_versions",
+        "source_locations",
+        "document_sections",
+        "document_chunks",
+    ):
+        require_database_value(
+            f"{table_name} table",
+            query_check_database(
+                compose, environment, f"SELECT to_regclass('public.{table_name}');"
+            ),
+            table_name,
+        )
 
 
 def verify_rolled_back_database(
@@ -410,6 +425,23 @@ def verify_rolled_back_database(
         ),
         "",
     )
+    for table_name in (
+        "document_chunks",
+        "document_sections",
+        "source_locations",
+        "document_versions",
+        "documents",
+        "parser_versions",
+    ):
+        require_database_value(
+            f"{table_name} rollback table",
+            query_check_database(
+                compose,
+                environment,
+                f"SELECT coalesce(to_regclass('public.{table_name}')::text, '');",
+            ),
+            "",
+        )
 
 
 def db_check() -> None:
