@@ -956,5 +956,15 @@ SKEL-005 is verified on merged `main` `869e3c39d7304c057c7b5f73c9c1ac5a6f2e64eb`
 SKEL-006 is verified on merged `main` `6353745c3d3ff7f51b6e959034d19f17d2ee4259`.
 SEC-001 is verified on merged `main` `3a011acfc690e735bfde327c9aac99871520468e`.
 ING-001 is verified on merged `main` `ac9ce6f5df724337c23805bca4d48c70a8d53888`.
-The next implementation item is ING-002 — quarantine-first upload policy and
-object-storage adapter. Preserve the required pull-request security checks.
+ING-002 is verified on merged `main` `70e9905f5251c56c4139eb0f54f8216c15aa66d8`.
+The reviewed tree `ffb9edad0a9d4f762b249515a6bf3925833a8b59` is identical to
+the final PR #37 head tree. Windows `ci` passed with 100 tests passed and one
+intentional PostgreSQL integration-test skip; the deterministic security
+harness passed all 57 fixtures; the isolated PostgreSQL migration lifecycle
+passed; and GitHub `application-ci` and `docs-validation` passed. This is
+quarantine-admission evidence only: production object storage, parsing,
+retrieval, embeddings, model calls, execution, public raw-object access, and
+network egress remain out of scope.
+
+The next implementation item is ING-003 — parse Markdown and text requirements.
+Preserve the required pull-request security checks.
