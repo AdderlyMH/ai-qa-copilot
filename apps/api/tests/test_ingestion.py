@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from pathlib import Path
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -81,8 +82,11 @@ def upload(
     }
     if extra_headers is not None:
         headers.update(extra_headers)
-    return client.post(
-        f"/projects/{project_id}/documents", content=content, headers=headers
+    return cast(
+        HttpxResponse,
+        client.post(
+            f"/projects/{project_id}/documents", content=content, headers=headers
+        ),
     )
 
 

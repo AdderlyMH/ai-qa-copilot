@@ -42,12 +42,12 @@ from ai_qa_copilot_api.demo import (
     DemoPublicationUnavailable,
     UnavailableDemoPublicationRepository,
 )
+from ai_qa_copilot_api.documents import DocumentIntakeState
 from ai_qa_copilot_api.ingestion import (
     DOCUMENT_INTAKE_UNAVAILABLE_DETAIL,
     DocumentIntake,
     DocumentIntakeRepository,
     DocumentIntakeService,
-    DocumentIntakeState,
     DocumentIntakeUnavailable,
     QuarantineStorage,
     UploadPolicy,

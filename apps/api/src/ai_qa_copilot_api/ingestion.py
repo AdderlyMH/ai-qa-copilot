@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, BinaryIO, Callable
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import PurePath
 from tempfile import SpooledTemporaryFile
-from typing import Protocol
+from typing import BinaryIO, Protocol
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
