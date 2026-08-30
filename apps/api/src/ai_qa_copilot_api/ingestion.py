@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import PurePath
 from tempfile import SpooledTemporaryFile
-from typing import BinaryIO, Protocol
+from typing import BinaryIO, Protocol, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
@@ -586,7 +586,9 @@ class DocumentIntakeService:
             try:
                 self._storage.put(
                     key=quarantine_key,
-                    content=buffered,
+                    # typeshed does not model SpooledTemporaryFile[bytes] as
+                    # BinaryIO, although this buffer is opened in binary mode.
+                    content=cast(BinaryIO, buffered),
                     content_type=metadata.content_type,
                 )
                 return self._repository.create_quarantined(
