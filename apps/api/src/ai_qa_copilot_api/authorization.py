@@ -34,6 +34,7 @@ class ProjectAction(StrEnum):
 
     READ = "project.read"
     MUTATE = "project.mutate"
+    INGEST = "project.document.ingest"
     READ_RAW_OBJECT = "project.raw_object.read"
     INVOKE_MODEL = "project.model.invoke"
     ENQUEUE_JOB = "project.job.enqueue"

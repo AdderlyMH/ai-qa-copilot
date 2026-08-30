@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy import (
@@ -196,3 +197,52 @@ class DocumentChunkRecord(Base):
     normalized_text: Mapped[str] = mapped_column(Text, nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     chunking_version: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class DocumentIntakeState(StrEnum):
+    """Persisted outcome of bounded raw-document admission."""
+
+    QUARANTINED = "quarantined"
+    REJECTED = "rejected"
+
+
+class DocumentIntakeRecord(Base):
+    """Private quarantine admission or sanitized preflight rejection record."""
+
+    __tablename__ = "document_intakes"
+    __table_args__ = (
+        CheckConstraint("length(trim(original_filename)) > 0"),
+        CheckConstraint("length(trim(declared_content_type)) > 0"),
+        CheckConstraint("byte_size >= 0"),
+        CheckConstraint(
+            "(state = 'quarantined' AND document_id IS NOT NULL "
+            "AND document_version_id IS NOT NULL AND quarantine_key IS NOT NULL "
+            "AND content_sha256 IS NOT NULL AND rejection_code IS NULL) OR "
+            "(state = 'rejected' AND document_id IS NULL "
+            "AND document_version_id IS NULL AND quarantine_key IS NULL "
+            "AND content_sha256 IS NULL AND rejection_code IS NOT NULL)"
+        ),
+        UniqueConstraint("document_version_id", name="uq_document_intakes_version"),
+        UniqueConstraint("quarantine_key", name="uq_document_intakes_quarantine_key"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    document_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("documents.id"), nullable=True
+    )
+    document_version_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("document_versions.id"), nullable=True
+    )
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    quarantine_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    declared_content_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rejection_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )

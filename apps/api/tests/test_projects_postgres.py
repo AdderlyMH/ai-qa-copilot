@@ -74,7 +74,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE document_chunks, document_sections, "
+                    "TRUNCATE TABLE document_intakes, document_chunks, document_sections, "
                     "source_locations, document_versions, documents, "
                     "parser_versions, analysis_runs, projects"
                 )
@@ -147,7 +147,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE document_chunks, document_sections, "
+                    "TRUNCATE TABLE document_intakes, document_chunks, document_sections, "
                     "source_locations, document_versions, documents, "
                     "parser_versions, analysis_runs, projects"
                 )

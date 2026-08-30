@@ -10,7 +10,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0004_create_document_provenance"
+EXPECTED_REVISION = "0005_create_document_intakes"
+DOCUMENT_PROVENANCE_REVISION = "0004_create_document_provenance"
 ANALYSIS_RUN_REVISION = "0003_create_analysis_runs"
 PROJECT_REVISION = "0002_create_projects"
 INITIAL_REVISION = "0001_enable_pgvector"
@@ -52,7 +53,10 @@ def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
     assert script.get_heads() == [EXPECTED_REVISION]
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == ANALYSIS_RUN_REVISION
+    assert revision.down_revision == DOCUMENT_PROVENANCE_REVISION
+    document_revision = script.get_revision(DOCUMENT_PROVENANCE_REVISION)
+    assert document_revision is not None
+    assert document_revision.down_revision == ANALYSIS_RUN_REVISION
     analysis_run_revision = script.get_revision(ANALYSIS_RUN_REVISION)
     assert analysis_run_revision is not None
     assert analysis_run_revision.down_revision == PROJECT_REVISION
@@ -159,7 +163,7 @@ def test_analysis_run_migration_creates_and_removes_the_run_projection(
 def test_document_provenance_migration_creates_and_removes_the_ingestion_schema(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = migration_script(EXPECTED_REVISION)
+    module = migration_script(DOCUMENT_PROVENANCE_REVISION)
     calls: list[tuple[str, tuple[object, ...]]] = []
 
     monkeypatch.setattr(
@@ -205,4 +209,44 @@ def test_document_provenance_migration_creates_and_removes_the_ingestion_schema(
         ("drop_index", "ix_documents_project_created_at"),
         ("drop_table", "documents"),
         ("drop_table", "parser_versions"),
+    ]
+
+
+def test_document_intake_migration_creates_and_removes_quarantine_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(EXPECTED_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    monkeypatch.setattr(
+        module.op,
+        "create_table",
+        lambda *args, **kwargs: calls.append(("create_table", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "create_index",
+        lambda *args, **kwargs: calls.append(("create_index", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "drop_index",
+        lambda *args, **kwargs: calls.append(("drop_index", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "drop_table",
+        lambda *args, **kwargs: calls.append(("drop_table", args)),
+    )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "document_intakes"),
+        ("create_index", "ix_document_intakes_project_state_created_at"),
+        ("create_index", "ix_document_intakes_project_content_hash"),
+        ("drop_index", "ix_document_intakes_project_content_hash"),
+        ("drop_index", "ix_document_intakes_project_state_created_at"),
+        ("drop_table", "document_intakes"),
     ]
