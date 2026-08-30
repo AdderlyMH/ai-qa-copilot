@@ -1,11 +1,40 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-08-30<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-001 verified on `main`<br>
-**Current phase:** Phase 2 — ING-001 accepted; ING-002 is next<br>
-**Health:** Green for accepted `main` at `ac9ce6f5df724337c23805bca4d48c70a8d53888`. Durable audit persistence, SG-05, live Cognito, live ingestion/execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-001, and ING-002 verified on `main`<br>
+**Current phase:** Phase 2 — ING-002 accepted; ING-003 is next<br>
+**Health:** Green for accepted `main` at `70e9905f5251c56c4139eb0f54f8216c15aa66d8`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser/retrieval/execution, and deployment remain unverified
 
 ## Current status
+
+ING-002 has passed final acceptance on merged `main`
+`70e9905f5251c56c4139eb0f54f8216c15aa66d8`. PR #37 is merged. The final
+acceptance gate compared the merged tree
+`ffb9edad0a9d4f762b249515a6bf3925833a8b59` with the final reviewed PR head
+`f1e9170f694570764d62527c8e1532723b1ccf5c` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice adds an owner-authorized, bounded raw-document admission
+endpoint. It verifies the owner before reading the request stream, applies
+filename, type, content-encoding, per-file and per-project limits, strict
+UTF-8 and PDF-signature preflight checks, and deduplicates by project-scoped
+content hash. Eligible bytes are stored only through an injected private
+quarantine-storage boundary under generated opaque keys. Rejections persist
+only sanitized outcome metadata, and unavailable storage or persistence fails
+closed. Migration `0005_create_document_intakes` is reversible. This slice
+does not configure a production object store or introduce parsing, retrieval,
+chunks, embeddings, model calls, execution, public raw-object access, or
+network egress.
+
+The exact reviewed head passed Windows `ci` with 100 tests passed and one
+intentional PostgreSQL integration-test skip; the deterministic security
+harness passed all 57 fixtures. Its isolated PostgreSQL `db-check` upgraded
+an empty database to head, exercised the migrated API path, downgraded to base,
+recreated head, and cleaned the Compose resources. GitHub `application-ci`
+run #26 and `docs-validation` run #118 both passed on the reviewed head. The
+reported Starlette deprecations and Windows pytest-cache permission warning
+were non-blocking.
 
 ING-001 has passed final acceptance on merged `main`
 `ac9ce6f5df724337c23805bca4d48c70a8d53888`. PR #35 is merged. The final
