@@ -2,10 +2,18 @@
 
 **Status date:** 2026-09-01<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-000 through ING-006 verified on `main`<br>
-**Current phase:** Phase 2 — ING-006 accepted; RAG-001 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `bae1d855057a3f21affdab494633fc6c6e1b2734`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
+**Current phase:** Phase 2 — RAG-001 implementation is under review in PR #50; it is not accepted<br>
+**Health:** Green for accepted `main` at `ccbdba1d167c2d12dd89b2c5e93f36c2cdcfe679`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
 
 ## Current status
+
+RAG-001 is under implementation review in PR #50 and is not accepted. The
+slice adds only bounded versioned chunking, a project-scoped versioned embedding
+cache, and auditable chunk-to-embedding associations behind an injected
+no-network fake adapter. It does not introduce a live embedding provider,
+parser promotion, retrieval API/query, ranking, model calls, execution, or
+deployment. Required GitHub checks, including the real PostgreSQL migration
+lifecycle, must pass before acceptance evidence can be recorded.
 
 ING-006 has passed final acceptance on merged `main`
 `bae1d855057a3f21affdab494633fc6c6e1b2734`. PR #48 is merged. The final
@@ -654,6 +662,7 @@ release milestone.
 
 ## Next action
 
-Select the next approved backlog item from accepted `main`. Preserve the
-required pull-request checks and do not treat the SEC-001 fixture harness as
-evidence for unimplemented live ingestion, execution, or deployment paths.
+Complete the required pull-request checks and final acceptance review for
+RAG-001. Preserve the required pull-request checks and do not treat the
+SEC-001 fixture harness as evidence for unimplemented live ingestion,
+execution, or deployment paths.

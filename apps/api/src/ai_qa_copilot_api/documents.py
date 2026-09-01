@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -173,7 +174,10 @@ class DocumentChunkRecord(Base):
         CheckConstraint("length(content_sha256) = 64"),
         CheckConstraint("length(trim(chunking_version)) > 0"),
         UniqueConstraint(
-            "document_version_id", "ordinal", name="uq_document_chunks_ordinal"
+            "document_version_id",
+            "chunking_version",
+            "ordinal",
+            name="uq_document_chunks_version_chunking_ordinal",
         ),
         ForeignKeyConstraint(
             ["document_version_id", "document_section_id"],
@@ -197,6 +201,67 @@ class DocumentChunkRecord(Base):
     normalized_text: Mapped[str] = mapped_column(Text, nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     chunking_version: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class EmbeddingCacheRecord(Base):
+    """Project-scoped reusable embedding content addressed by model/version."""
+
+    __tablename__ = "embedding_cache_entries"
+    __table_args__ = (
+        CheckConstraint("length(content_sha256) = 64"),
+        CheckConstraint("length(trim(embedding_model)) > 0"),
+        CheckConstraint("length(trim(embedding_version)) > 0"),
+        CheckConstraint("dimensions > 0"),
+        UniqueConstraint(
+            "project_id",
+            "content_sha256",
+            "embedding_model",
+            "embedding_version",
+            name="uq_embedding_cache_identity",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
+    embedding_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    dimensions: Mapped[int] = mapped_column(Integer, nullable=False)
+    values: Mapped[list[float]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class DocumentChunkEmbeddingRecord(Base):
+    """Immutable association from a chunk to one versioned cached embedding."""
+
+    __tablename__ = "document_chunk_embeddings"
+    __table_args__ = (
+        CheckConstraint("length(trim(embedding_model)) > 0"),
+        CheckConstraint("length(trim(embedding_version)) > 0"),
+        UniqueConstraint(
+            "document_chunk_id",
+            "embedding_model",
+            "embedding_version",
+            name="uq_document_chunk_embeddings_identity",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    document_chunk_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("document_chunks.id"), nullable=False
+    )
+    embedding_cache_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("embedding_cache_entries.id"), nullable=False
+    )
+    embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
+    embedding_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
 
 class DocumentIntakeState(StrEnum):

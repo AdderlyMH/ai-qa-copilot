@@ -12,11 +12,19 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ai_qa_copilot_api.documents import (
     DocumentChunkRecord,
+    DocumentChunkEmbeddingRecord,
     DocumentRecord,
     DocumentSectionRecord,
     DocumentVersionRecord,
+    EmbeddingCacheRecord,
     ParserVersionRecord,
     SourceLocationRecord,
+)
+from ai_qa_copilot_api.indexing import (
+    ChunkingConfiguration,
+    FakeEmbeddingAdapter,
+    IndexingService,
+    SqlAlchemyChunkEmbeddingStore,
 )
 from ai_qa_copilot_api.projects import Base, ProjectRecord
 
@@ -215,3 +223,38 @@ def test_source_locations_reject_inverted_line_ranges(
         )
         with pytest.raises(IntegrityError):
             session.commit()
+
+
+def test_sqlalchemy_indexing_persists_chunks_and_reuses_cached_embedding(
+    sessions: sessionmaker[Session],
+) -> None:
+    project_id, _ = create_provenance_graph(sessions)
+    version_id = UUID("00000000-0000-0000-0000-000000000104")
+    text = "Cart IDs must be present."
+    adapter = FakeEmbeddingAdapter({text: (0.125, 0.875)})
+    service = IndexingService(
+        SqlAlchemyChunkEmbeddingStore(sessions),
+        adapter,
+        chunking=ChunkingConfiguration(version="chunking-rag-v1"),
+    )
+
+    first = service.index(project_id=project_id, document_version_id=version_id)
+    second = service.index(project_id=project_id, document_version_id=version_id)
+
+    assert (first.chunks_created, first.embeddings_created) == (1, 1)
+    assert (second.chunks_created, second.embeddings_created) == (0, 0)
+    assert adapter.requests == [(text,)]
+    with sessions() as session:
+        chunks = list(
+            session.scalars(
+                select(DocumentChunkRecord).where(
+                    DocumentChunkRecord.chunking_version == "chunking-rag-v1"
+                )
+            )
+        )
+        caches = list(session.scalars(select(EmbeddingCacheRecord)))
+        links = list(session.scalars(select(DocumentChunkEmbeddingRecord)))
+
+    assert len(chunks) == len(caches) == len(links) == 1
+    assert links[0].document_chunk_id == chunks[0].id
+    assert links[0].embedding_cache_id == caches[0].id
