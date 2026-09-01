@@ -1025,6 +1025,18 @@ adapter, database attachment, API parsing route, document promotion, chunking,
 embeddings, model calls, retrieval, execution, OCR, rendering, conversion, or
 worker deployment is accepted.
 
-The next implementation item is ING-006 — complete the parser-adversarial
-regression matrix. RAG-001 remains blocked until ING-006 is complete. Preserve
-the accepted isolated-worker boundary and required pull-request security checks.
+ING-006 is verified on merged `main`
+`bae1d855057a3f21affdab494633fc6c6e1b2734`. The reviewed tree
+`9ea4aa948f448f8e384b5dc4b79b0da245793e95` is identical to the merge tree.
+Local `ci` passed with 161 tests passed and two intentional PostgreSQL
+integration-test skips; the deterministic security harness passed all 57
+fixtures. GitHub `application-ci` run #58 and `docs-validation` run #148
+passed on the reviewed head. This is real parser-adversarial regression
+evidence for every versioned `SEC-PARSE-*` fixture only: no parser queue
+consumer, storage adapter, database attachment, API parsing route, document
+promotion, chunking, embeddings, model calls, retrieval, execution, OCR,
+rendering, conversion, or worker deployment is accepted.
+
+The next implementation item is RAG-001 — implement the versioned chunking and
+embedding pipeline. ING-006 is complete, so RAG-001 is unblocked. Preserve the
+accepted isolated-worker boundary and required pull-request security checks.

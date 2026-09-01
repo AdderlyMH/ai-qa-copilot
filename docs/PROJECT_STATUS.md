@@ -1,11 +1,36 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-01<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-000 through ING-005 verified on `main`<br>
-**Current phase:** Phase 2 — ING-005 accepted; ING-006 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `b366b2a2704923e04879901405f818f31ab757e2`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-000 through ING-006 verified on `main`<br>
+**Current phase:** Phase 2 — ING-006 accepted; RAG-001 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `bae1d855057a3f21affdab494633fc6c6e1b2734`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
 
 ## Current status
+
+ING-006 has passed final acceptance on merged `main`
+`bae1d855057a3f21affdab494633fc6c6e1b2734`. PR #48 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`9ea4aa948f448f8e384b5dc4b79b0da245793e95` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice executes every versioned `SEC-PARSE-*` fixture against its
+real Markdown/text admission or parser, OpenAPI JSON/YAML parser, or PDF
+parser. It asserts the expected reject boundary and the complete zero
+side-effect vector for chunks, embeddings, model calls, execution candidates,
+automatic retries, DNS, HTTP, execution plans, target configuration mutations,
+approval mutations, and secret exposures. YAML merge key `<<` is explicitly
+rejected as `OPENAPI_YAML_KEY_OR_MERGE_INVALID`.
+
+The exact reviewed head passed local `ci` with 161 tests passed and two
+intentional PostgreSQL integration-test skips; the deterministic security
+harness passed all 57 fixtures. GitHub `application-ci` run #58 and
+`docs-validation` run #148 both passed for that exact head.
+
+No parser queue consumer, storage adapter, database attachment, API parsing
+route, document promotion, chunking, embeddings, model calls, retrieval,
+execution, OCR, rendering, conversion, or worker deployment is accepted.
+RAG-001 is next and is no longer blocked by ING-006.
 
 ING-005 has passed final acceptance on merged `main`
 `b366b2a2704923e04879901405f818f31ab757e2`. PR #46 is merged. The final
@@ -33,7 +58,6 @@ external time and memory termination.
 No parser queue consumer, storage adapter, database attachment, API parsing
 route, document promotion, chunking, embeddings, model calls, retrieval,
 execution, OCR, rendering, conversion, or worker deployment is accepted.
-ING-006 is next; RAG-001 remains blocked on ING-006.
 
 ING-000 has passed final acceptance on merged `main`
 `30108b455b5211e0bcf6a5205659f316450cfcc2`. PR #44 is merged. The final
