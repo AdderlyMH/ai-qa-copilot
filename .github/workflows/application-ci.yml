@@ -57,7 +57,7 @@ jobs:
           elapsed="$(( $(date +%s) - started ))"
           test "$elapsed" -lt 20
       - run: |
-          if docker compose --profile parser-worker run --rm parser-worker --test-allocate-mebibytes 768; then
+          if docker compose --profile parser-worker run --rm --memory 512m parser-worker --test-allocate-mebibytes 768; then
             echo "parser-worker exceeded the external memory limit" >&2
             exit 1
           fi
