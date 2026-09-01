@@ -11,6 +11,7 @@ from ai_qa_copilot_api.parser_worker import (
     PARSER_WORKER_ROLE,
     ParserWorkerConfigurationError,
     ParserWorkerRuntime,
+    verify_network_denied,
 )
 
 
@@ -45,6 +46,21 @@ def test_worker_refuses_root_network_or_privileged_credentials() -> None:
         ParserWorkerRuntime.from_environment(
             {**valid, "OPENAI_API_KEY": "not-allowed"}, uid=10001
         )
+
+
+def test_network_probe_accepts_a_denied_connection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def denied_connection(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise OSError("network is disabled")
+
+    monkeypatch.setattr(
+        "ai_qa_copilot_api.parser_worker.socket.create_connection",
+        denied_connection,
+    )
+
+    verify_network_denied()
 
 
 def test_compose_profile_enforces_external_worker_limits_and_no_network() -> None:
