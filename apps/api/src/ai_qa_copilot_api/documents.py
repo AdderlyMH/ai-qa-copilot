@@ -206,6 +206,12 @@ class DocumentIntakeState(StrEnum):
     REJECTED = "rejected"
 
 
+class ParserJobState(StrEnum):
+    """Durable lifecycle for an opaque parser-queue message."""
+
+    QUEUED = "queued"
+
+
 class DocumentIntakeRecord(Base):
     """Private quarantine admission or sanitized preflight rejection record."""
 
@@ -243,6 +249,27 @@ class DocumentIntakeRecord(Base):
     byte_size: Mapped[int] = mapped_column(Integer, nullable=False)
     content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     rejection_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class ParserJobRecord(Base):
+    """A queue record that intentionally contains no raw bytes or object key."""
+
+    __tablename__ = "parser_jobs"
+    __table_args__ = (
+        CheckConstraint("state = 'queued'", name="ck_parser_jobs_state_queued"),
+        UniqueConstraint("document_intake_id", name="uq_parser_jobs_document_intake"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    document_intake_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("document_intakes.id"),
+        nullable=False,
+    )
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

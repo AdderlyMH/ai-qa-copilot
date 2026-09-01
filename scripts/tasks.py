@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0005_create_document_intakes"
+DB_CHECK_REVISION = "0006_create_parser_jobs"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -370,6 +370,7 @@ def verify_migrated_database(
         "analysis_runs",
     )
     for table_name in (
+        "parser_jobs",
         "document_intakes",
         "parser_versions",
         "documents",
@@ -427,6 +428,7 @@ def verify_rolled_back_database(
         "",
     )
     for table_name in (
+        "parser_jobs",
         "document_intakes",
         "document_chunks",
         "document_sections",

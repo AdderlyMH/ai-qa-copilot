@@ -60,6 +60,7 @@ from ai_qa_copilot_api.projects import (
     ProjectRepositoryUnavailable,
     project_repository_from_environment,
 )
+from ai_qa_copilot_api.parser_queue import ParserJobQueue
 
 
 class HealthResponse(BaseModel):
@@ -160,6 +161,7 @@ def create_app(
     project_repository: ProjectRepository | None = None,
     document_intake_repository: DocumentIntakeRepository | None = None,
     quarantine_storage: QuarantineStorage | None = None,
+    parser_job_queue: ParserJobQueue | None = None,
     document_intake_policy: UploadPolicy = UploadPolicy(),
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
@@ -213,6 +215,7 @@ def create_app(
                 if quarantine_storage is not None
                 else UnavailableQuarantineStorage()
             ),
+            parser_job_queue,
             policy=document_intake_policy,
         )
         application.state.analysis_run_service = (

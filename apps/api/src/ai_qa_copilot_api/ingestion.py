@@ -22,6 +22,12 @@ from ai_qa_copilot_api.documents import (
     DocumentVersionRecord,
     ParserVersionRecord,
 )
+from ai_qa_copilot_api.parser_queue import (
+    ParserJob,
+    ParserJobQueue,
+    ParserJobQueueUnavailable,
+    UnavailableParserJobQueue,
+)
 
 
 DOCUMENT_INTAKE_UNAVAILABLE_DETAIL = (
@@ -447,12 +453,18 @@ class DocumentIntakeService:
         self,
         repository: DocumentIntakeRepository,
         storage: QuarantineStorage,
+        parser_job_queue: ParserJobQueue | None = None,
         *,
         policy: UploadPolicy = UploadPolicy(),
         id_factory: Callable[[], UUID] = uuid4,
     ) -> None:
         self._repository = repository
         self._storage = storage
+        self._parser_job_queue = (
+            parser_job_queue
+            if parser_job_queue is not None
+            else UnavailableParserJobQueue()
+        )
         self._policy = policy
         self._id_factory = id_factory
 
@@ -564,6 +576,7 @@ class DocumentIntakeService:
                 project_id=project_id, content_sha256=content_sha256
             )
             if existing is not None:
+                self._enqueue_parser_job(existing)
                 return existing
             file_count, project_byte_size = self._repository.project_usage(
                 project_id=project_id
@@ -591,7 +604,7 @@ class DocumentIntakeService:
                     content=cast(BinaryIO, buffered),
                     content_type=metadata.content_type,
                 )
-                return self._repository.create_quarantined(
+                intake = self._repository.create_quarantined(
                     project_id=project_id,
                     metadata=metadata,
                     document_type=document_type,
@@ -605,6 +618,16 @@ class DocumentIntakeService:
                 except DocumentIntakeUnavailable:
                     pass
                 raise
+            self._enqueue_parser_job(intake)
+            return intake
+
+    def _enqueue_parser_job(self, intake: DocumentIntake) -> None:
+        """Queue only the opaque intake ID; a queue outage leaves bytes quarantined."""
+
+        try:
+            self._parser_job_queue.enqueue(ParserJob(document_intake_id=intake.id))
+        except ParserJobQueueUnavailable as error:
+            raise DocumentIntakeUnavailable from error
 
     def _reject(
         self,

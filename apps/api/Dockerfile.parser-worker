@@ -1,0 +1,11 @@
+FROM python:3.13.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1
+
+RUN groupadd --gid 10001 parser && useradd --uid 10001 --gid parser --no-create-home parser
+
+WORKDIR /app
+COPY apps/api/src /app/src
+USER 10001:10001
