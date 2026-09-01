@@ -192,13 +192,11 @@ class SqlAlchemyLexicalRetrievalStore:
             statement = statement.where(
                 DocumentChunkRecord.chunking_version == filters.chunking_version
             )
-        statement = (
-            statement.order_by(
-                score.desc(),
-                DocumentChunkRecord.ordinal.asc(),
-                DocumentChunkRecord.id.asc(),
-            ).limit(limit)
-        )
+        statement = statement.order_by(
+            score.desc(),
+            DocumentChunkRecord.ordinal.asc(),
+            DocumentChunkRecord.id.asc(),
+        ).limit(limit)
 
         try:
             with self._session_factory() as session:
