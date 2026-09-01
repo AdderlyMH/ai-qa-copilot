@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import socket
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
@@ -77,13 +79,35 @@ def verify_runtime(environment: Mapping[str, str] | None = None) -> ParserWorker
     )
 
 
+def verify_network_denied() -> None:
+    """Prove the isolated profile cannot establish a public TCP connection."""
+
+    try:
+        with socket.create_connection(("1.1.1.1", 53), timeout=1.0):
+            pass
+    except OSError:
+        return
+    raise ParserWorkerConfigurationError("Parser worker network connection succeeded")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Verify the isolated profile; parsing remains intentionally disabled."""
 
     arguments = argparse.ArgumentParser()
     arguments.add_argument("--verify-runtime", action="store_true")
-    arguments.parse_args(argv)
+    arguments.add_argument("--verify-network-denied", action="store_true")
+    arguments.add_argument("--test-sleep-seconds", type=int, default=0)
+    arguments.add_argument("--test-allocate-mebibytes", type=int, default=0)
+    parsed = arguments.parse_args(argv)
     verify_runtime()
+    if parsed.verify_network_denied:
+        verify_network_denied()
+    if parsed.test_sleep_seconds < 0 or parsed.test_allocate_mebibytes < 0:
+        raise ParserWorkerConfigurationError("Worker test values must not be negative")
+    if parsed.test_sleep_seconds:
+        time.sleep(parsed.test_sleep_seconds)
+    if parsed.test_allocate_mebibytes:
+        _ = [bytearray(1024 * 1024) for _ in range(parsed.test_allocate_mebibytes)]
     return 0
 
 
