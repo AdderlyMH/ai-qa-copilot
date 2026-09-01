@@ -1,18 +1,39 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-01<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-001 through ING-004 verified on `main`<br>
-**Current phase:** Phase 2 — ING-004 accepted; ING-000 parser-worker foundation is next and blocks ING-005<br>
-**Health:** Green for accepted `main` at `a7af98373fda2125045653486a4eba70eb8215b1`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-000 through ING-004 verified on `main`<br>
+**Current phase:** Phase 2 — ING-000 accepted; ING-005 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `30108b455b5211e0bcf6a5205659f316450cfcc2`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
 
 ## Current status
 
-ING-000 is now the next implementation item. The exact PDF contract requires
-operating-system-enforced memory and wall-time limits plus a least-privilege
-parser-worker boundary; an in-process PDF library cannot provide that evidence.
-Accordingly, ING-005 remains blocked until ING-000 is implemented and verified.
-No PDF parser, queue consumer, or worker deployment is accepted by this
-planning change.
+ING-000 has passed final acceptance on merged `main`
+`30108b455b5211e0bcf6a5205659f316450cfcc2`. PR #44 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`1b4bddbe2ec5008c545b90d479902ed6a3988c28` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice establishes the parser-worker foundation without enabling a
+document parser. It adds an API enqueue boundary carrying only an opaque
+document-intake UUID, an idempotent durable `parser_jobs` queue with reversible
+Alembic migration `0006_create_parser_jobs`, and a separately runnable
+least-privilege worker profile. That profile runs as non-root with a read-only
+root filesystem, bounded `/tmp`, dropped capabilities, no network, a 512 MiB
+memory limit, a PID limit, and a 15-second external wall-time limit.
+
+The exact reviewed head passed local `ci` with 119 tests passed and two
+intentional PostgreSQL integration-test skips; the deterministic security
+harness passed all 57 fixtures. GitHub `application-ci` run #48 and
+`docs-validation` run #138 both passed for that exact head. The application
+workflow also passed `migration-check` and `parser-worker-isolation`, including
+non-root execution, denied TCP egress, and external time and memory termination.
+
+No PDF, OpenAPI, Markdown, or other parser is enabled; no queue consumer is
+started; and the worker receives no private-storage or database network
+attachment. ING-005 may now begin only as its bounded PDF parsing slice; this
+acceptance is not parser, worker-deployment, retrieval, embeddings, execution,
+or production-storage evidence.
 
 ING-004 has passed final acceptance on merged `main`
 `e150e88a62d037af12353f287d1ffb3c7b33ba57`. PR #41 is merged. The final
