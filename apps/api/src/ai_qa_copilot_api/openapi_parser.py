@@ -134,20 +134,26 @@ def _reject_json_constant(value: str) -> object:
 
 
 def _load_yaml(text: str) -> object:
-    if "---" in text or "..." in text or "%" in text:
-        raise OpenApiParseRejected("OPENAPI_YAML_DIRECTIVE_OR_MULTIDOCUMENT")
     try:
-        prohibited = (
-            yaml.tokens.AnchorToken,
-            yaml.tokens.AliasToken,
-            yaml.tokens.TagToken,
-            yaml.tokens.DirectiveToken,
-        )
-        if any(
-            isinstance(token, prohibited)
-            for token in yaml.scan(text, Loader=yaml.SafeLoader)
-        ):
-            raise OpenApiParseRejected("OPENAPI_YAML_TAG_OR_ALIAS_UNSUPPORTED")
+        for token in yaml.scan(text, Loader=yaml.SafeLoader):
+            if isinstance(
+                token,
+                (
+                    yaml.tokens.DirectiveToken,
+                    yaml.tokens.DocumentStartToken,
+                    yaml.tokens.DocumentEndToken,
+                ),
+            ):
+                raise OpenApiParseRejected("OPENAPI_YAML_DIRECTIVE_OR_MULTIDOCUMENT")
+            if isinstance(
+                token,
+                (
+                    yaml.tokens.AnchorToken,
+                    yaml.tokens.AliasToken,
+                    yaml.tokens.TagToken,
+                ),
+            ):
+                raise OpenApiParseRejected("OPENAPI_YAML_TAG_OR_ALIAS_UNSUPPORTED")
         node = yaml.compose(text, Loader=yaml.SafeLoader)
     except yaml.YAMLError as error:
         raise OpenApiParseRejected("OPENAPI_YAML_SYNTAX_INVALID") from error
