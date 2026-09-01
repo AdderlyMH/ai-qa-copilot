@@ -1,6 +1,35 @@
 name: ai-qa-copilot
 
 services:
+  parser-worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.parser-worker
+    profiles: ["parser-worker"]
+    user: "10001:10001"
+    read_only: true
+    network_mode: "none"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    pids_limit: 64
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    environment:
+      PARSER_WORKER_NETWORK: none
+      PARSER_WORKER_ROLE: restricted-parser
+    entrypoint:
+      - timeout
+      - --signal=KILL
+      - 15s
+      - python
+      - -m
+      - ai_qa_copilot_api.parser_worker
+    command:
+      - --verify-runtime
+
   postgres:
     image: pgvector/pgvector:0.8.6-pg17-bookworm@sha256:7ae6051efd0e60444282c27c7e141af07f322ce033300e727a49c3dd11075e38
     environment:
