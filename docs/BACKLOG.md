@@ -1002,7 +1002,17 @@ pure Markdown/text parser evidence only: production object storage,
 parser-worker deployment, retrieval, embeddings, model calls, execution,
 public raw-object access, and network egress remain out of scope.
 
-The next implementation item is ING-000 — establish the isolated parser-worker
-foundation. ING-005 remains blocked until ING-000 has verified OS-enforced
-resource limits and least-privilege isolation. Preserve the required
-pull-request security checks.
+ING-000 is verified on merged `main`
+`30108b455b5211e0bcf6a5205659f316450cfcc2`. The reviewed tree
+`1b4bddbe2ec5008c545b90d479902ed6a3988c28` is identical to the merge tree.
+Local `ci` passed with 119 tests passed and two intentional PostgreSQL
+integration-test skips; the deterministic security harness passed all 57
+fixtures. GitHub `application-ci` run #48 and `docs-validation` run #138
+passed on the reviewed head, including Docker-backed migration and
+parser-worker-isolation checks. This is parser-worker-foundation evidence only:
+no parser, queue consumer, private-storage/database network attachment, worker
+deployment, retrieval, embeddings, model calls, or execution is accepted.
+
+The next implementation item is ING-005 — parse bounded PDF input. Preserve
+the accepted isolated-worker boundary and the required pull-request security
+checks.
