@@ -10,8 +10,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0007_create_chunk_embedding_cache"
-INDEXING_REVISION = "0007_create_chunk_embedding_cache"
+EXPECTED_REVISION = "0007_chunk_embedding_cache"
+INDEXING_REVISION = "0007_chunk_embedding_cache"
 PARSER_JOB_REVISION = "0006_create_parser_jobs"
 DOCUMENT_INTAKE_REVISION = "0005_create_document_intakes"
 DOCUMENT_PROVENANCE_REVISION = "0004_create_document_provenance"
@@ -75,6 +75,10 @@ def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
     baseline = script.get_revision(INITIAL_REVISION)
     assert baseline is not None
     assert baseline.down_revision is None
+    assert all(
+        revision.revision is not None and len(revision.revision) <= 32
+        for revision in script.walk_revisions()
+    )
 
 
 def test_initial_migration_enables_and_removes_pgvector(
