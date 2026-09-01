@@ -33,6 +33,19 @@ paths: {}
     assert parsed.security == ({"bearer": ["on", "1", ""]},)
 
 
+def test_yaml_text_is_not_mistaken_for_a_directive_or_document_marker() -> None:
+    parsed = parse_openapi(
+        document_type="openapi-yaml",
+        raw=b"""openapi: "3.1.0"
+info:
+  title: "50% complete... --- still ordinary text"
+paths: {}
+""",
+    )
+
+    assert parsed.version == "3.1.0"
+
+
 def test_non_reference_depth_uses_the_structure_limit() -> None:
     document: dict[str, object] = {"openapi": "3.1.0", "paths": {}}
     nested = document
@@ -70,6 +83,11 @@ def test_non_reference_depth_uses_the_structure_limit() -> None:
             "openapi-yaml",
             b"openapi: 3.0.0\npaths: {}\nx: .nan\n",
             "OPENAPI_YAML_SCALAR_INVALID",
+        ),
+        (
+            "openapi-yaml",
+            b"openapi: 3.0.0\npaths: {}\n---\nopenapi: 3.1.0\npaths: {}\n",
+            "OPENAPI_YAML_DIRECTIVE_OR_MULTIDOCUMENT",
         ),
     ],
 )
