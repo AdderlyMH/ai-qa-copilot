@@ -1,11 +1,39 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-08-30<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-001 through ING-003 verified on `main`<br>
-**Current phase:** Phase 2 — ING-003 accepted; ING-004 is next<br>
-**Health:** Green for accepted `main` at `1e186446862c2a6edc0cdd9770895f894bf9975a`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
+**Status date:** 2026-09-01<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-001 through ING-004 verified on `main`<br>
+**Current phase:** Phase 2 — ING-004 accepted; ING-005 is next<br>
+**Health:** Green for accepted `main` at `e150e88a62d037af12353f287d1ffb3c7b33ba57`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
 
 ## Current status
+
+ING-004 has passed final acceptance on merged `main`
+`e150e88a62d037af12353f287d1ffb3c7b33ba57`. PR #41 is merged. The final
+acceptance gate compared the merged tree
+`b948b0bd1f5f5ab0d604da8da9d761fff15a2b34` with the final reviewed PR head
+`67e12134616bfe00ac1eb27f75b02d7faf4455b0` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice adds a deterministic, fail-closed, no-I/O OpenAPI 3.0/3.1
+JSON/YAML parser. It enforces strict UTF-8, duplicate-key and JSON-constant
+rejection, a JSON-compatible YAML subset, no aliases, tags, directives, or
+multiple documents, bounded structure and collection limits, and root-local
+reference-only policy. It extracts inert normalized operation, schema, path,
+method, security, and JSON Pointer facts without resolving references or
+performing filesystem, network, storage, model, retrieval, or execution work.
+Quoted YAML scalars retain their string values; non-finite values are rejected;
+ordinary YAML text containing `%`, `...`, or `---` remains valid.
+
+The exact reviewed head passed Windows `ci` with 113 tests passed and one
+intentional PostgreSQL integration-test skip; the deterministic security
+harness passed all 57 fixtures. The isolated PostgreSQL `db-check` lifecycle
+passed before parser/test-only final commits; no migration or persistence files
+changed afterward. GitHub `application-ci` run #41 and `docs-validation`
+run #132 both passed for the exact reviewed head. The reported Starlette
+deprecations and Windows pytest-cache permission warning were non-blocking.
+ING-004 does not establish a live parser worker, object-store integration,
+retrieval, embeddings, execution, or deployment evidence.
 
 ING-003 has passed final acceptance on merged `main`
 `1e186446862c2a6edc0cdd9770895f894bf9975a`. PR #39 is merged. The final
