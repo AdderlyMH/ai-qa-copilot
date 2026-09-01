@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from ai_qa_copilot_api.openapi_parser import OpenApiParseRejected, parse_openapi
@@ -18,6 +20,34 @@ def test_json_extracts_inert_operations_schemas_and_security() -> None:
     assert parsed.security == ({"bearer": []},)
 
 
+def test_yaml_preserves_quoted_json_scalars_in_security_metadata() -> None:
+    parsed = parse_openapi(
+        document_type="openapi-yaml",
+        raw=b'''openapi: "3.1.0"
+security:
+  - bearer: ["on", "1", ""]
+paths: {}
+''',
+    )
+    assert parsed.version == "3.1.0"
+    assert parsed.security == ({"bearer": ["on", "1", ""]},)
+
+
+def test_non_reference_depth_uses_the_structure_limit() -> None:
+    document: dict[str, object] = {"openapi": "3.1.0", "paths": {}}
+    nested = document
+    for index in range(21):
+        child: dict[str, object] = {}
+        nested[f"x-nesting-{index}"] = child
+        nested = child
+
+    parsed = parse_openapi(
+        document_type="openapi-json", raw=json.dumps(document).encode("utf-8")
+    )
+
+    assert parsed.version == "3.1.0"
+
+
 @pytest.mark.parametrize(
     "document_type, raw, code",
     [
@@ -33,8 +63,13 @@ def test_json_extracts_inert_operations_schemas_and_security() -> None:
         ),
         (
             "openapi-yaml",
-            b"openapi: 3.0.0\npaths:\n  /x: &x {}\n",
+            b"openapi: 3.0.0\\npaths:\\n  /x: &x {}\\n",
             "OPENAPI_YAML_TAG_OR_ALIAS_UNSUPPORTED",
+        ),
+        (
+            "openapi-yaml",
+            b"openapi: 3.0.0\\npaths: {}\\nx: .nan\\n",
+            "OPENAPI_YAML_SCALAR_INVALID",
         ),
     ],
 )
