@@ -23,11 +23,11 @@ def test_json_extracts_inert_operations_schemas_and_security() -> None:
 def test_yaml_preserves_quoted_json_scalars_in_security_metadata() -> None:
     parsed = parse_openapi(
         document_type="openapi-yaml",
-        raw=b'''openapi: "3.1.0"
+        raw=b"""openapi: "3.1.0"
 security:
   - bearer: ["on", "1", ""]
 paths: {}
-''',
+""",
     )
     assert parsed.version == "3.1.0"
     assert parsed.security == ({"bearer": ["on", "1", ""]},)
