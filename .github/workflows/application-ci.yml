@@ -40,6 +40,28 @@ jobs:
       - run: uv sync --locked
       - run: python scripts/tasks.py db-check
 
+  parser-worker-isolation:
+    name: parser-worker-isolation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - run: docker compose --profile parser-worker build parser-worker
+      - run: docker compose --profile parser-worker run --rm parser-worker
+      - run: docker compose --profile parser-worker run --rm parser-worker --verify-network-denied
+      - run: |
+          started="$(date +%s)"
+          if docker compose --profile parser-worker run --rm parser-worker --test-sleep-seconds 30; then
+            echo "parser-worker ignored the external wall-time limit" >&2
+            exit 1
+          fi
+          elapsed="$(( $(date +%s) - started ))"
+          test "$elapsed" -lt 20
+      - run: |
+          if docker compose --profile parser-worker run --rm parser-worker --test-allocate-mebibytes 768; then
+            echo "parser-worker exceeded the external memory limit" >&2
+            exit 1
+          fi
+
   security-harness:
     name: security-harness
     runs-on: ubuntu-24.04
