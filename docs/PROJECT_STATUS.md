@@ -2,10 +2,17 @@
 
 **Status date:** 2026-09-01<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-001 through ING-004 verified on `main`<br>
-**Current phase:** Phase 2 — ING-004 accepted; ING-005 is next<br>
-**Health:** Green for accepted `main` at `e150e88a62d037af12353f287d1ffb3c7b33ba57`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
+**Current phase:** Phase 2 — ING-004 accepted; ING-000 parser-worker foundation is next and blocks ING-005<br>
+**Health:** Green for accepted `main` at `a7af98373fda2125045653486a4eba70eb8215b1`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
 
 ## Current status
+
+ING-000 is now the next implementation item. The exact PDF contract requires
+operating-system-enforced memory and wall-time limits plus a least-privilege
+parser-worker boundary; an in-process PDF library cannot provide that evidence.
+Accordingly, ING-005 remains blocked until ING-000 is implemented and verified.
+No PDF parser, queue consumer, or worker deployment is accepted by this
+planning change.
 
 ING-004 has passed final acceptance on merged `main`
 `e150e88a62d037af12353f287d1ffb3c7b33ba57`. PR #41 is merged. The final
