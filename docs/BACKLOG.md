@@ -1013,6 +1013,18 @@ parser-worker-isolation checks. This is parser-worker-foundation evidence only:
 no parser, queue consumer, private-storage/database network attachment, worker
 deployment, retrieval, embeddings, model calls, or execution is accepted.
 
-The next implementation item is ING-005 — parse bounded PDF input. Preserve
-the accepted isolated-worker boundary and the required pull-request security
-checks.
+ING-005 is verified on merged `main`
+`b366b2a2704923e04879901405f818f31ab757e2`. The reviewed tree
+`f069bc8048329371e8ca59f8e4af0ad66412458c` is identical to the merge tree.
+Local `ci` passed with 126 tests passed and two intentional PostgreSQL
+integration-test skips; the deterministic security harness passed all 57
+fixtures. GitHub `application-ci` run #54 and `docs-validation` run #144
+passed on the reviewed head, including the corrected parser-worker-isolation
+job. This is bounded PDF parser evidence only: no queue consumer, storage
+adapter, database attachment, API parsing route, document promotion, chunking,
+embeddings, model calls, retrieval, execution, OCR, rendering, conversion, or
+worker deployment is accepted.
+
+The next implementation item is ING-006 — complete the parser-adversarial
+regression matrix. RAG-001 remains blocked until ING-006 is complete. Preserve
+the accepted isolated-worker boundary and required pull-request security checks.
