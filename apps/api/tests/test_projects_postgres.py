@@ -15,8 +15,7 @@ from ai_qa_copilot_api.analysis_runs import (
     SqlAlchemyAnalysisRunRepository,
 )
 from ai_qa_copilot_api.auth import AppEnvironment, AuthSettings
-from ai_qa_copilot_api.indexing import (
-    EmbeddingConfiguration,
+from ai_qa_copilot_api.lexical_retrieval import (
     LexicalRetrievalFilters,
     LexicalRetrievalService,
     SqlAlchemyLexicalRetrievalStore,
@@ -28,11 +27,6 @@ from ai_qa_copilot_api.model_gateway import (
     ModelUsage,
     StructuredModelRequest,
     StructuredModelResponse,
-)
-from ai_qa_copilot_api.lexical_retrieval import (
-    LexicalRetrievalFilters,
-    LexicalRetrievalService,
-    SqlAlchemyLexicalRetrievalStore,
 )
 
 
