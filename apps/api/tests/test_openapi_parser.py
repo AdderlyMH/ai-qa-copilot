@@ -63,12 +63,12 @@ def test_non_reference_depth_uses_the_structure_limit() -> None:
         ),
         (
             "openapi-yaml",
-            b"openapi: 3.0.0\\npaths:\\n  /x: &x {}\\n",
+            b"openapi: 3.0.0\npaths:\n  /x: &x {}\n",
             "OPENAPI_YAML_TAG_OR_ALIAS_UNSUPPORTED",
         ),
         (
             "openapi-yaml",
-            b"openapi: 3.0.0\\npaths: {}\\nx: .nan\\n",
+            b"openapi: 3.0.0\npaths: {}\nx: .nan\n",
             "OPENAPI_YAML_SCALAR_INVALID",
         ),
     ],
