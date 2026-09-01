@@ -1,11 +1,39 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-01<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-000 through ING-004 verified on `main`<br>
-**Current phase:** Phase 2 — ING-000 accepted; ING-005 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `30108b455b5211e0bcf6a5205659f316450cfcc2`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-000 through ING-005 verified on `main`<br>
+**Current phase:** Phase 2 — ING-005 accepted; ING-006 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `b366b2a2704923e04879901405f818f31ab757e2`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
 
 ## Current status
+
+ING-005 has passed final acceptance on merged `main`
+`b366b2a2704923e04879901405f818f31ab757e2`. PR #46 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`f069bc8048329371e8ca59f8e4af0ad66412458c` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice adds a bounded, page-aware PDF parser in the restricted
+parser-worker profile. It extracts inert text with 1-based page locations and
+fails closed for invalid signatures or structure, encryption, active content,
+attachments, raw-size, page-count, object-count, decoded-stream, total-stream,
+and decompression-expansion limits. The worker image installs the pinned parser
+dependency from the locked project environment, while retaining the existing
+non-root, read-only, no-network, 512 MiB, PID, and 15-second wall-time limits.
+
+The exact reviewed head passed local `ci` with 126 tests passed and two
+intentional PostgreSQL integration-test skips; the deterministic security
+harness passed all 57 fixtures. GitHub `application-ci` run #54 and
+`docs-validation` run #144 both passed for that exact head. The application
+workflow's `parser-worker-isolation` job passed after proving the worker image
+can start with its locked PDF dependency while retaining denied TCP egress and
+external time and memory termination.
+
+No parser queue consumer, storage adapter, database attachment, API parsing
+route, document promotion, chunking, embeddings, model calls, retrieval,
+execution, OCR, rendering, conversion, or worker deployment is accepted.
+ING-006 is next; RAG-001 remains blocked on ING-006.
 
 ING-000 has passed final acceptance on merged `main`
 `30108b455b5211e0bcf6a5205659f316450cfcc2`. PR #44 is merged. The final
@@ -29,11 +57,10 @@ harness passed all 57 fixtures. GitHub `application-ci` run #48 and
 workflow also passed `migration-check` and `parser-worker-isolation`, including
 non-root execution, denied TCP egress, and external time and memory termination.
 
-No PDF, OpenAPI, Markdown, or other parser is enabled; no queue consumer is
-started; and the worker receives no private-storage or database network
-attachment. ING-005 may now begin only as its bounded PDF parsing slice; this
-acceptance is not parser, worker-deployment, retrieval, embeddings, execution,
-or production-storage evidence.
+At the ING-000 foundation boundary, no parser or queue consumer was enabled,
+and the worker received no private-storage or database network attachment. That
+acceptance alone was not parser, worker-deployment, retrieval, embeddings,
+execution, or production-storage evidence.
 
 ING-004 has passed final acceptance on merged `main`
 `e150e88a62d037af12353f287d1ffb3c7b33ba57`. PR #41 is merged. The final
