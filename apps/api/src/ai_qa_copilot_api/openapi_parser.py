@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
+
 import yaml
 
 MAX_DEPTH = 40
@@ -11,12 +13,12 @@ MAX_NODES = 25_000
 MAX_MEMBERS = 10_000
 MAX_SCALAR_LENGTH = 64 * 1024
 MAX_REFERENCES = 500
-MAX_REFERENCE_DEPTH = 20
 MAX_OPERATIONS = 500
 MAX_COMPONENTS = 5_000
 _METHODS = frozenset(
     {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
 )
+_YAML_TAG_PREFIX = "tag:yaml.org,2002:"
 
 
 class OpenApiParseRejected(ValueError):
@@ -54,7 +56,7 @@ def parse_openapi(*, document_type: str, raw: bytes) -> ParsedOpenApi:
     except UnicodeDecodeError as error:
         raise OpenApiParseRejected("OPENAPI_TEXT_ENCODING_INVALID") from error
     value = _load_json(text) if document_type == "openapi-json" else _load_yaml(text)
-    _validate_value(value, depth=0, state={"nodes": 0, "references": 0})
+    _validate_value(value, depth=0, state={"nodes": 0})
     if not isinstance(value, dict):
         raise OpenApiParseRejected("OPENAPI_ROOT_OBJECT_REQUIRED")
     version = value.get("openapi")
@@ -156,13 +158,13 @@ def _load_yaml(text: str) -> object:
 
 def _yaml_node_to_json(node: yaml.Node) -> object:
     if getattr(node, "anchor", None) is not None or node.tag not in {
-        "tag:yaml.org,2002:map",
-        "tag:yaml.org,2002:seq",
-        "tag:yaml.org,2002:str",
-        "tag:yaml.org,2002:int",
-        "tag:yaml.org,2002:float",
-        "tag:yaml.org,2002:bool",
-        "tag:yaml.org,2002:null",
+        f"{_YAML_TAG_PREFIX}map",
+        f"{_YAML_TAG_PREFIX}seq",
+        f"{_YAML_TAG_PREFIX}str",
+        f"{_YAML_TAG_PREFIX}int",
+        f"{_YAML_TAG_PREFIX}float",
+        f"{_YAML_TAG_PREFIX}bool",
+        f"{_YAML_TAG_PREFIX}null",
     }:
         raise OpenApiParseRejected("OPENAPI_YAML_TAG_OR_ALIAS_UNSUPPORTED")
     if isinstance(node, yaml.MappingNode):
@@ -176,11 +178,30 @@ def _yaml_node_to_json(node: yaml.Node) -> object:
     if isinstance(node, yaml.SequenceNode):
         return [_yaml_node_to_json(item) for item in node.value]
     if isinstance(node, yaml.ScalarNode):
-        try:
-            return yaml.safe_load(node.value)
-        except yaml.YAMLError as error:
-            raise OpenApiParseRejected("OPENAPI_YAML_SCALAR_INVALID") from error
+        return _yaml_scalar_to_json(node)
     raise OpenApiParseRejected("OPENAPI_YAML_NODE_UNSUPPORTED")
+
+
+def _yaml_scalar_to_json(node: yaml.ScalarNode) -> object:
+    if node.tag == f"{_YAML_TAG_PREFIX}str":
+        return node.value
+    try:
+        value = json.loads(node.value, parse_constant=_reject_json_constant)
+    except (json.JSONDecodeError, OpenApiParseRejected) as error:
+        raise OpenApiParseRejected("OPENAPI_YAML_SCALAR_INVALID") from error
+    if node.tag == f"{_YAML_TAG_PREFIX}null" and value is None:
+        return value
+    if node.tag == f"{_YAML_TAG_PREFIX}bool" and type(value) is bool:
+        return value
+    if node.tag == f"{_YAML_TAG_PREFIX}int" and type(value) is int:
+        return value
+    if (
+        node.tag == f"{_YAML_TAG_PREFIX}float"
+        and type(value) is float
+        and math.isfinite(value)
+    ):
+        return value
+    raise OpenApiParseRejected("OPENAPI_YAML_SCALAR_INVALID")
 
 
 def _validate_value(value: object, *, depth: int, state: dict[str, int]) -> None:
@@ -205,9 +226,7 @@ def _validate_value(value: object, *, depth: int, state: dict[str, int]) -> None
 def _validate_references(value: object) -> None:
     refs: list[str] = []
 
-    def visit(item: object, depth: int = 0) -> None:
-        if depth > MAX_REFERENCE_DEPTH:
-            raise OpenApiParseRejected("OPENAPI_REFERENCE_DEPTH_LIMIT")
+    def visit(item: object) -> None:
         if isinstance(item, dict):
             for key, child in item.items():
                 if key == "$dynamicRef":
@@ -220,10 +239,10 @@ def _validate_references(value: object) -> None:
                     ):
                         raise OpenApiParseRejected("OPENAPI_REFERENCE_UNSUPPORTED")
                     refs.append(child)
-                visit(child, depth + 1)
+                visit(child)
         elif isinstance(item, list):
             for child in item:
-                visit(child, depth + 1)
+                visit(child)
 
     visit(value)
     if len(refs) > MAX_REFERENCES:
