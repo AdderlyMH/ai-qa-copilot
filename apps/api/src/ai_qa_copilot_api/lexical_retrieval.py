@@ -133,9 +133,7 @@ class SqlAlchemyLexicalRetrievalStore:
         self._session_factory = session_factory
 
     @classmethod
-    def from_database_url(
-        cls, database_url: str
-    ) -> "SqlAlchemyLexicalRetrievalStore":
+    def from_database_url(cls, database_url: str) -> "SqlAlchemyLexicalRetrievalStore":
         engine = create_engine(database_url, pool_pre_ping=True)
         return cls(sessionmaker(engine, expire_on_commit=False))
 
