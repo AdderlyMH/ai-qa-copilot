@@ -1,6 +1,6 @@
 """Create versioned, project-scoped embedding cache records.
 
-Revision ID: 0007_create_chunk_embedding_cache
+Revision ID: 0007_chunk_embedding_cache
 Revises: 0006_create_parser_jobs
 """
 
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "0007_create_chunk_embedding_cache"
+revision: str = "0007_chunk_embedding_cache"
 down_revision: str | None = "0006_create_parser_jobs"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
