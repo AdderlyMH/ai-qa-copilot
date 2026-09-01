@@ -147,9 +147,7 @@ class SqlAlchemyLexicalRetrievalStore:
     ) -> tuple[LexicalCandidate, ...]:
         filters.validate()
         query_text = func.plainto_tsquery("simple", query)
-        search_vector = func.to_tsvector(
-            "simple", DocumentChunkRecord.normalized_text
-        )
+        search_vector = func.to_tsvector("simple", DocumentChunkRecord.normalized_text)
         score = func.ts_rank_cd(search_vector, query_text)
         statement = (
             select(
