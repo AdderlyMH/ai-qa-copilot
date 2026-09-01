@@ -163,6 +163,8 @@ def _load_yaml(text: str) -> object:
 
 
 def _yaml_node_to_json(node: yaml.Node) -> object:
+    if isinstance(node, yaml.ScalarNode) and node.value == "<<":
+        raise OpenApiParseRejected("OPENAPI_YAML_KEY_OR_MERGE_INVALID")
     if getattr(node, "anchor", None) is not None or node.tag not in {
         f"{_YAML_TAG_PREFIX}map",
         f"{_YAML_TAG_PREFIX}seq",
