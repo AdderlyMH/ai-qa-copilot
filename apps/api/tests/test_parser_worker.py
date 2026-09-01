@@ -66,6 +66,9 @@ def test_network_probe_accepts_a_denied_connection(
 def test_compose_profile_enforces_external_worker_limits_and_no_network() -> None:
     compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
     worker = compose["services"]["parser-worker"]
+    dockerfile = (ROOT / "apps/api/Dockerfile.parser-worker").read_text(
+        encoding="utf-8"
+    )
 
     assert worker["profiles"] == ["parser-worker"]
     assert worker["user"] == "10001:10001"
@@ -81,12 +84,16 @@ def test_compose_profile_enforces_external_worker_limits_and_no_network() -> Non
         "PARSER_WORKER_NETWORK": "none",
         "PARSER_WORKER_ROLE": PARSER_WORKER_ROLE,
     }
+    assert "uv==0.11.16" in dockerfile
+    assert "uv sync --locked --no-dev --no-editable" in dockerfile
+    assert "COPY pyproject.toml uv.lock ./" in dockerfile
 
 
-def test_parser_worker_has_no_enabled_parser_import() -> None:
+def test_parser_worker_enables_only_the_bounded_pdf_parser() -> None:
     source = (ROOT / "apps/api/src/ai_qa_copilot_api/parser_worker.py").read_text(
         encoding="utf-8"
     )
 
-    assert "pypdf" not in source
-    assert "parse_pdf" not in source
+    assert "ai_qa_copilot_api.pdf_parser" in source
+    assert "parser_queue" not in source
+    assert "quarantine_storage" not in source
