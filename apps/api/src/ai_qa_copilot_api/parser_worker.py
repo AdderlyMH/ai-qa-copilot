@@ -1,4 +1,4 @@
-"""Restricted parser-worker runtime guard; no document parser is enabled here."""
+"""Restricted runtime and bounded PDF parser for the parser-worker profile."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ import socket
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+
+from ai_qa_copilot_api.pdf_parser import ParsedPdf, PdfParserLimits, parse_pdf
 
 
 PARSER_WORKER_ROLE = "restricted-parser"
@@ -90,8 +92,17 @@ def verify_network_denied() -> None:
     raise ParserWorkerConfigurationError("Parser worker network connection succeeded")
 
 
+def parse_pdf_document(
+    *, raw: bytes, limits: PdfParserLimits = PdfParserLimits()
+) -> ParsedPdf:
+    """Parse inert PDF bytes only after the restricted worker runtime is verified."""
+
+    verify_runtime()
+    return parse_pdf(document_type="pdf", raw=raw, limits=limits)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    """Verify the isolated profile; parsing remains intentionally disabled."""
+    """Verify the isolated profile; queue consumption remains intentionally disabled."""
 
     arguments = argparse.ArgumentParser()
     arguments.add_argument("--verify-runtime", action="store_true")
