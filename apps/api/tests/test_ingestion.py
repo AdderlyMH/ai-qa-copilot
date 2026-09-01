@@ -13,13 +13,23 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from ai_qa_copilot_api.audit import StructuredLoggingAuditSink
 from ai_qa_copilot_api.auth import AppEnvironment, AuthSettings
-from ai_qa_copilot_api.documents import DocumentIntakeRecord, DocumentIntakeState
+from ai_qa_copilot_api.documents import (
+    DocumentIntakeRecord,
+    DocumentIntakeState,
+    ParserJobRecord,
+)
 from ai_qa_copilot_api.ingestion import (
     InMemoryQuarantineStorage,
     SqlAlchemyDocumentIntakeRepository,
     UploadPolicy,
 )
 from ai_qa_copilot_api.main import create_app
+from ai_qa_copilot_api.parser_queue import (
+    InMemoryParserJobQueue,
+    ParserJob,
+    ParserJobQueue,
+    SqlAlchemyParserJobQueue,
+)
 from ai_qa_copilot_api.projects import (
     Base,
     ProjectRepository,
@@ -53,6 +63,7 @@ def intake_client(
     project_repository: ProjectRepository,
     sessions: sessionmaker[Session],
     storage: InMemoryQuarantineStorage,
+    parser_job_queue: ParserJobQueue | None = None,
     policy: UploadPolicy = UploadPolicy(),
     auth_settings: AuthSettings | None = None,
 ) -> TestClient:
@@ -61,6 +72,11 @@ def intake_client(
         project_repository=project_repository,
         document_intake_repository=SqlAlchemyDocumentIntakeRepository(sessions),
         quarantine_storage=storage,
+        parser_job_queue=(
+            parser_job_queue
+            if parser_job_queue is not None
+            else InMemoryParserJobQueue()
+        ),
         document_intake_policy=policy,
         authorization_audit_sink=StructuredLoggingAuditSink(),
     )
@@ -104,8 +120,12 @@ def test_owner_uploads_markdown_to_private_generated_quarantine_key(
 ) -> None:
     project = project_repository.create(name="Ingestion", description=None)
     storage = InMemoryQuarantineStorage()
+    queue = InMemoryParserJobQueue()
     with intake_client(
-        project_repository=project_repository, sessions=sessions, storage=storage
+        project_repository=project_repository,
+        sessions=sessions,
+        storage=storage,
+        parser_job_queue=queue,
     ) as client:
         response = upload(
             client,
@@ -134,6 +154,7 @@ def test_owner_uploads_markdown_to_private_generated_quarantine_key(
     assert saved[0].state == DocumentIntakeState.QUARANTINED.value
     assert saved[0].quarantine_key == key
     assert saved[0].rejection_code is None
+    assert queue.jobs == [ParserJob(document_intake_id=UUID(payload["id"]))]
 
 
 def test_rejections_persist_only_sanitized_outcomes_and_no_raw_object(
@@ -141,8 +162,12 @@ def test_rejections_persist_only_sanitized_outcomes_and_no_raw_object(
 ) -> None:
     project = project_repository.create(name="Ingestion", description=None)
     storage = InMemoryQuarantineStorage()
+    queue = InMemoryParserJobQueue()
     with intake_client(
-        project_repository=project_repository, sessions=sessions, storage=storage
+        project_repository=project_repository,
+        sessions=sessions,
+        storage=storage,
+        parser_job_queue=queue,
     ) as client:
         response = upload(
             client,
@@ -168,6 +193,7 @@ def test_rejections_persist_only_sanitized_outcomes_and_no_raw_object(
     assert saved[0].quarantine_key is None
     assert saved[0].content_sha256 is None
     assert saved[0].rejection_code == "UPLOAD_CONTENT_ENCODING_UNSUPPORTED"
+    assert queue.jobs == []
 
 
 def test_oversized_or_invalid_utf8_text_is_rejected_before_storage(
@@ -209,8 +235,12 @@ def test_identical_content_is_deduplicated_without_a_second_raw_object(
 ) -> None:
     project = project_repository.create(name="Ingestion", description=None)
     storage = InMemoryQuarantineStorage()
+    queue = InMemoryParserJobQueue()
     with intake_client(
-        project_repository=project_repository, sessions=sessions, storage=storage
+        project_repository=project_repository,
+        sessions=sessions,
+        storage=storage,
+        parser_job_queue=queue,
     ) as client:
         first = upload(
             client,
@@ -233,6 +263,34 @@ def test_identical_content_is_deduplicated_without_a_second_raw_object(
     assert duplicate.json()["deduplicated"] is True
     assert len(storage.objects) == 1
     assert len(records(sessions)) == 1
+    assert len(queue.jobs) == 1
+
+
+def test_sql_queue_persists_one_opaque_job_for_an_accepted_document(
+    sessions: sessionmaker[Session], project_repository: ProjectRepository
+) -> None:
+    project = project_repository.create(name="Ingestion", description=None)
+    storage = InMemoryQuarantineStorage()
+    with intake_client(
+        project_repository=project_repository,
+        sessions=sessions,
+        storage=storage,
+        parser_job_queue=SqlAlchemyParserJobQueue(sessions),
+    ) as client:
+        response = upload(
+            client,
+            project.id,
+            filename="requirements.md",
+            content_type="text/markdown",
+            content=b"# One\n",
+        )
+
+    assert response.status_code == 202
+    with sessions() as session:
+        job = session.scalar(select(ParserJobRecord))
+    assert job is not None
+    assert job.document_intake_id == UUID(response.json()["id"])
+    assert job.state == "queued"
 
 
 def test_project_quota_rejects_before_a_second_raw_object_is_stored(
