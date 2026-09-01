@@ -1,19 +1,37 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-01<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, and ING-000 through ING-006 verified on `main`<br>
-**Current phase:** Phase 2 — RAG-001 implementation is under review in PR #50; it is not accepted<br>
-**Health:** Green for accepted `main` at `ccbdba1d167c2d12dd89b2c5e93f36c2cdcfe679`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval/embeddings/execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 verified on `main`<br>
+**Current phase:** Phase 2 — RAG-001 accepted; RAG-002 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `0bcaa003e2f286ccc61b7a12e59d39c599c26eb7`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live embedding providers, retrieval, execution, and deployment remain unverified
 
 ## Current status
 
-RAG-001 is under implementation review in PR #50 and is not accepted. The
-slice adds only bounded versioned chunking, a project-scoped versioned embedding
-cache, and auditable chunk-to-embedding associations behind an injected
-no-network fake adapter. It does not introduce a live embedding provider,
-parser promotion, retrieval API/query, ranking, model calls, execution, or
-deployment. Required GitHub checks, including the real PostgreSQL migration
-lifecycle, must pass before acceptance evidence can be recorded.
+RAG-001 has passed final acceptance on merged `main`
+`0bcaa003e2f286ccc61b7a12e59d39c599c26eb7`. PR #50 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`d18dd5ef56abc5961d7f3cd9a0c0a0eb1341a14a` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice provides bounded, deterministic, versioned chunking from
+accepted normalized sections; a project-scoped cache keyed by content hash,
+embedding model, and embedding version; and auditable chunk-to-embedding
+associations. Reprocessing the same document version neither creates another
+chunk nor makes another embedding request. Identical content in a new version
+creates its versioned chunk and reuses the project-scoped cache. The only
+adapter is an injected deterministic no-network fake.
+
+The exact reviewed head passed local `ci` with 168 tests passed and two
+intentional PostgreSQL integration-test skips. GitHub `application-ci` run #68
+and `docs-validation` run #157 both passed for that exact head, including the
+real PostgreSQL upgrade, project CRUD, downgrade-to-base, and re-upgrade
+lifecycle.
+
+No live embedding provider, credentials, parser promotion path, retrieval
+API/query, lexical or vector ranking, model calls, execution, OCR, rendering,
+conversion, worker deployment, or production retrieval workflow is accepted.
+RAG-002 is next and is no longer blocked by RAG-001.
 
 ING-006 has passed final acceptance on merged `main`
 `bae1d855057a3f21affdab494633fc6c6e1b2734`. PR #48 is merged. The final
@@ -662,7 +680,6 @@ release milestone.
 
 ## Next action
 
-Complete the required pull-request checks and final acceptance review for
-RAG-001. Preserve the required pull-request checks and do not treat the
-SEC-001 fixture harness as evidence for unimplemented live ingestion,
-execution, or deployment paths.
+Select RAG-002 from accepted `main`. Preserve the required pull-request checks
+and do not treat the SEC-001 fixture harness as evidence for unimplemented
+live ingestion, execution, or deployment paths.
