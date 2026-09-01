@@ -327,6 +327,32 @@ security release gate has executed or passed.
 
 ### Epic ING — Versioned document ingestion
 
+#### ING-000 — Establish isolated parser-worker foundation
+
+- **Priority:** P0
+- **Estimate:** 5 h
+- **Dependencies:** ING-002, SEC-001, SKEL-006
+- **Deliverable:** Parser-queue contract plus a separately deployable restricted
+  parser-worker runtime profile for untrusted document parsing.
+- **Acceptance:**
+  - The API can enqueue opaque parse requests but cannot invoke PDF or OpenAPI
+    parsing inline; accepted raw bytes remain in private quarantine until a
+    parser worker consumes the request.
+  - The worker runs as a non-root identity with a read-only filesystem, bounded
+    temporary storage, and external hard limits of 512 MiB memory and 15 seconds
+    wall time per parse job.
+  - The worker has only the required private-quarantine read path, parser queue,
+    restricted database write path, and telemetry sink. It has no Internet,
+    model, executor, cloud-control-plane, credential, or broad host-filesystem
+    access.
+  - An isolated-runtime integration harness verifies memory and timeout
+    termination, denied egress/credentials/host-filesystem access, sanitized
+    stable rejection outcomes, and zero chunks, embeddings, model calls,
+    execution candidates, DNS calls, HTTP sends, and retries for killed or
+    rejected jobs.
+  - No PDF parser or other untrusted parser worker is enabled until those
+    controls and tests are verified in pull-request CI.
+
 #### ING-001 — Define document and source-location schemas
 
 - **Priority:** P0
@@ -371,8 +397,8 @@ security release gate has executed or passed.
 
 - **Priority:** P0
 - **Estimate:** 4 h
-- **Dependencies:** ING-002, SEC-001
-- **Deliverable:** Page-aware text extraction with page and size limits.
+- **Dependencies:** ING-000, ING-002, SEC-001
+- **Deliverable:** Page-aware text extraction in the isolated parser worker with page and size limits.
 - **Acceptance:** normal, encrypted, active-content, oversized, malformed, and decompression-abuse fixtures receive explicit expected outcomes with zero downstream side effects on rejection.
 
 #### ING-006 — Complete parser-adversarial regression matrix
@@ -976,5 +1002,7 @@ pure Markdown/text parser evidence only: production object storage,
 parser-worker deployment, retrieval, embeddings, model calls, execution,
 public raw-object access, and network egress remain out of scope.
 
-The next implementation item is ING-004 — parse and validate OpenAPI YAML/JSON.
-Preserve the required pull-request security checks.
+The next implementation item is ING-000 — establish the isolated parser-worker
+foundation. ING-005 remains blocked until ING-000 has verified OS-enforced
+resource limits and least-privilege isolation. Preserve the required
+pull-request security checks.
