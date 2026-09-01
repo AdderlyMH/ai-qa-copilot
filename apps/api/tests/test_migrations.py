@@ -10,7 +10,9 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0005_create_document_intakes"
+EXPECTED_REVISION = "0006_create_parser_jobs"
+PARSER_JOB_REVISION = "0006_create_parser_jobs"
+DOCUMENT_INTAKE_REVISION = "0005_create_document_intakes"
 DOCUMENT_PROVENANCE_REVISION = "0004_create_document_provenance"
 ANALYSIS_RUN_REVISION = "0003_create_analysis_runs"
 PROJECT_REVISION = "0002_create_projects"
@@ -53,7 +55,10 @@ def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
     assert script.get_heads() == [EXPECTED_REVISION]
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == DOCUMENT_PROVENANCE_REVISION
+    assert revision.down_revision == DOCUMENT_INTAKE_REVISION
+    intake_revision = script.get_revision(DOCUMENT_INTAKE_REVISION)
+    assert intake_revision is not None
+    assert intake_revision.down_revision == DOCUMENT_PROVENANCE_REVISION
     document_revision = script.get_revision(DOCUMENT_PROVENANCE_REVISION)
     assert document_revision is not None
     assert document_revision.down_revision == ANALYSIS_RUN_REVISION
@@ -215,7 +220,7 @@ def test_document_provenance_migration_creates_and_removes_the_ingestion_schema(
 def test_document_intake_migration_creates_and_removes_quarantine_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = migration_script(EXPECTED_REVISION)
+    module = migration_script(DOCUMENT_INTAKE_REVISION)
     calls: list[tuple[str, tuple[object, ...]]] = []
 
     monkeypatch.setattr(
@@ -249,4 +254,30 @@ def test_document_intake_migration_creates_and_removes_quarantine_state(
         ("drop_index", "ix_document_intakes_project_content_hash"),
         ("drop_index", "ix_document_intakes_project_state_created_at"),
         ("drop_table", "document_intakes"),
+    ]
+
+
+def test_parser_job_migration_creates_and_removes_only_opaque_queue_records(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(PARSER_JOB_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    monkeypatch.setattr(
+        module.op,
+        "create_table",
+        lambda *args, **kwargs: calls.append(("create_table", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "drop_table",
+        lambda *args, **kwargs: calls.append(("drop_table", args)),
+    )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "parser_jobs"),
+        ("drop_table", "parser_jobs"),
     ]
