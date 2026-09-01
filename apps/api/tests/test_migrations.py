@@ -10,7 +10,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0006_create_parser_jobs"
+EXPECTED_REVISION = "0007_create_chunk_embedding_cache"
+INDEXING_REVISION = "0007_create_chunk_embedding_cache"
 PARSER_JOB_REVISION = "0006_create_parser_jobs"
 DOCUMENT_INTAKE_REVISION = "0005_create_document_intakes"
 DOCUMENT_PROVENANCE_REVISION = "0004_create_document_provenance"
@@ -55,7 +56,10 @@ def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
     assert script.get_heads() == [EXPECTED_REVISION]
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == DOCUMENT_INTAKE_REVISION
+    assert revision.down_revision == PARSER_JOB_REVISION
+    parser_job_revision = script.get_revision(PARSER_JOB_REVISION)
+    assert parser_job_revision is not None
+    assert parser_job_revision.down_revision == DOCUMENT_INTAKE_REVISION
     intake_revision = script.get_revision(DOCUMENT_INTAKE_REVISION)
     assert intake_revision is not None
     assert intake_revision.down_revision == DOCUMENT_PROVENANCE_REVISION
@@ -280,4 +284,41 @@ def test_parser_job_migration_creates_and_removes_only_opaque_queue_records(
     assert [(name, args[0]) for name, args in calls] == [
         ("create_table", "parser_jobs"),
         ("drop_table", "parser_jobs"),
+    ]
+
+
+def test_indexing_migration_creates_reversible_embedding_cache_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(INDEXING_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    for name in (
+        "create_table",
+        "create_index",
+        "create_unique_constraint",
+        "drop_constraint",
+        "drop_index",
+        "drop_table",
+    ):
+        monkeypatch.setattr(
+            module.op,
+            name,
+            lambda *args, _name=name, **kwargs: calls.append((_name, args)),
+        )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("drop_constraint", "uq_document_chunks_ordinal"),
+        ("create_unique_constraint", "uq_document_chunks_version_chunking_ordinal"),
+        ("create_table", "embedding_cache_entries"),
+        ("create_index", "ix_embedding_cache_entries_project_content"),
+        ("create_table", "document_chunk_embeddings"),
+        ("drop_table", "document_chunk_embeddings"),
+        ("drop_index", "ix_embedding_cache_entries_project_content"),
+        ("drop_table", "embedding_cache_entries"),
+        ("drop_constraint", "uq_document_chunks_version_chunking_ordinal"),
+        ("create_unique_constraint", "uq_document_chunks_ordinal"),
     ]
