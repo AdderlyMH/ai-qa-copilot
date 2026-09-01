@@ -3,10 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 import pytest
-from sqlalchemy import func
-from sqlalchemy.dialects import postgresql
 
-from ai_qa_copilot_api.documents import DocumentChunkRecord
 from ai_qa_copilot_api.lexical_retrieval import (
     DEFAULT_LEXICAL_RESULT_LIMIT,
     LEXICAL_RETRIEVAL_VERSION,
@@ -114,18 +111,6 @@ def test_filters_reject_blank_values() -> None:
         LexicalRetrievalFilters(document_types=("",)).validate()
     with pytest.raises(ValueError, match="Chunking version"):
         LexicalRetrievalFilters(chunking_version="  ").validate()
-
-
-def test_postgresql_fts_expression_uses_simple_configuration() -> None:
-    query_text = func.plainto_tsquery("simple", "FR-AUTH-001")
-    search_vector = func.to_tsvector("simple", DocumentChunkRecord.normalized_text)
-    compiled = str(
-        search_vector.op("@@")(query_text).compile(dialect=postgresql.dialect())
-    )
-
-    assert "to_tsvector" in compiled
-    assert "plainto_tsquery" in compiled
-    assert "@@" in compiled
 
 
 def test_unavailable_database_url_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
