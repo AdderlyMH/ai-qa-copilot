@@ -83,10 +83,11 @@ def test_compose_profile_enforces_external_worker_limits_and_no_network() -> Non
     }
 
 
-def test_parser_worker_has_no_enabled_parser_import() -> None:
+def test_parser_worker_enables_only_the_bounded_pdf_parser() -> None:
     source = (ROOT / "apps/api/src/ai_qa_copilot_api/parser_worker.py").read_text(
         encoding="utf-8"
     )
 
-    assert "pypdf" not in source
-    assert "parse_pdf" not in source
+    assert "ai_qa_copilot_api.pdf_parser" in source
+    assert "parser_queue" not in source
+    assert "quarantine_storage" not in source
