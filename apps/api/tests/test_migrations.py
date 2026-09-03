@@ -10,7 +10,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0007_chunk_embedding_cache"
+EXPECTED_REVISION = "0008_retrieval_traces"
+RETRIEVAL_TRACE_REVISION = "0008_retrieval_traces"
 INDEXING_REVISION = "0007_chunk_embedding_cache"
 PARSER_JOB_REVISION = "0006_create_parser_jobs"
 DOCUMENT_INTAKE_REVISION = "0005_create_document_intakes"
@@ -56,7 +57,10 @@ def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
     assert script.get_heads() == [EXPECTED_REVISION]
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == PARSER_JOB_REVISION
+    assert revision.down_revision == INDEXING_REVISION
+    indexing_revision = script.get_revision(INDEXING_REVISION)
+    assert indexing_revision is not None
+    assert indexing_revision.down_revision == PARSER_JOB_REVISION
     parser_job_revision = script.get_revision(PARSER_JOB_REVISION)
     assert parser_job_revision is not None
     assert parser_job_revision.down_revision == DOCUMENT_INTAKE_REVISION
@@ -325,4 +329,30 @@ def test_indexing_migration_creates_reversible_embedding_cache_state(
         ("drop_table", "embedding_cache_entries"),
         ("drop_constraint", "uq_document_chunks_version_chunking_ordinal"),
         ("create_unique_constraint", "uq_document_chunks_ordinal"),
+    ]
+
+
+def test_retrieval_trace_migration_creates_reversible_trace_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(RETRIEVAL_TRACE_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    for name in ("create_table", "create_index", "drop_index", "drop_table"):
+        monkeypatch.setattr(
+            module.op,
+            name,
+            lambda *args, _name=name, **kwargs: calls.append((_name, args)),
+        )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "retrieval_traces"),
+        ("create_index", "ix_retrieval_traces_project_created"),
+        ("create_table", "retrieval_trace_candidates"),
+        ("drop_table", "retrieval_trace_candidates"),
+        ("drop_index", "ix_retrieval_traces_project_created"),
+        ("drop_table", "retrieval_traces"),
     ]

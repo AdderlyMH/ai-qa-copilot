@@ -147,8 +147,8 @@
     },
     {
       "path": "docs/adr/ADR-003-hybrid-retrieval.md",
-      "bytes": 5514,
-      "sha256": "cdf800d395aac428ef6dfb71b7a48259dc1b64fa9537064cbadcc9617f274909"
+      "bytes": 5730,
+      "sha256": "1f6d241851cc914e3d1793794e6934067f0e4ae4bb85f897fe1bafc74542e935"
     },
     {
       "path": "docs/adr/ADR-004-safe-http-execution-topology.md",
@@ -257,8 +257,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 29457,
-      "sha256": "900153185712ffa2263887c6287d767556c95dc250fb8338ac8d73ecc2cef164"
+      "bytes": 29728,
+      "sha256": "a6e19c2c8f3fc7fc6209c594eed8311db286e23c0d972f1e6913b2be635a411c"
     },
     {
       "path": "scripts/validate_docs.py",

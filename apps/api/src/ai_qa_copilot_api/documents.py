@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Integer,
     JSON,
+    Float,
     String,
     Text,
     UniqueConstraint,
@@ -262,6 +263,79 @@ class DocumentChunkEmbeddingRecord(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+
+
+class RetrievalTraceRecord(Base):
+    """Immutable configuration and query inputs for one hybrid retrieval."""
+
+    __tablename__ = "retrieval_traces"
+    __table_args__ = (
+        CheckConstraint("length(trim(retrieval_version)) > 0"),
+        CheckConstraint("length(trim(fusion_method)) > 0"),
+        CheckConstraint("length(trim(query)) > 0"),
+        CheckConstraint("length(trim(embedding_model)) > 0"),
+        CheckConstraint("length(trim(embedding_version)) > 0"),
+        CheckConstraint("candidate_limit > 0"),
+        CheckConstraint("result_limit > 0"),
+        CheckConstraint("candidate_limit >= result_limit"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    retrieval_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    fusion_method: Mapped[str] = mapped_column(String(64), nullable=False)
+    query: Mapped[str] = mapped_column(Text, nullable=False)
+    query_embedding: Mapped[list[float]] = mapped_column(JSON, nullable=False)
+    embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
+    embedding_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_version_ids: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    document_types: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    chunking_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    candidate_limit: Mapped[int] = mapped_column(Integer, nullable=False)
+    result_limit: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
+class RetrievalTraceCandidateRecord(Base):
+    """Candidate scores from both signals and their deterministic fused result."""
+
+    __tablename__ = "retrieval_trace_candidates"
+    __table_args__ = (
+        CheckConstraint("lexical_rank IS NULL OR lexical_rank > 0"),
+        CheckConstraint("semantic_rank IS NULL OR semantic_rank > 0"),
+        CheckConstraint("final_rank IS NULL OR final_rank > 0"),
+        CheckConstraint(
+            "(lexical_rank IS NULL AND lexical_score IS NULL) OR "
+            "(lexical_rank IS NOT NULL AND lexical_score IS NOT NULL)"
+        ),
+        CheckConstraint(
+            "(semantic_rank IS NULL AND semantic_distance IS NULL) OR "
+            "(semantic_rank IS NOT NULL AND semantic_distance IS NOT NULL)"
+        ),
+        UniqueConstraint(
+            "retrieval_trace_id",
+            "document_chunk_id",
+            name="uq_retrieval_trace_candidates_trace_chunk",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    retrieval_trace_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("retrieval_traces.id"), nullable=False
+    )
+    document_chunk_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("document_chunks.id"), nullable=False
+    )
+    lexical_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lexical_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    semantic_distance: Mapped[float | None] = mapped_column(Float, nullable=True)
+    semantic_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fusion_score: Mapped[float] = mapped_column(Float, nullable=False)
+    final_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class DocumentIntakeState(StrEnum):
