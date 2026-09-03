@@ -1,11 +1,38 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-09-01<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001, and RAG-002 verified on `main`<br>
-**Current phase:** Phase 2 — RAG-002 accepted; RAG-003 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `0c5cc827f6557d3dac106437349c91376d7c2bbf`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, semantic/vector retrieval, rank fusion, retrieval API, execution, and deployment remain unverified
+**Status date:** 2026-09-03<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 through RAG-003 verified on `main`<br>
+**Current phase:** Phase 2 — RAG-003 accepted; RAG-004 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `fcea02bd8c9535f0885594bf61cc2e2cdbc484c6`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval API, citation objects/source viewer, model calls, execution, and deployment remain unverified
 
 ## Current status
+
+RAG-003 has passed final acceptance on merged `main`
+`fcea02bd8c9535f0885594bf61cc2e2cdbc484c6`. PR #56 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`930fdeb28d6b534173b92e070bb574ba0f9c86f5` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice provides project-scoped pgvector semantic candidates over
+accepted, versioned chunk embeddings with required embedding model/version,
+document-version, document-type, and chunking-version boundaries. It combines
+bounded lexical and semantic candidates using documented
+`reciprocal-rank-fusion-v1`: `1 / (60 + rank)` per signal, with deterministic
+ordinal and immutable chunk-ID tie handling. An immutable retrieval trace
+records query inputs, vector, filters, configuration, each candidate's lexical
+and semantic score/rank, fusion score, and final rank.
+
+Local focused validation passed formatting, documentation validation, lint,
+strict type checking, and 21 retrieval/migration tests; the PostgreSQL tests
+were intentionally skipped because Docker was unavailable. GitHub
+`application-ci` run #83 and `docs-validation` run #171 passed for the exact
+reviewed head, including the real PostgreSQL/pgvector migration, cross-project
+isolation, trace persistence, downgrade-to-base, and re-upgrade lifecycle.
+
+No retrieval API route, live embedding provider or model call, reranker,
+citation object/source viewer, execution, or production deployment is
+accepted. RAG-004 is next and is no longer blocked by RAG-002 or RAG-003.
 
 RAG-002 has passed final acceptance on merged `main`
 `0c5cc827f6557d3dac106437349c91376d7c2bbf`. PR #52 is merged. The final
