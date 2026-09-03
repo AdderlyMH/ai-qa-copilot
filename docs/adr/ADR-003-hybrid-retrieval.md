@@ -15,7 +15,10 @@ Retrieval must remain project-scoped, version-aware, reproducible, and safe when
 
 - Use PostgreSQL full-text search for exact identifiers and terminology.
 - Use pgvector for semantic retrieval.
-- Combine lexical and semantic candidates through deterministic rank fusion.
+- Combine lexical and semantic candidates through deterministic rank fusion. The
+  initial implementation is `reciprocal-rank-fusion-v1`: each candidate score
+  is the sum of `1 / (60 + rank)` for its bounded lexical and semantic ranks;
+  ties resolve by chunk ordinal and immutable chunk ID.
 - Apply mandatory project and document-version filtering before ranking.
 - Persist retrieval traces, including candidate scores and fusion inputs.
 - Use validated citation objects that point to immutable source versions.
