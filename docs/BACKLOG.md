@@ -450,7 +450,7 @@ security release gate has executed or passed.
 - **Dependencies:** RAG-004
 - **Deliverable:** At least 15 queries and Recall@k report.
 - **Acceptance:** Baseline result is committed and limitations documented.
-- **Status:** Accepted on `main` through PR #60; ANA-001 is the next gated implementation item.
+- **Status:** Accepted on `main` through PR #60.
 
 **Phase 2 exit:** Uploaded requirements and OpenAPI files produce versioned, project-scoped retrieval with navigable citations.
 
@@ -465,6 +465,7 @@ security release gate has executed or passed.
 - **Dependencies:** RAG-004
 - **Deliverable:** `RequirementFindingV1` and deterministic validators.
 - **Acceptance:** Schema covers evidence, analysis, confidence, severity, recommendation, and unsupported state.
+- **Status:** Accepted on `main` through PR #62; ANA-002 is the next gated implementation item.
 
 #### ANA-002 — Implement deterministic OpenAPI extraction and diff facts
 
@@ -1038,6 +1039,15 @@ consumer, storage adapter, database attachment, API parsing route, document
 promotion, chunking, embeddings, model calls, retrieval, execution, OCR,
 rendering, conversion, or worker deployment is accepted.
 
-The next implementation item is RAG-001 — implement the versioned chunking and
-embedding pipeline. ING-006 is complete, so RAG-001 is unblocked. Preserve the
-accepted isolated-worker boundary and required pull-request security checks.
+ANA-001 is verified on merged `main`
+`292ba3e6f9e3447eae47a13272ae56d9636b0a03`. The reviewed tree
+`b1ea56830af04dd4e13ff91f77725d7f5dc3e96b` is identical to the merge tree.
+Local `ci` passed with 206 tests passed and three intentional PostgreSQL
+integration-test skips; `docs-check` passed; and GitHub `application-ci` run
+#98 and `docs-validation` run #186 passed on the reviewed head. This is strict
+finding-schema and deterministic-validation evidence only: no model call,
+analysis workflow, persistence, API route, user decision, OpenAPI-diff
+extraction, execution, or deployment is accepted.
+
+The next implementation item is ANA-002 — implement deterministic OpenAPI
+extraction and diff facts. ANA-001 is complete, so ANA-002 is unblocked.
