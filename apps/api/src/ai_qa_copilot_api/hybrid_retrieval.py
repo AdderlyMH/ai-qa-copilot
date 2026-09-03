@@ -245,6 +245,7 @@ class SqlAlchemyHybridRetrievalStore:
                         created_at=self._clock(),
                     )
                 )
+                session.flush()
                 session.add_all(
                     RetrievalTraceCandidateRecord(
                         id=uuid4(),
