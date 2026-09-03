@@ -338,6 +338,43 @@ class RetrievalTraceCandidateRecord(Base):
     final_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class CitationRecord(Base):
+    """An immutable, project-owned reference to one selected retrieval chunk."""
+
+    __tablename__ = "citations"
+    __table_args__ = (
+        UniqueConstraint(
+            "retrieval_trace_id",
+            "document_chunk_id",
+            name="uq_citations_trace_chunk",
+        ),
+        ForeignKeyConstraint(
+            ["retrieval_trace_id", "document_chunk_id"],
+            [
+                "retrieval_trace_candidates.retrieval_trace_id",
+                "retrieval_trace_candidates.document_chunk_id",
+            ],
+            name="fk_citations_trace_candidate",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    retrieval_trace_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    document_chunk_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    document_version_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("document_versions.id"), nullable=False
+    )
+    source_location_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("source_locations.id"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+
 class DocumentIntakeState(StrEnum):
     """Persisted outcome of bounded raw-document admission."""
 

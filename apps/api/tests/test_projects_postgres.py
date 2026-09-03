@@ -16,6 +16,10 @@ from ai_qa_copilot_api.analysis_runs import (
     SqlAlchemyAnalysisRunRepository,
 )
 from ai_qa_copilot_api.auth import AppEnvironment, AuthSettings
+from ai_qa_copilot_api.citations import (
+    CitationValidationError,
+    SqlAlchemyCitationRepository,
+)
 from ai_qa_copilot_api.lexical_retrieval import (
     LexicalRetrievalFilters,
     LexicalRetrievalService,
@@ -86,7 +90,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
+                    "TRUNCATE TABLE citations, parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, "
                     "parser_versions, analysis_runs, projects"
@@ -160,7 +164,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
+                    "TRUNCATE TABLE citations, parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, "
                     "parser_versions, analysis_runs, projects"
@@ -201,7 +205,7 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
+                    "TRUNCATE TABLE citations, parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, parser_versions, analysis_runs, projects"
                 )
@@ -427,11 +431,42 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         assert trace_candidate.lexical_score > 0
         assert trace_candidate.semantic_distance >= 0
         assert trace_candidate.fusion_score > 0
+
+        citation_repository = SqlAlchemyCitationRepository.from_database_url(
+            database_url
+        )
+        citation = citation_repository.create_from_selected_candidate(
+            project_id=project_id,
+            retrieval_trace_id=hybrid_response.trace_id,
+            document_chunk_id=matching_chunk_id,
+        )
+        assert citation.project_id == project_id
+        assert citation.document_version_id == version_id
+        assert citation.source_location.id == location_id
+        assert citation.passage == target_text
+        assert (
+            citation_repository.get_for_project(
+                project_id=project_id, citation_id=citation.id
+            )
+            == citation
+        )
+        assert (
+            citation_repository.get_for_project(
+                project_id=foreign_project_id, citation_id=citation.id
+            )
+            is None
+        )
+        with pytest.raises(CitationValidationError):
+            citation_repository.create_from_selected_candidate(
+                project_id=foreign_project_id,
+                retrieval_trace_id=hybrid_response.trace_id,
+                document_chunk_id=matching_chunk_id,
+            )
     finally:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
+                    "TRUNCATE TABLE citations, parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, parser_versions, analysis_runs, projects"
                 )
