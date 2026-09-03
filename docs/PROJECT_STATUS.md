@@ -1,11 +1,36 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-01<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 verified on `main`<br>
-**Current phase:** Phase 2 — RAG-001 accepted; RAG-002 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `0bcaa003e2f286ccc61b7a12e59d39c599c26eb7`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live embedding providers, retrieval, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001, and RAG-002 verified on `main`<br>
+**Current phase:** Phase 2 — RAG-002 accepted; RAG-003 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `0c5cc827f6557d3dac106437349c91376d7c2bbf`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, semantic/vector retrieval, rank fusion, retrieval API, execution, and deployment remain unverified
 
 ## Current status
+
+RAG-002 has passed final acceptance on merged `main`
+`0c5cc827f6557d3dac106437349c91376d7c2bbf`. PR #52 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`0a6b3f870118c51176a520954de0e637e1ed6a66` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice provides bounded PostgreSQL lexical retrieval using the
+`simple` full-text configuration, `plainto_tsquery`, and `ts_rank_cd`. It
+applies project scoping before ranking, supports deterministic document-version,
+document-type, and chunking-version filters, and returns immutable
+chunk/source/version provenance with deterministic tie handling. Validation
+proves exact requirement-ID retrieval and that matching chunks from another
+project are never returned.
+
+The exact reviewed head passed local and GitHub `ci` with 179 tests passed and
+three intentional PostgreSQL integration-test skips. GitHub `application-ci`
+run #76 and `docs-validation` run #165 both passed for that exact head,
+including the real PostgreSQL migration, cross-project isolation, project CRUD,
+downgrade-to-base, and re-upgrade lifecycle.
+
+No semantic/vector retrieval, rank fusion, reranking, retrieval API route,
+citation objects, model calls, execution, or production deployment is accepted.
+RAG-003 is next and is no longer blocked by RAG-002.
 
 RAG-001 has passed final acceptance on merged `main`
 `0bcaa003e2f286ccc61b7a12e59d39c599c26eb7`. PR #50 is merged. The final
@@ -680,6 +705,6 @@ release milestone.
 
 ## Next action
 
-Select RAG-002 from accepted `main`. Preserve the required pull-request checks
+Select RAG-003 from accepted `main`. Preserve the required pull-request checks
 and do not treat the SEC-001 fixture harness as evidence for unimplemented
 live ingestion, execution, or deployment paths.
