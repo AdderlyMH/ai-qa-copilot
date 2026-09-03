@@ -721,6 +721,17 @@ Metrics:
 - Source diversity where multiple documents are required.
 - No-answer false-positive rate.
 
+### RAG-005 development baseline
+
+`fixtures/benchmark/retrieval-benchmark.v1.yaml` defines the first visible,
+synthetic, development-only retrieval baseline: 15 queries, including one
+no-answer control. `scripts/run_retrieval_benchmark.py --check` verifies the
+committed `retrieval-baseline.v1.json` report with exact-source Recall@1/@3/@5
+and @10, MRR, and no-answer false-positive rate. The fixture freezes observed
+rankings for deterministic regression comparison; it is not the protected
+holdout, the full 100-case evaluation, a live embedding-provider measurement,
+or evidence that EG-04 has passed.
+
 Tune chunking and rank fusion on the development set only.
 
 ## 14. Prompt-injection and tool-abuse suite
