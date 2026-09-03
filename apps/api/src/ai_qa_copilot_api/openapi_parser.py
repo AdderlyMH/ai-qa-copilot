@@ -49,22 +49,7 @@ class ParsedOpenApi:
 
 def parse_openapi(*, document_type: str, raw: bytes) -> ParsedOpenApi:
     """Parse an inert OpenAPI document without resolving any external data."""
-    if document_type not in {"openapi-json", "openapi-yaml"}:
-        raise OpenApiParseRejected("OPENAPI_DOCUMENT_TYPE_UNSUPPORTED")
-    try:
-        text = raw.decode("utf-8", errors="strict")
-    except UnicodeDecodeError as error:
-        raise OpenApiParseRejected("OPENAPI_TEXT_ENCODING_INVALID") from error
-    value = _load_json(text) if document_type == "openapi-json" else _load_yaml(text)
-    _validate_value(value, depth=0, state={"nodes": 0})
-    if not isinstance(value, dict):
-        raise OpenApiParseRejected("OPENAPI_ROOT_OBJECT_REQUIRED")
-    version = value.get("openapi")
-    if not isinstance(version, str) or not (
-        version.startswith("3.0.") or version.startswith("3.1.")
-    ):
-        raise OpenApiParseRejected("OPENAPI_VERSION_UNSUPPORTED")
-    _validate_references(value)
+    version, value = _parse_openapi_root(document_type=document_type, raw=raw)
     paths = value.get("paths", {})
     if not isinstance(paths, dict):
         raise OpenApiParseRejected("OPENAPI_PATHS_OBJECT_REQUIRED")
@@ -107,6 +92,40 @@ def parse_openapi(*, document_type: str, raw: bytes) -> ParsedOpenApi:
     return ParsedOpenApi(
         version, tuple(operations), parsed_schemas, _security(value.get("security", ()))
     )
+
+
+def _parse_openapi_root(
+    *, document_type: str, raw: bytes
+) -> tuple[str, dict[str, object]]:
+    """Return the validated inert JSON-compatible root for internal consumers."""
+    if document_type not in {"openapi-json", "openapi-yaml"}:
+        raise OpenApiParseRejected("OPENAPI_DOCUMENT_TYPE_UNSUPPORTED")
+    try:
+        text = raw.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as error:
+        raise OpenApiParseRejected("OPENAPI_TEXT_ENCODING_INVALID") from error
+    value = _load_json(text) if document_type == "openapi-json" else _load_yaml(text)
+    _validate_value(value, depth=0, state={"nodes": 0})
+    if not isinstance(value, dict):
+        raise OpenApiParseRejected("OPENAPI_ROOT_OBJECT_REQUIRED")
+    version = value.get("openapi")
+    if not isinstance(version, str) or not (
+        version.startswith("3.0.") or version.startswith("3.1.")
+    ):
+        raise OpenApiParseRejected("OPENAPI_VERSION_UNSUPPORTED")
+    _validate_references(value)
+    paths = value.get("paths", {})
+    if not isinstance(paths, dict):
+        raise OpenApiParseRejected("OPENAPI_PATHS_OBJECT_REQUIRED")
+    components = value.get("components", {})
+    if not isinstance(components, dict):
+        raise OpenApiParseRejected("OPENAPI_COMPONENTS_OBJECT_REQUIRED")
+    schemas = components.get("schemas", {})
+    if not isinstance(schemas, dict):
+        raise OpenApiParseRejected("OPENAPI_SCHEMAS_OBJECT_REQUIRED")
+    if len(schemas) > MAX_COMPONENTS:
+        raise OpenApiParseRejected("OPENAPI_COMPONENT_LIMIT")
+    return version, value
 
 
 def _load_json(text: str) -> object:
