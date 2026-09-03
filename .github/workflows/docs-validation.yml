@@ -60,7 +60,7 @@ jobs:
       - name: Lint and type-check documentation tooling
         run: |
           uv run --locked --only-dev --no-sync ruff check scripts
-          uv run --locked --only-dev --no-sync mypy scripts
+          MYPYPATH=apps/api/src uv run --locked --only-dev --no-sync mypy scripts
 
       - name: Run documentation validation contract
         run: |
