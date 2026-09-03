@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0008_retrieval_traces"
+DB_CHECK_REVISION = "0009_create_citations"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -382,6 +382,7 @@ def verify_migrated_database(
         "document_chunk_embeddings",
         "retrieval_traces",
         "retrieval_trace_candidates",
+        "citations",
     ):
         require_database_value(
             f"{table_name} table",
@@ -436,6 +437,7 @@ def verify_rolled_back_database(
         "document_intakes",
         "retrieval_trace_candidates",
         "retrieval_traces",
+        "citations",
         "document_chunk_embeddings",
         "embedding_cache_entries",
         "document_chunks",
