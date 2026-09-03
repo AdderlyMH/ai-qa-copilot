@@ -26,6 +26,15 @@ from ai_qa_copilot_api.auth import (
     OwnerResolutionFailure,
     TokenValidator,
 )
+from ai_qa_copilot_api.citations import (
+    CITATIONS_UNAVAILABLE_DETAIL,
+    Citation,
+    CitationRepository,
+    CitationUnavailable,
+    SqlAlchemyCitationRepository,
+    UnavailableCitationRepository,
+    citation_repository_from_environment,
+)
 from ai_qa_copilot_api.authorization import (
     AuthorizationDenied,
     ProjectAction,
@@ -151,6 +160,38 @@ class DocumentIntakeResponse(BaseModel):
     created_at: datetime
 
 
+class CitationLocationResponse(BaseModel):
+    """Immutable source coordinate attached to one validated citation."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    location_kind: str
+    heading: str | None
+    line_start: int | None
+    line_end: int | None
+    page_start: int | None
+    page_end: int | None
+    json_pointer: str | None
+
+
+class CitationResponse(BaseModel):
+    """Safe owner projection used by the citation passage viewer."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    retrieval_trace_id: UUID
+    document_chunk_id: UUID
+    document_version_id: UUID
+    source_location: CitationLocationResponse
+    document_type: str
+    display_name: str
+    passage: str
+    created_at: datetime
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -159,6 +200,7 @@ def create_app(
     demo_publication_repository: DemoPublicationRepository | None = None,
     authorization_audit_sink: AuthorizationAuditSink | None = None,
     project_repository: ProjectRepository | None = None,
+    citation_repository: CitationRepository | None = None,
     document_intake_repository: DocumentIntakeRepository | None = None,
     quarantine_storage: QuarantineStorage | None = None,
     parser_job_queue: ParserJobQueue | None = None,
@@ -203,6 +245,11 @@ def create_app(
             project_repository
             if project_repository is not None
             else project_repository_from_environment()
+        )
+        application.state.citation_repository = (
+            citation_repository
+            if citation_repository is not None
+            else citation_repository_from_environment()
         )
         application.state.document_intake_service = DocumentIntakeService(
             (
@@ -479,6 +526,40 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return [AnalysisRunResponse.model_validate(item) for item in analysis_runs]
 
+    @application.get(
+        "/projects/{project_id}/citations/{citation_id}",
+        response_model=CitationResponse,
+    )
+    def get_citation(
+        project_id: UUID,
+        citation_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> CitationResponse:
+        """Return a cited immutable passage only after project authorization."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+        repository = _citation_repository(request)
+        try:
+            citation = repository.get_for_project(
+                project_id=project_id, citation_id=citation_id
+            )
+        except CitationUnavailable:
+            _raise_citations_unavailable(correlation_id)
+        if citation is None:
+            _raise_citation_not_found(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _citation_response(citation)
+
     return application
 
 
@@ -514,6 +595,15 @@ def _document_intake_service(request: Request) -> DocumentIntakeService:
     if not isinstance(service, DocumentIntakeService):
         raise RuntimeError("Document-intake boundary was not initialized")
     return service
+
+
+def _citation_repository(request: Request) -> CitationRepository:
+    repository = getattr(request.app.state, "citation_repository", None)
+    if not isinstance(
+        repository, (SqlAlchemyCitationRepository, UnavailableCitationRepository)
+    ):
+        raise RuntimeError("Citation boundary was not initialized")
+    return repository
 
 
 def _require_project(
@@ -620,6 +710,22 @@ def _raise_analysis_runs_unavailable(correlation_id: UUID) -> Never:
     )
 
 
+def _raise_citations_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=CITATIONS_UNAVAILABLE_DETAIL,
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_citation_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Citation not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
 def _document_intake_response(intake: DocumentIntake) -> DocumentIntakeResponse:
     return DocumentIntakeResponse(
         id=intake.id,
@@ -632,6 +738,23 @@ def _document_intake_response(intake: DocumentIntake) -> DocumentIntakeResponse:
         rejection_code=intake.rejection_code,
         deduplicated=intake.deduplicated,
         created_at=intake.created_at,
+    )
+
+
+def _citation_response(citation: Citation) -> CitationResponse:
+    return CitationResponse(
+        id=citation.id,
+        project_id=citation.project_id,
+        retrieval_trace_id=citation.retrieval_trace_id,
+        document_chunk_id=citation.document_chunk_id,
+        document_version_id=citation.document_version_id,
+        source_location=CitationLocationResponse.model_validate(
+            citation.source_location
+        ),
+        document_type=citation.document_type,
+        display_name=citation.display_name,
+        passage=citation.passage,
+        created_at=citation.created_at,
     )
 
 
