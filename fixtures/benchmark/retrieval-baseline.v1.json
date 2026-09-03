@@ -1,0 +1,23 @@
+{
+  "benchmark_id": "RAG-005-DEVELOPMENT-BASELINE-V1",
+  "metrics": {
+    "answerable_query_count": 14,
+    "mean_reciprocal_rank": 0.6630952380952381,
+    "no_answer_false_positive_rate": 0.0,
+    "no_answer_query_count": 1,
+    "recall_at_k": {
+      "1": 0.5,
+      "10": 0.9285714285714286,
+      "3": 0.7857142857142857,
+      "5": 0.9285714285714286
+    }
+  },
+  "retrieval_configuration": {
+    "chunking_version": "chunking-v1",
+    "embedding_model": "fixture-embedding-v1",
+    "embedding_version": "fixture-embedding-v1",
+    "fusion_method": "reciprocal-rank-fusion-v1",
+    "retrieval_version": "hybrid-v1"
+  },
+  "schema_version": "retrieval-baseline/v1"
+}
