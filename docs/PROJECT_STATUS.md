@@ -1,11 +1,36 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-03<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 through RAG-003 verified on `main`<br>
-**Current phase:** Phase 2 — RAG-003 accepted; RAG-004 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `fcea02bd8c9535f0885594bf61cc2e2cdbc484c6`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, retrieval API, citation objects/source viewer, model calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 through RAG-004 verified on `main`<br>
+**Current phase:** Phase 2 — RAG-004 accepted; RAG-005 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `7df9ee049fb5411f841514ae15ba66afb66cafbe`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+RAG-004 has passed final acceptance on merged `main`
+`7df9ee049fb5411f841514ae15ba66afb66cafbe`. PR #58 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`9a36ef2851aa32800d3cedf184aa081ff19f0c40` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice persists immutable, project-scoped citation objects only
+when a trace candidate has a final rank. It validates the trace, candidate,
+chunk, document version, source location, and project linkage before creating
+the citation, and it resolves a cited passage through the owner-authorized
+project route. The project workspace source viewer renders that immutable
+passage and its location. Missing and foreign citation IDs receive the same
+safe `404` response.
+
+Local `ci` passed with 194 tests passed and three intentional PostgreSQL
+integration-test skips. GitHub `application-ci` run #87 and `docs-validation`
+run #175 passed for the exact reviewed head, including the isolated
+PostgreSQL/pgvector migration, citation creation, cross-project isolation,
+downgrade-to-base, and re-upgrade lifecycle.
+
+No live model/provider call, retrieval-generation workflow that emits
+citations, execution, or production deployment is accepted. RAG-005 is next
+and is no longer blocked by RAG-004.
 
 RAG-003 has passed final acceptance on merged `main`
 `fcea02bd8c9535f0885594bf61cc2e2cdbc484c6`. PR #56 is merged. The final
