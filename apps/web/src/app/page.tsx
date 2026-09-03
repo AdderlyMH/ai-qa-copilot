@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { SourcePassageViewer } from "./source-passage-viewer";
+
 type Project = {
   id: string;
   name: string;
@@ -266,6 +268,8 @@ export default function Home() {
           </p>
           <p>{selectedProject.description || "No description."}</p>
           <p>{selectedProject.archived_at ? "Archived" : "Active"}</p>
+
+          <SourcePassageViewer projectId={selectedProject.id} />
 
           {selectedProject.archived_at ? null : (
             <form
