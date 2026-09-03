@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from hashlib import sha256
 from uuid import UUID, uuid4
@@ -19,6 +20,11 @@ from ai_qa_copilot_api.lexical_retrieval import (
     LexicalRetrievalFilters,
     LexicalRetrievalService,
     SqlAlchemyLexicalRetrievalStore,
+)
+from ai_qa_copilot_api.hybrid_retrieval import (
+    HybridRetrievalFilters,
+    HybridRetrievalService,
+    SqlAlchemyHybridRetrievalStore,
 )
 from ai_qa_copilot_api.main import create_app
 from ai_qa_copilot_api.model_gateway import (
@@ -80,7 +86,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, document_chunk_embeddings, "
+                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, "
                     "parser_versions, analysis_runs, projects"
@@ -154,7 +160,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, document_chunk_embeddings, "
+                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, "
                     "parser_versions, analysis_runs, projects"
@@ -182,6 +188,10 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
     foreign_section_id = uuid4()
     matching_chunk_id = uuid4()
     foreign_chunk_id = uuid4()
+    cache_id = uuid4()
+    foreign_cache_id = uuid4()
+    chunk_embedding_id = uuid4()
+    foreign_chunk_embedding_id = uuid4()
     target_text = "FR-AUTH-001 requires an exact bearer token and status 401 response."
     foreign_text = "FR-AUTH-001 belongs to another project and must never leak."
     target_hash = sha256(target_text.encode("utf-8")).hexdigest()
@@ -191,7 +201,7 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, document_chunk_embeddings, "
+                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, parser_versions, analysis_runs, projects"
                 )
@@ -303,6 +313,40 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
                     "foreign_hash": foreign_hash,
                 },
             )
+            connection.execute(
+                text(
+                    "INSERT INTO embedding_cache_entries "
+                    "(id, project_id, content_sha256, embedding_model, embedding_version, dimensions, values, created_at) "
+                    "VALUES (:id, :project_id, :hash, 'embedding-test-v1', 'embedding-v1', 2, CAST(:values AS json), CURRENT_TIMESTAMP), "
+                    "(:foreign_id, :foreign_project_id, :foreign_hash, 'embedding-test-v1', 'embedding-v1', 2, CAST(:foreign_values AS json), CURRENT_TIMESTAMP)"
+                ),
+                {
+                    "id": cache_id,
+                    "project_id": project_id,
+                    "hash": target_hash,
+                    "values": json.dumps([0.9, 0.1]),
+                    "foreign_id": foreign_cache_id,
+                    "foreign_project_id": foreign_project_id,
+                    "foreign_hash": foreign_hash,
+                    "foreign_values": json.dumps([1.0, 0.0]),
+                },
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO document_chunk_embeddings "
+                    "(id, document_chunk_id, embedding_cache_id, embedding_model, embedding_version, created_at) "
+                    "VALUES (:id, :chunk_id, :cache_id, 'embedding-test-v1', 'embedding-v1', CURRENT_TIMESTAMP), "
+                    "(:foreign_id, :foreign_chunk_id, :foreign_cache_id, 'embedding-test-v1', 'embedding-v1', CURRENT_TIMESTAMP)"
+                ),
+                {
+                    "id": chunk_embedding_id,
+                    "chunk_id": matching_chunk_id,
+                    "cache_id": cache_id,
+                    "foreign_id": foreign_chunk_embedding_id,
+                    "foreign_chunk_id": foreign_chunk_id,
+                    "foreign_cache_id": foreign_cache_id,
+                },
+            )
 
         service = LexicalRetrievalService(
             SqlAlchemyLexicalRetrievalStore.from_database_url(database_url)
@@ -329,11 +373,65 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         assert candidate.rank == 1
         assert candidate.score > 0
         assert "another project" not in candidate.normalized_text
+
+        hybrid_response = HybridRetrievalService(
+            SqlAlchemyHybridRetrievalStore.from_database_url(database_url)
+        ).retrieve(
+            project_id=project_id,
+            query="FR-AUTH-001",
+            query_embedding=(0.9, 0.1),
+            filters=HybridRetrievalFilters(
+                embedding_model="embedding-test-v1",
+                embedding_version="embedding-v1",
+                document_version_ids=(version_id,),
+                document_types=("markdown",),
+                chunking_version="chunking-v1",
+            ),
+            candidate_limit=10,
+            result_limit=10,
+        )
+
+        assert hybrid_response.retrieval_version == "hybrid-v1"
+        assert len(hybrid_response.candidates) == 1
+        hybrid_candidate = hybrid_response.candidates[0]
+        assert hybrid_candidate.chunk_id == matching_chunk_id
+        assert hybrid_candidate.project_id == project_id
+        assert hybrid_candidate.lexical_rank == 1
+        assert hybrid_candidate.semantic_rank == 1
+        assert hybrid_candidate.fusion_score > 0
+        with engine.connect() as connection:
+            trace = connection.execute(
+                text(
+                    "SELECT project_id, query, query_embedding, embedding_model, embedding_version, "
+                    "candidate_limit, result_limit FROM retrieval_traces WHERE id = :trace_id"
+                ),
+                {"trace_id": hybrid_response.trace_id},
+            ).one()
+            trace_candidate = connection.execute(
+                text(
+                    "SELECT document_chunk_id, lexical_score, lexical_rank, semantic_distance, semantic_rank, "
+                    "fusion_score, final_rank FROM retrieval_trace_candidates WHERE retrieval_trace_id = :trace_id"
+                ),
+                {"trace_id": hybrid_response.trace_id},
+            ).one()
+        assert trace.project_id == project_id
+        assert trace.query == "FR-AUTH-001"
+        assert trace.query_embedding == [0.9, 0.1]
+        assert trace.embedding_model == "embedding-test-v1"
+        assert trace.embedding_version == "embedding-v1"
+        assert (trace.candidate_limit, trace.result_limit) == (10, 10)
+        assert trace_candidate.document_chunk_id == matching_chunk_id
+        assert trace_candidate.lexical_rank == 1
+        assert trace_candidate.semantic_rank == 1
+        assert trace_candidate.final_rank == 1
+        assert trace_candidate.lexical_score > 0
+        assert trace_candidate.semantic_distance >= 0
+        assert trace_candidate.fusion_score > 0
     finally:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE parser_jobs, document_intakes, document_chunk_embeddings, "
+                    "TRUNCATE TABLE parser_jobs, document_intakes, retrieval_trace_candidates, retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, source_locations, "
                     "document_versions, documents, parser_versions, analysis_runs, projects"
                 )
