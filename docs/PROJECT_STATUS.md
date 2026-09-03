@@ -1,11 +1,32 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-03<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, and ANA-001 verified on `main`<br>
-**Current phase:** Phase 3 — ANA-001 accepted; ANA-002 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `292ba3e6f9e3447eae47a13272ae56d9636b0a03`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001, and ANA-002 verified on `main`<br>
+**Current phase:** Phase 3 — ANA-002 accepted; ANA-003 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `09bcd1ee45475bdec55ae602a5231094193d1375`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+ANA-002 has passed final acceptance on merged `main`
+`09bcd1ee45475bdec55ae602a5231094193d1375`. PR #64 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`2d5826aeefc47905807258b01c56ba6016b3e457` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main tree.
+
+The accepted slice adds deterministic, bounded OpenAPI facts for operations,
+parameters, schemas, responses, security, enums, and limits, plus a stable
+added/removed/changed fact diff. Known enum, limit, and operation mismatches
+are representable without an LLM. Facts are inert observations only; they do
+not infer a finding, risk, or recommendation.
+
+The final gate passed ANA-002 focused tests, Ruff, strict mypy, and
+documentation/manifest validation. A full local Python run exercised 208
+passing tests and three intentional PostgreSQL skips; its dev-lifecycle check
+could not start because this isolated environment lacks frontend dependencies.
+
+No model call, requirement-quality workflow, finding persistence, API route,
+user decision, execution, or deployment is accepted. ANA-003 is next and is
+no longer blocked by ANA-002.
 
 ANA-001 has passed final acceptance on merged `main`
 `292ba3e6f9e3447eae47a13272ae56d9636b0a03`. PR #62 is merged. The final
@@ -27,8 +48,8 @@ integration-test skips; `docs-check` also passed. GitHub `application-ci` run
 #98 and `docs-validation` run #186 passed for the exact reviewed head.
 
 No model call, analysis workflow, persistence, API route, user decision,
-OpenAPI-diff extraction, execution, or deployment is accepted. ANA-002 is next
-and is no longer blocked by ANA-001.
+execution, or deployment is accepted. ANA-002 is accepted and was no longer
+blocked by ANA-001.
 
 RAG-005 has passed final acceptance on merged `main`
 `2abdc5d3b46623b0d497e19bd82dfa8cc980c2d1`. PR #60 is merged. The final
