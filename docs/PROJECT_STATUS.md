@@ -1,11 +1,36 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-03<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 through RAG-004 verified on `main`<br>
-**Current phase:** Phase 2 — RAG-004 accepted; RAG-005 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `7df9ee049fb5411f841514ae15ba66afb66cafbe`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 through RAG-005 verified on `main`<br>
+**Current phase:** Phase 3 — RAG-005 accepted; ANA-001 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `2abdc5d3b46623b0d497e19bd82dfa8cc980c2d1`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+RAG-005 has passed final acceptance on merged `main`
+`2abdc5d3b46623b0d497e19bd82dfa8cc980c2d1`. PR #60 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`219c552abc425815d1f43aeb1de438c2a9c0d7a1` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice adds the first visible, synthetic, development-only
+retrieval benchmark: 15 exact-source queries, including one no-answer control.
+It commits a deterministic report with Recall@1 of 0.500, Recall@3 of 0.786,
+Recall@5/@10 of 0.929, MRR of 0.663, and a no-answer false-positive rate of
+0.000. The runner verifies the report byte-for-byte against the versioned
+fixture. These frozen rank observations are a regression baseline, not a
+protected holdout, full 100-case release evaluation, live embedding-provider
+measurement, or evidence that EG-04 has passed.
+
+Local `ci` passed with 196 tests passed and three intentional PostgreSQL
+integration-test skips. GitHub `application-ci` run #94 and `docs-validation`
+run #182 passed for the exact reviewed head. The branch also aligns the
+documentation-workflow type-check path with the workspace API source.
+
+No live retrieval-provider or model call, retrieval tuning, reranking,
+execution, or production deployment is accepted. ANA-001 is next and is no
+longer blocked by RAG-005.
 
 RAG-004 has passed final acceptance on merged `main`
 `7df9ee049fb5411f841514ae15ba66afb66cafbe`. PR #58 is merged. The final
@@ -29,8 +54,8 @@ PostgreSQL/pgvector migration, citation creation, cross-project isolation,
 downgrade-to-base, and re-upgrade lifecycle.
 
 No live model/provider call, retrieval-generation workflow that emits
-citations, execution, or production deployment is accepted. RAG-005 is next
-and is no longer blocked by RAG-004.
+citations, execution, or production deployment is accepted. RAG-005 is now
+accepted and was no longer blocked by RAG-004.
 
 RAG-003 has passed final acceptance on merged `main`
 `fcea02bd8c9535f0885594bf61cc2e2cdbc484c6`. PR #56 is merged. The final

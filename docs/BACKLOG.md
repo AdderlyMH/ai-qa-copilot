@@ -450,6 +450,7 @@ security release gate has executed or passed.
 - **Dependencies:** RAG-004
 - **Deliverable:** At least 15 queries and Recall@k report.
 - **Acceptance:** Baseline result is committed and limitations documented.
+- **Status:** Accepted on `main` through PR #60; ANA-001 is the next gated implementation item.
 
 **Phase 2 exit:** Uploaded requirements and OpenAPI files produce versioned, project-scoped retrieval with navigable citations.
 
