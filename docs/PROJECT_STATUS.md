@@ -1,11 +1,34 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-03<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, and RAG-001 through RAG-005 verified on `main`<br>
-**Current phase:** Phase 3 — RAG-005 accepted; ANA-001 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `2abdc5d3b46623b0d497e19bd82dfa8cc980c2d1`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, and ANA-001 verified on `main`<br>
+**Current phase:** Phase 3 — ANA-001 accepted; ANA-002 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `292ba3e6f9e3447eae47a13272ae56d9636b0a03`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+ANA-001 has passed final acceptance on merged `main`
+`292ba3e6f9e3447eae47a13272ae56d9636b0a03`. PR #62 is merged. The final
+acceptance gate compared the merged tree with the final reviewed PR head
+`b1ea56830af04dd4e13ff91f77725d7f5dc3e96b` and found the same tree, so the
+reviewed implementation and validation evidence applies to the merged main
+tree.
+
+The accepted slice adds `RequirementFindingV1`, a strict, versioned contract
+for requirement-analysis findings. It enforces the published category and
+severity taxonomies; bounded analysis, recommendation, and confidence values;
+and exact payload fields. Supported material findings require at least one
+citation-backed observed fact. Evidence gaps instead use the explicit,
+constrained `unsupported_claim` / `info` state with no evidence and a required
+reason, preventing unsupported claims from being presented as grounded facts.
+
+Local `ci` passed with 206 tests passed and three intentional PostgreSQL
+integration-test skips; `docs-check` also passed. GitHub `application-ci` run
+#98 and `docs-validation` run #186 passed for the exact reviewed head.
+
+No model call, analysis workflow, persistence, API route, user decision,
+OpenAPI-diff extraction, execution, or deployment is accepted. ANA-002 is next
+and is no longer blocked by ANA-001.
 
 RAG-005 has passed final acceptance on merged `main`
 `2abdc5d3b46623b0d497e19bd82dfa8cc980c2d1`. PR #60 is merged. The final
@@ -29,8 +52,7 @@ run #182 passed for the exact reviewed head. The branch also aligns the
 documentation-workflow type-check path with the workspace API source.
 
 No live retrieval-provider or model call, retrieval tuning, reranking,
-execution, or production deployment is accepted. ANA-001 is next and is no
-longer blocked by RAG-005.
+execution, or production deployment is accepted.
 
 RAG-004 has passed final acceptance on merged `main`
 `7df9ee049fb5411f841514ae15ba66afb66cafbe`. PR #58 is merged. The final
