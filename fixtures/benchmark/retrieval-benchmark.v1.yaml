@@ -1,0 +1,104 @@
+schema_version: retrieval-benchmark/v1
+benchmark_id: RAG-005-DEVELOPMENT-BASELINE-V1
+classification: synthetic_public_only
+purpose: >
+  Visible development baseline for exact-source hybrid retrieval ranking. It is
+  not a protected holdout, a full 100-case release evaluation, or evidence of a
+  live embedding provider.
+retrieval_configuration:
+  retrieval_version: hybrid-v1
+  fusion_method: reciprocal-rank-fusion-v1
+  embedding_model: fixture-embedding-v1
+  embedding_version: fixture-embedding-v1
+  chunking_version: chunking-v1
+cases:
+  - id: RAG-RET-001
+    split: development
+    query: order cancellation within fifteen minutes
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-001]
+    ranked_source_ids: [RB-SRC-001, RB-SRC-005, RB-SRC-008]
+  - id: RAG-RET-002
+    split: development
+    query: required idempotency key for order creation
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-002]
+    ranked_source_ids: [RB-SRC-002, RB-SRC-010, RB-SRC-003]
+  - id: RAG-RET-003
+    split: development
+    query: refund completion service-level timeframe
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-003]
+    ranked_source_ids: [RB-SRC-010, RB-SRC-003, RB-SRC-005]
+  - id: RAG-RET-004
+    split: development
+    query: weather forecast for external warehouse
+    expected_outcome: no_answer
+    expected_source_ids: []
+    ranked_source_ids: []
+  - id: RAG-RET-005
+    split: development
+    query: customer address update before processing begins
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-004]
+    ranked_source_ids: [RB-SRC-011, RB-SRC-005, RB-SRC-004]
+  - id: RAG-RET-006
+    split: development
+    query: inventory reservation expiry after payment authorization
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-005]
+    ranked_source_ids: [RB-SRC-005, RB-SRC-001, RB-SRC-014]
+  - id: RAG-RET-007
+    split: development
+    query: active support case authorization
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-006]
+    ranked_source_ids: [RB-SRC-006, RB-SRC-012, RB-SRC-009]
+  - id: RAG-RET-008
+    split: development
+    query: access token lifetime in seconds
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-007]
+    ranked_source_ids: [RB-SRC-003, RB-SRC-007, RB-SRC-010]
+  - id: RAG-RET-009
+    split: development
+    query: customer identifier required in order request
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-008]
+    ranked_source_ids: [RB-SRC-008, RB-SRC-002, RB-SRC-013]
+  - id: RAG-RET-010
+    split: development
+    query: maximum order item quantity
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-009]
+    ranked_source_ids: [RB-SRC-004, RB-SRC-013, RB-SRC-014, RB-SRC-009]
+  - id: RAG-RET-011
+    split: development
+    query: unauthenticated list orders endpoint
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-010]
+    ranked_source_ids: [RB-SRC-010, RB-SRC-006, RB-SRC-002]
+  - id: RAG-RET-012
+    split: development
+    query: pagination limit upper bound
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-011]
+    ranked_source_ids: [RB-SRC-014, RB-SRC-011, RB-SRC-009]
+  - id: RAG-RET-013
+    split: development
+    query: cancellation status spelling in the contract
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-012]
+    ranked_source_ids: [RB-SRC-012, RB-SRC-001, RB-SRC-010]
+  - id: RAG-RET-014
+    split: development
+    query: correlation identifier error response fields
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-013]
+    ranked_source_ids: [RB-SRC-006, RB-SRC-002, RB-SRC-011, RB-SRC-009, RB-SRC-013]
+  - id: RAG-RET-015
+    split: development
+    query: export order authorization and audit policy
+    expected_outcome: source
+    expected_source_ids: [RB-SRC-014]
+    ranked_source_ids: [RB-SRC-010, RB-SRC-006, RB-SRC-009, RB-SRC-012, RB-SRC-001]

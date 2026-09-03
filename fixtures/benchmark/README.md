@@ -13,6 +13,11 @@ or OpenAPI documents.
   the canonical `side-effects/v1` contract, versioned parser/security fixture
   records, and the 100-case allocation.
 - `ground-truth.v1.yaml` defines `GT-FIND-*` and `GT-POL-*` expected outcomes.
+- `retrieval-benchmark.v1.yaml` defines the visible 15-query RAG-005
+  development-only exact-source retrieval baseline.
+- `retrieval-baseline.v1.json` is the committed deterministic Recall@k/MRR
+  result calculated from that fixture. Verify it with
+  `uv run python scripts/run_retrieval_benchmark.py --check`.
 - `fixtures/sample-requirements.md` is the immutable requirement seed.
 - `fixtures/sample-openapi.yaml` is the immutable OpenAPI seed.
 
