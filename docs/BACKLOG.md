@@ -474,6 +474,7 @@ security release gate has executed or passed.
 - **Dependencies:** ING-004
 - **Deliverable:** Operations, parameters, schemas, responses, security, enums, and limits as facts.
 - **Acceptance:** Known sample mismatches can be represented without an LLM.
+- **Status:** Accepted on `main` through PR #64; ANA-003 is the next gated implementation item.
 
 #### ANA-003 — Implement requirement-quality workflow
 
