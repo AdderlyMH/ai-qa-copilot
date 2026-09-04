@@ -1,11 +1,33 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-04<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-003 verified on `main`<br>
-**Current phase:** Phase 3 — ANA-003 accepted; ANA-004 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `b11e81867246a3bc7f485441bf87c31a431ecb8d`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-004 verified on `main`<br>
+**Current phase:** Phase 3 — ANA-004 accepted; ANA-005 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `c291b1bc6ee5ab1c2f8b4a111b2878d1e2be58d6`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+ANA-004 has passed final acceptance on merged `main`
+`c291b1bc6ee5ab1c2f8b4a111b2878d1e2be58d6`. PR #69 merged the reviewed
+head `7a8e9ab979ba7db3dcd1da37e1e5e112446f0b43`; the final gate verified that
+current `main` contains the intended two-file implementation.
+
+The accepted slice deterministically compares cited requirement expectations
+with ANA-002 OpenAPI facts and emits strict, cited
+`requirements_contract_mismatch` findings. It detects field, response, enum,
+security, operation, and limit mismatches; uses stable ordering and UUIDv5
+finding identifiers; and rejects non-canonical comparison values.
+
+The seeded acceptance baseline contains six known defects and detects all six:
+recall is `1.0` with zero false positives. Focused ANA-004 tests passed four
+cases, full local `ci` passed with 229 tests and three intentional PostgreSQL
+skips, and the isolated PostgreSQL `db-check` completed upgrade, integration,
+downgrade, and re-upgrade. GitHub checks for the reviewed PR head passed:
+quality, migration-check, docs-validation, security-harness, security-scans,
+and parser-worker-isolation.
+
+No finding review feedback, execution, evaluation, or deployment is accepted.
+ANA-005 is next and is no longer blocked by ANA-004.
 
 ANA-003 has passed final acceptance on merged `main`
 `b11e81867246a3bc7f485441bf87c31a431ecb8d`. PR #66 introduced the
