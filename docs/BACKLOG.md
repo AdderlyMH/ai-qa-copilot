@@ -492,6 +492,7 @@ security release gate has executed or passed.
 - **Dependencies:** ANA-002, ANA-003
 - **Deliverable:** Field, response, enum, security, operation, and limit mismatch findings.
 - **Acceptance:** Seeded defects are detected at a measurable baseline.
+- **Status:** Accepted on `main` through PR #69; ANA-005 is the next gated implementation item.
 
 #### ANA-005 — Add finding review feedback
 
