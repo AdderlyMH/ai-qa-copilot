@@ -17,6 +17,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Boolean,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
@@ -372,6 +373,55 @@ class CitationRecord(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+
+
+class RequirementAnalysisRunRecord(Base):
+    """Persisted deterministic requirement-quality analysis invocation."""
+
+    __tablename__ = "requirement_analysis_runs"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("projects.id"),
+        nullable=False,
+    )
+    analyzer_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    citation_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
+class RequirementFindingRecord(Base):
+    """One immutable, validated finding emitted by a deterministic run."""
+
+    __tablename__ = "requirement_findings"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("projects.id"),
+        nullable=False,
+    )
+    requirement_analysis_run_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("requirement_analysis_runs.id"),
+        nullable=False,
+    )
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    evidence: Mapped[list[dict[str, str]]] = mapped_column(JSON, nullable=False)
+    analysis: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    recommendation: Mapped[str] = mapped_column(Text, nullable=False)
+    unsupported: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    unsupported_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
     )
 
 

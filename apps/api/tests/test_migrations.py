@@ -10,8 +10,9 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0009_create_citations"
+EXPECTED_REVISION = "0010_requirement_analysis"
 CITATION_REVISION = "0009_create_citations"
+REQUIREMENT_ANALYSIS_REVISION = "0010_requirement_analysis"
 RETRIEVAL_TRACE_REVISION = "0008_retrieval_traces"
 INDEXING_REVISION = "0007_chunk_embedding_cache"
 PARSER_JOB_REVISION = "0006_create_parser_jobs"
@@ -50,7 +51,7 @@ def test_database_url_is_read_from_environment_only() -> None:
         database_url_from_environment({})
 
 
-def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
+def test_alembic_has_reversible_project_head_after_citation_baseline() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
@@ -58,7 +59,7 @@ def test_alembic_has_reversible_project_head_after_pgvector_baseline() -> None:
     assert script.get_heads() == [EXPECTED_REVISION]
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == RETRIEVAL_TRACE_REVISION
+    assert revision.down_revision == CITATION_REVISION
     retrieval_trace_revision = script.get_revision(RETRIEVAL_TRACE_REVISION)
     assert retrieval_trace_revision is not None
     assert retrieval_trace_revision.down_revision == INDEXING_REVISION
@@ -362,10 +363,10 @@ def test_retrieval_trace_migration_creates_reversible_trace_state(
     ]
 
 
-def test_citation_migration_creates_reversible_citation_state(
+def test_requirement_analysis_migration_creates_reversible_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = migration_script(CITATION_REVISION)
+    module = migration_script(REQUIREMENT_ANALYSIS_REVISION)
     calls: list[tuple[str, tuple[object, ...]]] = []
 
     for name in ("create_table", "create_index", "drop_index", "drop_table"):
@@ -379,8 +380,18 @@ def test_citation_migration_creates_reversible_citation_state(
     module.downgrade()
 
     assert [(name, args[0]) for name, args in calls] == [
-        ("create_table", "citations"),
-        ("create_index", "ix_citations_project_id"),
-        ("drop_index", "ix_citations_project_id"),
-        ("drop_table", "citations"),
+        ("create_table", "requirement_analysis_runs"),
+        (
+            "create_index",
+            "ix_requirement_analysis_runs_project_created_at",
+        ),
+        ("create_table", "requirement_findings"),
+        ("create_index", "ix_requirement_findings_run_created_at"),
+        ("drop_index", "ix_requirement_findings_run_created_at"),
+        ("drop_table", "requirement_findings"),
+        (
+            "drop_index",
+            "ix_requirement_analysis_runs_project_created_at",
+        ),
+        ("drop_table", "requirement_analysis_runs"),
     ]

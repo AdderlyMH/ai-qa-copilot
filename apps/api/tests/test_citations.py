@@ -25,6 +25,9 @@ from ai_qa_copilot_api.documents import (
     RetrievalTraceRecord,
     SourceLocationRecord,
 )
+from ai_qa_copilot_api.requirements_analysis import (
+    SqlAlchemyRequirementAnalysisRepository,
+)
 from ai_qa_copilot_api.main import create_app
 from ai_qa_copilot_api.projects import Base, ProjectRecord, SqlAlchemyProjectRepository
 
@@ -45,7 +48,11 @@ def sessions(tmp_path: Path) -> Generator[sessionmaker[Session]]:
     engine.dispose()
 
 
-def seed_selected_candidate(sessions: sessionmaker[Session]) -> None:
+def seed_selected_candidate(
+    sessions: sessionmaker[Session],
+    *,
+    passage: str = "The cart ID is required before checkout.",
+) -> None:
     parser_id = UUID("00000000-0000-0000-0000-000000000a06")
     document_id = UUID("00000000-0000-0000-0000-000000000a07")
     version_id = UUID("00000000-0000-0000-0000-000000000a08")
@@ -110,7 +117,7 @@ def seed_selected_candidate(sessions: sessionmaker[Session]) -> None:
                     source_location_id=location_id,
                     ordinal=0,
                     section_key="REQ-CHECKOUT-001",
-                    normalized_text="The cart ID is required before checkout.",
+                    normalized_text=passage,
                     content_sha256="b" * 64,
                 ),
                 DocumentChunkRecord(
@@ -119,7 +126,7 @@ def seed_selected_candidate(sessions: sessionmaker[Session]) -> None:
                     document_section_id=section_id,
                     source_location_id=location_id,
                     ordinal=0,
-                    normalized_text="The cart ID is required before checkout.",
+                    normalized_text=passage,
                     content_sha256="b" * 64,
                     chunking_version="chunking-v1",
                 ),
@@ -232,3 +239,91 @@ def test_invalid_or_foreign_citations_are_rejected(
     assert foreign.json() == {"detail": "Citation not found"}
     assert missing.status_code == 404
     assert missing.json() == {"detail": "Citation not found"}
+
+
+def test_requirement_analysis_routes_create_read_and_scope_runs(
+    sessions: sessionmaker[Session],
+) -> None:
+    seed_selected_candidate(
+        sessions,
+        passage="FR-CHECKOUT-001 must authorize checkout quickly.",
+    )
+    citation_repository = SqlAlchemyCitationRepository(
+        sessions,
+        id_factory=lambda: CITATION_ID,
+        clock=lambda: TIMESTAMP,
+    )
+    citation = citation_repository.create_from_selected_candidate(
+        project_id=PROJECT_ID,
+        retrieval_trace_id=TRACE_ID,
+        document_chunk_id=CHUNK_ID,
+    )
+    analysis_repository = SqlAlchemyRequirementAnalysisRepository(sessions)
+
+    app = create_app(
+        local_bypass_settings(),
+        project_repository=SqlAlchemyProjectRepository(sessions),
+        citation_repository=citation_repository,
+        requirement_analysis_repository=analysis_repository,
+    )
+    with TestClient(app) as client:
+        created = client.post(
+            f"/projects/{PROJECT_ID}/requirement-analysis-runs",
+            json={"citation_ids": [str(citation.id)]},
+        )
+        assert created.status_code == 201
+
+        run_id = UUID(created.json()["id"])
+        fetched = client.get(
+            f"/projects/{PROJECT_ID}/requirement-analysis-runs/{run_id}"
+        )
+        foreign = client.get(
+            f"/projects/{FOREIGN_PROJECT_ID}/requirement-analysis-runs/{run_id}"
+        )
+
+    assert UUID(created.headers["X-Correlation-ID"])
+    assert created.json()["project_id"] == str(PROJECT_ID)
+    assert created.json()["citation_ids"] == [str(citation.id)]
+    assert created.json()["findings"]
+    assert all(
+        evidence["citation_id"] == str(citation.id)
+        for finding in created.json()["findings"]
+        for evidence in finding["evidence"]
+    )
+
+    assert fetched.status_code == 200
+    assert fetched.json() == created.json()
+
+    assert foreign.status_code == 404
+    assert foreign.json() == {"detail": "Requirement analysis run not found"}
+
+
+@pytest.mark.parametrize(
+    "citation_ids",
+    (
+        [],
+        [str(CITATION_ID), str(CITATION_ID)],
+    ),
+)
+def test_requirement_analysis_route_rejects_empty_or_duplicate_citations(
+    sessions: sessionmaker[Session],
+    citation_ids: list[str],
+) -> None:
+    seed_selected_candidate(sessions)
+    citation_repository = SqlAlchemyCitationRepository(sessions)
+    app = create_app(
+        local_bypass_settings(),
+        project_repository=SqlAlchemyProjectRepository(sessions),
+        citation_repository=citation_repository,
+        requirement_analysis_repository=SqlAlchemyRequirementAnalysisRepository(
+            sessions
+        ),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            f"/projects/{PROJECT_ID}/requirement-analysis-runs",
+            json={"citation_ids": citation_ids},
+        )
+
+    assert response.status_code == 422

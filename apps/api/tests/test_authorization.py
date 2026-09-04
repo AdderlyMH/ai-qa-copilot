@@ -762,3 +762,16 @@ def test_publication_settings_do_not_accept_request_or_role_fields() -> None:
         "publication_revision_id",
     }
     assert "role" not in DemoPublicationSettings.__dataclass_fields__
+
+
+def test_requirement_analysis_create_requires_owner_authentication() -> None:
+    app = create_app(local_auth_settings())
+
+    with TestClient(app) as client:
+        response = client.post(
+            f"/projects/{PROJECT_ID}/requirement-analysis-runs",
+            json={"citation_ids": [str(RESOURCE_ID)]},
+        )
+
+    assert response.status_code == 401
+    assert response.headers["WWW-Authenticate"] == "Bearer"
