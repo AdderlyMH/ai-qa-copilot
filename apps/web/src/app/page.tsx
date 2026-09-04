@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 
 import { SourcePassageViewer } from "./source-passage-viewer";
+import { FindingFeedbackPanel } from "./finding-feedback-panel";
 
 type Project = {
   id: string;
@@ -270,6 +271,7 @@ export default function Home() {
           <p>{selectedProject.archived_at ? "Archived" : "Active"}</p>
 
           <SourcePassageViewer projectId={selectedProject.id} />
+          <FindingFeedbackPanel projectId={selectedProject.id} />
 
           {selectedProject.archived_at ? null : (
             <form
