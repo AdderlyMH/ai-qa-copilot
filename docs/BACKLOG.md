@@ -501,6 +501,7 @@ security release gate has executed or passed.
 - **Dependencies:** ANA-003
 - **Deliverable:** Accept/reject/annotate UI and API.
 - **Acceptance:** Feedback retains reviewer and source/run provenance.
+- **Status:** Accepted on `main` through PR #71; TST-001 is the next gated implementation item.
 
 ### Epic TST — Structured test design
 

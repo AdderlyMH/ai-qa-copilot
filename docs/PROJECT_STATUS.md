@@ -1,11 +1,32 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-04<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-004 verified on `main`<br>
-**Current phase:** Phase 3 — ANA-004 accepted; ANA-005 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `c291b1bc6ee5ab1c2f8b4a111b2878d1e2be58d6`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005 verified on `main`<br>
+**Current phase:** Phase 3 — ANA-005 accepted; TST-001 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `b6c62ef0211471fbbb8999efd9715649bba57527`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+ANA-005 has passed final acceptance on merged `main`
+`b6c62ef0211471fbbb8999efd9715649bba57527`. PR #71 merged the reviewed
+head `13e9ab4b71304009699b27043d3e4cbc80b8218a`; the final gate verified that
+current `main` contains the intended ANA-005 implementation.
+
+The accepted slice provides append-only, project-scoped finding review feedback.
+Owners can accept, reject, or annotate an existing requirement-analysis finding
+through the API and focused web UI. Every feedback event retains its reviewer
+identity, authentication source, project, requirement-analysis run, finding,
+citation provenance, and timestamp; reviewer provenance is server-derived.
+
+The reversible `0011_finding_feedback` migration and PostgreSQL integration
+verify durable feedback persistence. Focused domain and API tests passed, full
+local `ci` passed with 242 tests and three intentional PostgreSQL skips, and
+the isolated `db-check` completed upgrade, integration, downgrade, and
+re-upgrade. GitHub `application-ci` run #116 and `docs-validation` run #200
+passed for the reviewed PR head.
+
+No structured test design, execution, evaluation, or deployment work is
+accepted. TST-001 is next and is no longer blocked by ANA-005.
 
 ANA-004 has passed final acceptance on merged `main`
 `c291b1bc6ee5ab1c2f8b4a111b2878d1e2be58d6`. PR #69 merged the reviewed
@@ -26,8 +47,8 @@ downgrade, and re-upgrade. GitHub checks for the reviewed PR head passed:
 quality, migration-check, docs-validation, security-harness, security-scans,
 and parser-worker-isolation.
 
-No finding review feedback, execution, evaluation, or deployment is accepted.
-ANA-005 is next and is no longer blocked by ANA-004.
+No structured test design, execution, evaluation, or deployment work is
+accepted. TST-001 is next and is no longer blocked by ANA-005.
 
 ANA-003 has passed final acceptance on merged `main`
 `b11e81867246a3bc7f485441bf87c31a431ecb8d`. PR #66 introduced the
