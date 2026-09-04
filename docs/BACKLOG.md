@@ -512,6 +512,7 @@ security release gate has executed or passed.
 - **Dependencies:** ANA-001
 - **Deliverable:** `GeneratedTestCaseV1`, typed request template, typed assertion operators.
 - **Acceptance:** Arbitrary scripts and unsupported operators cannot appear.
+- **Status:** Accepted on `main` through PR #73; TST-002 is the next gated implementation item.
 
 #### TST-002 — Implement grounded test-generation workflow
 
