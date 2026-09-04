@@ -1,11 +1,11 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Literal, Never
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ai_qa_copilot_api.audit import (
     AuthorizationAuditSink,
@@ -70,6 +70,13 @@ from ai_qa_copilot_api.projects import (
     project_repository_from_environment,
 )
 from ai_qa_copilot_api.parser_queue import ParserJobQueue
+from ai_qa_copilot_api.requirements_analysis import (
+    RequirementAnalysisRepository,
+    RequirementAnalysisRun,
+    RequirementAnalysisService,
+    RequirementAnalysisUnavailable,
+    requirement_analysis_repository_from_environment,
+)
 
 
 class HealthResponse(BaseModel):
@@ -192,6 +199,60 @@ class CitationResponse(BaseModel):
     created_at: datetime
 
 
+class RequirementAnalysisRunCreateRequest(BaseModel):
+    """Explicit evidence selection for deterministic analysis."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    citation_ids: list[UUID] = Field(min_length=1, max_length=100)
+
+    @field_validator("citation_ids")
+    @classmethod
+    def citation_ids_must_not_repeat(cls, value: list[UUID]) -> list[UUID]:
+        if len(set(value)) != len(value):
+            raise ValueError("citation_ids must not repeat")
+        return value
+
+
+class RequirementFindingEvidenceResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    citation_id: UUID
+    observed_fact: str
+
+
+class RequirementFindingResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    category: str
+    severity: str
+    evidence: list[RequirementFindingEvidenceResponse]
+    analysis: str
+    confidence: float
+    recommendation: str
+    unsupported: bool
+    unsupported_reason: str | None
+
+
+class RequirementAnalysisRunResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    analyzer_version: str
+    citation_ids: list[UUID]
+    findings: list[RequirementFindingResponse]
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def created_at_must_be_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -205,6 +266,7 @@ def create_app(
     quarantine_storage: QuarantineStorage | None = None,
     parser_job_queue: ParserJobQueue | None = None,
     document_intake_policy: UploadPolicy = UploadPolicy(),
+    requirement_analysis_repository: RequirementAnalysisRepository | None = None,
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
     | None = None,
@@ -231,6 +293,11 @@ def create_app(
         application.state.project_authorization_policy = project_policy
         application.state.project_authorization_boundary = ProjectAuthorizationBoundary(
             auth_boundary, project_policy, auditor
+        )
+        application.state.requirement_analysis_repository = (
+            requirement_analysis_repository
+            if requirement_analysis_repository is not None
+            else requirement_analysis_repository_from_environment()
         )
         application.state.demo_publication_service = DemoPublicationService(
             selected_demo_settings,
@@ -560,6 +627,76 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _citation_response(citation)
 
+    @application.post(
+        "/projects/{project_id}/requirement-analysis-runs",
+        status_code=status.HTTP_201_CREATED,
+        response_model=RequirementAnalysisRunResponse,
+    )
+    def create_requirement_analysis_run(
+        project_id: UUID,
+        payload: RequirementAnalysisRunCreateRequest,
+        request: Request,
+        response: Response,
+    ) -> RequirementAnalysisRunResponse:
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            run = _requirement_analysis_service(request).analyze(
+                project_id=project_id,
+                citation_ids=tuple(payload.citation_ids),
+            )
+        except RequirementAnalysisUnavailable:
+            _raise_requirement_analysis_unavailable(correlation_id)
+        except ValueError:
+            _raise_citation_not_found(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _requirement_analysis_run_response(run)
+
+    @application.get(
+        "/projects/{project_id}/requirement-analysis-runs/{run_id}",
+        response_model=RequirementAnalysisRunResponse,
+    )
+    def get_requirement_analysis_run(
+        project_id: UUID,
+        run_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> RequirementAnalysisRunResponse:
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            run = _requirement_analysis_service(request).get_for_project(
+                project_id=project_id,
+                run_id=run_id,
+            )
+        except RequirementAnalysisUnavailable:
+            _raise_requirement_analysis_unavailable(correlation_id)
+
+        if run is None:
+            _raise_requirement_analysis_run_not_found(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _requirement_analysis_run_response(run)
+
     return application
 
 
@@ -604,6 +741,21 @@ def _citation_repository(request: Request) -> CitationRepository:
     ):
         raise RuntimeError("Citation boundary was not initialized")
     return repository
+
+
+def _requirement_analysis_service(request: Request) -> RequirementAnalysisService:
+    repository = getattr(
+        request.app.state,
+        "requirement_analysis_repository",
+        None,
+    )
+    if repository is None:
+        raise RuntimeError("Requirement analysis boundary was not initialized")
+
+    return RequirementAnalysisService(
+        citation_repository=_citation_repository(request),
+        repository=repository,
+    )
 
 
 def _require_project(
@@ -755,6 +907,54 @@ def _citation_response(citation: Citation) -> CitationResponse:
         display_name=citation.display_name,
         passage=citation.passage,
         created_at=citation.created_at,
+    )
+
+
+def _requirement_analysis_run_response(
+    run: RequirementAnalysisRun,
+) -> RequirementAnalysisRunResponse:
+    return RequirementAnalysisRunResponse(
+        id=run.id,
+        project_id=run.project_id,
+        analyzer_version=run.analyzer_version,
+        citation_ids=list(run.citation_ids),
+        findings=[
+            RequirementFindingResponse(
+                id=finding.id,
+                category=finding.category.value,
+                severity=finding.severity.value,
+                evidence=[
+                    RequirementFindingEvidenceResponse(
+                        citation_id=evidence.citation_id,
+                        observed_fact=evidence.observed_fact,
+                    )
+                    for evidence in finding.evidence
+                ],
+                analysis=finding.analysis,
+                confidence=finding.confidence,
+                recommendation=finding.recommendation,
+                unsupported=finding.unsupported,
+                unsupported_reason=finding.unsupported_reason,
+            )
+            for finding in run.findings
+        ],
+        created_at=run.created_at,
+    )
+
+
+def _raise_requirement_analysis_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Requirement analysis service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_requirement_analysis_run_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Requirement analysis run not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
     )
 
 
