@@ -512,7 +512,7 @@ class SqlAlchemyRequirementAnalysisRepository:
                     findings=tuple(
                         finding_from_record(record) for record in finding_records
                     ),
-                    created_at=run.created_at,
+                    created_at=utc_datetime(run.created_at),
                 )
         except (SQLAlchemyError, TypeError, ValueError) as error:
             raise RequirementAnalysisUnavailable from error

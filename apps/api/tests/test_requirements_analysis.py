@@ -180,15 +180,16 @@ def test_requirement_without_acceptance_marker_has_missing_criteria() -> None:
 
     assert FindingCategory.MISSING_ACCEPTANCE_CRITERIA in categories
 
-    def test_requirement_with_acceptance_marker_has_no_missing_criteria() -> None:
-        source = citation(
-            identifier="00000000-0000-0000-0000-000000000316",
-            passage="The customer must confirm the delivery address. AC-01: Given a valid address, when confirmed, then save it.",
-        )
 
-        categories = {finding.category for finding in analyze_citations((source,))}
+def test_requirement_with_acceptance_marker_has_no_missing_criteria() -> None:
+    source = citation(
+        identifier="00000000-0000-0000-0000-000000000316",
+        passage="The customer must confirm the delivery address. AC-01: Given a valid address, when confirmed, then save it.",
+    )
 
-        assert FindingCategory.MISSING_ACCEPTANCE_CRITERIA not in categories
+    categories = {finding.category for finding in analyze_citations((source,))}
+
+    assert FindingCategory.MISSING_ACCEPTANCE_CRITERIA not in categories
 
 
 def test_exact_opposite_must_statements_create_one_cited_contradiction() -> None:
