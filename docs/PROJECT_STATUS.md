@@ -1,11 +1,40 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-09-03<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001, and ANA-002 verified on `main`<br>
-**Current phase:** Phase 3 — ANA-002 accepted; ANA-003 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `09bcd1ee45475bdec55ae602a5231094193d1375`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Status date:** 2026-09-04<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-003 verified on `main`<br>
+**Current phase:** Phase 3 — ANA-003 accepted; ANA-004 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `b11e81867246a3bc7f485441bf87c31a431ecb8d`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+ANA-003 has passed final acceptance on merged `main`
+`b11e81867246a3bc7f485441bf87c31a431ecb8d`. PR #66 introduced the
+requirement-quality workflow, and PR #67 completed the acceptance-coverage
+correction. The final gate verified that current `main` is identical to the
+reviewed merged tree.
+
+The accepted slice produces deterministic, typed `RequirementFindingV1`
+results for ambiguity, contradiction, missing acceptance criteria,
+authorization/error-handling gaps, and unbounded performance risks. Every
+supported finding is citation-backed. Runs and findings are persisted with
+project scoping and reversible migrations; owner-authorized routes create and
+retrieve reviewable results while hiding foreign resources with safe not-found
+responses. The workflow uses deterministic rules and identifiers only; it
+does not invoke a model provider.
+
+The final correction restores collection of the acceptance-marker negative
+case and normalizes reloaded persisted timestamps to timezone-aware UTC.
+Local validation passed: focused requirement-analysis tests collected 11
+passing cases, full `ci` passed with 225 tests and three intentional
+PostgreSQL skips, and the isolated PostgreSQL `db-check` completed upgrade,
+integration, downgrade, and re-upgrade. GitHub `application-ci` runs #106
+and #108 plus `docs-validation` runs #192 and #194 passed for the reviewed
+PR heads. After a transient npm advisory-service `503`, the rerun
+`security-scans` audit completed with zero vulnerabilities.
+
+No requirement/OpenAPI consistency workflow, finding feedback, execution,
+evaluation, or deployment is accepted. ANA-004 is next and is no longer
+blocked by ANA-003.
 
 ANA-002 has passed final acceptance on merged `main`
 `09bcd1ee45475bdec55ae602a5231094193d1375`. PR #64 is merged. The final
