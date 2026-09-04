@@ -425,6 +425,41 @@ class RequirementFindingRecord(Base):
     )
 
 
+class FindingFeedbackRecord(Base):
+    """One immutable owner feedback event for a persisted requirement finding."""
+
+    __tablename__ = "finding_feedback"
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("projects.id"),
+        nullable=False,
+    )
+    requirement_analysis_run_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("requirement_analysis_runs.id"),
+        nullable=False,
+    )
+    requirement_finding_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("requirement_findings.id"),
+        nullable=False,
+    )
+    citation_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    annotation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewer_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    reviewer_authentication_source: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
 class DocumentIntakeState(StrEnum):
     """Persisted outcome of bounded raw-document admission."""
 

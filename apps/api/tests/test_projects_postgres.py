@@ -15,10 +15,19 @@ from ai_qa_copilot_api.analysis_runs import (
     AnalysisRunService,
     SqlAlchemyAnalysisRunRepository,
 )
-from ai_qa_copilot_api.auth import AppEnvironment, AuthSettings
+from ai_qa_copilot_api.auth import (
+    AppEnvironment,
+    AuthSettings,
+    LocalDevelopmentOwnerPrincipal,
+)
 from ai_qa_copilot_api.citations import (
     CitationValidationError,
     SqlAlchemyCitationRepository,
+)
+from ai_qa_copilot_api.finding_feedback import (
+    FindingFeedbackAction,
+    FindingFeedbackService,
+    SqlAlchemyFindingFeedbackRepository,
 )
 from ai_qa_copilot_api.lexical_retrieval import (
     LexicalRetrievalFilters,
@@ -94,7 +103,8 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE requirement_findings, requirement_analysis_runs, "
+                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, "
@@ -170,7 +180,8 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE requirement_findings, requirement_analysis_runs, "
+                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, "
@@ -213,7 +224,8 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE requirement_findings, requirement_analysis_runs, "
+                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, "
@@ -477,7 +489,8 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE requirement_findings, requirement_analysis_runs, "
+                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, "
@@ -520,7 +533,8 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE requirement_findings, requirement_analysis_runs, "
+                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, "
@@ -808,6 +822,38 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         assert reloaded.analyzer_version == "requirement-quality-rules/v1"
         assert reloaded.citation_ids == (citation.id,)
         assert reloaded.findings == run.findings
+        feedback_service = FindingFeedbackService(
+            requirement_analysis_repository=reloaded_repository,
+            repository=SqlAlchemyFindingFeedbackRepository.from_database_url(
+                database_url
+            ),
+        )
+        feedback = feedback_service.record(
+            project_id=project_id,
+            requirement_analysis_run_id=run.id,
+            requirement_finding_id=run.findings[0].id,
+            action=FindingFeedbackAction.ANNOTATE,
+            annotation="Retain this finding for the review meeting.",
+            reviewer=LocalDevelopmentOwnerPrincipal(),
+        )
+
+        reloaded_feedback = SqlAlchemyFindingFeedbackRepository.from_database_url(
+            database_url
+        ).list_for_finding(
+            project_id=project_id,
+            requirement_analysis_run_id=run.id,
+            requirement_finding_id=run.findings[0].id,
+        )
+
+        assert reloaded_feedback == (feedback,)
+        assert feedback.project_id == project_id
+        assert feedback.requirement_analysis_run_id == run.id
+        assert feedback.requirement_finding_id == run.findings[0].id
+        assert feedback.citation_ids == (citation.id,)
+        assert feedback.action is FindingFeedbackAction.ANNOTATE
+        assert feedback.annotation == "Retain this finding for the review meeting."
+        assert feedback.reviewer_id == "local-development-owner"
+        assert feedback.reviewer_authentication_source == "local_bypass"
         assert all(
             evidence.citation_id == citation.id
             for finding in reloaded.findings
@@ -825,7 +871,8 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE requirement_findings, requirement_analysis_runs, "
+                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
                     "embedding_cache_entries, document_chunks, document_sections, "

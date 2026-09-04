@@ -37,6 +37,7 @@ from ai_qa_copilot_api.citations import (
 )
 from ai_qa_copilot_api.authorization import (
     AuthorizationDenied,
+    AuthorizedProjectScope,
     ProjectAction,
     ProjectAuthorizationBoundary,
     ProjectAuthorizationPolicy,
@@ -52,6 +53,16 @@ from ai_qa_copilot_api.demo import (
     UnavailableDemoPublicationRepository,
 )
 from ai_qa_copilot_api.documents import DocumentIntakeState
+from ai_qa_copilot_api.finding_feedback import (
+    FindingFeedback,
+    FindingFeedbackAction,
+    FindingFeedbackNotFound,
+    FindingFeedbackRepository,
+    FindingFeedbackService,
+    FindingFeedbackUnavailable,
+    FindingFeedbackValidationError,
+    finding_feedback_repository_from_environment,
+)
 from ai_qa_copilot_api.ingestion import (
     DOCUMENT_INTAKE_UNAVAILABLE_DETAIL,
     DocumentIntake,
@@ -253,6 +264,39 @@ class RequirementAnalysisRunResponse(BaseModel):
         return value.astimezone(timezone.utc)
 
 
+class FindingFeedbackCreateRequest(BaseModel):
+    """One owner-supplied feedback action; provenance is server-derived."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    action: FindingFeedbackAction
+    annotation: Annotated[str | None, Field(max_length=4_000)] = None
+
+
+class FindingFeedbackResponse(BaseModel):
+    """Immutable feedback projection with reviewer and source/run provenance."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    requirement_analysis_run_id: UUID
+    requirement_finding_id: UUID
+    citation_ids: list[UUID]
+    action: FindingFeedbackAction
+    annotation: str | None
+    reviewer_id: str
+    reviewer_authentication_source: str
+    created_at: datetime
+
+    @field_validator("created_at")
+    @classmethod
+    def created_at_must_be_utc(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -267,6 +311,7 @@ def create_app(
     parser_job_queue: ParserJobQueue | None = None,
     document_intake_policy: UploadPolicy = UploadPolicy(),
     requirement_analysis_repository: RequirementAnalysisRepository | None = None,
+    finding_feedback_repository: FindingFeedbackRepository | None = None,
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
     | None = None,
@@ -298,6 +343,11 @@ def create_app(
             requirement_analysis_repository
             if requirement_analysis_repository is not None
             else requirement_analysis_repository_from_environment()
+        )
+        application.state.finding_feedback_repository = (
+            finding_feedback_repository
+            if finding_feedback_repository is not None
+            else finding_feedback_repository_from_environment()
         )
         application.state.demo_publication_service = DemoPublicationService(
             selected_demo_settings,
@@ -697,6 +747,91 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _requirement_analysis_run_response(run)
 
+    @application.post(
+        "/projects/{project_id}/requirement-analysis-runs/{run_id}/findings/"
+        "{finding_id}/feedback",
+        status_code=status.HTTP_201_CREATED,
+        response_model=FindingFeedbackResponse,
+    )
+    def create_finding_feedback(
+        project_id: UUID,
+        run_id: UUID,
+        finding_id: UUID,
+        payload: FindingFeedbackCreateRequest,
+        request: Request,
+        response: Response,
+    ) -> FindingFeedbackResponse:
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        scope = _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            feedback = _finding_feedback_service(request).record(
+                project_id=project_id,
+                requirement_analysis_run_id=run_id,
+                requirement_finding_id=finding_id,
+                action=payload.action,
+                annotation=payload.annotation,
+                reviewer=scope.principal,
+            )
+        except FindingFeedbackNotFound:
+            _raise_finding_feedback_not_found(correlation_id)
+        except FindingFeedbackValidationError as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(error),
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+        except FindingFeedbackUnavailable:
+            _raise_finding_feedback_unavailable(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _finding_feedback_response(feedback)
+
+    @application.get(
+        "/projects/{project_id}/requirement-analysis-runs/{run_id}/findings/"
+        "{finding_id}/feedback",
+        response_model=list[FindingFeedbackResponse],
+    )
+    def list_finding_feedback(
+        project_id: UUID,
+        run_id: UUID,
+        finding_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> list[FindingFeedbackResponse]:
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            feedback = _finding_feedback_service(request).list_for_finding(
+                project_id=project_id,
+                requirement_analysis_run_id=run_id,
+                requirement_finding_id=finding_id,
+            )
+        except FindingFeedbackNotFound:
+            _raise_finding_feedback_not_found(correlation_id)
+        except FindingFeedbackUnavailable:
+            _raise_finding_feedback_unavailable(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return [_finding_feedback_response(item) for item in feedback]
+
     return application
 
 
@@ -758,6 +893,26 @@ def _requirement_analysis_service(request: Request) -> RequirementAnalysisServic
     )
 
 
+def _finding_feedback_service(request: Request) -> FindingFeedbackService:
+    requirement_analysis_repository = getattr(
+        request.app.state,
+        "requirement_analysis_repository",
+        None,
+    )
+    finding_feedback_repository = getattr(
+        request.app.state,
+        "finding_feedback_repository",
+        None,
+    )
+    if requirement_analysis_repository is None or finding_feedback_repository is None:
+        raise RuntimeError("Finding-feedback boundary was not initialized")
+
+    return FindingFeedbackService(
+        requirement_analysis_repository=requirement_analysis_repository,
+        repository=finding_feedback_repository,
+    )
+
+
 def _require_project(
     repository: ProjectRepository,
     project_id: UUID,
@@ -803,9 +958,9 @@ def _authorize_project_resource(
     action: ProjectAction,
     project_id: UUID,
     correlation_id: UUID,
-) -> None:
+) -> AuthorizedProjectScope:
     try:
-        boundary.authorize_request(
+        return boundary.authorize_request(
             request=request,
             action=action,
             requested_project_id=project_id,
@@ -942,6 +1097,23 @@ def _requirement_analysis_run_response(
     )
 
 
+def _finding_feedback_response(
+    feedback: FindingFeedback,
+) -> FindingFeedbackResponse:
+    return FindingFeedbackResponse(
+        id=feedback.id,
+        project_id=feedback.project_id,
+        requirement_analysis_run_id=feedback.requirement_analysis_run_id,
+        requirement_finding_id=feedback.requirement_finding_id,
+        citation_ids=list(feedback.citation_ids),
+        action=feedback.action,
+        annotation=feedback.annotation,
+        reviewer_id=feedback.reviewer_id,
+        reviewer_authentication_source=feedback.reviewer_authentication_source,
+        created_at=feedback.created_at,
+    )
+
+
 def _raise_requirement_analysis_unavailable(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -954,6 +1126,22 @@ def _raise_requirement_analysis_run_not_found(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Requirement analysis run not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_finding_feedback_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Finding feedback service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_finding_feedback_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Finding not found",
         headers={"X-Correlation-ID": str(correlation_id)},
     )
 

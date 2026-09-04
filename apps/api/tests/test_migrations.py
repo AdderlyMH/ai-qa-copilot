@@ -10,9 +10,10 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0010_requirement_analysis"
-CITATION_REVISION = "0009_create_citations"
+EXPECTED_REVISION = "0011_finding_feedback"
+FINDING_FEEDBACK_REVISION = "0011_finding_feedback"
 REQUIREMENT_ANALYSIS_REVISION = "0010_requirement_analysis"
+CITATION_REVISION = "0009_create_citations"
 RETRIEVAL_TRACE_REVISION = "0008_retrieval_traces"
 INDEXING_REVISION = "0007_chunk_embedding_cache"
 PARSER_JOB_REVISION = "0006_create_parser_jobs"
@@ -51,39 +52,57 @@ def test_database_url_is_read_from_environment_only() -> None:
         database_url_from_environment({})
 
 
-def test_alembic_has_reversible_project_head_after_citation_baseline() -> None:
+def test_alembic_has_reversible_project_head_after_finding_feedback_baseline() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
     assert config.get_main_option("sqlalchemy.url") is None
     assert script.get_heads() == [EXPECTED_REVISION]
+
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == CITATION_REVISION
+    assert revision.down_revision == REQUIREMENT_ANALYSIS_REVISION
+
+    requirement_analysis_revision = script.get_revision(REQUIREMENT_ANALYSIS_REVISION)
+    assert requirement_analysis_revision is not None
+    assert requirement_analysis_revision.down_revision == CITATION_REVISION
+
+    citation_revision = script.get_revision(CITATION_REVISION)
+    assert citation_revision is not None
+    assert citation_revision.down_revision == RETRIEVAL_TRACE_REVISION
+
     retrieval_trace_revision = script.get_revision(RETRIEVAL_TRACE_REVISION)
     assert retrieval_trace_revision is not None
     assert retrieval_trace_revision.down_revision == INDEXING_REVISION
+
     indexing_revision = script.get_revision(INDEXING_REVISION)
     assert indexing_revision is not None
     assert indexing_revision.down_revision == PARSER_JOB_REVISION
+
     parser_job_revision = script.get_revision(PARSER_JOB_REVISION)
     assert parser_job_revision is not None
     assert parser_job_revision.down_revision == DOCUMENT_INTAKE_REVISION
+
     intake_revision = script.get_revision(DOCUMENT_INTAKE_REVISION)
     assert intake_revision is not None
     assert intake_revision.down_revision == DOCUMENT_PROVENANCE_REVISION
+
     document_revision = script.get_revision(DOCUMENT_PROVENANCE_REVISION)
     assert document_revision is not None
     assert document_revision.down_revision == ANALYSIS_RUN_REVISION
+
     analysis_run_revision = script.get_revision(ANALYSIS_RUN_REVISION)
     assert analysis_run_revision is not None
     assert analysis_run_revision.down_revision == PROJECT_REVISION
+
     project_revision = script.get_revision(PROJECT_REVISION)
     assert project_revision is not None
     assert project_revision.down_revision == INITIAL_REVISION
+
     baseline = script.get_revision(INITIAL_REVISION)
     assert baseline is not None
     assert baseline.down_revision is None
+
     assert all(
         revision.revision is not None and len(revision.revision) <= 32
         for revision in script.walk_revisions()
@@ -394,4 +413,34 @@ def test_requirement_analysis_migration_creates_reversible_state(
             "ix_requirement_analysis_runs_project_created_at",
         ),
         ("drop_table", "requirement_analysis_runs"),
+    ]
+
+
+def test_finding_feedback_migration_creates_reversible_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(FINDING_FEEDBACK_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    for name in ("create_table", "create_index", "drop_index", "drop_table"):
+        monkeypatch.setattr(
+            module.op,
+            name,
+            lambda *args, _name=name, **kwargs: calls.append((_name, args)),
+        )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "finding_feedback"),
+        (
+            "create_index",
+            "ix_finding_feedback_project_run_finding_created_at",
+        ),
+        (
+            "drop_index",
+            "ix_finding_feedback_project_run_finding_created_at",
+        ),
+        ("drop_table", "finding_feedback"),
     ]
