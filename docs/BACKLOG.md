@@ -521,6 +521,7 @@ security release gate has executed or passed.
 - **Dependencies:** TST-001, RAG-004, ANA-004
 - **Deliverable:** Positive, negative, boundary, authorization, contract, and state tests.
 - **Acceptance:** Tests have evidence links and pass deterministic eligibility validation.
+- **Status:** Accepted on `main` through PR #75; TST-003 is the next gated implementation item.
 
 #### TST-003 — Implement duplicate detection and normalization
 

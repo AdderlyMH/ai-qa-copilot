@@ -1,11 +1,33 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-04<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 verified on `main`<br>
-**Current phase:** Phase 3 — TST-001 accepted; TST-002 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `7b2d682eaea44a95ad653d02cd033e2be02f7b2e`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-002 verified on `main`<br>
+**Current phase:** Phase 3 — TST-002 accepted; TST-003 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `1b2d10281ed4c7d5518766c39d17bf554d10d4d5`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+TST-002 has passed final acceptance on merged `main`
+`1b2d10281ed4c7d5518766c39d17bf554d10d4d5`. PR #75 merged the reviewed
+head `0667d16a4864959598e7e56d6d0cc1c40a670cfb`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice creates deterministic, data-only generated-test proposals
+from cited requirement findings. It supports positive, negative, boundary,
+authorization, contract, and state test kinds; retains the source finding and
+citation evidence links; validates that every citation resolves within the
+project; and fails closed for unsupported, missing, foreign-project, or
+unavailable evidence. Stable ordering, UUIDv5 identities, generated-test
+schema revalidation, and duplicate output rejection keep proposals
+deterministic and non-executing.
+
+Focused TST-002 tests passed 15 cases. Full local `ci` passed with 279 tests
+and three intentional PostgreSQL skips; `mypy` passed across 77 source files.
+GitHub `application-ci` run #124 and `docs-validation` run #207 passed for the
+reviewed PR head.
+
+No semantic duplicate grouping, traceability matrices, execution, evaluation,
+or deployment is accepted. TST-003 is next and is no longer blocked by TST-002.
 
 TST-001 has passed final acceptance on merged `main`
 `7b2d682eaea44a95ad653d02cd033e2be02f7b2e`. PR #73 merged the reviewed
