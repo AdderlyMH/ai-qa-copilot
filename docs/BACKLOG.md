@@ -483,6 +483,7 @@ security release gate has executed or passed.
 - **Dependencies:** ANA-001, RAG-004
 - **Deliverable:** Ambiguity, contradiction, missing-criteria, and risk analysis.
 - **Acceptance:** Output is typed, cited, persisted, and reviewable.
+- **Status:** Accepted on `main` through PR #67; ANA-004 is the next gated implementation item.
 
 #### ANA-004 — Implement requirement/OpenAPI consistency workflow
 
