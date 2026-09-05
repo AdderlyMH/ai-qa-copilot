@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 55558,
-      "sha256": "f6e26fe9a5842c003beb9347a5d2a4fa3f88077a651ff2ee80e607ffa0a795a0"
+      "bytes": 55654,
+      "sha256": "bc976bd663640482f6639290ef8420752fb3b1e28158fb02e2a86acb18f0acbb"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 57539,
-      "sha256": "8719f3b7c7191624e20641268a845c856ad0ae98312c7782b5642b04441b5175"
+      "bytes": 58828,
+      "sha256": "cfcca8acb91cd20fea8b3f5374d2e8023c4eb82b4313846b7e3e744db61e2f69"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
