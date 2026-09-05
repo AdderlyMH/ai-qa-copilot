@@ -1,11 +1,34 @@
 # Project Status — AI Quality Engineering Copilot
 
-**Status date:** 2026-09-04<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-002 verified on `main`<br>
-**Current phase:** Phase 3 — TST-002 accepted; TST-003 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `1b2d10281ed4c7d5518766c39d17bf554d10d4d5`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Status date:** 2026-09-05<br>
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-003 verified on `main`<br>
+**Current phase:** Phase 3 — TST-003 accepted; TST-004 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `a5c9605a95463884e9d3243b56c0029db243ea65`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+TST-003 has passed final acceptance on merged `main`
+`a5c9605a95463884e9d3243b56c0029db243ea65`. PR #77 merged the reviewed
+head `92e6e59b4562c98e4bf6b8b1a51ad3d249fc4487`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice provides deterministic, comparison-only normalization and
+non-destructive duplicate candidate grouping for generated test proposals. It
+derives stable semantic keys, SHA-256 fingerprints, and UUIDv5 group
+identifiers; compares observable test behavior while excluding labels and
+provenance; and preserves every original test-case ID in a candidate group.
+Equivalent ordering of query parameters, headers, JSON objects, and assertions
+is normalized, while material differences in kind, request, assertion, or body
+remain separate. No proposal is deleted, edited, persisted, or executed.
+
+Focused TST-003 tests passed 10 cases. Full local `ci` passed with 289 tests
+and three intentional PostgreSQL skips; `mypy` passed across 79 source files.
+GitHub `application-ci` run #128 and `docs-validation` run #210 passed for the
+reviewed PR head.
+
+No traceability matrices, test editing or revision history, execution,
+evaluation, or deployment is accepted. TST-004 is next and is no longer
+blocked by TST-003.
 
 TST-002 has passed final acceptance on merged `main`
 `1b2d10281ed4c7d5518766c39d17bf554d10d4d5`. PR #75 merged the reviewed

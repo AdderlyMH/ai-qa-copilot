@@ -530,6 +530,7 @@ security release gate has executed or passed.
 - **Dependencies:** TST-002
 - **Deliverable:** Deterministic normalization plus semantic duplicate candidate grouping.
 - **Acceptance:** Duplicate fixtures are grouped without deleting user choices.
+- **Status:** Accepted on `main` through PR #77; TST-004 is the next gated implementation item.
 
 #### TST-004 — Implement traceability matrices
 
