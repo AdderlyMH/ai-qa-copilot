@@ -35,6 +35,22 @@ from ai_qa_copilot_api.citations import (
     UnavailableCitationRepository,
     citation_repository_from_environment,
 )
+from ai_qa_copilot_api.execution_plans import (
+    DEFAULT_EXECUTION_LIMITS,
+    MAX_PLAN_ASSERTIONS,
+    MAX_REQUEST_BODY_BYTES,
+    MAX_REQUEST_TIMEOUT_MS,
+    MAX_RESPONSE_BYTES,
+    ExecutionLimitsV1,
+    ExecutionPlanRejected,
+    ExecutionPlanReviewV1,
+    build_execution_plan,
+    review_execution_plan,
+)
+from ai_qa_copilot_api.generated_tests import (
+    GeneratedTestCaseValidationError,
+    validate_generated_test_case,
+)
 from ai_qa_copilot_api.authorization import (
     AuthorizationDenied,
     AuthorizedProjectScope,
@@ -295,6 +311,91 @@ class FindingFeedbackResponse(BaseModel):
         if value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
+
+
+class ExecutionPlanLimitsRequest(BaseModel):
+    """Client-selected bounded limits for a non-executable plan preview."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    request_timeout_ms: Annotated[
+        int,
+        Field(ge=1, le=MAX_REQUEST_TIMEOUT_MS),
+    ] = DEFAULT_EXECUTION_LIMITS.request_timeout_ms
+    max_request_body_bytes: Annotated[
+        int,
+        Field(ge=1, le=MAX_REQUEST_BODY_BYTES),
+    ] = DEFAULT_EXECUTION_LIMITS.max_request_body_bytes
+    max_response_bytes: Annotated[
+        int,
+        Field(ge=1, le=MAX_RESPONSE_BYTES),
+    ] = DEFAULT_EXECUTION_LIMITS.max_response_bytes
+    max_assertions: Annotated[
+        int,
+        Field(ge=1, le=MAX_PLAN_ASSERTIONS),
+    ] = DEFAULT_EXECUTION_LIMITS.max_assertions
+
+    def as_limits(self) -> ExecutionLimitsV1:
+        """Convert the strict request projection into core plan limits."""
+
+        return ExecutionLimitsV1(
+            request_timeout_ms=self.request_timeout_ms,
+            max_request_body_bytes=self.max_request_body_bytes,
+            max_response_bytes=self.max_response_bytes,
+            max_assertions=self.max_assertions,
+        )
+
+
+class ExecutionPlanReviewRequest(BaseModel):
+    """One non-persistent generated-test plan preview request."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    generated_test_case: dict[str, object]
+    target_id: Annotated[str, Field(min_length=1, max_length=128)]
+    limits: ExecutionPlanLimitsRequest = Field(
+        default_factory=ExecutionPlanLimitsRequest
+    )
+
+
+class ExecutionPlanLimitsResponse(BaseModel):
+    """Read-only execution limits returned with a canonical plan."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    request_timeout_ms: int
+    max_request_body_bytes: int
+    max_response_bytes: int
+    max_assertions: int
+
+
+class ExecutionPlanEstimateResponse(BaseModel):
+    """Read-only deterministic execution estimate."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    request_count: int
+    request_body_bytes: int
+    assertion_count: int
+    maximum_response_bytes: int
+    maximum_duration_ms: int
+
+
+class ExecutionPlanReviewResponse(BaseModel):
+    """Read-only projection of a validated, immutable execution plan."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    plan_id: UUID
+    plan_hash: str
+    target_id: str
+    target_base_url: str
+    test_case_id: UUID
+    method: str
+    path: str
+    citation_ids: list[UUID]
+    limits: ExecutionPlanLimitsResponse
+    estimate: ExecutionPlanEstimateResponse
 
 
 def create_app(
@@ -832,6 +933,67 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return [_finding_feedback_response(item) for item in feedback]
 
+    @application.post(
+        "/projects/{project_id}/execution-plan-reviews",
+        response_model=ExecutionPlanReviewResponse,
+    )
+    def create_execution_plan_review(
+        project_id: UUID,
+        payload: ExecutionPlanReviewRequest,
+        request: Request,
+        response: Response,
+    ) -> ExecutionPlanReviewResponse:
+        """Build a project-authorized plan preview without persistence or I/O."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            test_case = validate_generated_test_case(payload.generated_test_case)
+        except GeneratedTestCaseValidationError as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(error),
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+
+        citation_repository = _citation_repository(request)
+        try:
+            for citation_id in test_case.citation_ids:
+                citation = citation_repository.get_for_project(
+                    project_id=project_id,
+                    citation_id=citation_id,
+                )
+                if citation is None:
+                    _raise_citation_not_found(correlation_id)
+        except CitationUnavailable:
+            _raise_citations_unavailable(correlation_id)
+
+        try:
+            plan = build_execution_plan(
+                generated_test_case=test_case,
+                target_id=payload.target_id,
+                limits=payload.limits.as_limits(),
+            )
+            review = review_execution_plan(plan)
+        except ExecutionPlanRejected as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(error),
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _execution_plan_review_response(review)
+
     return application
 
 
@@ -1094,6 +1256,34 @@ def _requirement_analysis_run_response(
             for finding in run.findings
         ],
         created_at=run.created_at,
+    )
+
+
+def _execution_plan_review_response(
+    review: ExecutionPlanReviewV1,
+) -> ExecutionPlanReviewResponse:
+    return ExecutionPlanReviewResponse(
+        plan_id=review.plan_id,
+        plan_hash=review.plan_hash,
+        target_id=review.target_id.value,
+        target_base_url=review.target_base_url,
+        test_case_id=review.test_case_id,
+        method=review.method,
+        path=review.path,
+        citation_ids=list(review.citation_ids),
+        limits=ExecutionPlanLimitsResponse(
+            request_timeout_ms=review.limits.request_timeout_ms,
+            max_request_body_bytes=review.limits.max_request_body_bytes,
+            max_response_bytes=review.limits.max_response_bytes,
+            max_assertions=review.limits.max_assertions,
+        ),
+        estimate=ExecutionPlanEstimateResponse(
+            request_count=review.estimate.request_count,
+            request_body_bytes=review.estimate.request_body_bytes,
+            assertion_count=review.estimate.assertion_count,
+            maximum_response_bytes=review.estimate.maximum_response_bytes,
+            maximum_duration_ms=review.estimate.maximum_duration_ms,
+        ),
     )
 
 
