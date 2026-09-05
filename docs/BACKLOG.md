@@ -548,6 +548,7 @@ security release gate has executed or passed.
 - **Dependencies:** TST-002
 - **Deliverable:** User edits create immutable test revisions.
 - **Acceptance:** Original generated output and user changes remain attributable.
+- **Status:** Accepted on `main` through PR #81; EXEC-000 is the next gated implementation item.
 
 **Phase 3 exit:** The system produces reviewed findings, executable typed test proposals, and correct traceability.
 
