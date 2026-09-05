@@ -1,11 +1,38 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-05<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, and EXEC-000 verified on `main`<br>
-**Current phase:** Phase 4 — EXEC-000 accepted; EXEC-001 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `9faeb7f19472314f48f8ced12b66566638a34a26`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, EXEC-000, and EXEC-001 verified on `main`<br>
+**Current phase:** Phase 4 — EXEC-001 accepted; EXEC-002 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `b44e34f55d5c96fd46813e36969d0b28c53ec8f9`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, real outbound execution, and deployment remain unverified
 
 ## Current status
+
+EXEC-001 has passed final acceptance on merged `main`
+`b44e34f55d5c96fd46813e36969d0b28c53ec8f9`. PR #85 merged the reviewed
+head `1bf4a0e32551c8493cca859d25c3d3ddb8500189`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice provides a standalone, deterministic, local/deployable
+synthetic Order ASGI service with a seeded catalog and process-local order
+state. Its normal contract covers health, order creation, listing, retrieval,
+updates, and idempotent cancellation, with generated OpenAPI and consistent
+camel-case success and error responses. The only intentional deviations are
+two explicit opt-in controlled runtime-defect fixtures: a synthetic `503`
+failure and a response missing its `version` field.
+
+Each application factory starts from known seeded state. No target registry,
+outbound HTTP or DNS client, approval state, execution plan, persistence,
+database migration, generated-test execution integration, or real execution
+capability was introduced.
+
+Focused EXEC-001 tests passed 17 cases. Full local `ci` passed with 353 tests
+and three intentional PostgreSQL skips; `mypy` passed across 87 source files.
+GitHub `application-ci` run #145 and `docs-validation` run #223 passed for the
+reviewed PR head.
+
+No target registry, URL/network policy, immutable execution plan, approval
+state, restricted execution worker, evaluation, or deployment is accepted.
+EXEC-002 is next and is no longer blocked by EXEC-001.
 
 EXEC-000 has passed final acceptance on merged `main`
 `9faeb7f19472314f48f8ced12b66566638a34a26`. PR #83 merged the reviewed

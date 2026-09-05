@@ -572,6 +572,7 @@ security release gate has executed or passed.
 - **Dependencies:** ING-004, EXEC-000
 - **Deliverable:** Local and deployable mock service with seeded behaviors.
 - **Acceptance:** Service matches intended contract except controlled runtime defect fixtures; contract tests pass.
+- **Status:** Accepted on `main` through PR #85; EXEC-002 is the next gated implementation item.
 
 #### EXEC-002 — Implement target registry and URL/network policy
 
