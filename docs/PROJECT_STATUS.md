@@ -1,11 +1,37 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-05<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, EXEC-000, and EXEC-001 verified on `main`<br>
-**Current phase:** Phase 4 — EXEC-001 accepted; EXEC-002 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `b44e34f55d5c96fd46813e36969d0b28c53ec8f9`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, real outbound execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, and EXEC-000 through EXEC-002 verified on `main`<br>
+**Current phase:** Phase 4 — EXEC-002 accepted; EXEC-003 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `066c0171d4b3eb7ff6101e631a0ca8b7f66ae916`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, real outbound execution, and deployment remain unverified
 
 ## Current status
+
+EXEC-002 has passed final acceptance on merged `main`
+`066c0171d4b3eb7ff6101e631a0ca8b7f66ae916`. PR #87 merged the reviewed
+head `c7c1972b8df95d46ffc5b2b3b30b0c022c9a25c6`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice provides a closed, server-side registry of fixed target IDs
+and a default-deny URL/network policy for future execution. It requires HTTPS
+on port 443 with redirects disabled; rejects userinfo, paths, queries,
+fragments, metadata hosts, literal IPv4/IPv6 addresses, and alternate IP
+notation; and does not accept a caller-supplied target URL.
+
+Validation uses an injected resolver contract only. It rejects empty, invalid,
+private, loopback, metadata, reserved, or changed resolution answers, and
+requires two equivalent public answer sets to prevent DNS rebinding. No DNS
+implementation, outbound transport, API route, persistence, execution plan, or
+approval state was introduced.
+
+Focused EXEC-002 tests passed 29 cases. Full local `ci` passed with 382 tests
+and three intentional PostgreSQL skips; `mypy` passed across 89 source files.
+GitHub `application-ci` run #149 and `docs-validation` run #226 passed for the
+reviewed PR head.
+
+No immutable execution plan, approval state, restricted execution worker,
+outbound HTTP client, evaluation, or deployment is accepted. EXEC-003 is next
+and is no longer blocked by EXEC-002.
 
 EXEC-001 has passed final acceptance on merged `main`
 `b44e34f55d5c96fd46813e36969d0b28c53ec8f9`. PR #85 merged the reviewed

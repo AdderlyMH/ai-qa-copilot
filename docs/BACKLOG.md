@@ -581,6 +581,7 @@ security release gate has executed or passed.
 - **Dependencies:** TST-001, EXEC-000
 - **Deliverable:** Server-side target IDs, scheme/host/port/IP validation, redirects disabled.
 - **Acceptance:** SSRF matrix covers IPv4, IPv6, metadata, private, loopback, alternate notation, and rebinding simulation.
+- **Status:** Accepted on `main` through PR #87; EXEC-003 is the next gated implementation item.
 
 #### EXEC-003 — Implement immutable execution plans
 
