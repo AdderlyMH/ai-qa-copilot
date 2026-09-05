@@ -590,6 +590,7 @@ security release gate has executed or passed.
 - **Dependencies:** TST-002, EXEC-002
 - **Deliverable:** Canonical plan, SHA-256 hash, limits, estimate, and UI review.
 - **Acceptance:** Any material mutation changes the hash and invalidates approval.
+- **Status:** Accepted on `main` through PR #89; EXEC-004 is the next gated implementation item.
 
 #### EXEC-004 — Implement one-time approval state
 

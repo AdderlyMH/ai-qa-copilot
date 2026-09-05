@@ -1,11 +1,38 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-05<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, and EXEC-000 through EXEC-002 verified on `main`<br>
-**Current phase:** Phase 4 — EXEC-002 accepted; EXEC-003 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `066c0171d4b3eb7ff6101e631a0ca8b7f66ae916`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, real outbound execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, and EXEC-000 through EXEC-003 verified on `main`<br>
+**Current phase:** Phase 4 — EXEC-003 accepted; EXEC-004 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `e2fbe02124d86b9ae622b7e255d8c1e033861636`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, real outbound execution, and deployment remain unverified
 
 ## Current status
+
+EXEC-003 has passed final acceptance on merged `main`
+`e2fbe02124d86b9ae622b7e255d8c1e033861636`. PR #89 merged the reviewed
+head `3124b8673404ef2f33eb68ca487608089617f230`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice provides deterministic, immutable execution-plan review for
+validated generated-test proposals. Each canonical plan binds a server-selected
+registered target, the generated-test snapshot, scoped citations, bounded
+limits, and a deterministic estimate to a SHA-256 hash and stable UUIDv5
+identity. A material change to that bound data changes the identity or is
+rejected.
+
+The project-owner review endpoint revalidates project-scoped citations and
+returns only read-only plan information. The UI can preview the resulting hash,
+request, citations, limits, and estimate. No plan is saved or approved.
+
+No approval state, DNS implementation, outbound HTTP client, worker, queue,
+persistence, target execution, evaluation, or deployment was introduced.
+Focused execution-plan and API tests passed 26 cases. Full local `ci` passed
+with 408 tests and three intentional PostgreSQL skips; `mypy` passed across 92
+source files. GitHub `application-ci` run #153 and `docs-validation` run #229
+passed for the reviewed PR head.
+
+No one-time approval, restricted execution worker, outbound transport,
+execution evidence, evaluation, or deployment is accepted. EXEC-004 is next
+and is no longer blocked by EXEC-003.
 
 EXEC-002 has passed final acceptance on merged `main`
 `066c0171d4b3eb7ff6101e631a0ca8b7f66ae916`. PR #87 merged the reviewed
@@ -1080,6 +1107,7 @@ release milestone.
 
 ## Next action
 
-Select RAG-003 from accepted `main`. Preserve the required pull-request checks
-and do not treat the SEC-001 fixture harness as evidence for unimplemented
-live ingestion, execution, or deployment paths.
+Select EXEC-004 from accepted `main`. Preserve the required pull-request checks
+and keep approval state actor-bound, expiring, one-time, and bound to the
+immutable EXEC-003 plan hash. Do not introduce an execution worker, outbound
+HTTP transport, or approval bypass in this item.
