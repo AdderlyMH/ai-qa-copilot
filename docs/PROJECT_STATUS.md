@@ -1,11 +1,33 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-05<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-004 verified on `main`<br>
-**Current phase:** Phase 3 — TST-004 accepted; TST-005 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `1cdf80fcf2f8aa047ffd608dedc41e20c550d796`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-005 verified on `main`<br>
+**Current phase:** Phase 4 — TST-005 accepted; EXEC-000 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `a350c3e0fdc84072f9aab7851faa2c4609fe9ec0`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+TST-005 has passed final acceptance on merged `main`
+`a350c3e0fdc84072f9aab7851faa2c4609fe9ec0`. PR #81 merged the reviewed
+head `4ec13e5f3d2c200e1154587df229d321470e65bc`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice provides deterministic, data-only immutable revision history
+for generated test proposals. It retains canonical snapshots of the original
+generated output and every subsequent user change, with contiguous revision
+numbers, direct parent links, editor attribution, and timezone-aware timestamps.
+Every snapshot is revalidated against the generated-test schema. Invalid,
+unchanged, foreign-test, duplicate-ID, malformed-history, and invalid-actor
+inputs fail closed; no prior revision is edited or removed.
+
+Focused TST-005 tests passed 11 cases. Full local `ci` passed with 311 tests
+and three intentional PostgreSQL skips; `mypy` passed across 83 source files.
+GitHub `application-ci` run #137 and `docs-validation` run #217 passed for the
+reviewed PR head.
+
+Phase 3 is complete. No controlled execution, evaluation, or deployment is
+accepted. EXEC-000 is next and must establish the default-deny adversarial
+execution-policy suite before any network capability is introduced.
 
 TST-004 has passed final acceptance on merged `main`
 `1cdf80fcf2f8aa047ffd608dedc41e20c550d796`. PR #79 merged the reviewed
