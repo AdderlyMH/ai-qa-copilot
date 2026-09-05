@@ -563,6 +563,7 @@ security release gate has executed or passed.
 - **Dependencies:** FND-008, SEC-001, TST-001
 - **Deliverable:** Versioned SSRF, redirect, DNS-rebinding, malformed URL, forbidden-header, approval-mutation, approval-replay, response-bomb, and metadata-target fixtures using fake resolver and transport adapters.
 - **Acceptance:** Default-deny behavior is verified without a reachable executor. Every deny case proves zero transport sends and records its expected blocking boundary.
+- **Status:** Accepted on `main` through PR #83; EXEC-001 is the next gated implementation item.
 
 #### EXEC-001 — Build synthetic mock order API
 

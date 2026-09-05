@@ -1,11 +1,33 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-05<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-005 verified on `main`<br>
-**Current phase:** Phase 4 — TST-005 accepted; EXEC-000 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `a350c3e0fdc84072f9aab7851faa2c4609fe9ec0`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, and EXEC-000 verified on `main`<br>
+**Current phase:** Phase 4 — EXEC-000 accepted; EXEC-001 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `9faeb7f19472314f48f8ced12b66566638a34a26`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+EXEC-000 has passed final acceptance on merged `main`
+`9faeb7f19472314f48f8ced12b66566638a34a26`. PR #83 merged the reviewed
+head `029605146f2a2e8428dad54c929a78b405fa2859`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice provides a versioned, fake-only, default-deny adversarial
+suite for future HTTP execution policy. Its fixtures cover malformed URLs,
+SSRF literal and alternate IP forms, IPv6 loopback, metadata targets,
+redirects, forbidden headers, approval absence, mutation and replay,
+response-size limits, resolver-private answers, and DNS rebinding. Every
+fixture records its exact blocking boundary and proves zero transport sends;
+the fake transport raises immediately if a send is attempted.
+
+Focused EXEC-000 tests passed 25 cases. Full local `ci` passed with 336 tests
+and three intentional PostgreSQL skips; `mypy` passed across 85 source files.
+GitHub `application-ci` run #141 and `docs-validation` run #220 passed for the
+reviewed PR head.
+
+No reachable executor, HTTP or DNS client, target registry, execution plan,
+approval state, persistence, API/UI execution behavior, evaluation, or
+deployment is accepted. EXEC-001 is next and is no longer blocked by EXEC-000.
 
 TST-005 has passed final acceptance on merged `main`
 `a350c3e0fdc84072f9aab7851faa2c4609fe9ec0`. PR #81 merged the reviewed
