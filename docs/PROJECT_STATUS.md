@@ -1,11 +1,32 @@
 # Project Status — AI Quality Engineering Copilot
 
 **Status date:** 2026-09-05<br>
-**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-003 verified on `main`<br>
-**Current phase:** Phase 3 — TST-003 accepted; TST-004 is the next gated implementation item<br>
-**Health:** Green for accepted `main` at `a5c9605a95463884e9d3243b56c0029db243ea65`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
+**Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, and TST-001 through TST-004 verified on `main`<br>
+**Current phase:** Phase 3 — TST-004 accepted; TST-005 is the next gated implementation item<br>
+**Health:** Green for accepted `main` at `1cdf80fcf2f8aa047ffd608dedc41e20c550d796`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, execution, and deployment remain unverified
 
 ## Current status
+
+TST-004 has passed final acceptance on merged `main`
+`1cdf80fcf2f8aa047ffd608dedc41e20c550d796`. PR #79 merged the reviewed
+head `c7a8b597735590fb7746a5ac56f2bc378739ddbe`; the final gate verified that
+current `main` contains the reviewed implementation unchanged.
+
+The accepted slice provides deterministic, data-only requirement/test and
+OpenAPI-operation/test traceability matrices. Operation links use the existing
+ANA-002 `METHOD /path` identifiers, and every link retains its recorded source
+revision. When a requirement or operation revision changes, or its source is
+removed, only the affected link becomes stale; stale links and original
+test-case IDs remain present without any edit, deletion, persistence, or
+execution.
+
+Focused TST-004 tests passed 11 cases. Full local `ci` passed with 300 tests
+and three intentional PostgreSQL skips; `mypy` passed across 81 source files.
+GitHub `application-ci` run #133 and `docs-validation` run #214 passed for the
+reviewed PR head.
+
+No test editing or revision history, execution, evaluation, or deployment is
+accepted. TST-005 is next and is no longer blocked by TST-004.
 
 TST-003 has passed final acceptance on merged `main`
 `a5c9605a95463884e9d3243b56c0029db243ea65`. PR #77 merged the reviewed

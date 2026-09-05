@@ -539,6 +539,7 @@ security release gate has executed or passed.
 - **Dependencies:** TST-002
 - **Deliverable:** Requirement/test and operation/test matrices with stale-state handling.
 - **Acceptance:** Source revision marks affected links stale.
+- **Status:** Accepted on `main` through PR #79; TST-005 is the next gated implementation item.
 
 #### TST-005 — Add test editing and revision history
 
