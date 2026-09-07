@@ -10,6 +10,11 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from threading import Barrier
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from ai_qa_copilot_api.analysis_runs import (
     AnalysisRunService,
@@ -51,6 +56,21 @@ from ai_qa_copilot_api.requirements_analysis import (
     RequirementAnalysisService,
     SqlAlchemyRequirementAnalysisRepository,
 )
+from ai_qa_copilot_api.execution_approvals import (
+    ExecutionApprovalConflict,
+    ExecutionApprovalService,
+    SqlAlchemyExecutionApprovalRepository,
+)
+from ai_qa_copilot_api.execution_plans import ExecutionPlanV1, build_execution_plan
+from ai_qa_copilot_api.generated_tests import (
+    AssertionOperator,
+    AssertionTarget,
+    GeneratedAssertionV1,
+    GeneratedTestCaseV1,
+    GeneratedTestKind,
+    HttpMethod,
+    RequestTemplateV1,
+)
 
 
 POSTGRES_INTEGRATION_DATABASE_URL = "AI_QA_COPILOT_POSTGRES_INTEGRATION_DATABASE_URL"
@@ -82,6 +102,57 @@ def local_bypass_settings() -> AuthSettings:
     )
 
 
+class ApprovalClock:
+    def __init__(self, current: datetime) -> None:
+        self.current = current
+
+    def __call__(self) -> datetime:
+        return self.current
+
+
+def execution_approval_plan(*, quantity: int) -> ExecutionPlanV1:
+    return build_execution_plan(
+        generated_test_case=GeneratedTestCaseV1(
+            id=UUID("00000000-0000-0000-0000-000000000901"),
+            title="Create a PostgreSQL synthetic order",
+            kind=GeneratedTestKind.POSITIVE,
+            source_finding_id=UUID("00000000-0000-0000-0000-000000000902"),
+            citation_ids=(UUID("00000000-0000-0000-0000-000000000903"),),
+            request=RequestTemplateV1(
+                method=HttpMethod.POST,
+                path="/orders",
+                query=(),
+                headers=(),
+                json_body={"quantity": quantity},
+            ),
+            assertions=(
+                GeneratedAssertionV1(
+                    target=AssertionTarget.STATUS_CODE,
+                    selector=None,
+                    operator=AssertionOperator.EQUALS,
+                    expected_value=201,
+                ),
+            ),
+        ),
+        target_id="synthetic-order-api",
+    )
+
+
+def truncate_postgres_approval_test_data(engine: Engine) -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "TRUNCATE TABLE execution_approvals, finding_feedback, "
+                "requirement_findings, requirement_analysis_runs, citations, "
+                "parser_jobs, document_intakes, retrieval_trace_candidates, "
+                "retrieval_traces, document_chunk_embeddings, "
+                "embedding_cache_entries, document_chunks, document_sections, "
+                "source_locations, document_versions, documents, "
+                "parser_versions, analysis_runs, projects"
+            )
+        )
+
+
 class PostgresFakeModelAdapter:
     def generate(self, request: StructuredModelRequest) -> StructuredModelResponse:
         return StructuredModelResponse(
@@ -103,7 +174,8 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "TRUNCATE TABLE execution_approvals, "
+                    "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
@@ -180,7 +252,8 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "TRUNCATE TABLE execution_approvals, "
+                    "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
@@ -224,7 +297,8 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "TRUNCATE TABLE execution_approvals, "
+                    "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
@@ -489,7 +563,8 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "TRUNCATE TABLE execution_approvals, "
+                    "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
@@ -533,7 +608,8 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "TRUNCATE TABLE execution_approvals, "
+                    "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
@@ -871,7 +947,8 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE finding_feedback, requirement_findings, "
+                    "TRUNCATE TABLE execution_approvals, "
+                    "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
                     "retrieval_traces, document_chunk_embeddings, "
@@ -880,4 +957,164 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
                     "parser_versions, analysis_runs, projects"
                 )
             )
+        engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_execution_approval_expires_and_rejects_replay() -> None:
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    project_id = uuid4()
+    clock = ApprovalClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    repository = SqlAlchemyExecutionApprovalRepository(sessions, clock=clock)
+    service = ExecutionApprovalService(repository)
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO projects "
+                    "(id, name, description, created_at, archived_at) "
+                    "VALUES (:id, 'Approval evidence', NULL, "
+                    "CURRENT_TIMESTAMP, NULL)"
+                ),
+                {"id": project_id},
+            )
+
+        replay_plan = execution_approval_plan(quantity=2)
+        service.approve(
+            project_id=project_id,
+            plan=replay_plan,
+            expected_plan_hash=replay_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+
+        claimed = repository.consume(
+            project_id=project_id,
+            plan_id=replay_plan.id,
+            plan_hash=replay_plan.plan_hash,
+        )
+        replay = repository.consume(
+            project_id=project_id,
+            plan_id=replay_plan.id,
+            plan_hash=replay_plan.plan_hash,
+        )
+
+        assert claimed is not None
+        assert claimed.consumed_at == clock.current
+        assert replay is None
+
+        expiring_plan = execution_approval_plan(quantity=3)
+        expiring = service.approve(
+            project_id=project_id,
+            plan=expiring_plan,
+            expected_plan_hash=expiring_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        clock.current = expiring.expires_at
+
+        assert (
+            repository.consume(
+                project_id=project_id,
+                plan_id=expiring_plan.id,
+                plan_hash=expiring_plan.plan_hash,
+            )
+            is None
+        )
+    finally:
+        truncate_postgres_approval_test_data(engine)
+        engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_execution_approval_concurrency_allows_one_claim_and_one_create() -> (
+    None
+):
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    project_id = uuid4()
+    clock = ApprovalClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    repository = SqlAlchemyExecutionApprovalRepository(sessions, clock=clock)
+    service = ExecutionApprovalService(repository)
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO projects "
+                    "(id, name, description, created_at, archived_at) "
+                    "VALUES (:id, 'Concurrent approval evidence', NULL, "
+                    "CURRENT_TIMESTAMP, NULL)"
+                ),
+                {"id": project_id},
+            )
+
+        claim_plan = execution_approval_plan(quantity=4)
+        service.approve(
+            project_id=project_id,
+            plan=claim_plan,
+            expected_plan_hash=claim_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+
+        claim_gate = Barrier(2)
+
+        def claim() -> bool:
+            claim_gate.wait()
+            return (
+                repository.consume(
+                    project_id=project_id,
+                    plan_id=claim_plan.id,
+                    plan_hash=claim_plan.plan_hash,
+                )
+                is not None
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            claim_results = tuple(
+                future.result()
+                for future in (
+                    executor.submit(claim),
+                    executor.submit(claim),
+                )
+            )
+
+        assert claim_results.count(True) == 1
+
+        duplicate_plan = execution_approval_plan(quantity=5)
+        creation_gate = Barrier(2)
+
+        def create_approval() -> bool:
+            creation_gate.wait()
+            try:
+                service.approve(
+                    project_id=project_id,
+                    plan=duplicate_plan,
+                    expected_plan_hash=duplicate_plan.plan_hash,
+                    approver=LocalDevelopmentOwnerPrincipal(),
+                    comment=None,
+                )
+            except ExecutionApprovalConflict:
+                return False
+            return True
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            creation_results = tuple(
+                future.result()
+                for future in (
+                    executor.submit(create_approval),
+                    executor.submit(create_approval),
+                )
+            )
+
+        assert creation_results.count(True) == 1
+    finally:
+        truncate_postgres_approval_test_data(engine)
         engine.dispose()

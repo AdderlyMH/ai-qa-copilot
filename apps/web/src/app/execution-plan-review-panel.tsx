@@ -26,6 +26,31 @@ type ExecutionPlanReview = {
   };
 };
 
+type ReviewedPlanRequest = {
+  generated_test_case: Record<string, unknown>;
+  target_id: string;
+  limits: {
+    request_timeout_ms: number;
+    max_request_body_bytes: number;
+    max_response_bytes: number;
+    max_assertions: number;
+  };
+  expected_plan_hash: string;
+};
+
+type ExecutionApproval = {
+  id: string;
+  project_id: string;
+  plan_id: string;
+  plan_hash: string;
+  approver_id: string;
+  approver_authentication_source: string;
+  comment: string | null;
+  approved_at: string;
+  expires_at: string;
+  consumed_at: string | null;
+};
+
 async function responseError(response: Response): Promise<string> {
   const body: unknown = await response.json().catch(() => undefined);
   if (
@@ -56,11 +81,24 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
   const [maxRequestBodyBytes, setMaxRequestBodyBytes] = useState("64000");
   const [maxResponseBytes, setMaxResponseBytes] = useState("256000");
   const [maxAssertions, setMaxAssertions] = useState("20");
+  const [approvalComment, setApprovalComment] = useState("");
   const [review, setReview] = useState<ExecutionPlanReview | null>(null);
+  const [reviewedPlanRequest, setReviewedPlanRequest] =
+    useState<ReviewedPlanRequest | null>(null);
+  const [approval, setApproval] = useState<ExecutionApproval | null>(null);
   const [message, setMessage] = useState(
     "Paste a validated generated-test JSON payload to preview its immutable execution plan.",
   );
   const [busy, setBusy] = useState(false);
+
+  function invalidatePreview() {
+    if (reviewedPlanRequest !== null) {
+      setMessage("Plan input changed. Preview the immutable plan again.");
+    }
+    setReview(null);
+    setReviewedPlanRequest(null);
+    setApproval(null);
+  }
 
   async function previewPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,6 +108,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
       payload = parseGeneratedTestCase(generatedTestCase);
     } catch (error) {
       setReview(null);
+      setReviewedPlanRequest(null);
+      setApproval(null);
       setMessage(
         error instanceof Error
           ? error.message
@@ -77,6 +117,13 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
       );
       return;
     }
+
+    const limits = {
+      request_timeout_ms: Number(timeoutMs),
+      max_request_body_bytes: Number(maxRequestBodyBytes),
+      max_response_bytes: Number(maxResponseBytes),
+      max_assertions: Number(maxAssertions),
+    };
 
     setBusy(true);
     try {
@@ -88,12 +135,7 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
           body: JSON.stringify({
             generated_test_case: payload,
             target_id: "synthetic-order-api",
-            limits: {
-              request_timeout_ms: Number(timeoutMs),
-              max_request_body_bytes: Number(maxRequestBodyBytes),
-              max_response_bytes: Number(maxResponseBytes),
-              max_assertions: Number(maxAssertions),
-            },
+            limits,
           }),
         },
       );
@@ -103,15 +145,63 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
 
       const planReview = (await response.json()) as ExecutionPlanReview;
       setReview(planReview);
+      setReviewedPlanRequest({
+        generated_test_case: payload,
+        target_id: "synthetic-order-api",
+        limits,
+        expected_plan_hash: planReview.plan_hash,
+      });
+      setApproval(null);
       setMessage(
-        "Plan preview created. This hash is the value a future approval will bind to.",
+        "Plan preview created. You may approve this exact immutable plan once.",
       );
     } catch (error) {
       setReview(null);
+      setReviewedPlanRequest(null);
+      setApproval(null);
       setMessage(
         error instanceof Error
           ? error.message
           : "Unable to create the plan preview.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approvePlan() {
+    if (reviewedPlanRequest === null || review === null) {
+      setMessage("Preview an immutable plan before creating an approval.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/execution-approvals`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...reviewedPlanRequest,
+            comment: approvalComment || null,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await responseError(response));
+      }
+
+      const createdApproval = (await response.json()) as ExecutionApproval;
+      setApproval(createdApproval);
+      setMessage(
+        "Approval created for the displayed immutable plan. It expires automatically.",
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to create the approval.",
       );
     } finally {
       setBusy(false);
@@ -125,8 +215,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
     >
       <h3 id="execution-plan-review">Execution-plan review</h3>
       <p>
-        This validates and previews a canonical plan only. It does not approve,
-        save, resolve, send, or execute a request.
+        Preview validates a canonical plan. Approval binds one owner decision to
+        its displayed hash; it does not execute a request.
       </p>
 
       <form onSubmit={previewPlan} style={{ display: "grid", gap: "0.75rem" }}>
@@ -135,7 +225,10 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
           <textarea
             required
             value={generatedTestCase}
-            onChange={(event) => setGeneratedTestCase(event.target.value)}
+            onChange={(event) => {
+              setGeneratedTestCase(event.target.value);
+              invalidatePreview();
+            }}
             placeholder='{"schema_version":"generated-test-case/v1", ...}'
             rows={12}
             style={{ display: "block", width: "100%" }}
@@ -160,7 +253,10 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             required
             type="number"
             value={timeoutMs}
-            onChange={(event) => setTimeoutMs(event.target.value)}
+            onChange={(event) => {
+              setTimeoutMs(event.target.value);
+              invalidatePreview();
+            }}
             style={{ display: "block", width: "100%" }}
           />
         </label>
@@ -173,7 +269,10 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             required
             type="number"
             value={maxRequestBodyBytes}
-            onChange={(event) => setMaxRequestBodyBytes(event.target.value)}
+            onChange={(event) => {
+              setMaxRequestBodyBytes(event.target.value);
+              invalidatePreview();
+            }}
             style={{ display: "block", width: "100%" }}
           />
         </label>
@@ -186,7 +285,10 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             required
             type="number"
             value={maxResponseBytes}
-            onChange={(event) => setMaxResponseBytes(event.target.value)}
+            onChange={(event) => {
+              setMaxResponseBytes(event.target.value);
+              invalidatePreview();
+            }}
             style={{ display: "block", width: "100%" }}
           />
         </label>
@@ -199,7 +301,10 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             required
             type="number"
             value={maxAssertions}
-            onChange={(event) => setMaxAssertions(event.target.value)}
+            onChange={(event) => {
+              setMaxAssertions(event.target.value);
+              invalidatePreview();
+            }}
             style={{ display: "block", width: "100%" }}
           />
         </label>
@@ -243,6 +348,43 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             {review.estimate.maximum_duration_ms} ms and{" "}
             {review.estimate.maximum_response_bytes} response bytes
           </p>
+
+          {approval === null ? (
+            <section aria-labelledby="plan-approval">
+              <h4 id="plan-approval">Approve displayed plan</h4>
+              <label>
+                Approval comment (optional)
+                <textarea
+                  value={approvalComment}
+                  onChange={(event) => setApprovalComment(event.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                  style={{ display: "block", width: "100%" }}
+                />
+              </label>
+              <p>
+                Approval expires after 10 minutes and can be consumed only once
+                by a future restricted worker.
+              </p>
+              <button disabled={busy} onClick={approvePlan} type="button">
+                Approve displayed plan
+              </button>
+            </section>
+          ) : (
+            <section aria-labelledby="approval-result">
+              <h4 id="approval-result">Approval created</h4>
+              <p>
+                <strong>Approval ID:</strong> <code>{approval.id}</code>
+              </p>
+              <p>
+                <strong>Expires at:</strong> {approval.expires_at}
+              </p>
+              <p>
+                This approval is recorded for the displayed plan hash and does
+                not execute a request.
+              </p>
+            </section>
+          )}
         </section>
       ) : null}
     </section>
