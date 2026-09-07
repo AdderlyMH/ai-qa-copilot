@@ -47,6 +47,18 @@ from ai_qa_copilot_api.execution_plans import (
     build_execution_plan,
     review_execution_plan,
 )
+from ai_qa_copilot_api.execution_approvals import (
+    MAX_EXECUTION_APPROVAL_COMMENT_LENGTH,
+    ExecutionApproval,
+    ExecutionApprovalConflict,
+    ExecutionApprovalRejected,
+    ExecutionApprovalRepository,
+    ExecutionApprovalService,
+    ExecutionApprovalUnavailable,
+    SqlAlchemyExecutionApprovalRepository,
+    UnavailableExecutionApprovalRepository,
+    execution_approval_repository_from_environment,
+)
 from ai_qa_copilot_api.generated_tests import (
     GeneratedTestCaseValidationError,
     validate_generated_test_case,
@@ -398,6 +410,43 @@ class ExecutionPlanReviewResponse(BaseModel):
     estimate: ExecutionPlanEstimateResponse
 
 
+class ExecutionApprovalCreateRequest(BaseModel):
+    """Owner request to approve one rebuilt immutable execution plan."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    generated_test_case: dict[str, object]
+    target_id: Annotated[str, Field(min_length=1, max_length=128)]
+    limits: ExecutionPlanLimitsRequest = Field(
+        default_factory=ExecutionPlanLimitsRequest
+    )
+    expected_plan_hash: Annotated[
+        str,
+        Field(min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$"),
+    ]
+    comment: Annotated[
+        str | None,
+        Field(max_length=MAX_EXECUTION_APPROVAL_COMMENT_LENGTH),
+    ] = None
+
+
+class ExecutionApprovalResponse(BaseModel):
+    """Read-only record of one durable, expiring approval."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    plan_id: UUID
+    plan_hash: str
+    approver_id: str
+    approver_authentication_source: str
+    comment: str | None
+    approved_at: datetime
+    expires_at: datetime
+    consumed_at: datetime | None
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -413,6 +462,7 @@ def create_app(
     document_intake_policy: UploadPolicy = UploadPolicy(),
     requirement_analysis_repository: RequirementAnalysisRepository | None = None,
     finding_feedback_repository: FindingFeedbackRepository | None = None,
+    execution_approval_repository: ExecutionApprovalRepository | None = None,
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
     | None = None,
@@ -449,6 +499,11 @@ def create_app(
             finding_feedback_repository
             if finding_feedback_repository is not None
             else finding_feedback_repository_from_environment()
+        )
+        application.state.execution_approval_repository = (
+            execution_approval_repository
+            if execution_approval_repository is not None
+            else execution_approval_repository_from_environment()
         )
         application.state.demo_publication_service = DemoPublicationService(
             selected_demo_settings,
@@ -994,6 +1049,82 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _execution_plan_review_response(review)
 
+    @application.post(
+        "/projects/{project_id}/execution-approvals",
+        status_code=status.HTTP_201_CREATED,
+        response_model=ExecutionApprovalResponse,
+    )
+    def create_execution_approval(
+        project_id: UUID,
+        payload: ExecutionApprovalCreateRequest,
+        request: Request,
+        response: Response,
+    ) -> ExecutionApprovalResponse:
+        """Rebuild, revalidate, and durably approve one immutable plan."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        scope = _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            test_case = validate_generated_test_case(payload.generated_test_case)
+        except GeneratedTestCaseValidationError as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(error),
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+
+        citation_repository = _citation_repository(request)
+        try:
+            for citation_id in test_case.citation_ids:
+                citation = citation_repository.get_for_project(
+                    project_id=project_id,
+                    citation_id=citation_id,
+                )
+                if citation is None:
+                    _raise_citation_not_found(correlation_id)
+        except CitationUnavailable:
+            _raise_citations_unavailable(correlation_id)
+
+        try:
+            plan = build_execution_plan(
+                generated_test_case=test_case,
+                target_id=payload.target_id,
+                limits=payload.limits.as_limits(),
+            )
+            approval = _execution_approval_service(request).approve(
+                project_id=project_id,
+                plan=plan,
+                expected_plan_hash=payload.expected_plan_hash,
+                approver=scope.principal,
+                comment=payload.comment,
+            )
+        except (ExecutionPlanRejected, ExecutionApprovalRejected) as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(error),
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+        except ExecutionApprovalConflict as error:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(error),
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+        except ExecutionApprovalUnavailable:
+            _raise_execution_approvals_unavailable(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _execution_approval_response(approval)
+
     return application
 
 
@@ -1301,6 +1432,44 @@ def _finding_feedback_response(
         reviewer_id=feedback.reviewer_id,
         reviewer_authentication_source=feedback.reviewer_authentication_source,
         created_at=feedback.created_at,
+    )
+
+
+def _execution_approval_service(request: Request) -> ExecutionApprovalService:
+    repository = getattr(request.app.state, "execution_approval_repository", None)
+    if not isinstance(
+        repository,
+        (
+            SqlAlchemyExecutionApprovalRepository,
+            UnavailableExecutionApprovalRepository,
+        ),
+    ):
+        raise RuntimeError("Execution-approval boundary was not initialized")
+    return ExecutionApprovalService(repository)
+
+
+def _execution_approval_response(
+    approval: ExecutionApproval,
+) -> ExecutionApprovalResponse:
+    return ExecutionApprovalResponse(
+        id=approval.id,
+        project_id=approval.project_id,
+        plan_id=approval.plan.id,
+        plan_hash=approval.plan.plan_hash,
+        approver_id=approval.approver_id,
+        approver_authentication_source=approval.approver_authentication_source,
+        comment=approval.comment,
+        approved_at=approval.approved_at,
+        expires_at=approval.expires_at,
+        consumed_at=approval.consumed_at,
+    )
+
+
+def _raise_execution_approvals_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Execution approval service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
     )
 
 

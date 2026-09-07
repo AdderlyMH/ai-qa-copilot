@@ -460,6 +460,60 @@ class FindingFeedbackRecord(Base):
     )
 
 
+class ExecutionApprovalRecord(Base):
+    """Durable, immutable owner approval for one canonical execution plan."""
+
+    __tablename__ = "execution_approvals"
+    __table_args__ = (
+        CheckConstraint("length(plan_hash) = 64"),
+        CheckConstraint("length(trim(plan_snapshot)) > 0"),
+        CheckConstraint("length(trim(approver_id)) > 0"),
+        CheckConstraint(
+            "approver_authentication_source IN ('cognito', 'local_bypass')"
+        ),
+        CheckConstraint("expires_at > approved_at"),
+        CheckConstraint("consumed_at IS NULL OR consumed_at >= approved_at"),
+        UniqueConstraint(
+            "project_id",
+            "plan_id",
+            name="uq_execution_approvals_project_plan_id",
+        ),
+        UniqueConstraint(
+            "project_id",
+            "plan_hash",
+            name="uq_execution_approvals_project_plan_hash",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("projects.id"),
+        nullable=False,
+    )
+    plan_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    plan_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    plan_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    approver_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    approver_authentication_source: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    approved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
 class DocumentIntakeState(StrEnum):
     """Persisted outcome of bounded raw-document admission."""
 

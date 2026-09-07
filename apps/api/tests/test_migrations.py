@@ -10,7 +10,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0011_finding_feedback"
+EXPECTED_REVISION = "0012_execution_approvals"
+EXECUTION_APPROVAL_REVISION = "0012_execution_approvals"
 FINDING_FEEDBACK_REVISION = "0011_finding_feedback"
 REQUIREMENT_ANALYSIS_REVISION = "0010_requirement_analysis"
 CITATION_REVISION = "0009_create_citations"
@@ -52,7 +53,7 @@ def test_database_url_is_read_from_environment_only() -> None:
         database_url_from_environment({})
 
 
-def test_alembic_has_reversible_project_head_after_finding_feedback_baseline() -> None:
+def test_alembic_has_reversible_execution_approval_head() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
@@ -61,7 +62,11 @@ def test_alembic_has_reversible_project_head_after_finding_feedback_baseline() -
 
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == REQUIREMENT_ANALYSIS_REVISION
+    assert revision.down_revision == FINDING_FEEDBACK_REVISION
+
+    finding_feedback_revision = script.get_revision(FINDING_FEEDBACK_REVISION)
+    assert finding_feedback_revision is not None
+    assert finding_feedback_revision.down_revision == REQUIREMENT_ANALYSIS_REVISION
 
     requirement_analysis_revision = script.get_revision(REQUIREMENT_ANALYSIS_REVISION)
     assert requirement_analysis_revision is not None
