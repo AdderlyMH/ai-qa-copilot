@@ -76,6 +76,13 @@ class ExecutionApprovalRepository(Protocol):
         comment: str | None,
     ) -> ExecutionApproval: ...
 
+    def get(
+        self,
+        *,
+        project_id: UUID,
+        approval_id: UUID,
+    ) -> ExecutionApproval | None: ...
+
     def consume(
         self,
         *,
@@ -98,6 +105,15 @@ class UnavailableExecutionApprovalRepository:
         comment: str | None,
     ) -> ExecutionApproval:
         del project_id, plan, approver_id, approver_authentication_source, comment
+        raise ExecutionApprovalUnavailable
+
+    def get(
+        self,
+        *,
+        project_id: UUID,
+        approval_id: UUID,
+    ) -> ExecutionApproval | None:
+        del project_id, approval_id
         raise ExecutionApprovalUnavailable
 
     def consume(
@@ -168,6 +184,27 @@ class SqlAlchemyExecutionApprovalRepository:
             raise ExecutionApprovalUnavailable from error
 
         return _approval_from_record(record)
+
+    def get(
+        self,
+        *,
+        project_id: UUID,
+        approval_id: UUID,
+    ) -> ExecutionApproval | None:
+        """Return one immutable approval only within its owning project."""
+
+        try:
+            with self._session_factory() as session:
+                record = session.execute(
+                    select(ExecutionApprovalRecord).where(
+                        ExecutionApprovalRecord.id == approval_id,
+                        ExecutionApprovalRecord.project_id == project_id,
+                    )
+                ).scalar_one_or_none()
+        except SQLAlchemyError as error:
+            raise ExecutionApprovalUnavailable from error
+
+        return _approval_from_record(record) if record is not None else None
 
     def consume(
         self,
@@ -254,6 +291,19 @@ class ExecutionApprovalService:
             approver_id=approver_id,
             approver_authentication_source=approver_source,
             comment=validate_comment(comment),
+        )
+
+    def get(
+        self,
+        *,
+        project_id: UUID,
+        approval_id: UUID,
+    ) -> ExecutionApproval | None:
+        """Read an approval only for the project that owns it."""
+
+        return self._repository.get(
+            project_id=project_id,
+            approval_id=approval_id,
         )
 
     def consume(

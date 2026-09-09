@@ -514,6 +514,137 @@ class ExecutionApprovalRecord(Base):
     )
 
 
+class ExecutionJobState(StrEnum):
+    """Durable lifecycle for one approved execution attempt."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    CANCELLED = "cancelled"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class ExecutionResultOutcome(StrEnum):
+    """Terminal outcome durably recorded for one restricted execution job."""
+
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class ExecutionJobRecord(Base):
+    """Queue-owned state for a future restricted execution worker only."""
+
+    __tablename__ = "execution_jobs"
+    __table_args__ = (
+        CheckConstraint("length(plan_hash) = 64"),
+        CheckConstraint(
+            "state IN ('queued', 'running', 'cancelled', 'succeeded', 'failed')"
+        ),
+        CheckConstraint(
+            "(state = 'queued' AND started_at IS NULL AND finished_at IS NULL "
+            "AND cancelled_at IS NULL) OR "
+            "(state = 'running' AND started_at IS NOT NULL AND finished_at IS NULL "
+            "AND cancelled_at IS NULL) OR "
+            "(state IN ('succeeded', 'failed') AND started_at IS NOT NULL "
+            "AND finished_at IS NOT NULL AND cancelled_at IS NULL) OR "
+            "(state = 'cancelled' AND finished_at IS NULL "
+            "AND cancelled_at IS NOT NULL)"
+        ),
+        UniqueConstraint(
+            "execution_approval_id",
+            name="uq_execution_jobs_approval",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("projects.id"),
+        nullable=False,
+    )
+    execution_approval_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("execution_approvals.id"),
+        nullable=False,
+    )
+    plan_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
+    plan_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    finished_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
+class ExecutionResultRecord(Base):
+    """Redacted, immutable evidence for one completed restricted execution job."""
+
+    __tablename__ = "execution_results"
+    __table_args__ = (
+        CheckConstraint("outcome IN ('succeeded', 'failed', 'cancelled')"),
+        CheckConstraint("transport_send_count >= 0 AND transport_send_count <= 1"),
+        CheckConstraint(
+            "(outcome = 'succeeded' AND failure_code IS NULL) OR "
+            "(outcome IN ('failed', 'cancelled') "
+            "AND failure_code IS NOT NULL "
+            "AND length(trim(failure_code)) > 0)"
+        ),
+        UniqueConstraint(
+            "execution_job_id",
+            name="uq_execution_results_job",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    execution_job_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("execution_jobs.id"),
+        nullable=False,
+    )
+    outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+    failure_code: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+    assertion_results: Mapped[list[dict[str, object]]] = mapped_column(
+        JSON,
+        nullable=False,
+    )
+    request_evidence: Mapped[dict[str, object] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    response_evidence: Mapped[dict[str, object] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    transport_send_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
 class DocumentIntakeState(StrEnum):
     """Persisted outcome of bounded raw-document admission."""
 

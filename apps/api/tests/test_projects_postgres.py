@@ -71,6 +71,16 @@ from ai_qa_copilot_api.generated_tests import (
     HttpMethod,
     RequestTemplateV1,
 )
+from ai_qa_copilot_api.documents import (
+    ExecutionJobState,
+    ExecutionResultOutcome,
+)
+from ai_qa_copilot_api.execution_results import (
+    ExecutionResultPayload,
+    ExecutionResultRejected,
+    SqlAlchemyExecutionResultRepository,
+)
+from ai_qa_copilot_api.execution_jobs import SqlAlchemyExecutionJobQueue
 
 
 POSTGRES_INTEGRATION_DATABASE_URL = "AI_QA_COPILOT_POSTGRES_INTEGRATION_DATABASE_URL"
@@ -138,17 +148,37 @@ def execution_approval_plan(*, quantity: int) -> ExecutionPlanV1:
     )
 
 
+def execution_result_payload(
+    *,
+    outcome: ExecutionResultOutcome,
+    failure_code: str | None,
+    transport_send_count: int = 1,
+) -> ExecutionResultPayload:
+    return ExecutionResultPayload(
+        outcome=outcome,
+        failure_code=failure_code,
+        assertion_results_json='[{"passed":true,"target":"status_code"}]',
+        request_evidence_json=(
+            '{"headers":[],"method":"POST",'
+            '"url":"https://ai-qa-sandbox.onrender.com/api/orders"}'
+        ),
+        response_evidence_json=('{"body_bytes":24,"headers":[],"status_code":201}'),
+        transport_send_count=transport_send_count,
+    )
+
+
 def truncate_postgres_approval_test_data(engine: Engine) -> None:
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE TABLE execution_approvals, finding_feedback, "
-                "requirement_findings, requirement_analysis_runs, citations, "
-                "parser_jobs, document_intakes, retrieval_trace_candidates, "
-                "retrieval_traces, document_chunk_embeddings, "
-                "embedding_cache_entries, document_chunks, document_sections, "
-                "source_locations, document_versions, documents, "
-                "parser_versions, analysis_runs, projects"
+                "TRUNCATE TABLE execution_results, execution_jobs, "
+                "execution_approvals, finding_feedback, requirement_findings, "
+                "requirement_analysis_runs, citations, parser_jobs, "
+                "document_intakes, retrieval_trace_candidates, retrieval_traces, "
+                "document_chunk_embeddings, embedding_cache_entries, "
+                "document_chunks, document_sections, source_locations, "
+                "document_versions, documents, parser_versions, "
+                "analysis_runs, projects"
             )
         )
 
@@ -174,7 +204,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_approvals, "
+                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -252,7 +282,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_approvals, "
+                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -297,7 +327,7 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_approvals, "
+                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -563,7 +593,7 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_approvals, "
+                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -608,7 +638,7 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_approvals, "
+                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -947,7 +977,7 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_approvals, "
+                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -1115,6 +1145,322 @@ def test_postgres_execution_approval_concurrency_allows_one_claim_and_one_create
             )
 
         assert creation_results.count(True) == 1
+    finally:
+        truncate_postgres_approval_test_data(engine)
+        engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_execution_job_claim_is_durable_and_single_winner() -> None:
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    project_id = uuid4()
+    clock = ApprovalClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    approval_repository = SqlAlchemyExecutionApprovalRepository(
+        sessions,
+        clock=clock,
+    )
+    approval_service = ExecutionApprovalService(approval_repository)
+    queue = SqlAlchemyExecutionJobQueue(sessions, clock=clock)
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO projects "
+                    "(id, name, description, created_at, archived_at) "
+                    "VALUES (:id, 'Execution-job evidence', NULL, "
+                    "CURRENT_TIMESTAMP, NULL)"
+                ),
+                {"id": project_id},
+            )
+
+        immutable_plan = execution_approval_plan(quantity=6)
+        approval = approval_service.approve(
+            project_id=project_id,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+
+        claim_gate = Barrier(2)
+
+        def claim() -> bool:
+            claim_gate.wait()
+            return queue.claim_next() is not None
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            claim_results = tuple(
+                future.result()
+                for future in (
+                    executor.submit(claim),
+                    executor.submit(claim),
+                )
+            )
+
+        assert claim_results.count(True) == 1
+
+        claimed = queue.get(project_id=project_id, job_id=queued.id)
+        assert claimed is not None
+        assert claimed.state is ExecutionJobState.RUNNING
+        assert claimed.started_at == clock.current
+        assert (
+            approval_repository.consume(
+                project_id=project_id,
+                plan_id=immutable_plan.id,
+                plan_hash=immutable_plan.plan_hash,
+            )
+            is None
+        )
+    finally:
+        truncate_postgres_approval_test_data(engine)
+        engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_execution_job_expiry_and_cancellation_prevent_claims() -> None:
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    project_id = uuid4()
+    clock = ApprovalClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    approval_repository = SqlAlchemyExecutionApprovalRepository(
+        sessions,
+        clock=clock,
+    )
+    approval_service = ExecutionApprovalService(approval_repository)
+    queue = SqlAlchemyExecutionJobQueue(sessions, clock=clock)
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO projects "
+                    "(id, name, description, created_at, archived_at) "
+                    "VALUES (:id, 'Execution-job rejection evidence', NULL, "
+                    "CURRENT_TIMESTAMP, NULL)"
+                ),
+                {"id": project_id},
+            )
+
+        expired_plan = execution_approval_plan(quantity=7)
+        expired_approval = approval_service.approve(
+            project_id=project_id,
+            plan=expired_plan,
+            expected_plan_hash=expired_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        expired_job = queue.enqueue(approval=expired_approval)
+        clock.current = expired_approval.expires_at
+
+        assert queue.claim_next() is None
+
+        expired = queue.get(project_id=project_id, job_id=expired_job.id)
+        assert expired is not None
+        assert expired.state is ExecutionJobState.FAILED
+        assert expired.started_at == clock.current
+        assert expired.finished_at == clock.current
+
+        cancellable_plan = execution_approval_plan(quantity=8)
+        cancellable_approval = approval_service.approve(
+            project_id=project_id,
+            plan=cancellable_plan,
+            expected_plan_hash=cancellable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        cancellable_job = queue.enqueue(approval=cancellable_approval)
+
+        cancelled = queue.cancel(
+            project_id=project_id,
+            job_id=cancellable_job.id,
+        )
+
+        assert cancelled is not None
+        assert cancelled.state is ExecutionJobState.CANCELLED
+        assert cancelled.cancel_requested_at == clock.current
+        assert cancelled.cancelled_at == clock.current
+        assert queue.claim_next() is None
+    finally:
+        truncate_postgres_approval_test_data(engine)
+        engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_execution_result_completion_is_durable_and_idempotent() -> None:
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    project_id = uuid4()
+    clock = ApprovalClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    approval_repository = SqlAlchemyExecutionApprovalRepository(
+        sessions,
+        clock=clock,
+    )
+    approval_service = ExecutionApprovalService(approval_repository)
+    queue = SqlAlchemyExecutionJobQueue(sessions, clock=clock)
+    results = SqlAlchemyExecutionResultRepository(sessions, clock=clock)
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO projects "
+                    "(id, name, description, created_at, archived_at) "
+                    "VALUES (:id, 'Execution-result evidence', NULL, "
+                    "CURRENT_TIMESTAMP, NULL)"
+                ),
+                {"id": project_id},
+            )
+
+        immutable_plan = execution_approval_plan(quantity=9)
+        approval = approval_service.approve(
+            project_id=project_id,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        claimed = queue.claim_next()
+        assert claimed is not None
+
+        payload = execution_result_payload(
+            outcome=ExecutionResultOutcome.SUCCEEDED,
+            failure_code=None,
+        )
+        stored = results.record(
+            project_id=project_id,
+            job_id=claimed.job.id,
+            payload=payload,
+        )
+        repeated = results.record(
+            project_id=project_id,
+            job_id=claimed.job.id,
+            payload=payload,
+        )
+
+        assert repeated == stored
+        assert stored.execution_job_id == queued.id
+        assert stored.outcome is ExecutionResultOutcome.SUCCEEDED
+        assert stored.failure_code is None
+        assert stored.recorded_at == clock.current
+
+        persisted = results.get(
+            project_id=project_id,
+            job_id=queued.id,
+        )
+        assert persisted == stored
+
+        completed = queue.get(project_id=project_id, job_id=queued.id)
+        assert completed is not None
+        assert completed.state is ExecutionJobState.SUCCEEDED
+        assert completed.finished_at == clock.current
+        assert completed.cancelled_at is None
+    finally:
+        truncate_postgres_approval_test_data(engine)
+        engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_execution_result_conflicts_have_exactly_one_winner() -> None:
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    project_id = uuid4()
+    clock = ApprovalClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    approval_repository = SqlAlchemyExecutionApprovalRepository(
+        sessions,
+        clock=clock,
+    )
+    approval_service = ExecutionApprovalService(approval_repository)
+    queue = SqlAlchemyExecutionJobQueue(sessions, clock=clock)
+    results = SqlAlchemyExecutionResultRepository(sessions, clock=clock)
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO projects "
+                    "(id, name, description, created_at, archived_at) "
+                    "VALUES (:id, 'Execution-result race evidence', NULL, "
+                    "CURRENT_TIMESTAMP, NULL)"
+                ),
+                {"id": project_id},
+            )
+
+        immutable_plan = execution_approval_plan(quantity=10)
+        approval = approval_service.approve(
+            project_id=project_id,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        claimed = queue.claim_next()
+        assert claimed is not None
+
+        claim_gate = Barrier(2)
+
+        def record(payload: ExecutionResultPayload) -> bool:
+            claim_gate.wait()
+            try:
+                results.record(
+                    project_id=project_id,
+                    job_id=claimed.job.id,
+                    payload=payload,
+                )
+            except ExecutionResultRejected:
+                return False
+            return True
+
+        successful_payload = execution_result_payload(
+            outcome=ExecutionResultOutcome.SUCCEEDED,
+            failure_code=None,
+        )
+        failed_payload = execution_result_payload(
+            outcome=ExecutionResultOutcome.FAILED,
+            failure_code="assertions_failed",
+        )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outcomes = tuple(
+                future.result()
+                for future in (
+                    executor.submit(record, successful_payload),
+                    executor.submit(record, failed_payload),
+                )
+            )
+
+        assert outcomes.count(True) == 1
+
+        persisted = results.get(
+            project_id=project_id,
+            job_id=queued.id,
+        )
+        assert persisted is not None
+        assert persisted.outcome in {
+            ExecutionResultOutcome.SUCCEEDED,
+            ExecutionResultOutcome.FAILED,
+        }
+
+        completed = queue.get(project_id=project_id, job_id=queued.id)
+        assert completed is not None
+        expected_state = {
+            ExecutionResultOutcome.SUCCEEDED: ExecutionJobState.SUCCEEDED,
+            ExecutionResultOutcome.FAILED: ExecutionJobState.FAILED,
+        }[persisted.outcome]
+        assert completed.state is expected_state
+        assert completed.finished_at == clock.current
     finally:
         truncate_postgres_approval_test_data(engine)
         engine.dispose()

@@ -12,6 +12,8 @@ dependencies = [
     "sqlalchemy==2.0.51",
     "uvicorn==0.51.0",
     "pypdf==6.7.2",
+    "httpcore==1.0.9",
+    "httpx==0.28.1",
 ]
 
 [build-system]
