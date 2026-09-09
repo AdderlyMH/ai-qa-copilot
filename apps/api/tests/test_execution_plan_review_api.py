@@ -178,7 +178,7 @@ def test_owner_can_review_a_non_persistent_immutable_execution_plan() -> None:
     assert UUID(body["plan_id"])
     assert len(body["plan_hash"]) == 64
     assert body["target_id"] == "synthetic-order-api"
-    assert body["target_base_url"] == "https://mock-order-api.synthetic.test"
+    assert body["target_base_url"] == "https://ai-qa-sandbox.onrender.com"
     assert body["method"] == "POST"
     assert body["path"] == "/orders"
     assert body["citation_ids"] == [str(CITATION_ID)]

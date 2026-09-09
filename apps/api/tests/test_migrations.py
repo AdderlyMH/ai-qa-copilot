@@ -10,7 +10,9 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0012_execution_approvals"
+EXPECTED_REVISION = "0014_execution_results"
+EXECUTION_RESULT_REVISION = "0014_execution_results"
+EXECUTION_JOB_REVISION = "0013_execution_jobs"
 EXECUTION_APPROVAL_REVISION = "0012_execution_approvals"
 FINDING_FEEDBACK_REVISION = "0011_finding_feedback"
 REQUIREMENT_ANALYSIS_REVISION = "0010_requirement_analysis"
@@ -62,7 +64,15 @@ def test_alembic_has_reversible_execution_approval_head() -> None:
 
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == FINDING_FEEDBACK_REVISION
+    assert revision.down_revision == EXECUTION_JOB_REVISION
+
+    execution_job_revision = script.get_revision(EXECUTION_JOB_REVISION)
+    assert execution_job_revision is not None
+    assert execution_job_revision.down_revision == EXECUTION_APPROVAL_REVISION
+
+    execution_approval_revision = script.get_revision(EXECUTION_APPROVAL_REVISION)
+    assert execution_approval_revision is not None
+    assert execution_approval_revision.down_revision == FINDING_FEEDBACK_REVISION
 
     finding_feedback_revision = script.get_revision(FINDING_FEEDBACK_REVISION)
     assert finding_feedback_revision is not None
@@ -448,4 +458,52 @@ def test_finding_feedback_migration_creates_reversible_state(
             "ix_finding_feedback_project_run_finding_created_at",
         ),
         ("drop_table", "finding_feedback"),
+    ]
+
+
+def test_execution_job_migration_creates_reversible_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(EXECUTION_JOB_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    for name in ("create_table", "create_index", "drop_index", "drop_table"):
+        monkeypatch.setattr(
+            module.op,
+            name,
+            lambda *args, _name=name, **kwargs: calls.append((_name, args)),
+        )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "execution_jobs"),
+        ("create_index", "ix_execution_jobs_worker_claim"),
+        ("drop_index", "ix_execution_jobs_worker_claim"),
+        ("drop_table", "execution_jobs"),
+    ]
+
+
+def test_execution_result_migration_creates_reversible_redacted_audit_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(EXECUTION_RESULT_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    for name in ("create_table", "create_index", "drop_index", "drop_table"):
+        monkeypatch.setattr(
+            module.op,
+            name,
+            lambda *args, _name=name, **kwargs: calls.append((_name, args)),
+        )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "execution_results"),
+        ("create_index", "ix_execution_results_recorded_at"),
+        ("drop_index", "ix_execution_results_recorded_at"),
+        ("drop_table", "execution_results"),
     ]

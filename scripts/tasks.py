@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0012_execution_approvals"
+DB_CHECK_REVISION = "0014_execution_results"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -383,6 +383,8 @@ def verify_migrated_database(
         "retrieval_traces",
         "retrieval_trace_candidates",
         "citations",
+        "execution_results",
+        "execution_jobs",
         "execution_approvals",
     ):
         require_database_value(
@@ -447,6 +449,8 @@ def verify_rolled_back_database(
         "document_versions",
         "documents",
         "parser_versions",
+        "execution_results",
+        "execution_jobs",
         "execution_approvals",
     ):
         require_database_value(

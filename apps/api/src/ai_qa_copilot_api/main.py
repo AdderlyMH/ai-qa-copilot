@@ -59,6 +59,23 @@ from ai_qa_copilot_api.execution_approvals import (
     UnavailableExecutionApprovalRepository,
     execution_approval_repository_from_environment,
 )
+from ai_qa_copilot_api.execution_jobs import (
+    ExecutionJob,
+    ExecutionJobQueue,
+    ExecutionJobQueueUnavailable,
+    ExecutionJobRejected,
+    SqlAlchemyExecutionJobQueue,
+    UnavailableExecutionJobQueue,
+    execution_job_queue_from_environment,
+)
+from ai_qa_copilot_api.execution_results import (
+    ExecutionResultRepository,
+    ExecutionResultUnavailable,
+    SqlAlchemyExecutionResultRepository,
+    StoredExecutionResult,
+    UnavailableExecutionResultRepository,
+    execution_result_repository_from_environment,
+)
 from ai_qa_copilot_api.generated_tests import (
     GeneratedTestCaseValidationError,
     validate_generated_test_case,
@@ -447,6 +464,41 @@ class ExecutionApprovalResponse(BaseModel):
     consumed_at: datetime | None
 
 
+class ExecutionResultResponse(BaseModel):
+    """Redacted terminal evidence recorded for one execution job."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    execution_job_id: UUID
+    outcome: str
+    failure_code: str | None
+    assertion_results_json: str
+    request_evidence_json: str | None
+    response_evidence_json: str | None
+    transport_send_count: int
+    recorded_at: datetime
+
+
+class ExecutionJobResponse(BaseModel):
+    """Read-only durable state for one approved execution job."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    project_id: UUID
+    execution_approval_id: UUID
+    plan_id: UUID
+    plan_hash: str
+    state: str
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    cancel_requested_at: datetime | None
+    cancelled_at: datetime | None
+    result: ExecutionResultResponse | None
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -463,6 +515,8 @@ def create_app(
     requirement_analysis_repository: RequirementAnalysisRepository | None = None,
     finding_feedback_repository: FindingFeedbackRepository | None = None,
     execution_approval_repository: ExecutionApprovalRepository | None = None,
+    execution_job_queue: ExecutionJobQueue | None = None,
+    execution_result_repository: ExecutionResultRepository | None = None,
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
     | None = None,
@@ -504,6 +558,16 @@ def create_app(
             execution_approval_repository
             if execution_approval_repository is not None
             else execution_approval_repository_from_environment()
+        )
+        application.state.execution_job_queue = (
+            execution_job_queue
+            if execution_job_queue is not None
+            else execution_job_queue_from_environment()
+        )
+        application.state.execution_result_repository = (
+            execution_result_repository
+            if execution_result_repository is not None
+            else execution_result_repository_from_environment()
         )
         application.state.demo_publication_service = DemoPublicationService(
             selected_demo_settings,
@@ -1125,6 +1189,152 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _execution_approval_response(approval)
 
+    @application.post(
+        "/projects/{project_id}/execution-approvals/{approval_id}/execution-jobs",
+        status_code=status.HTTP_201_CREATED,
+        response_model=ExecutionJobResponse,
+    )
+    def create_execution_job(
+        project_id: UUID,
+        approval_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> ExecutionJobResponse:
+        """Queue one already-approved immutable plan without executing it."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            approval = _execution_approval_service(request).get(
+                project_id=project_id,
+                approval_id=approval_id,
+            )
+        except ExecutionApprovalUnavailable:
+            _raise_execution_approvals_unavailable(correlation_id)
+
+        if approval is None:
+            _raise_execution_approval_not_found(correlation_id)
+
+        try:
+            job = _execution_job_queue(request).enqueue(approval=approval)
+        except ExecutionJobRejected as error:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=str(error),
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+        except ExecutionJobQueueUnavailable:
+            _raise_execution_jobs_unavailable(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _execution_job_response(job, result=None)
+
+    @application.get(
+        "/projects/{project_id}/execution-jobs/{job_id}",
+        response_model=ExecutionJobResponse,
+    )
+    def get_execution_job(
+        project_id: UUID,
+        job_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> ExecutionJobResponse:
+        """Read project-scoped job state and any already-redacted terminal result."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            job = _execution_job_queue(request).get(
+                project_id=project_id,
+                job_id=job_id,
+            )
+        except ExecutionJobQueueUnavailable:
+            _raise_execution_jobs_unavailable(correlation_id)
+
+        if job is None:
+            _raise_execution_job_not_found(correlation_id)
+
+        try:
+            result = _execution_result_repository(request).get(
+                project_id=project_id,
+                job_id=job.id,
+            )
+        except ExecutionResultUnavailable:
+            _raise_execution_results_unavailable(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _execution_job_response(job, result=result)
+
+    @application.delete(
+        "/projects/{project_id}/execution-jobs/{job_id}",
+        response_model=ExecutionJobResponse,
+    )
+    def cancel_execution_job(
+        project_id: UUID,
+        job_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> ExecutionJobResponse:
+        """Cancel only a queued job; running or terminal jobs remain immutable."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            existing = _execution_job_queue(request).get(
+                project_id=project_id,
+                job_id=job_id,
+            )
+        except ExecutionJobQueueUnavailable:
+            _raise_execution_jobs_unavailable(correlation_id)
+
+        if existing is None:
+            _raise_execution_job_not_found(correlation_id)
+
+        try:
+            cancelled = _execution_job_queue(request).cancel(
+                project_id=project_id,
+                job_id=job_id,
+            )
+        except ExecutionJobQueueUnavailable:
+            _raise_execution_jobs_unavailable(correlation_id)
+
+        if cancelled is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Execution job can no longer be cancelled",
+                headers={"X-Correlation-ID": str(correlation_id)},
+            )
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _execution_job_response(cancelled, result=None)
+
     return application
 
 
@@ -1435,6 +1645,67 @@ def _finding_feedback_response(
     )
 
 
+def _execution_job_queue(request: Request) -> ExecutionJobQueue:
+    queue = getattr(request.app.state, "execution_job_queue", None)
+    if not isinstance(
+        queue,
+        (
+            SqlAlchemyExecutionJobQueue,
+            UnavailableExecutionJobQueue,
+        ),
+    ):
+        raise RuntimeError("Execution-job queue boundary was not initialized")
+    return queue
+
+
+def _execution_result_repository(request: Request) -> ExecutionResultRepository:
+    repository = getattr(request.app.state, "execution_result_repository", None)
+    if not isinstance(
+        repository,
+        (
+            SqlAlchemyExecutionResultRepository,
+            UnavailableExecutionResultRepository,
+        ),
+    ):
+        raise RuntimeError("Execution-result boundary was not initialized")
+    return repository
+
+
+def _execution_job_response(
+    job: ExecutionJob,
+    *,
+    result: StoredExecutionResult | None,
+) -> ExecutionJobResponse:
+    return ExecutionJobResponse(
+        id=job.id,
+        project_id=job.project_id,
+        execution_approval_id=job.execution_approval_id,
+        plan_id=job.plan_id,
+        plan_hash=job.plan_hash,
+        state=job.state.value,
+        created_at=job.created_at,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        cancel_requested_at=job.cancel_requested_at,
+        cancelled_at=job.cancelled_at,
+        result=(
+            ExecutionResultResponse(
+                id=result.id,
+                execution_job_id=result.execution_job_id,
+                outcome=result.outcome.value,
+                failure_code=result.failure_code,
+                assertion_results_json=result.assertion_results_json,
+                request_evidence_json=result.request_evidence_json,
+                response_evidence_json=result.response_evidence_json,
+                transport_send_count=result.transport_send_count,
+                recorded_at=result.recorded_at,
+            )
+            if result is not None
+            else None
+        ),
+    )
+
+
 def _execution_approval_service(request: Request) -> ExecutionApprovalService:
     repository = getattr(request.app.state, "execution_approval_repository", None)
     if not isinstance(
@@ -1469,6 +1740,38 @@ def _raise_execution_approvals_unavailable(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="Execution approval service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_execution_approval_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Execution approval not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_execution_jobs_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Execution job service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_execution_results_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Execution result service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_execution_job_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Execution job not found",
         headers={"X-Correlation-ID": str(correlation_id)},
     )
 

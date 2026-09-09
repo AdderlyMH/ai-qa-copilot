@@ -37,7 +37,7 @@ class FakeResolver:
 
 def registry_with(
     *,
-    base_url: str = "https://mock-order-api.synthetic.test",
+    base_url: str = "https://ai-qa-sandbox.onrender.com",
     redirects_allowed: bool = False,
     schema_version: str = TARGET_REGISTRY_SCHEMA_VERSION,
 ) -> TargetRegistry:
@@ -60,11 +60,19 @@ def assert_rejected(
     assert error.value.boundary is boundary
 
 
-def test_default_registry_uses_only_the_server_side_synthetic_target() -> None:
+def test_default_registry_allows_only_the_exact_public_sandbox_target() -> None:
+    assert DEFAULT_TARGET_REGISTRY.targets == (
+        TargetConfiguration(
+            id=TargetId.SYNTHETIC_ORDER_API,
+            base_url="https://ai-qa-sandbox.onrender.com",
+        ),
+    )
+
     target = DEFAULT_TARGET_REGISTRY.get(TargetId.SYNTHETIC_ORDER_API)
 
     assert target.id is TargetId.SYNTHETIC_ORDER_API
-    assert target.base_url == "https://mock-order-api.synthetic.test"
+    assert target.base_url == "https://ai-qa-sandbox.onrender.com"
+    assert "*" not in target.base_url
     assert target.redirects_allowed is False
     assert target.schema_version == TARGET_REGISTRY_SCHEMA_VERSION
 
@@ -94,15 +102,15 @@ def test_valid_target_requires_two_identical_public_resolution_results() -> None
     )
 
     assert target.id is TargetId.SYNTHETIC_ORDER_API
-    assert target.origin == "https://mock-order-api.synthetic.test"
-    assert target.hostname == "mock-order-api.synthetic.test"
+    assert target.origin == "https://ai-qa-sandbox.onrender.com"
+    assert target.hostname == "ai-qa-sandbox.onrender.com"
     assert target.port == 443
     assert target.resolved_addresses == ("1.1.1.1", "8.8.8.8")
     assert target.redirects_allowed is False
     assert resolver.calls == 2
     assert resolver.hostnames == [
-        "mock-order-api.synthetic.test",
-        "mock-order-api.synthetic.test",
+        "ai-qa-sandbox.onrender.com",
+        "ai-qa-sandbox.onrender.com",
     ]
 
 
@@ -110,27 +118,27 @@ def test_valid_target_requires_two_identical_public_resolution_results() -> None
     ("base_url", "boundary"),
     [
         (
-            "http://mock-order-api.synthetic.test",
+            "http://ai-qa-sandbox.onrender.com",
             TargetValidationBoundary.HTTPS_REQUIRED,
         ),
         (
-            "https://user:password@mock-order-api.synthetic.test",
+            "https://user:password@ai-qa-sandbox.onrender.com",
             TargetValidationBoundary.USERINFO_FORBIDDEN,
         ),
         (
-            "https://mock-order-api.synthetic.test:8443",
+            "https://ai-qa-sandbox.onrender.com:8443",
             TargetValidationBoundary.NONSTANDARD_PORT,
         ),
         (
-            "https://mock-order-api.synthetic.test/orders",
+            "https://ai-qa-sandbox.onrender.com/orders",
             TargetValidationBoundary.PATH_FORBIDDEN,
         ),
         (
-            "https://mock-order-api.synthetic.test?tenant=other",
+            "https://ai-qa-sandbox.onrender.com?tenant=other",
             TargetValidationBoundary.QUERY_OR_FRAGMENT_FORBIDDEN,
         ),
         (
-            "https://mock-order-api.synthetic.test#fragment",
+            "https://ai-qa-sandbox.onrender.com#fragment",
             TargetValidationBoundary.QUERY_OR_FRAGMENT_FORBIDDEN,
         ),
         (
@@ -197,7 +205,7 @@ def test_registry_rejects_an_empty_target_catalog() -> None:
 def test_registry_rejects_duplicate_server_side_target_ids() -> None:
     first = TargetConfiguration(
         id=TargetId.SYNTHETIC_ORDER_API,
-        base_url="https://mock-order-api.synthetic.test",
+        base_url="https://ai-qa-sandbox.onrender.com",
     )
     duplicate = TargetConfiguration(
         id=TargetId.SYNTHETIC_ORDER_API,
@@ -254,8 +262,8 @@ def test_changed_public_answers_are_rejected_as_dns_rebinding() -> None:
     assert_rejected(error, TargetValidationBoundary.DNS_REBINDING)
     assert resolver.calls == 2
     assert resolver.hostnames == [
-        "mock-order-api.synthetic.test",
-        "mock-order-api.synthetic.test",
+        "ai-qa-sandbox.onrender.com",
+        "ai-qa-sandbox.onrender.com",
     ]
 
 

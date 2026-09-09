@@ -39,6 +39,16 @@ from ai_qa_copilot_api.generated_tests import (
     RequestTemplateV1,
 )
 from ai_qa_copilot_api.projects import Base
+from ai_qa_copilot_api.documents import (
+    ExecutionJobState,
+    ExecutionResultOutcome,
+)
+from ai_qa_copilot_api.execution_results import (
+    ExecutionResultPayload,
+    ExecutionResultRejected,
+    SqlAlchemyExecutionResultRepository,
+)
+from ai_qa_copilot_api.execution_jobs import SqlAlchemyExecutionJobQueue
 
 
 PROJECT_ID = UUID("00000000-0000-0000-0000-000000000801")
@@ -108,6 +118,22 @@ def service(
         approval_repository,
         engine,
     )
+
+
+def job_queue(
+    engine: Engine,
+    clock: MutableClock,
+) -> SqlAlchemyExecutionJobQueue:
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    return SqlAlchemyExecutionJobQueue(sessions, clock=clock)
+
+
+def result_repository(
+    engine: Engine,
+    clock: MutableClock,
+) -> SqlAlchemyExecutionResultRepository:
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    return SqlAlchemyExecutionResultRepository(sessions, clock=clock)
 
 
 def test_missing_approval_cannot_be_claimed(tmp_path: Path) -> None:
@@ -339,6 +365,12 @@ def test_unavailable_persistence_fails_closed() -> None:
             plan_hash=immutable_plan.plan_hash,
         )
 
+    with pytest.raises(ExecutionApprovalUnavailable):
+        approval_service.get(
+            project_id=PROJECT_ID,
+            approval_id=UUID("00000000-0000-0000-0000-000000000998"),
+        )
+
 
 def test_approval_expiry_is_server_derived(tmp_path: Path) -> None:
     clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
@@ -358,5 +390,362 @@ def test_approval_expiry_is_server_derived(tmp_path: Path) -> None:
         assert approval.expires_at == clock.current + timedelta(minutes=10)
         assert approval.expires_at - approval.approved_at == EXECUTION_APPROVAL_TTL
         assert approval.consumed_at is None
+    finally:
+        engine.dispose()
+
+
+def test_execution_job_is_idempotently_bound_to_one_unconsumed_approval(
+    tmp_path: Path,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+
+        created = queue.enqueue(approval=approval)
+        repeated = queue.enqueue(approval=approval)
+
+        assert repeated == created
+        assert created.project_id == PROJECT_ID
+        assert created.execution_approval_id == approval.id
+        assert created.plan_id == immutable_plan.id
+        assert created.plan_hash == immutable_plan.plan_hash
+        assert created.state is ExecutionJobState.QUEUED
+        assert created.started_at is None
+        assert created.finished_at is None
+        assert created.cancelled_at is None
+    finally:
+        engine.dispose()
+
+
+def test_execution_job_claim_consumes_the_matching_approval_atomically(
+    tmp_path: Path,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+
+        claimed = queue.claim_next()
+
+        assert claimed is not None
+        assert claimed.job.id == queued.id
+        assert claimed.job.state is ExecutionJobState.RUNNING
+        assert claimed.job.started_at == clock.current
+        assert claimed.approval.id == approval.id
+        assert claimed.approval.consumed_at == clock.current
+        assert queue.claim_next() is None
+    finally:
+        engine.dispose()
+
+
+def test_expired_execution_job_fails_before_any_future_transport(
+    tmp_path: Path,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        clock.current = approval.expires_at
+
+        assert queue.claim_next() is None
+
+        failed = queue.get(project_id=PROJECT_ID, job_id=queued.id)
+        assert failed is not None
+        assert failed.state is ExecutionJobState.FAILED
+        assert failed.started_at == clock.current
+        assert failed.finished_at == clock.current
+    finally:
+        engine.dispose()
+
+
+def test_queued_execution_job_can_be_cancelled_without_consuming_approval(
+    tmp_path: Path,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+
+        cancelled = queue.cancel(project_id=PROJECT_ID, job_id=queued.id)
+
+        assert cancelled is not None
+        assert cancelled.state is ExecutionJobState.CANCELLED
+        assert cancelled.cancel_requested_at == clock.current
+        assert cancelled.cancelled_at == clock.current
+        assert queue.claim_next() is None
+    finally:
+        engine.dispose()
+
+
+def execution_result_payload(
+    *,
+    outcome: ExecutionResultOutcome,
+    failure_code: str | None,
+    transport_send_count: int = 1,
+    request_evidence_json: str | None = (
+        '{"headers":[],"method":"POST","url":"https://example.test/api/orders"}'
+    ),
+    response_evidence_json: str | None = (
+        '{"body_bytes":24,"headers":[],"status_code":201}'
+    ),
+) -> ExecutionResultPayload:
+    return ExecutionResultPayload(
+        outcome=outcome,
+        failure_code=failure_code,
+        assertion_results_json='[{"passed":true,"target":"status_code"}]',
+        request_evidence_json=request_evidence_json,
+        response_evidence_json=response_evidence_json,
+        transport_send_count=transport_send_count,
+    )
+
+
+def test_execution_result_atomically_finishes_claimed_job_and_is_idempotent(
+    tmp_path: Path,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    results = result_repository(engine, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        claimed = queue.claim_next()
+        assert claimed is not None
+
+        payload = execution_result_payload(
+            outcome=ExecutionResultOutcome.SUCCEEDED,
+            failure_code=None,
+        )
+        stored = results.record(
+            project_id=PROJECT_ID,
+            job_id=claimed.job.id,
+            payload=payload,
+        )
+        repeated = results.record(
+            project_id=PROJECT_ID,
+            job_id=claimed.job.id,
+            payload=payload,
+        )
+
+        assert repeated == stored
+        assert stored.execution_job_id == queued.id
+        assert stored.outcome is ExecutionResultOutcome.SUCCEEDED
+        assert stored.failure_code is None
+        assert stored.recorded_at == clock.current
+
+        finished = queue.get(project_id=PROJECT_ID, job_id=queued.id)
+        assert finished is not None
+        assert finished.state is ExecutionJobState.SUCCEEDED
+        assert finished.finished_at == clock.current
+        assert finished.cancelled_at is None
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("outcome", "failure_code", "expected_state"),
+    [
+        (
+            ExecutionResultOutcome.FAILED,
+            "assertions_failed",
+            ExecutionJobState.FAILED,
+        ),
+        (
+            ExecutionResultOutcome.CANCELLED,
+            "cancelled",
+            ExecutionJobState.CANCELLED,
+        ),
+    ],
+)
+def test_execution_result_records_each_non_success_terminal_state(
+    tmp_path: Path,
+    outcome: ExecutionResultOutcome,
+    failure_code: str,
+    expected_state: ExecutionJobState,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    results = result_repository(engine, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        claimed = queue.claim_next()
+        assert claimed is not None
+
+        stored = results.record(
+            project_id=PROJECT_ID,
+            job_id=claimed.job.id,
+            payload=execution_result_payload(
+                outcome=outcome,
+                failure_code=failure_code,
+                transport_send_count=0,
+            ),
+        )
+
+        assert stored.outcome is outcome
+        assert stored.failure_code == failure_code
+
+        finished = queue.get(project_id=PROJECT_ID, job_id=queued.id)
+        assert finished is not None
+        assert finished.state is expected_state
+
+        if outcome is ExecutionResultOutcome.CANCELLED:
+            assert finished.finished_at is None
+            assert finished.cancel_requested_at == clock.current
+            assert finished.cancelled_at == clock.current
+        else:
+            assert finished.finished_at == clock.current
+            assert finished.cancelled_at is None
+    finally:
+        engine.dispose()
+
+
+def test_execution_result_rejects_conflicting_or_unredacted_evidence(
+    tmp_path: Path,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    results = result_repository(engine, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        claimed = queue.claim_next()
+        assert claimed is not None
+
+        with pytest.raises(ExecutionResultRejected):
+            results.record(
+                project_id=PROJECT_ID,
+                job_id=claimed.job.id,
+                payload=execution_result_payload(
+                    outcome=ExecutionResultOutcome.FAILED,
+                    failure_code="transport_error",
+                    request_evidence_json=(
+                        '{"headers":[["Authorization","Bearer secret-value"]]}'
+                    ),
+                ),
+            )
+
+        running = queue.get(project_id=PROJECT_ID, job_id=queued.id)
+        assert running is not None
+        assert running.state is ExecutionJobState.RUNNING
+
+        results.record(
+            project_id=PROJECT_ID,
+            job_id=claimed.job.id,
+            payload=execution_result_payload(
+                outcome=ExecutionResultOutcome.FAILED,
+                failure_code="assertions_failed",
+            ),
+        )
+
+        with pytest.raises(ExecutionResultRejected):
+            results.record(
+                project_id=PROJECT_ID,
+                job_id=claimed.job.id,
+                payload=execution_result_payload(
+                    outcome=ExecutionResultOutcome.SUCCEEDED,
+                    failure_code=None,
+                ),
+            )
+    finally:
+        engine.dispose()
+
+
+def test_approval_lookup_is_project_scoped_and_preserves_immutable_snapshot(
+    tmp_path: Path,
+) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    immutable_plan = plan()
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+
+        assert (
+            approval_service.get(
+                project_id=PROJECT_ID,
+                approval_id=approval.id,
+            )
+            == approval
+        )
+        assert (
+            approval_service.get(
+                project_id=UUID("00000000-0000-0000-0000-000000000999"),
+                approval_id=approval.id,
+            )
+            is None
+        )
     finally:
         engine.dispose()

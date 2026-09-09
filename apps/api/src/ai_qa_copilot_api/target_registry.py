@@ -308,7 +308,7 @@ DEFAULT_TARGET_REGISTRY: Final = TargetRegistry(
     targets=(
         TargetConfiguration(
             id=TargetId.SYNTHETIC_ORDER_API,
-            base_url="https://mock-order-api.synthetic.test",
+            base_url="https://ai-qa-sandbox.onrender.com",
         ),
     )
 )
