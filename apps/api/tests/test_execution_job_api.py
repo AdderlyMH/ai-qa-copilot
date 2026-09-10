@@ -1,16 +1,23 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
+import logging
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_qa_copilot_api.audit import AUTHORIZATION_AUDIT_LOGGER
 from ai_qa_copilot_api.auth import AppEnvironment, AuthSettings
-from ai_qa_copilot_api.documents import ExecutionResultOutcome
+from ai_qa_copilot_api.documents import (
+    ExecutionResultOutcome,
+    ExecutionResultRecord,
+)
 from ai_qa_copilot_api.execution_approvals import (
     ExecutionApproval,
     SqlAlchemyExecutionApprovalRepository,
@@ -302,5 +309,104 @@ def test_job_read_includes_the_already_redacted_durable_terminal_result(
         assert body["result"]["failure_code"] is None
         assert body["result"]["assertion_results_json"] == "[]"
         assert body["result"]["transport_send_count"] == 0
+    finally:
+        engine.dispose()
+
+
+def test_owner_evidence_route_re_redacts_canaries_from_durable_display(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    canary = "exec-006-durable-display-canary"
+    api_client, approvals, jobs, engine = client(tmp_path)
+    assert jobs is not None
+    approval = seed_approval(approvals)
+    queue_path = (
+        f"/projects/{PROJECT_ID}/execution-approvals/{approval.id}/execution-jobs"
+    )
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+
+    caplog.set_level(logging.INFO, logger=AUTHORIZATION_AUDIT_LOGGER)
+
+    try:
+        with api_client as http:
+            created = http.post(queue_path)
+            assert created.status_code == 201
+            job_id = UUID(created.json()["id"])
+
+            claimed = jobs.claim_next()
+            assert claimed is not None
+            assert claimed.job.id == job_id
+
+            with sessions.begin() as session:
+                session.add(
+                    ExecutionResultRecord(
+                        id=uuid4(),
+                        execution_job_id=job_id,
+                        outcome=ExecutionResultOutcome.SUCCEEDED.value,
+                        failure_code=None,
+                        assertion_results=[
+                            {
+                                "target": "status_code",
+                                "operator": "equals",
+                                "passed": True,
+                                "token": canary,
+                            }
+                        ],
+                        request_evidence={
+                            "method": "POST",
+                            "url": (f"https://example.test/orders?token={canary}"),
+                            "headers": [
+                                ["X-Api-Token", canary],
+                                ["Accept", "application/json"],
+                            ],
+                            "json_body": {
+                                "password": canary,
+                                "quantity": 2,
+                            },
+                        },
+                        response_evidence={
+                            "status_code": 201,
+                            "elapsed_ms": 37,
+                            "headers": [
+                                ["Set-Cookie", canary],
+                                ["Content-Type", "application/json"],
+                            ],
+                            "json_body": {
+                                "nested": {
+                                    "secret": canary,
+                                },
+                                "order_id": "ORDER-1001",
+                            },
+                        },
+                        transport_send_count=1,
+                        recorded_at=datetime(2026, 9, 10, tzinfo=timezone.utc),
+                    )
+                )
+
+            evidence = http.get(f"{EXECUTION_JOBS_PATH}/{job_id}/evidence")
+
+        assert evidence.status_code == 200
+        body = evidence.json()
+        assert canary not in json.dumps(body)
+        assert canary not in caplog.text
+        assert body["execution_job_id"] == str(job_id)
+        assert body["outcome"] == "succeeded"
+        assert body["response_status_code"] == 201
+        assert body["response_elapsed_ms"] == 37
+        assert body["assertion_results"][0]["token"] == "[REDACTED]"
+        assert body["request_evidence"]["headers"][0] == [
+            "X-Api-Token",
+            "[REDACTED]",
+        ]
+        assert body["request_evidence"]["json_body"]["password"] == "[REDACTED]"
+        assert body["response_evidence"]["headers"][0] == [
+            "Set-Cookie",
+            "[REDACTED]",
+        ]
+        assert (
+            body["response_evidence"]["json_body"]["nested"]["secret"] == "[REDACTED]"
+        )
+        assert UUID(evidence.headers["X-Correlation-ID"])
     finally:
         engine.dispose()

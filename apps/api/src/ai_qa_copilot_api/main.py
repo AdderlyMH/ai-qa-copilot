@@ -76,6 +76,11 @@ from ai_qa_copilot_api.execution_results import (
     UnavailableExecutionResultRepository,
     execution_result_repository_from_environment,
 )
+from ai_qa_copilot_api.execution_evidence import (
+    ExecutionEvidenceView,
+    ExecutionEvidenceViewRejected,
+    execution_evidence_view_from_result,
+)
 from ai_qa_copilot_api.generated_tests import (
     GeneratedTestCaseValidationError,
     validate_generated_test_case,
@@ -476,6 +481,24 @@ class ExecutionResultResponse(BaseModel):
     assertion_results_json: str
     request_evidence_json: str | None
     response_evidence_json: str | None
+    transport_send_count: int
+    recorded_at: datetime
+
+
+class ExecutionEvidenceResponse(BaseModel):
+    """Owner-only, re-redacted display projection for one terminal result."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    id: UUID
+    execution_job_id: UUID
+    outcome: str
+    failure_code: str | None
+    assertion_results: tuple[dict[str, object], ...]
+    request_evidence: dict[str, object] | None
+    response_evidence: dict[str, object] | None
+    response_status_code: int | None
+    response_elapsed_ms: int | None
     transport_send_count: int
     recorded_at: datetime
 
@@ -1283,6 +1306,59 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _execution_job_response(job, result=result)
 
+    @application.get(
+        "/projects/{project_id}/execution-jobs/{job_id}/evidence",
+        response_model=ExecutionEvidenceResponse,
+    )
+    def get_execution_evidence(
+        project_id: UUID,
+        job_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> ExecutionEvidenceResponse:
+        """Return one owner-only, re-redacted terminal evidence projection."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            job = _execution_job_queue(request).get(
+                project_id=project_id,
+                job_id=job_id,
+            )
+        except ExecutionJobQueueUnavailable:
+            _raise_execution_jobs_unavailable(correlation_id)
+
+        if job is None:
+            _raise_execution_job_not_found(correlation_id)
+
+        try:
+            result = _execution_result_repository(request).get(
+                project_id=project_id,
+                job_id=job.id,
+            )
+        except ExecutionResultUnavailable:
+            _raise_execution_results_unavailable(correlation_id)
+
+        if result is None:
+            _raise_execution_evidence_not_found(correlation_id)
+
+        try:
+            evidence = execution_evidence_view_from_result(result)
+        except ExecutionEvidenceViewRejected:
+            _raise_execution_evidence_unavailable(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _execution_evidence_response(evidence)
+
     @application.delete(
         "/projects/{project_id}/execution-jobs/{job_id}",
         response_model=ExecutionJobResponse,
@@ -1671,6 +1747,24 @@ def _execution_result_repository(request: Request) -> ExecutionResultRepository:
     return repository
 
 
+def _execution_evidence_response(
+    evidence: ExecutionEvidenceView,
+) -> ExecutionEvidenceResponse:
+    return ExecutionEvidenceResponse(
+        id=evidence.id,
+        execution_job_id=evidence.execution_job_id,
+        outcome=evidence.outcome,
+        failure_code=evidence.failure_code,
+        assertion_results=evidence.assertion_results,
+        request_evidence=evidence.request_evidence,
+        response_evidence=evidence.response_evidence,
+        response_status_code=evidence.response_status_code,
+        response_elapsed_ms=evidence.response_elapsed_ms,
+        transport_send_count=evidence.transport_send_count,
+        recorded_at=evidence.recorded_at,
+    )
+
+
 def _execution_job_response(
     job: ExecutionJob,
     *,
@@ -1764,6 +1858,22 @@ def _raise_execution_results_unavailable(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="Execution result service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_execution_evidence_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Execution evidence is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_execution_evidence_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Execution evidence not found",
         headers={"X-Correlation-ID": str(correlation_id)},
     )
 

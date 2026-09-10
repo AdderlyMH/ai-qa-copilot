@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { SourcePassageViewer } from "./source-passage-viewer";
 import { FindingFeedbackPanel } from "./finding-feedback-panel";
 import { ExecutionPlanReviewPanel } from "./execution-plan-review-panel";
+import { ExecutionEvidenceViewer } from "./execution-evidence-viewer";
 
 type Project = {
   id: string;
@@ -274,6 +275,10 @@ export default function Home() {
           <SourcePassageViewer projectId={selectedProject.id} />
           <FindingFeedbackPanel projectId={selectedProject.id} />
           <ExecutionPlanReviewPanel projectId={selectedProject.id} />
+          <ExecutionEvidenceViewer
+            key={selectedProject.id}
+            projectId={selectedProject.id}
+          />
 
           {selectedProject.archived_at ? null : (
             <form

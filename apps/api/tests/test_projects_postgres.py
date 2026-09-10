@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from threading import Barrier
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+import logging
 
+from ai_qa_copilot_api.audit import AUTHORIZATION_AUDIT_LOGGER
+from ai_qa_copilot_api.projects import SqlAlchemyProjectRepository
 from ai_qa_copilot_api.analysis_runs import (
     AnalysisRunService,
     SqlAlchemyAnalysisRunRepository,
@@ -74,6 +77,7 @@ from ai_qa_copilot_api.generated_tests import (
 from ai_qa_copilot_api.documents import (
     ExecutionJobState,
     ExecutionResultOutcome,
+    ExecutionResultRecord,
 )
 from ai_qa_copilot_api.execution_results import (
     ExecutionResultPayload,
@@ -1464,3 +1468,140 @@ def test_postgres_execution_result_conflicts_have_exactly_one_winner() -> None:
     finally:
         truncate_postgres_approval_test_data(engine)
         engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_evidence_view_redacts_without_mutating_stored_results(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    projects = SqlAlchemyProjectRepository(sessions)
+    approvals = SqlAlchemyExecutionApprovalRepository(sessions)
+    queue = SqlAlchemyExecutionJobQueue(sessions)
+    results = SqlAlchemyExecutionResultRepository(sessions)
+    canary = "exec-006-postgres-display-canary"
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+
+        project = projects.create(
+            name="PostgreSQL evidence viewer",
+            description=None,
+        )
+        other_project = projects.create(
+            name="Other evidence project",
+            description=None,
+        )
+        plan = execution_approval_plan(quantity=11)
+        approval = ExecutionApprovalService(approvals).approve(
+            project_id=project.id,
+            plan=plan,
+            expected_plan_hash=plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        claimed = queue.claim_next()
+        assert claimed is not None
+        assert claimed.job.id == queued.id
+
+        stored = results.record(
+            project_id=project.id,
+            job_id=queued.id,
+            payload=execution_result_payload(
+                outcome=ExecutionResultOutcome.SUCCEEDED,
+                failure_code=None,
+            ),
+        )
+
+        # Simulate an unsafe historical record in the isolated test database.
+        # Normal writes still go through the repository's redaction checks.
+        with sessions.begin() as session:
+            record = session.get(ExecutionResultRecord, stored.id)
+            assert record is not None
+            record.request_evidence = {
+                "method": "POST",
+                "url": (
+                    f"https://ai-qa-sandbox.onrender.com/api/orders?token={canary}"
+                ),
+                "headers": [["X-Api-Token", canary]],
+                "json_body": {"password": canary, "quantity": 11},
+            }
+            record.response_evidence = {
+                "status_code": 201,
+                "elapsed_ms": 37,
+                "headers": [["Set-Cookie", canary]],
+                "json_body": {
+                    "order_id": "ORDER-1001",
+                    "nested": {"secret": canary},
+                },
+            }
+
+        before = results.get(project_id=project.id, job_id=queued.id)
+        assert before is not None
+        assert canary in (before.request_evidence_json or "")
+        assert canary in (before.response_evidence_json or "")
+        job_before = queue.get(project_id=project.id, job_id=queued.id)
+
+        app = create_app(
+            local_bypass_settings(),
+            project_repository=projects,
+            execution_approval_repository=approvals,
+            execution_job_queue=queue,
+            execution_result_repository=results,
+        )
+        caplog.clear()
+        caplog.set_level(logging.INFO, logger=AUTHORIZATION_AUDIT_LOGGER)
+
+        path = f"/projects/{project.id}/execution-jobs/{queued.id}/evidence"
+        with TestClient(app) as http:
+            first = http.get(path)
+            repeated = http.get(path)
+            foreign = http.get(
+                f"/projects/{other_project.id}/execution-jobs/{queued.id}/evidence"
+            )
+
+        assert first.status_code == 200
+        assert repeated.status_code == 200
+        assert repeated.json() == first.json()
+
+        body = first.json()
+        assert body["id"] == str(stored.id)
+        assert body["execution_job_id"] == str(queued.id)
+        assert body["outcome"] == "succeeded"
+        assert body["response_status_code"] == 201
+        assert body["response_elapsed_ms"] == 37
+        assert body["transport_send_count"] == 1
+        assert body["request_evidence"]["headers"] == [["X-Api-Token", "[REDACTED]"]]
+        assert body["request_evidence"]["json_body"]["password"] == "[REDACTED]"
+        assert body["response_evidence"]["headers"] == [["Set-Cookie", "[REDACTED]"]]
+        assert (
+            body["response_evidence"]["json_body"]["nested"]["secret"] == "[REDACTED]"
+        )
+
+        assert foreign.status_code == 404
+        assert foreign.json() == {"detail": "Execution job not found"}
+
+        for response in (first, repeated, foreign):
+            assert canary not in response.text
+            assert UUID(response.headers["X-Correlation-ID"])
+
+        audit_records = [
+            record
+            for record in caplog.records
+            if record.name == AUTHORIZATION_AUDIT_LOGGER
+        ]
+        assert audit_records
+        assert canary not in caplog.text
+
+        # Display redaction must not rewrite the immutable stored result.
+        after = results.get(project_id=project.id, job_id=queued.id)
+        assert after == before
+        assert queue.get(project_id=project.id, job_id=queued.id) == job_before
+    finally:
+        try:
+            truncate_postgres_approval_test_data(engine)
+        finally:
+            engine.dispose()
