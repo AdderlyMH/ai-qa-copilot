@@ -645,6 +645,40 @@ class ExecutionResultRecord(Base):
     )
 
 
+class QualityReportRevisionRecord(Base):
+    """One immutable canonical QA report and reconciled evidence snapshot."""
+
+    __tablename__ = "quality_report_revisions"
+    __table_args__ = (
+        CheckConstraint("length(trim(schema_version)) > 0"),
+        CheckConstraint("length(trim(canonical_report_json)) > 0"),
+        CheckConstraint("length(trim(snapshot_json)) > 0"),
+        CheckConstraint("length(report_sha256) = 64"),
+        CheckConstraint("length(snapshot_sha256) = 64"),
+        UniqueConstraint(
+            "project_id",
+            "snapshot_sha256",
+            name="uq_quality_report_revisions_project_snapshot_sha256",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("projects.id"),
+        nullable=False,
+    )
+    schema_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_report_json: Mapped[str] = mapped_column(Text, nullable=False)
+    snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
+    report_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    snapshot_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
 class DocumentIntakeState(StrEnum):
     """Persisted outcome of bounded raw-document admission."""
 

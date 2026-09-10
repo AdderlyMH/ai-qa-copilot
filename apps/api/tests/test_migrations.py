@@ -10,7 +10,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0014_execution_results"
+EXPECTED_REVISION = "0015_quality_report_revisions"
+QUALITY_REPORT_REVISION = "0015_quality_report_revisions"
 EXECUTION_RESULT_REVISION = "0014_execution_results"
 EXECUTION_JOB_REVISION = "0013_execution_jobs"
 EXECUTION_APPROVAL_REVISION = "0012_execution_approvals"
@@ -64,7 +65,15 @@ def test_alembic_has_reversible_execution_approval_head() -> None:
 
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == EXECUTION_JOB_REVISION
+    assert revision.down_revision == EXECUTION_RESULT_REVISION
+
+    quality_report_revision = script.get_revision(QUALITY_REPORT_REVISION)
+    assert quality_report_revision is not None
+    assert quality_report_revision.down_revision == EXECUTION_RESULT_REVISION
+
+    execution_result_revision = script.get_revision(EXECUTION_RESULT_REVISION)
+    assert execution_result_revision is not None
+    assert execution_result_revision.down_revision == EXECUTION_JOB_REVISION
 
     execution_job_revision = script.get_revision(EXECUTION_JOB_REVISION)
     assert execution_job_revision is not None
@@ -506,4 +515,42 @@ def test_execution_result_migration_creates_reversible_redacted_audit_state(
         ("create_index", "ix_execution_results_recorded_at"),
         ("drop_index", "ix_execution_results_recorded_at"),
         ("drop_table", "execution_results"),
+    ]
+
+
+def test_quality_report_revision_migration_creates_reversible_snapshot_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = migration_script(QUALITY_REPORT_REVISION)
+    calls: list[tuple[str, tuple[object, ...]]] = []
+
+    monkeypatch.setattr(
+        module.op,
+        "create_table",
+        lambda *args, **kwargs: calls.append(("create_table", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "create_index",
+        lambda *args, **kwargs: calls.append(("create_index", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "drop_index",
+        lambda *args, **kwargs: calls.append(("drop_index", args)),
+    )
+    monkeypatch.setattr(
+        module.op,
+        "drop_table",
+        lambda *args, **kwargs: calls.append(("drop_table", args)),
+    )
+
+    module.upgrade()
+    module.downgrade()
+
+    assert [(name, args[0]) for name, args in calls] == [
+        ("create_table", "quality_report_revisions"),
+        ("create_index", "ix_quality_report_revisions_project_created_at"),
+        ("drop_index", "ix_quality_report_revisions_project_created_at"),
+        ("drop_table", "quality_report_revisions"),
     ]

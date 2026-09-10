@@ -175,7 +175,7 @@ def truncate_postgres_approval_test_data(engine: Engine) -> None:
     with engine.begin() as connection:
         connection.execute(
             text(
-                "TRUNCATE TABLE execution_results, execution_jobs, "
+                "TRUNCATE TABLE quality_report_revisions, execution_results, execution_jobs, "
                 "execution_approvals, finding_feedback, requirement_findings, "
                 "requirement_analysis_runs, citations, parser_jobs, "
                 "document_intakes, retrieval_trace_candidates, retrieval_traces, "
@@ -208,7 +208,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
+                    "TRUNCATE TABLE quality_report_revisions, execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -286,7 +286,7 @@ def test_migrated_postgres_supports_project_crud_and_analysis_runs() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
+                    "TRUNCATE TABLE quality_report_revisions, execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -331,7 +331,7 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
+                    "TRUNCATE TABLE quality_report_revisions, execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -597,7 +597,7 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
+                    "TRUNCATE TABLE quality_report_revisions, execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -642,7 +642,7 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
+                    "TRUNCATE TABLE quality_report_revisions, execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
@@ -981,7 +981,7 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
         with engine.begin() as connection:
             connection.execute(
                 text(
-                    "TRUNCATE TABLE execution_results, execution_jobs, execution_approvals, "
+                    "TRUNCATE TABLE quality_report_revisions, execution_results, execution_jobs, execution_approvals, "
                     "finding_feedback, requirement_findings, "
                     "requirement_analysis_runs, "
                     "citations, parser_jobs, document_intakes, retrieval_trace_candidates, "
