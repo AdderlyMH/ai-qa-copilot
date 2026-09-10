@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import Annotated, Literal, Never
 from uuid import UUID, uuid4
 
+import os
+
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -142,6 +144,23 @@ from ai_qa_copilot_api.requirements_analysis import (
     RequirementAnalysisService,
     RequirementAnalysisUnavailable,
     requirement_analysis_repository_from_environment,
+)
+from ai_qa_copilot_api.quality_report_evidence_collection import (
+    SqlAlchemyQualityReportEvidenceCollector,
+)
+from ai_qa_copilot_api.quality_report_generation import (
+    QualityReportGenerationRejected,
+    QualityReportGenerationService,
+    QualityReportGenerationUnavailable,
+    UnavailableQualityReportGenerationService,
+)
+from ai_qa_copilot_api.quality_report_revisions import (
+    QualityReportRevisionRepository,
+    QualityReportRevisionUnavailable,
+    SqlAlchemyQualityReportRevisionRepository,
+    StoredQualityReportRevision,
+    UnavailableQualityReportRevisionRepository,
+    quality_report_revision_repository_from_environment,
 )
 
 
@@ -552,6 +571,20 @@ class ExecutionJobResponse(BaseModel):
     result: ExecutionResultResponse | None
 
 
+class QualityReportRevisionResponse(BaseModel):
+    """Owner-only immutable quality-report revision projection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    project_id: UUID
+    schema_version: str
+    report_sha256: str
+    snapshot_sha256: str
+    created_at: datetime
+    snapshot: dict[str, object]
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -570,6 +603,10 @@ def create_app(
     execution_approval_repository: ExecutionApprovalRepository | None = None,
     execution_job_queue: ExecutionJobQueue | None = None,
     execution_result_repository: ExecutionResultRepository | None = None,
+    quality_report_revision_repository: QualityReportRevisionRepository | None = None,
+    quality_report_generation_service: QualityReportGenerationService
+    | UnavailableQualityReportGenerationService
+    | None = None,
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
     | None = None,
@@ -621,6 +658,21 @@ def create_app(
             execution_result_repository
             if execution_result_repository is not None
             else execution_result_repository_from_environment()
+        )
+        selected_quality_report_revision_repository = (
+            quality_report_revision_repository
+            if quality_report_revision_repository is not None
+            else quality_report_revision_repository_from_environment()
+        )
+        application.state.quality_report_revision_repository = (
+            selected_quality_report_revision_repository
+        )
+        application.state.quality_report_generation_service = (
+            quality_report_generation_service
+            if quality_report_generation_service is not None
+            else _default_quality_report_generation_service(
+                selected_quality_report_revision_repository
+            )
         )
         application.state.demo_publication_service = DemoPublicationService(
             selected_demo_settings,
@@ -1389,6 +1441,114 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _execution_evidence_response(evidence)
 
+    @application.post(
+        "/projects/{project_id}/quality-reports",
+        response_model=QualityReportRevisionResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def generate_quality_report(
+        project_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> QualityReportRevisionResponse:
+        """Collect owned evidence and persist one new immutable report revision."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            revision = _quality_report_generation_service(request).generate(
+                project_id=project_id
+            )
+        except QualityReportGenerationUnavailable:
+            _raise_quality_reports_unavailable(correlation_id)
+        except QualityReportGenerationRejected:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Quality report evidence cannot be assembled",
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from None
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _quality_report_revision_response(revision)
+
+    @application.get(
+        "/projects/{project_id}/quality-reports",
+        response_model=list[QualityReportRevisionResponse],
+    )
+    def list_quality_reports(
+        project_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> list[QualityReportRevisionResponse]:
+        """List immutable report revisions belonging only to one project."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            revisions = _quality_report_revision_repository(request).list_for_project(
+                project_id=project_id
+            )
+        except QualityReportRevisionUnavailable:
+            _raise_quality_reports_unavailable(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return [_quality_report_revision_response(item) for item in revisions]
+
+    @application.get(
+        "/projects/{project_id}/quality-reports/{revision_id}",
+        response_model=QualityReportRevisionResponse,
+    )
+    def get_quality_report(
+        project_id: UUID,
+        revision_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> QualityReportRevisionResponse:
+        """Read one validated immutable report revision in its owning project."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            revision = _quality_report_revision_repository(request).get(
+                project_id=project_id,
+                revision_id=revision_id,
+            )
+        except QualityReportRevisionUnavailable:
+            _raise_quality_reports_unavailable(correlation_id)
+
+        if revision is None:
+            _raise_quality_report_not_found(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _quality_report_revision_response(revision)
+
     @application.get(
         "/projects/{project_id}/execution-jobs/{job_id}/failure-analysis",
         response_model=ExecutionFailureAnalysisResponse,
@@ -1536,6 +1696,68 @@ def _document_intake_service(request: Request) -> DocumentIntakeService:
     return service
 
 
+def _default_quality_report_generation_service(
+    revision_repository: QualityReportRevisionRepository,
+) -> QualityReportGenerationService | UnavailableQualityReportGenerationService:
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if not database_url or not isinstance(
+        revision_repository,
+        SqlAlchemyQualityReportRevisionRepository,
+    ):
+        return UnavailableQualityReportGenerationService()
+
+    return QualityReportGenerationService(
+        evidence_collector=SqlAlchemyQualityReportEvidenceCollector.from_database_url(
+            database_url
+        ),
+        revision_repository=revision_repository,
+    )
+
+
+def _quality_report_generation_service(
+    request: Request,
+) -> QualityReportGenerationService | UnavailableQualityReportGenerationService:
+    service = getattr(request.app.state, "quality_report_generation_service", None)
+    if not isinstance(
+        service,
+        (
+            QualityReportGenerationService,
+            UnavailableQualityReportGenerationService,
+        ),
+    ):
+        raise RuntimeError("Quality-report generation boundary was not initialized")
+    return service
+
+
+def _quality_report_revision_repository(
+    request: Request,
+) -> QualityReportRevisionRepository:
+    repository = getattr(request.app.state, "quality_report_revision_repository", None)
+    if not isinstance(
+        repository,
+        (
+            SqlAlchemyQualityReportRevisionRepository,
+            UnavailableQualityReportRevisionRepository,
+        ),
+    ):
+        raise RuntimeError("Quality-report revision boundary was not initialized")
+    return repository
+
+
+def _quality_report_revision_response(
+    revision: StoredQualityReportRevision,
+) -> QualityReportRevisionResponse:
+    return QualityReportRevisionResponse(
+        id=revision.id,
+        project_id=revision.project_id,
+        schema_version=revision.schema_version,
+        report_sha256=revision.report_sha256,
+        snapshot_sha256=revision.snapshot_sha256,
+        created_at=revision.created_at,
+        snapshot=revision.snapshot.as_payload(),
+    )
+
+
 def _citation_repository(request: Request) -> CitationRepository:
     repository = getattr(request.app.state, "citation_repository", None)
     if not isinstance(
@@ -1644,6 +1866,22 @@ def _authorize_project_resource(
         ) from None
     except AuthorizationAuditUnavailable:
         _raise_projects_unavailable(correlation_id)
+
+
+def _raise_quality_reports_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Quality report service is temporarily unavailable",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_quality_report_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Quality report revision not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
 
 
 def _raise_owner_resolution_denial(

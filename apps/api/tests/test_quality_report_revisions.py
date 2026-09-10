@@ -9,7 +9,17 @@ import os
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
+from fastapi.testclient import TestClient
 
+from ai_qa_copilot_api.auth import AppEnvironment, AuthSettings
+from ai_qa_copilot_api.main import create_app
+from ai_qa_copilot_api.projects import SqlAlchemyProjectRepository
+from ai_qa_copilot_api.quality_report_evidence_collection import (
+    SqlAlchemyQualityReportEvidenceCollector,
+)
+from ai_qa_copilot_api.quality_report_generation import (
+    QualityReportGenerationService,
+)
 from ai_qa_copilot_api.documents import QualityReportRevisionRecord
 from ai_qa_copilot_api.projects import Base, ProjectRecord
 from ai_qa_copilot_api.quality_report_revisions import (
@@ -27,6 +37,14 @@ from ai_qa_copilot_api.quality_report_snapshots import (
 PROJECT_ID = UUID("00000000-0000-0000-0000-00000000b001")
 OTHER_PROJECT_ID = UUID("00000000-0000-0000-0000-00000000b002")
 REPORT_ID = UUID("00000000-0000-0000-0000-00000000b003")
+
+
+def local_bypass_settings() -> AuthSettings:
+    return AuthSettings(
+        app_env=AppEnvironment.LOCAL,
+        local_auth_bypass_enabled=True,
+        cognito=None,
+    )
 
 
 def repository() -> tuple[
@@ -244,6 +262,75 @@ def test_postgres_repository_persists_immutable_revision() -> None:
         assert row.snapshot_json
         assert row.report_sha256 == stored.report_sha256
         assert row.snapshot_sha256 == stored.snapshot_sha256
+    finally:
+        with engine.begin() as connection:
+            connection.execute(
+                text("TRUNCATE TABLE quality_report_revisions, projects CASCADE")
+            )
+        engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_api_generates_and_reads_an_immutable_revision() -> None:
+    database_url = os.environ.get(POSTGRES_INTEGRATION_DATABASE_URL, "").strip()
+    if not database_url:
+        pytest.skip("requires the isolated PostgreSQL database from db-check")
+
+    engine = create_engine(database_url)
+    revisions = SqlAlchemyQualityReportRevisionRepository.from_database_url(
+        database_url
+    )
+    generation = QualityReportGenerationService(
+        evidence_collector=SqlAlchemyQualityReportEvidenceCollector.from_database_url(
+            database_url
+        ),
+        revision_repository=revisions,
+    )
+    reports_path = f"/projects/{PROJECT_ID}/quality-reports"
+
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text("TRUNCATE TABLE quality_report_revisions, projects CASCADE")
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO projects "
+                    "(id, name, description, created_at, archived_at) "
+                    "VALUES (:project_id, 'Report project', NULL, "
+                    "CURRENT_TIMESTAMP, NULL)"
+                ),
+                {"project_id": PROJECT_ID},
+            )
+
+        app = create_app(
+            local_bypass_settings(),
+            project_repository=SqlAlchemyProjectRepository.from_database_url(
+                database_url
+            ),
+            quality_report_revision_repository=revisions,
+            quality_report_generation_service=generation,
+        )
+        with TestClient(app) as client:
+            created = client.post(reports_path)
+            assert created.status_code == 201
+
+            revision_id = UUID(created.json()["id"])
+            listed = client.get(reports_path)
+            fetched = client.get(f"{reports_path}/{revision_id}")
+
+        assert created.json()["project_id"] == str(PROJECT_ID)
+        assert created.json()["snapshot"]["report"]["id"] == str(revision_id)
+        assert created.json()["snapshot"]["report"]["project_id"] == str(PROJECT_ID)
+        assert UUID(created.headers["X-Correlation-ID"])
+
+        assert listed.status_code == 200
+        assert [item["id"] for item in listed.json()] == [str(revision_id)]
+        assert UUID(listed.headers["X-Correlation-ID"])
+
+        assert fetched.status_code == 200
+        assert fetched.json() == created.json()
+        assert UUID(fetched.headers["X-Correlation-ID"])
     finally:
         with engine.begin() as connection:
             connection.execute(
