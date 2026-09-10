@@ -410,3 +410,116 @@ def test_owner_evidence_route_re_redacts_canaries_from_durable_display(
         assert UUID(evidence.headers["X-Correlation-ID"])
     finally:
         engine.dispose()
+
+
+def test_owner_can_read_deterministic_failure_analysis_without_root_cause(
+    tmp_path: Path,
+) -> None:
+    api_client, approvals, jobs, engine = client(tmp_path)
+    assert jobs is not None
+    approval = seed_approval(approvals)
+    queue_path = (
+        f"/projects/{PROJECT_ID}/execution-approvals/{approval.id}/execution-jobs"
+    )
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    results = SqlAlchemyExecutionResultRepository(sessions)
+
+    try:
+        with api_client as http:
+            created = http.post(queue_path)
+            assert created.status_code == 201
+            job_id = UUID(created.json()["id"])
+
+            claimed = jobs.claim_next()
+            assert claimed is not None
+            results.record(
+                project_id=PROJECT_ID,
+                job_id=job_id,
+                payload=ExecutionResultPayload(
+                    outcome=ExecutionResultOutcome.FAILED,
+                    failure_code="assertions_failed",
+                    assertion_results_json=(
+                        '[{"operator":"equals","passed":false,'
+                        '"selector":null,"target":"status_code"}]'
+                    ),
+                    request_evidence_json='{"headers":[],"method":"POST"}',
+                    response_evidence_json=(
+                        '{"elapsed_ms":41,"headers":[],"status_code":500}'
+                    ),
+                    transport_send_count=1,
+                ),
+            )
+
+            analysis = http.get(f"{EXECUTION_JOBS_PATH}/{job_id}/failure-analysis")
+
+        assert analysis.status_code == 200
+        body = analysis.json()
+        assert body["execution_job_id"] == str(job_id)
+        assert body["outcome"] == "failed"
+        assert body["failure_code"] == "assertions_failed"
+        assert body["evidence_sufficiency"] == "insufficient_for_root_cause"
+        assert body["root_cause"] is None
+        assert [item["code"] for item in body["observations"]] == [
+            "terminal_outcome",
+            "recorded_failure_code",
+            "transport_send_count",
+            "response_status_code",
+            "response_elapsed_ms",
+            "failed_assertion_count",
+        ]
+        assert body["hypotheses"][0]["code"] == (
+            "target_response_did_not_match_approved_expectations"
+        )
+        assert body["alternatives"][0]["code"] == "approved_expectations_may_be_stale"
+        assert body["next_checks"][0]["code"] == (
+            "compare_redacted_response_to_approved_plan"
+        )
+        assert UUID(analysis.headers["X-Correlation-ID"])
+    finally:
+        engine.dispose()
+
+
+def test_successful_execution_has_no_failure_analysis(
+    tmp_path: Path,
+) -> None:
+    api_client, approvals, jobs, engine = client(tmp_path)
+    assert jobs is not None
+    approval = seed_approval(approvals)
+    queue_path = (
+        f"/projects/{PROJECT_ID}/execution-approvals/{approval.id}/execution-jobs"
+    )
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    results = SqlAlchemyExecutionResultRepository(sessions)
+
+    try:
+        with api_client as http:
+            created = http.post(queue_path)
+            assert created.status_code == 201
+            job_id = UUID(created.json()["id"])
+
+            claimed = jobs.claim_next()
+            assert claimed is not None
+            results.record(
+                project_id=PROJECT_ID,
+                job_id=job_id,
+                payload=ExecutionResultPayload(
+                    outcome=ExecutionResultOutcome.SUCCEEDED,
+                    failure_code=None,
+                    assertion_results_json="[]",
+                    request_evidence_json='{"headers":[],"method":"POST"}',
+                    response_evidence_json=(
+                        '{"elapsed_ms":17,"headers":[],"status_code":201}'
+                    ),
+                    transport_send_count=1,
+                ),
+            )
+
+            analysis = http.get(f"{EXECUTION_JOBS_PATH}/{job_id}/failure-analysis")
+
+        assert analysis.status_code == 409
+        assert analysis.json() == {
+            "detail": "Execution failure analysis is not available for this result"
+        }
+        assert UUID(analysis.headers["X-Correlation-ID"])
+    finally:
+        engine.dispose()

@@ -1605,3 +1605,120 @@ def test_postgres_evidence_view_redacts_without_mutating_stored_results(
             truncate_postgres_approval_test_data(engine)
         finally:
             engine.dispose()
+
+
+@pytest.mark.postgres_integration
+def test_postgres_failure_analysis_is_read_only_and_never_asserts_root_cause() -> None:
+    database_url = isolated_postgres_database_url()
+    engine = create_engine(database_url)
+    sessions = sessionmaker(engine, expire_on_commit=False, class_=Session)
+    projects = SqlAlchemyProjectRepository(sessions)
+    approvals = SqlAlchemyExecutionApprovalRepository(sessions)
+    queue = SqlAlchemyExecutionJobQueue(sessions)
+    results = SqlAlchemyExecutionResultRepository(sessions)
+
+    try:
+        truncate_postgres_approval_test_data(engine)
+
+        project = projects.create(
+            name="PostgreSQL failure analysis",
+            description=None,
+        )
+        other_project = projects.create(
+            name="Other failure-analysis project",
+            description=None,
+        )
+        plan = execution_approval_plan(quantity=12)
+        approval = ExecutionApprovalService(approvals).approve(
+            project_id=project.id,
+            plan=plan,
+            expected_plan_hash=plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        queued = queue.enqueue(approval=approval)
+        claimed = queue.claim_next()
+        assert claimed is not None
+        assert claimed.job.id == queued.id
+
+        stored = results.record(
+            project_id=project.id,
+            job_id=queued.id,
+            payload=ExecutionResultPayload(
+                outcome=ExecutionResultOutcome.FAILED,
+                failure_code="assertions_failed",
+                assertion_results_json=(
+                    '[{"operator":"equals","passed":false,'
+                    '"selector":null,"target":"status_code"}]'
+                ),
+                request_evidence_json=(
+                    '{"headers":[],"method":"POST",'
+                    '"url":"https://ai-qa-sandbox.onrender.com/api/orders"}'
+                ),
+                response_evidence_json=(
+                    '{"elapsed_ms":41,"headers":[],"status_code":500}'
+                ),
+                transport_send_count=1,
+            ),
+        )
+        before = results.get(project_id=project.id, job_id=queued.id)
+        assert before == stored
+        job_before = queue.get(project_id=project.id, job_id=queued.id)
+
+        app = create_app(
+            local_bypass_settings(),
+            project_repository=projects,
+            execution_approval_repository=approvals,
+            execution_job_queue=queue,
+            execution_result_repository=results,
+        )
+
+        path = f"/projects/{project.id}/execution-jobs/{queued.id}/failure-analysis"
+        with TestClient(app) as http:
+            first = http.get(path)
+            repeated = http.get(path)
+            foreign = http.get(
+                f"/projects/{other_project.id}/execution-jobs/"
+                f"{queued.id}/failure-analysis"
+            )
+
+        assert first.status_code == 200
+        assert repeated.status_code == 200
+        assert repeated.json() == first.json()
+
+        body = first.json()
+        assert body["execution_job_id"] == str(queued.id)
+        assert body["outcome"] == "failed"
+        assert body["failure_code"] == "assertions_failed"
+        assert body["evidence_sufficiency"] == "insufficient_for_root_cause"
+        assert body["root_cause"] is None
+        assert [item["code"] for item in body["observations"]] == [
+            "terminal_outcome",
+            "recorded_failure_code",
+            "transport_send_count",
+            "response_status_code",
+            "response_elapsed_ms",
+            "failed_assertion_count",
+        ]
+        assert body["hypotheses"][0]["code"] == (
+            "target_response_did_not_match_approved_expectations"
+        )
+        assert body["alternatives"][0]["code"] == "approved_expectations_may_be_stale"
+        assert body["next_checks"][0]["code"] == (
+            "compare_redacted_response_to_approved_plan"
+        )
+
+        assert foreign.status_code == 404
+        assert foreign.json() == {"detail": "Execution job not found"}
+
+        for response in (first, repeated, foreign):
+            assert UUID(response.headers["X-Correlation-ID"])
+
+        # Read-only analysis must not alter durable evidence or job state.
+        assert results.get(project_id=project.id, job_id=queued.id) == before
+        assert queue.get(project_id=project.id, job_id=queued.id) == job_before
+    finally:
+        try:
+            truncate_postgres_approval_test_data(engine)
+        finally:
+            engine.dispose()
