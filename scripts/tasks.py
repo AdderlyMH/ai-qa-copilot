@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0014_execution_results"
+DB_CHECK_REVISION = "0015_quality_report_revisions"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -383,6 +383,7 @@ def verify_migrated_database(
         "retrieval_traces",
         "retrieval_trace_candidates",
         "citations",
+        "quality_report_revisions",
         "execution_results",
         "execution_jobs",
         "execution_approvals",
@@ -449,6 +450,7 @@ def verify_rolled_back_database(
         "document_versions",
         "documents",
         "parser_versions",
+        "quality_report_revisions",
         "execution_results",
         "execution_jobs",
         "execution_approvals",
@@ -518,6 +520,7 @@ def db_check() -> None:
             "-m",
             "pytest",
             "apps/api/tests/test_projects_postgres.py",
+            "apps/api/tests/test_quality_report_revisions.py",
             env=project_api_environment,
         )
 
