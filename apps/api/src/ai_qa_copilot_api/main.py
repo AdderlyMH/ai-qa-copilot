@@ -81,6 +81,11 @@ from ai_qa_copilot_api.execution_evidence import (
     ExecutionEvidenceViewRejected,
     execution_evidence_view_from_result,
 )
+from ai_qa_copilot_api.failure_analysis import (
+    ExecutionFailureAnalysis,
+    ExecutionFailureAnalysisRejected,
+    analyze_execution_failure,
+)
 from ai_qa_copilot_api.generated_tests import (
     GeneratedTestCaseValidationError,
     validate_generated_test_case,
@@ -501,6 +506,31 @@ class ExecutionEvidenceResponse(BaseModel):
     response_elapsed_ms: int | None
     transport_send_count: int
     recorded_at: datetime
+
+
+class FailureAnalysisItemResponse(BaseModel):
+    """One safe observation, hypothesis, alternative, or next check."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    code: str
+    statement: str
+
+
+class ExecutionFailureAnalysisResponse(BaseModel):
+    """Owner-only, read-only analysis of one failed execution result."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    execution_job_id: UUID
+    outcome: str
+    failure_code: str
+    evidence_sufficiency: str
+    root_cause: None
+    observations: tuple[FailureAnalysisItemResponse, ...]
+    hypotheses: tuple[FailureAnalysisItemResponse, ...]
+    alternatives: tuple[FailureAnalysisItemResponse, ...]
+    next_checks: tuple[FailureAnalysisItemResponse, ...]
 
 
 class ExecutionJobResponse(BaseModel):
@@ -1359,6 +1389,64 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _execution_evidence_response(evidence)
 
+    @application.get(
+        "/projects/{project_id}/execution-jobs/{job_id}/failure-analysis",
+        response_model=ExecutionFailureAnalysisResponse,
+    )
+    def get_execution_failure_analysis(
+        project_id: UUID,
+        job_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> ExecutionFailureAnalysisResponse:
+        """Return deterministic hypotheses without asserting a root cause."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            job = _execution_job_queue(request).get(
+                project_id=project_id,
+                job_id=job_id,
+            )
+        except ExecutionJobQueueUnavailable:
+            _raise_execution_jobs_unavailable(correlation_id)
+
+        if job is None:
+            _raise_execution_job_not_found(correlation_id)
+
+        try:
+            result = _execution_result_repository(request).get(
+                project_id=project_id,
+                job_id=job.id,
+            )
+        except ExecutionResultUnavailable:
+            _raise_execution_results_unavailable(correlation_id)
+
+        if result is None:
+            _raise_execution_evidence_not_found(correlation_id)
+
+        try:
+            evidence = execution_evidence_view_from_result(result)
+        except ExecutionEvidenceViewRejected:
+            _raise_execution_evidence_unavailable(correlation_id)
+
+        try:
+            analysis = analyze_execution_failure(evidence)
+        except ExecutionFailureAnalysisRejected:
+            _raise_execution_failure_analysis_not_available(correlation_id)
+
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _execution_failure_analysis_response(analysis)
+
     @application.delete(
         "/projects/{project_id}/execution-jobs/{job_id}",
         response_model=ExecutionJobResponse,
@@ -1765,6 +1853,46 @@ def _execution_evidence_response(
     )
 
 
+def _execution_failure_analysis_response(
+    analysis: ExecutionFailureAnalysis,
+) -> ExecutionFailureAnalysisResponse:
+    return ExecutionFailureAnalysisResponse(
+        execution_job_id=analysis.execution_job_id,
+        outcome=analysis.outcome,
+        failure_code=analysis.failure_code.value,
+        evidence_sufficiency=analysis.evidence_sufficiency.value,
+        root_cause=analysis.root_cause,
+        observations=tuple(
+            FailureAnalysisItemResponse(
+                code=item.code,
+                statement=item.statement,
+            )
+            for item in analysis.observations
+        ),
+        hypotheses=tuple(
+            FailureAnalysisItemResponse(
+                code=item.code,
+                statement=item.statement,
+            )
+            for item in analysis.hypotheses
+        ),
+        alternatives=tuple(
+            FailureAnalysisItemResponse(
+                code=item.code,
+                statement=item.statement,
+            )
+            for item in analysis.alternatives
+        ),
+        next_checks=tuple(
+            FailureAnalysisItemResponse(
+                code=item.code,
+                statement=item.statement,
+            )
+            for item in analysis.next_checks
+        ),
+    )
+
+
 def _execution_job_response(
     job: ExecutionJob,
     *,
@@ -1874,6 +2002,16 @@ def _raise_execution_evidence_not_found(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Execution evidence not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
+def _raise_execution_failure_analysis_not_available(
+    correlation_id: UUID,
+) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Execution failure analysis is not available for this result",
         headers={"X-Correlation-ID": str(correlation_id)},
     )
 
