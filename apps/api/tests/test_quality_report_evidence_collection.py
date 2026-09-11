@@ -19,6 +19,16 @@ from ai_qa_copilot_api.quality_report_evidence_collection import (
 from ai_qa_copilot_api.quality_report_snapshots import (
     SnapshotExecutionEvidenceState,
 )
+from ai_qa_copilot_api.quality_report_exports import (
+    canonical_quality_report_snapshot_json,
+    render_quality_report_markdown,
+)
+from ai_qa_copilot_api.quality_report_revisions import (
+    SqlAlchemyQualityReportRevisionRepository,
+)
+from ai_qa_copilot_api.quality_report_snapshots import (
+    build_quality_report_snapshot,
+)
 
 
 PROJECT_ID = UUID("00000000-0000-0000-0000-00000000d001")
@@ -26,6 +36,7 @@ OTHER_PROJECT_ID = UUID("00000000-0000-0000-0000-00000000d002")
 JOB_ID = UUID("00000000-0000-0000-0000-00000000d003")
 RESULT_ID = UUID("00000000-0000-0000-0000-00000000d004")
 NOW = datetime(2026, 9, 10, 21, 0, tzinfo=timezone.utc)
+REPORT_ID = UUID("00000000-0000-0000-0000-00000000d007")
 
 
 def sessions() -> sessionmaker[Session]:
@@ -139,3 +150,17 @@ def test_collector_scopes_and_re_redacts_terminal_execution_evidence() -> None:
         "headers": [["Authorization", "[REDACTED]"]],
         "method": "POST",
     }
+
+    snapshot = build_quality_report_snapshot(
+        snapshot_input=foreign,
+        id_factory=lambda: REPORT_ID,
+    )
+    revisions = SqlAlchemyQualityReportRevisionRepository(session_factory)
+    revision = revisions.create(
+        project_id=OTHER_PROJECT_ID,
+        snapshot=snapshot,
+    )
+
+    assert canary not in snapshot.canonical_json()
+    assert canary not in canonical_quality_report_snapshot_json(revision)
+    assert canary not in render_quality_report_markdown(revision)
