@@ -202,7 +202,7 @@ def _resumed_results(
             raise EvaluationRunRejected(
                 f"Resume report case version differs for {case.id}"
             )
-        if result.case_sha256 != _case_sha256(case):
+        if result.case_sha256 != evaluation_case_sha256(case):
             raise EvaluationRunRejected(
                 f"Resume report case provenance differs for {case.id}"
             )
@@ -230,7 +230,7 @@ def _result_from_observation(
     return EvaluationRunCaseResult(
         case_id=case.id,
         case_version=case.version,
-        case_sha256=_case_sha256(case),
+        case_sha256=evaluation_case_sha256(case),
         observation=_validated_observation(observation),
         reused=reused,
     )
@@ -330,7 +330,7 @@ def _validate_run_limits(
         )
 
 
-def _case_sha256(case: EvaluationCase) -> str:
+def evaluation_case_sha256(case: EvaluationCase) -> str:
     canonical_case = json.dumps(
         asdict(case),
         sort_keys=True,
