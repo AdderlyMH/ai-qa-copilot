@@ -255,6 +255,29 @@ def test_snapshot_rejects_cross_project_execution_evidence() -> None:
         )
 
 
+def test_snapshot_rejects_cross_project_citations() -> None:
+    original = snapshot_input(
+        execution_evidence_state=SnapshotExecutionEvidenceState.COMPLETE,
+    )
+    foreign_citation = replace(
+        original.citations[0],
+        project_id=OTHER_PROJECT_ID,
+    )
+    invalid_input = replace(
+        original,
+        citations=(foreign_citation,),
+    )
+
+    with pytest.raises(
+        QualityReportSnapshotRejected,
+        match="Citations must belong to the snapshot project",
+    ):
+        build_quality_report_snapshot(
+            snapshot_input=invalid_input,
+            id_factory=lambda: REPORT_ID,
+        )
+
+
 def test_snapshot_requires_analysis_for_each_failed_execution() -> None:
     failed_execution = replace(
         successful_execution(),
