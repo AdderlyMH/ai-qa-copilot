@@ -6,6 +6,7 @@ import { SourcePassageViewer } from "./source-passage-viewer";
 import { FindingFeedbackPanel } from "./finding-feedback-panel";
 import { ExecutionPlanReviewPanel } from "./execution-plan-review-panel";
 import { ExecutionEvidenceViewer } from "./execution-evidence-viewer";
+import { QualityReportViewer } from "./quality-report-viewer";
 
 type Project = {
   id: string;
@@ -277,6 +278,10 @@ export default function Home() {
           <ExecutionPlanReviewPanel projectId={selectedProject.id} />
           <ExecutionEvidenceViewer
             key={selectedProject.id}
+            projectId={selectedProject.id}
+          />
+          <QualityReportViewer
+            key={`quality-report-${selectedProject.id}`}
             projectId={selectedProject.id}
           />
 
