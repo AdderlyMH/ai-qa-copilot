@@ -176,6 +176,43 @@ def test_owner_can_generate_list_and_read_an_immutable_quality_report(
         engine.dispose()
 
 
+def test_owner_can_export_one_immutable_quality_report(
+    tmp_path: Path,
+) -> None:
+    api_client, engine, _ = client(tmp_path)
+    reports_path = f"/projects/{PROJECT_ID}/quality-reports"
+
+    try:
+        with api_client as http:
+            created = http.post(reports_path)
+            markdown = http.get(f"{reports_path}/{REPORT_ID}/export/markdown")
+            exported_json = http.get(f"{reports_path}/{REPORT_ID}/export/json")
+
+        assert created.status_code == 201
+
+        assert markdown.status_code == 200
+        assert markdown.headers["content-type"].startswith("text/markdown")
+        assert markdown.headers["content-disposition"] == (
+            f'attachment; filename="quality-report-{REPORT_ID}.md"'
+        )
+        assert UUID(markdown.headers["X-Correlation-ID"])
+        assert f"- Revision ID: `{REPORT_ID}`" in markdown.text
+        assert (
+            f"- Snapshot SHA-256: `{created.json()['snapshot_sha256']}`"
+            in markdown.text
+        )
+
+        assert exported_json.status_code == 200
+        assert exported_json.headers["content-type"].startswith("application/json")
+        assert exported_json.headers["content-disposition"] == (
+            f'attachment; filename="quality-report-{REPORT_ID}.json"'
+        )
+        assert UUID(exported_json.headers["X-Correlation-ID"])
+        assert exported_json.json() == created.json()["snapshot"]
+    finally:
+        engine.dispose()
+
+
 def test_quality_report_route_does_not_leak_revisions_across_projects(
     tmp_path: Path,
 ) -> None:
@@ -209,6 +246,7 @@ def test_quality_report_routes_fail_closed_without_durable_configuration() -> No
     with TestClient(app) as http:
         generated = http.post(reports_path)
         listed = http.get(reports_path)
+        exported = http.get(f"{reports_path}/{REPORT_ID}/export/markdown")
 
     expected = {"detail": "Quality report service is temporarily unavailable"}
     assert generated.status_code == 503
@@ -217,3 +255,6 @@ def test_quality_report_routes_fail_closed_without_durable_configuration() -> No
     assert listed.status_code == 503
     assert listed.json() == expected
     assert UUID(listed.headers["X-Correlation-ID"])
+    assert exported.status_code == 503
+    assert exported.json() == expected
+    assert UUID(exported.headers["X-Correlation-ID"])

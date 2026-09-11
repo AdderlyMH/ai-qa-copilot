@@ -114,15 +114,25 @@ export default function Home() {
       if (!response.ok) {
         throw new Error(await responseError(response));
       }
+
       const project = (await response.json()) as Project;
+
+      // Select the project first. Independent panels, including Quality Reports,
+      // must remain usable when analysis history is temporarily unavailable.
+      setSelectedProject(project);
+      setAnalysisRuns([]);
+
       const runsResponse = await fetch(
         `/api/projects/${projectId}/analysis-runs`,
       );
       if (!runsResponse.ok) {
-        throw new Error(await responseError(runsResponse));
+        setMessage(
+          `Viewing ${project.name}. Saved analysis runs are temporarily unavailable: ${await responseError(runsResponse)}`,
+        );
+        return;
       }
+
       const runs = (await runsResponse.json()) as AnalysisRun[];
-      setSelectedProject(project);
       setAnalysisRuns(runs);
       setMessage(`Viewing ${project.name}.`);
     } catch (error) {
