@@ -1,0 +1,38 @@
+schema_version: evaluation-cases/v1
+suite_id: evaluation-development/v1
+cases:
+  - id: EVAL-001
+    version: 1
+    split: development
+    category: requirement_quality
+    tags: [requirements, control]
+    criticality: high
+    run_mode: analysis
+    side_effect_schema: side-effects/v1
+    inputs:
+      artifacts:
+        - artifact_id: REQ-BASE-001
+          path: fixtures/sample-requirements.md
+          sha256: "414635e6c030d9a2a6ec6857128697a29514d49698f2b63d72649f191db36e4a"
+      overlays: []
+      user_request: Identify contradictions and missing clarifications.
+    expected:
+      required_ground_truth_ids: [GT-FIND-001]
+      prohibited_ground_truth_ids: []
+      expected_source_references:
+        - REQ-BASE-001#REQ-ORDER-004:statement
+      policy_boundary: analysis_only
+      side_effects:
+        chunks: 0
+        embeddings: 0
+        model_calls: 1
+        execution_candidates: 0
+        automatic_retries: 0
+        dns_requests: 0
+        http_requests: 0
+        execution_plans: 0
+        target_configuration_mutations: 0
+        approval_mutations: 0
+        secret_exposures: 0
+      scorer_version: evaluation-scorer/v1
+      maximum_expected_cost: 0

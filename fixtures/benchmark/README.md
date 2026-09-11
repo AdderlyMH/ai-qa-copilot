@@ -175,3 +175,27 @@ Before adding or changing a case:
 - [`docs/EVALUATION_PLAN.md`](../../docs/EVALUATION_PLAN.md)
 - [`docs/THREAT_MODEL.md`](../../docs/THREAT_MODEL.md)
 - [`docs/BACKLOG.md`](../../docs/BACKLOG.md)
+
+## EVAL-001 evaluation runner
+
+`evaluation-cases.v1.yaml` defines the strict, filterable evaluation-case
+contract. The runner verifies every declared artifact hash before invoking an
+executor, enforces a selected-case expected-cost budget and concurrency cap,
+and writes a machine-readable `evaluation-run/v1` report.
+
+Run selected cases with an executor factory:
+
+```powershell
+uv run python scripts/run_evaluation.py `
+  --fixture fixtures/benchmark/evaluation-cases.v1.yaml `
+  --repository-root . `
+  --executor your_executor_module:create_executor `
+  --output artifacts/evaluation-run.json `
+  --split development `
+  --max-expected-cost 10 `
+  --max-concurrency 2
+```
+
+Replace `your_executor_module:create_executor` with a project executor adapter.
+EVAL-001 defines the runner interface; the first production category adapters
+and deterministic quality scoring are introduced in EVAL-002.

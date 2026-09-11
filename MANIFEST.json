@@ -212,8 +212,13 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 7655,
-      "sha256": "d962f7a8bd1e0b695e321d229bee9cf43a0ed792c7a7da75cfe03053dc6572b9"
+      "bytes": 8551,
+      "sha256": "897a220bb428546bceebd5bb1f40d94136268df07e6702cfea2e9dd47f28dc0e"
+    },
+    {
+      "path": "fixtures/benchmark/evaluation-cases.v1.yaml",
+      "bytes": 1186,
+      "sha256": "bbdccb8af37210343d147eb2edd77c7fb6995d93aa15d35516bff9a13cb11e32"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
