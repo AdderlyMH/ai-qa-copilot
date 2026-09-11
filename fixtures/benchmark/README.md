@@ -199,3 +199,15 @@ uv run python scripts/run_evaluation.py `
 Replace `your_executor_module:create_executor` with a project executor adapter.
 EVAL-001 defines the runner interface; the first production category adapters
 and deterministic quality scoring are introduced in EVAL-002.
+
+### Deterministic scoring
+
+Score a completed `evaluation-run/v1` report against the approved immutable
+ground-truth catalog:
+
+```powershell
+uv run python scripts/score_evaluation_run.py `
+  --fixture fixtures/benchmark/evaluation-cases.v1.yaml `
+  --ground-truth fixtures/benchmark/ground-truth.v1.yaml `
+  --run-report artifacts/evaluation-run.json `
+  --output artifacts/evaluation-score-report.json
