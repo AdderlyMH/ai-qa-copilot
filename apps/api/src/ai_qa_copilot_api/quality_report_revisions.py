@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import os
 from typing import Protocol
 from uuid import UUID
 
@@ -221,6 +222,17 @@ class UnavailableQualityReportRevisionRepository:
     ) -> tuple[StoredQualityReportRevision, ...]:
         del project_id
         raise QualityReportRevisionUnavailable
+
+
+def quality_report_revision_repository_from_environment() -> (
+    QualityReportRevisionRepository
+):
+    """Build immutable report persistence only from DATABASE_URL."""
+
+    database_url = os.environ.get("DATABASE_URL", "").strip()
+    if not database_url:
+        return UnavailableQualityReportRevisionRepository()
+    return SqlAlchemyQualityReportRevisionRepository.from_database_url(database_url)
 
 
 def _validated_snapshot_for_project(
