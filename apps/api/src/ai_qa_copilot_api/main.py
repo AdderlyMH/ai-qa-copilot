@@ -161,6 +161,7 @@ from ai_qa_copilot_api.quality_report_generation import (
     UnavailableQualityReportGenerationService,
 )
 from ai_qa_copilot_api.quality_report_revisions import (
+    QualityReportRevisionRejected,
     QualityReportRevisionRepository,
     QualityReportRevisionUnavailable,
     SqlAlchemyQualityReportRevisionRepository,
@@ -1512,7 +1513,10 @@ def create_app(
             revisions = _quality_report_revision_repository(request).list_for_project(
                 project_id=project_id
             )
-        except QualityReportRevisionUnavailable:
+        except (
+            QualityReportRevisionRejected,
+            QualityReportRevisionUnavailable,
+        ):
             _raise_quality_reports_unavailable(correlation_id)
 
         response.headers["X-Correlation-ID"] = str(correlation_id)
@@ -1546,7 +1550,10 @@ def create_app(
                 project_id=project_id,
                 revision_id=revision_id,
             )
-        except QualityReportRevisionUnavailable:
+        except (
+            QualityReportRevisionRejected,
+            QualityReportRevisionUnavailable,
+        ):
             _raise_quality_reports_unavailable(correlation_id)
 
         if revision is None:
@@ -1582,7 +1589,10 @@ def create_app(
                 project_id=project_id,
                 revision_id=revision_id,
             )
-        except QualityReportRevisionUnavailable:
+        except (
+            QualityReportRevisionRejected,
+            QualityReportRevisionUnavailable,
+        ):
             _raise_quality_reports_unavailable(correlation_id)
 
         if revision is None:

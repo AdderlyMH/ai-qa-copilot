@@ -24,6 +24,7 @@ from ai_qa_copilot_api.quality_report_snapshots import (
     QualityReportSnapshotInput,
     SnapshotExecutionEvidenceState,
 )
+from ai_qa_copilot_api.documents import QualityReportRevisionRecord
 
 
 PROJECT_ID = UUID("00000000-0000-0000-0000-00000000e001")
@@ -258,3 +259,39 @@ def test_quality_report_routes_fail_closed_without_durable_configuration() -> No
     assert exported.status_code == 503
     assert exported.json() == expected
     assert UUID(exported.headers["X-Correlation-ID"])
+
+
+def test_owner_report_reads_fail_closed_when_durable_revision_is_tampered(
+    tmp_path: Path,
+) -> None:
+    api_client, engine, _ = client(tmp_path)
+    reports_path = f"/projects/{PROJECT_ID}/quality-reports"
+
+    try:
+        with api_client as http:
+            created = http.post(reports_path)
+            assert created.status_code == 201
+            revision_id = UUID(created.json()["id"])
+
+            with Session(engine) as session:
+                with session.begin():
+                    record = session.get(QualityReportRevisionRecord, revision_id)
+                    assert record is not None
+                    record.snapshot_sha256 = "0" * 64
+
+            for path in (
+                reports_path,
+                f"{reports_path}/{revision_id}",
+                f"{reports_path}/{revision_id}/export/json",
+                f"{reports_path}/{revision_id}/export/markdown",
+            ):
+                response = http.get(path)
+
+                assert response.status_code == 503, path
+                assert response.json() == {
+                    "detail": "Quality report service is temporarily unavailable"
+                }
+                assert UUID(response.headers["X-Correlation-ID"])
+                assert "Content-Disposition" not in response.headers
+    finally:
+        engine.dispose()
