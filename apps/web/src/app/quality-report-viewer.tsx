@@ -296,6 +296,23 @@ export function QualityReportViewer({ projectId }: { projectId: string }) {
           <article aria-labelledby="quality-report-detail-heading">
             <h4 id="quality-report-detail-heading">Selected report snapshot</h4>
 
+            <p>
+              <a
+                href={`${reportsPath}/${encodeURIComponent(
+                  selectedRevision.id,
+                )}/export/markdown`}
+              >
+                Download Markdown (.md)
+              </a>{" "}
+              <a
+                href={`${reportsPath}/${encodeURIComponent(
+                  selectedRevision.id,
+                )}/export/json`}
+              >
+                Download canonical JSON (.json)
+              </a>
+            </p>
+
             <dl>
               <dt>Revision ID</dt>
               <dd>

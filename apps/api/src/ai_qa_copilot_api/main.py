@@ -145,6 +145,12 @@ from ai_qa_copilot_api.requirements_analysis import (
     RequirementAnalysisUnavailable,
     requirement_analysis_repository_from_environment,
 )
+from ai_qa_copilot_api.quality_report_exports import (
+    QUALITY_REPORT_JSON_MEDIA_TYPE,
+    QUALITY_REPORT_MARKDOWN_MEDIA_TYPE,
+    canonical_quality_report_snapshot_json,
+    render_quality_report_markdown,
+)
 from ai_qa_copilot_api.quality_report_evidence_collection import (
     SqlAlchemyQualityReportEvidenceCollector,
 )
@@ -1548,6 +1554,59 @@ def create_app(
 
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _quality_report_revision_response(revision)
+
+    @application.get(
+        "/projects/{project_id}/quality-reports/{revision_id}/export/{export_format}",
+    )
+    def export_quality_report(
+        project_id: UUID,
+        revision_id: UUID,
+        export_format: Literal["json", "markdown"],
+        request: Request,
+    ) -> Response:
+        """Download one owned immutable report revision without regenerating it."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+
+        try:
+            revision = _quality_report_revision_repository(request).get(
+                project_id=project_id,
+                revision_id=revision_id,
+            )
+        except QualityReportRevisionUnavailable:
+            _raise_quality_reports_unavailable(correlation_id)
+
+        if revision is None:
+            _raise_quality_report_not_found(correlation_id)
+
+        if export_format == "markdown":
+            content = render_quality_report_markdown(revision)
+            media_type = QUALITY_REPORT_MARKDOWN_MEDIA_TYPE
+            extension = "md"
+        else:
+            content = canonical_quality_report_snapshot_json(revision)
+            media_type = QUALITY_REPORT_JSON_MEDIA_TYPE
+            extension = "json"
+
+        return Response(
+            content=content,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="quality-report-{revision.id}.{extension}"'
+                ),
+                "X-Correlation-ID": str(correlation_id),
+            },
+        )
 
     @application.get(
         "/projects/{project_id}/execution-jobs/{job_id}/failure-analysis",
