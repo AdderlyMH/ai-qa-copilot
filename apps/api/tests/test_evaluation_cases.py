@@ -82,20 +82,24 @@ def test_loads_the_committed_evaluation_case_fixture() -> None:
     suite = load_evaluation_case_suite(FIXTURE)
 
     assert suite.schema_version == EVALUATION_CASES_SCHEMA_VERSION
-    assert suite.suite_id == "evaluation-development/v1"
+    assert suite.suite_id == "evaluation-corpus/v1"
     assert [case.id for case in suite.cases] == [
-        f"EVAL-{number:03}" for number in range(1, 61)
+        f"EVAL-{number:03}" for number in range(1, 101)
     ]
-    assert Counter(case.split for case in suite.cases) == {"development": 60}
+    assert Counter(case.split for case in suite.cases) == {
+        "development": 60,
+        "validation": 20,
+        "holdout": 20,
+    }
     assert Counter(case.category for case in suite.cases) == {
-        "requirement_quality": 12,
-        "test_generation": 12,
-        "requirement_openapi_consistency": 9,
-        "retrieval_citation": 9,
-        "tool_planning_execution": 6,
-        "prompt_injection_security": 6,
-        "failure_analysis": 3,
-        "malformed_input_resilience": 3,
+        "requirement_quality": 20,
+        "test_generation": 20,
+        "requirement_openapi_consistency": 15,
+        "retrieval_citation": 15,
+        "tool_planning_execution": 10,
+        "prompt_injection_security": 10,
+        "failure_analysis": 5,
+        "malformed_input_resilience": 5,
     }
     assert set(suite.cases[0].expected.side_effects) == SIDE_EFFECT_FIELD_NAMES
 

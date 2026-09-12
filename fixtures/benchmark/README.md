@@ -234,8 +234,7 @@ against that same future fixture version before publishing quantitative claims.
 
 ## EVAL-005 development benchmark expansion
 
-`evaluation-cases.v1.yaml` now contains the committed 60-case development
-suite required by EVAL-005:
+`evaluation-cases.v1.yaml` now retains the committed 60-case development partition.
 
 | Category                          | Development cases |
 |-----------------------------------|------------------:|
@@ -256,5 +255,34 @@ unique document or necessarily a new ground-truth label.
 
 This expansion does not claim live model-evaluation results or paid-model
 spend: every committed development case has `maximum_expected_cost: 0`.
-New label kinds, additional source artifacts, validation cases, and holdout
-cases remain the scope of EVAL-006.
+EVAL-006 adds the validation and holdout partitions while preserving this
+development partition unchanged.
+
+
+## EVAL-006 complete corpus and frozen review selection
+
+`evaluation-cases.v1.yaml` is now the complete `evaluation-corpus/v1` fixture:
+100 deterministic cases split into 60 development, 20 validation, and 20
+holdout cases. The category totals match the evaluation plan exactly.
+
+`release-review-selection.v1.yaml` freezes the required independent-review
+sample before any release-candidate evaluation. It records a versioned seed,
+a deterministic SHA-256 ranking method, semantic hashes of the case and
+ground-truth fixtures, and 10 selected validation cases plus 10 selected
+holdout cases.
+
+The selection excludes all cases requiring `GT-POL-*` security-policy labels.
+It represents every available non-security category and has a no-replacement
+policy: selected cases cannot be exchanged because of disagreement, difficulty,
+or candidate performance.
+
+The checked-in corpus and selection contract do not claim that a release
+candidate, primary labels, independent reviews, adjudications, or an EG-09
+release result currently exists. EVAL-007 must enforce candidate freeze and
+review-completeness requirements before a release evaluation can pass.
+
+Regenerate the committed artifacts with:
+
+```powershell
+uv run python scripts/generate_evaluation_cases.py --write
+uv run python scripts/generate_release_review_selection.py --write

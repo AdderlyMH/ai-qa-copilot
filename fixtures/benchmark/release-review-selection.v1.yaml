@@ -1,0 +1,87 @@
+schema_version: release-review-selection/v1
+selection_id: EVAL-006-RELEASE-REVIEW-SELECTION-V1
+case_fixture: fixtures/benchmark/evaluation-cases.v1.yaml
+case_fixture_semantic_sha256: d75067ca9ebf812664eb89333a918e39ef792379ef45eb0351efa42636c7a7db
+ground_truth_fixture: fixtures/benchmark/ground-truth.v1.yaml
+ground_truth_fixture_semantic_sha256: 75b948cccd1cf70c8f4a6cce794fe7039698b2aafe89b7d5146b72b98c1d5151
+selection:
+  method: stratified_sha256_rank/v1
+  seed: eval-006-release-review-selection-v1
+  recorded_at: '2026-09-12T00:00:00Z'
+  selected_before_candidate_execution: true
+  replacement_policy: no_replacement
+  security_policy_ground_truth_id_prefix: GT-POL-
+  per_split_category_quotas:
+    validation:
+      requirement_quality: 3
+      test_generation: 3
+      requirement_openapi_consistency: 2
+      retrieval_citation: 1
+      failure_analysis: 1
+    holdout:
+      requirement_quality: 3
+      test_generation: 3
+      requirement_openapi_consistency: 2
+      retrieval_citation: 1
+      failure_analysis: 1
+selected_cases:
+- case_id: EVAL-064
+  split: validation
+  category: requirement_quality
+- case_id: EVAL-063
+  split: validation
+  category: requirement_quality
+- case_id: EVAL-061
+  split: validation
+  category: requirement_quality
+- case_id: EVAL-068
+  split: validation
+  category: test_generation
+- case_id: EVAL-065
+  split: validation
+  category: test_generation
+- case_id: EVAL-066
+  split: validation
+  category: test_generation
+- case_id: EVAL-069
+  split: validation
+  category: requirement_openapi_consistency
+- case_id: EVAL-071
+  split: validation
+  category: requirement_openapi_consistency
+- case_id: EVAL-073
+  split: validation
+  category: retrieval_citation
+- case_id: EVAL-079
+  split: validation
+  category: failure_analysis
+- case_id: EVAL-084
+  split: holdout
+  category: requirement_quality
+- case_id: EVAL-081
+  split: holdout
+  category: requirement_quality
+- case_id: EVAL-083
+  split: holdout
+  category: requirement_quality
+- case_id: EVAL-085
+  split: holdout
+  category: test_generation
+- case_id: EVAL-086
+  split: holdout
+  category: test_generation
+- case_id: EVAL-088
+  split: holdout
+  category: test_generation
+- case_id: EVAL-089
+  split: holdout
+  category: requirement_openapi_consistency
+- case_id: EVAL-090
+  split: holdout
+  category: requirement_openapi_consistency
+- case_id: EVAL-092
+  split: holdout
+  category: retrieval_citation
+- case_id: EVAL-099
+  split: holdout
+  category: failure_analysis
