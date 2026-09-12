@@ -230,3 +230,31 @@ and comparison-report behavior; it is not a model-quality result.
 A real B0-versus-grounded comparison requires a new immutable evaluation-case
 fixture version with approved nonzero USD budgets. Both workflows must run
 against that same future fixture version before publishing quantitative claims.
+
+
+## EVAL-005 development benchmark expansion
+
+`evaluation-cases.v1.yaml` now contains the committed 60-case development
+suite required by EVAL-005:
+
+| Category                          | Development cases |
+|-----------------------------------|------------------:|
+| `requirement_quality`             |                12 |
+| `test_generation`                 |                12 |
+| `requirement_openapi_consistency` |                 9 |
+| `retrieval_citation`              |                 9 |
+| `tool_planning_execution`         |                 6 |
+| `prompt_injection_security`       |                 6 |
+| `failure_analysis`                |                 3 |
+| `malformed_input_resilience`      |                 3 |
+| **Total**                         |            **60** |
+
+The cases use only the committed synthetic requirement and OpenAPI artifacts.
+They reuse approved immutable v1 finding and policy labels across distinct
+scenario prompts, as permitted by the benchmark contract: a case is not a
+unique document or necessarily a new ground-truth label.
+
+This expansion does not claim live model-evaluation results or paid-model
+spend: every committed development case has `maximum_expected_cost: 0`.
+New label kinds, additional source artifacts, validation cases, and holdout
+cases remain the scope of EVAL-006.
