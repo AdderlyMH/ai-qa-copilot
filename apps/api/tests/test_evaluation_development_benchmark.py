@@ -25,18 +25,20 @@ EXPECTED_DEVELOPMENT_CATEGORY_COUNTS = {
 }
 
 
-def test_committed_development_fixture_has_exact_evaluation_plan_shape() -> None:
+def test_committed_development_partition_has_exact_evaluation_plan_shape() -> None:
     suite = load_evaluation_case_suite(CASE_FIXTURE)
+    development_cases = tuple(
+        case for case in suite.cases if case.split == "development"
+    )
 
-    assert len(suite.cases) == 60
-    assert [case.id for case in suite.cases] == [
+    assert len(development_cases) == 60
+    assert [case.id for case in development_cases] == [
         f"EVAL-{number:03}" for number in range(1, 61)
     ]
-    assert Counter(case.split for case in suite.cases) == {"development": 60}
-    assert Counter(case.category for case in suite.cases) == (
+    assert Counter(case.category for case in development_cases) == (
         EXPECTED_DEVELOPMENT_CATEGORY_COUNTS
     )
-    assert all(case.expected.maximum_expected_cost == 0 for case in suite.cases)
+    assert all(case.expected.maximum_expected_cost == 0 for case in development_cases)
 
 
 def test_every_case_uses_committed_sources_and_approved_ground_truth() -> None:

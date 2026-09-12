@@ -1,17 +1,18 @@
-"""Generate the checked-in 60-case EVAL-005 development benchmark."""
+"""Render the frozen EVAL-006 independent-review selection contract."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-from ai_qa_copilot_api.evaluation_development_benchmark import (
-    render_development_evaluation_cases,
+from ai_qa_copilot_api.evaluation_release_review_selection import (
+    SELECTION_FIXTURE_RELATIVE_PATH,
+    render_release_review_selection,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = ROOT / "fixtures/benchmark/evaluation-cases.v1.yaml"
+DEFAULT_OUTPUT = ROOT / SELECTION_FIXTURE_RELATIVE_PATH
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -20,14 +21,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args(argv)
 
-    rendered = render_development_evaluation_cases(ROOT)
+    rendered = render_release_review_selection(ROOT)
     if not args.write:
         print(rendered, end="")
         return 0
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(rendered, encoding="utf-8")
-    print(f"Development benchmark written: {_display_path(args.output)}")
+    print(f"Release-review selection written: {_display_path(args.output)}")
     return 0
 
 
