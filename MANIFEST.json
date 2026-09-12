@@ -212,8 +212,8 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 9900,
-      "sha256": "8936542966cf749dfdd6b505c174bf8fd2b5a1ea60f8dcd3fda17abbdc104056"
+      "bytes": 11232,
+      "sha256": "689d3881f5dda5550ba130691fd22efb1e01e831394490f68e856fc993ded2a1"
     },
     {
       "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",
@@ -222,8 +222,8 @@
     },
     {
       "path": "fixtures/benchmark/evaluation-cases.v1.yaml",
-      "bytes": 1186,
-      "sha256": "bbdccb8af37210343d147eb2edd77c7fb6995d93aa15d35516bff9a13cb11e32"
+      "bytes": 74816,
+      "sha256": "fe193e18c0c77c544c8ccde481c64d1b99ff2b055ae7baa90f3dbbea452e57e7"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
