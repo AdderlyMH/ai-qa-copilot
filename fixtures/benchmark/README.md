@@ -211,3 +211,22 @@ uv run python scripts/score_evaluation_run.py `
   --ground-truth fixtures/benchmark/ground-truth.v1.yaml `
   --run-report artifacts/evaluation-run.json `
   --output artifacts/evaluation-score-report.json
+```
+
+## EVAL-004 B0 naive baseline
+
+`baselines/b0-naive-single-prompt.v1.yaml` defines the bounded B0
+single-prompt configuration. B0 receives the full declared source artifacts
+when they fit its configured prompt limit, performs exactly one model call, and
+records no retrieval, execution, retry, network-target, approval, or secret
+side effects.
+
+The committed `evaluation-cases.v1.yaml` development fixture currently sets
+`maximum_expected_cost: 0`. Therefore it does not authorize or provide
+evidence for a paid live-provider B0 run. The B0 end-to-end test uses a
+deterministic local model seam solely to verify artifact provenance, scoring,
+and comparison-report behavior; it is not a model-quality result.
+
+A real B0-versus-grounded comparison requires a new immutable evaluation-case
+fixture version with approved nonzero USD budgets. Both workflows must run
+against that same future fixture version before publishing quantitative claims.

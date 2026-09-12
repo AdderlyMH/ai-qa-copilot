@@ -1,0 +1,19 @@
+schema_version: naive-baseline/v1
+baseline_id: B0
+baseline_version: 1
+prompt_version: b0-single-prompt/v1
+maximum_prompt_characters: 120000
+data_classification: synthetic_or_public_only
+side_effect_schema: side-effects/v1
+side_effects:
+  chunks: 0
+  embeddings: 0
+  model_calls: 1
+  execution_candidates: 0
+  automatic_retries: 0
+  dns_requests: 0
+  http_requests: 0
+  execution_plans: 0
+  target_configuration_mutations: 0
+  approval_mutations: 0
+  secret_exposures: 0

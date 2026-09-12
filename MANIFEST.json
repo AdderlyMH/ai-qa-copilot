@@ -212,8 +212,13 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 8954,
-      "sha256": "4c0f2b5a4a0c84094d9cbc1d8fba3ed458836ac8b56abbba1d9a05b23644e6ab"
+      "bytes": 9900,
+      "sha256": "8936542966cf749dfdd6b505c174bf8fd2b5a1ea60f8dcd3fda17abbdc104056"
+    },
+    {
+      "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",
+      "bytes": 469,
+      "sha256": "e70fca75527918df5d5c4578c29586874c406d4d52c4c20a92d9c62513210c5f"
     },
     {
       "path": "fixtures/benchmark/evaluation-cases.v1.yaml",
