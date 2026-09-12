@@ -10,7 +10,7 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0015_quality_report_revisions"
+EXPECTED_REVISION = "0016_evaluation_reviews"
 QUALITY_REPORT_REVISION = "0015_quality_report_revisions"
 EXECUTION_RESULT_REVISION = "0014_execution_results"
 EXECUTION_JOB_REVISION = "0013_execution_jobs"
@@ -56,7 +56,7 @@ def test_database_url_is_read_from_environment_only() -> None:
         database_url_from_environment({})
 
 
-def test_alembic_has_reversible_execution_approval_head() -> None:
+def test_alembic_has_reversible_evaluation_reviews_head() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
@@ -65,7 +65,7 @@ def test_alembic_has_reversible_execution_approval_head() -> None:
 
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == EXECUTION_RESULT_REVISION
+    assert revision.down_revision == QUALITY_REPORT_REVISION
 
     quality_report_revision = script.get_revision(QUALITY_REPORT_REVISION)
     assert quality_report_revision is not None
