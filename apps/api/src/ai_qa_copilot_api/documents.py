@@ -679,6 +679,183 @@ class QualityReportRevisionRecord(Base):
     )
 
 
+class EvaluationReviewerAttestationRecord(Base):
+    """Immutable reviewer eligibility and independence evidence."""
+
+    __tablename__ = "evaluation_reviewer_attestations"
+    __table_args__ = (
+        CheckConstraint("length(trim(reviewer_id)) > 0"),
+        CheckConstraint("length(trim(dataset_version)) > 0"),
+        CheckConstraint("length(trim(rubric_version)) > 0"),
+        CheckConstraint("length(trim(qualification_summary)) > 0"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    reviewer_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    dataset_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    rubric_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    qualification_summary: Mapped[str] = mapped_column(Text, nullable=False)
+    eligible: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    independent: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
+class EvaluationReviewLabelRecord(Base):
+    """One immutable primary, independent, or adjudicated label revision."""
+
+    __tablename__ = "evaluation_review_labels"
+    __table_args__ = (
+        CheckConstraint("length(trim(case_id)) > 0"),
+        CheckConstraint("length(case_sha256) = 64"),
+        CheckConstraint("length(trim(dataset_version)) > 0"),
+        CheckConstraint("length(trim(rubric_version)) > 0"),
+        CheckConstraint("subject_kind IN ('finding', 'test_case', 'failure_analysis')"),
+        CheckConstraint("length(trim(subject_id)) > 0"),
+        CheckConstraint("role IN ('primary', 'independent', 'adjudicated')"),
+        CheckConstraint("length(trim(reviewer_id)) > 0"),
+        CheckConstraint("length(trim(label_json)) > 0"),
+        CheckConstraint("length(label_sha256) = 64"),
+        CheckConstraint(
+            "candidate_output_sha256 IS NULL OR length(candidate_output_sha256) = 64"
+        ),
+        CheckConstraint("revision_number > 0"),
+        CheckConstraint(
+            "(role = 'primary' "
+            "AND primary_label_id IS NULL "
+            "AND independent_label_id IS NULL) OR "
+            "(role = 'independent' "
+            "AND primary_label_id IS NOT NULL "
+            "AND independent_label_id IS NULL "
+            "AND candidate_output_sha256 IS NULL) OR "
+            "(role = 'adjudicated' "
+            "AND primary_label_id IS NOT NULL "
+            "AND independent_label_id IS NOT NULL "
+            "AND candidate_output_sha256 IS NULL)"
+        ),
+        UniqueConstraint(
+            "case_id",
+            "subject_kind",
+            "subject_id",
+            "role",
+            "revision_number",
+            name="uq_evaluation_review_labels_revision",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    dataset_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    rubric_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    reviewer_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    reviewer_attestation_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_reviewer_attestations.id"),
+        nullable=False,
+    )
+    label_json: Mapped[str] = mapped_column(Text, nullable=False)
+    label_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    candidate_output_sha256: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    parent_revision_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_review_labels.id"),
+        nullable=True,
+    )
+    primary_label_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_review_labels.id"),
+        nullable=True,
+    )
+    independent_label_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_review_labels.id"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
+class EvaluationReviewDisagreementRecord(Base):
+    """One immutable material difference between two locked labels."""
+
+    __tablename__ = "evaluation_review_disagreements"
+    __table_args__ = (
+        CheckConstraint("length(trim(field_path)) > 0"),
+        CheckConstraint("length(trim(primary_value_json)) > 0"),
+        CheckConstraint("length(trim(independent_value_json)) > 0"),
+        UniqueConstraint(
+            "primary_label_id",
+            "independent_label_id",
+            "field_path",
+            name="uq_evaluation_review_disagreements_field",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    primary_label_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_review_labels.id"),
+        nullable=False,
+    )
+    independent_label_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_review_labels.id"),
+        nullable=False,
+    )
+    field_path: Mapped[str] = mapped_column(Text, nullable=False)
+    primary_value_json: Mapped[str] = mapped_column(Text, nullable=False)
+    independent_value_json: Mapped[str] = mapped_column(Text, nullable=False)
+    material: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
+class EvaluationReviewAdjudicationRecord(Base):
+    """One immutable documented resolution of one material disagreement."""
+
+    __tablename__ = "evaluation_review_adjudications"
+    __table_args__ = (
+        CheckConstraint("length(trim(adjudicator_id)) > 0"),
+        CheckConstraint("length(trim(rationale)) > 0"),
+        UniqueConstraint(
+            "disagreement_id",
+            name="uq_evaluation_review_adjudications_disagreement",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    disagreement_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_review_disagreements.id"),
+        nullable=False,
+    )
+    adjudicated_label_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("evaluation_review_labels.id"),
+        nullable=False,
+    )
+    adjudicator_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+
+
 class DocumentIntakeState(StrEnum):
     """Persisted outcome of bounded raw-document admission."""
 
