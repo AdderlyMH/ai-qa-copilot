@@ -1,0 +1,166 @@
+name: Evaluation smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_live_run:
+        description: Type RUN_SMOKE to authorize model-backed evaluation.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evaluation-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Run fixed eight-case evaluation smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: evaluation-smoke
+    env:
+      BASELINE_EXECUTOR: ${{ vars.AI_QA_COPILOT_B0_EXECUTOR }}
+      GROUNDED_EXECUTOR: ${{ vars.AI_QA_COPILOT_GROUNDED_EXECUTOR }}
+      AI_QA_COPILOT_B0_MODEL_FACTORY: ${{ vars.AI_QA_COPILOT_B0_MODEL_FACTORY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      SMOKE_MAX_EXPECTED_COST: "1"
+
+    steps:
+      - name: Check out the selected commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version-file: .python-version
+
+      - name: Install locked Python tooling
+        run: |
+          python -m pip install --disable-pip-version-check uv
+          uv sync --frozen
+          mkdir -p artifacts
+
+      - name: Confirm live smoke authorization
+        run: |
+          set -euo pipefail
+          [[ "${{ inputs.confirm_live_run }}" == "RUN_SMOKE" ]] || {
+            echo "::error::Type RUN_SMOKE to authorize a live smoke evaluation."
+            exit 1
+          }
+
+      - name: Verify executor configuration
+        run: |
+          set -euo pipefail
+          for variable_name in BASELINE_EXECUTOR GROUNDED_EXECUTOR; do
+            [[ -n "${!variable_name:-}" ]] || {
+              echo "::error::Required repository variable ${variable_name} is not configured."
+              exit 1
+            }
+          done
+
+      - name: Verify smoke contract and spend declaration
+        run: |
+          uv run python scripts/verify_evaluation_workflow_contract.py \
+            --mode smoke \
+            --baseline-executor "$BASELINE_EXECUTOR" \
+            --grounded-executor "$GROUNDED_EXECUTOR" \
+            --require-positive-case-budgets
+
+      - name: Verify model runtime prerequisites
+        run: |
+          set -euo pipefail
+          for variable_name in AI_QA_COPILOT_B0_MODEL_FACTORY OPENAI_API_KEY; do
+            [[ -n "${!variable_name:-}" ]] || {
+              echo "::error::Required protected-environment value ${variable_name} is not configured."
+              exit 1
+            }
+          done
+
+      - name: Run B0 smoke evaluation
+        run: |
+          uv run python scripts/run_evaluation.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --repository-root . \
+            --executor "$BASELINE_EXECUTOR" \
+            --output artifacts/b0-smoke-run.json \
+            --split development \
+            --case-id EVAL-001 \
+            --case-id EVAL-013 \
+            --case-id EVAL-025 \
+            --case-id EVAL-034 \
+            --case-id EVAL-043 \
+            --case-id EVAL-049 \
+            --case-id EVAL-055 \
+            --case-id EVAL-058 \
+            --max-expected-cost "$SMOKE_MAX_EXPECTED_COST" \
+            --max-concurrency 1
+
+      - name: Run grounded smoke evaluation
+        run: |
+          uv run python scripts/run_evaluation.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --repository-root . \
+            --executor "$GROUNDED_EXECUTOR" \
+            --output artifacts/grounded-smoke-run.json \
+            --split development \
+            --case-id EVAL-001 \
+            --case-id EVAL-013 \
+            --case-id EVAL-025 \
+            --case-id EVAL-034 \
+            --case-id EVAL-043 \
+            --case-id EVAL-049 \
+            --case-id EVAL-055 \
+            --case-id EVAL-058 \
+            --max-expected-cost "$SMOKE_MAX_EXPECTED_COST" \
+            --max-concurrency 1
+
+      - name: Score smoke reports
+        run: |
+          uv run python scripts/score_evaluation_run.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --ground-truth fixtures/benchmark/ground-truth.v1.yaml \
+            --run-report artifacts/b0-smoke-run.json \
+            --output artifacts/b0-smoke-score.json
+
+          uv run python scripts/score_evaluation_run.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --ground-truth fixtures/benchmark/ground-truth.v1.yaml \
+            --run-report artifacts/grounded-smoke-run.json \
+            --output artifacts/grounded-smoke-score.json
+
+      - name: Require passing smoke score reports
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for report_path in (
+              Path("artifacts/b0-smoke-score.json"),
+              Path("artifacts/grounded-smoke-score.json"),
+          ):
+              report = json.loads(report_path.read_text(encoding="utf-8"))
+              if report.get("passed") is not True:
+                  raise SystemExit(f"Evaluation score report failed: {report_path}")
+          PY
+
+      - name: Compare B0 and grounded smoke evidence
+        run: |
+          uv run python scripts/compare_evaluation_score_reports.py \
+            --baseline-score-report artifacts/b0-smoke-score.json \
+            --grounded-score-report artifacts/grounded-smoke-score.json \
+            --baseline-label B0 \
+            --grounded-label grounded \
+            --output artifacts/b0-vs-grounded-smoke.json \
+            --markdown-output artifacts/b0-vs-grounded-smoke.md
+
+      - name: Upload smoke evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: evaluation-smoke-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: warn

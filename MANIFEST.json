@@ -212,8 +212,8 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 12544,
-      "sha256": "6bf7ebbc12b647823da122f1f91549dd54f9d0f80c66e8b9d0ee2496371f3d02"
+      "bytes": 14103,
+      "sha256": "1ed69b55cf4a4414a239952c85fbcceb04105ba762f0fcf43b42b725c26898eb"
     },
     {
       "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",
