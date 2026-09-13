@@ -286,3 +286,37 @@ Regenerate the committed artifacts with:
 ```powershell
 uv run python scripts/generate_evaluation_cases.py --write
 uv run python scripts/generate_release_review_selection.py --write
+```
+
+
+## EVAL-007 GitHub Actions evaluation gates
+
+The repository provides two manual, fail-closed workflows:
+
+- `.github/workflows/evaluation-smoke.yml` runs the fixed eight-case
+  development subset only after the operator enters `RUN_SMOKE`.
+- `.github/workflows/evaluation-release.yml` runs only from `main`, requires
+  the checked-out commit to equal the operator-supplied frozen candidate SHA,
+  requires `RUN_RELEASE`, and targets the protected `evaluation-release`
+  environment.
+
+Both workflows require:
+
+- Positive `maximum_expected_cost` values for every selected case before any
+  model invocation.
+- A configured B0 executor, grounded executor, B0 model factory, and
+  `OPENAI_API_KEY` protected-environment secret.
+- Pinned case, ground-truth, baseline, scorer, and selection provenance.
+- Immutable run, score, and B0-versus-grounded comparison artifacts.
+
+The release workflow additionally invokes
+`label_completeness_and_adjudication_v1`. Its manifest contract requires
+primary labels for all 100 cases, the frozen 20-case release-review selection,
+10 eligible blind independent validation reviews, 10 eligible blind independent
+holdout reviews, resolved material disagreements, complete reviewer
+attestations, and holdout reviews locked after the candidate freeze.
+
+No completed release-review manifest, live executor configuration, credentials,
+or positive case budgets are committed. Therefore these workflows are expected
+to stop before model execution today. Their presence does not claim that an
+evaluation gate has executed or passed.

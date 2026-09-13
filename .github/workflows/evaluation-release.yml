@@ -1,0 +1,169 @@
+name: Evaluation release
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_commit_sha:
+        description: Immutable main-branch commit SHA frozen for this release.
+        required: true
+        type: string
+      confirm_live_run:
+        description: Type RUN_RELEASE to authorize the protected release evaluation.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evaluation-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Run protected 100-case release evaluation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment:
+      name: evaluation-release
+    env:
+      BASELINE_EXECUTOR: ${{ vars.AI_QA_COPILOT_B0_EXECUTOR }}
+      GROUNDED_EXECUTOR: ${{ vars.AI_QA_COPILOT_GROUNDED_EXECUTOR }}
+      AI_QA_COPILOT_B0_MODEL_FACTORY: ${{ vars.AI_QA_COPILOT_B0_MODEL_FACTORY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CANDIDATE_COMMIT_SHA: ${{ inputs.candidate_commit_sha }}
+      B0_MAX_EXPECTED_COST: "2"
+      GROUNDED_MAX_EXPECTED_COST: "8"
+
+    steps:
+      - name: Check out the selected commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version-file: .python-version
+
+      - name: Install locked Python tooling
+        run: |
+          python -m pip install --disable-pip-version-check uv
+          uv sync --frozen
+          mkdir -p artifacts
+
+      - name: Verify protected release authorization
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || {
+            echo "::error::Release evaluation may run only from main."
+            exit 1
+          }
+          [[ "$CANDIDATE_COMMIT_SHA" == "$GITHUB_SHA" ]] || {
+            echo "::error::candidate_commit_sha must equal the checked-out main commit."
+            exit 1
+          }
+          [[ "${{ inputs.confirm_live_run }}" == "RUN_RELEASE" ]] || {
+            echo "::error::Type RUN_RELEASE to authorize a live release evaluation."
+            exit 1
+          }
+
+      - name: Verify executor configuration
+        run: |
+          set -euo pipefail
+          for variable_name in BASELINE_EXECUTOR GROUNDED_EXECUTOR; do
+            [[ -n "${!variable_name:-}" ]] || {
+              echo "::error::Required repository variable ${variable_name} is not configured."
+              exit 1
+            }
+          done
+
+      - name: Verify release corpus and review-evidence contract
+        run: |
+          uv run python scripts/verify_evaluation_workflow_contract.py \
+            --mode release \
+            --baseline-executor "$BASELINE_EXECUTOR" \
+            --grounded-executor "$GROUNDED_EXECUTOR" \
+            --release-review-manifest evaluation/reviews/release-review-manifest.v1.yaml \
+            --require-positive-case-budgets
+      
+      - name: Run label_completeness_and_adjudication_v1
+        run: |
+          uv run python scripts/verify_label_completeness_and_adjudication.py \
+            --repository-root . \
+            --manifest evaluation/reviews/release-review-manifest.v1.yaml
+
+      - name: Verify model runtime prerequisites
+        run: |
+          set -euo pipefail
+          for variable_name in AI_QA_COPILOT_B0_MODEL_FACTORY OPENAI_API_KEY; do
+            [[ -n "${!variable_name:-}" ]] || {
+              echo "::error::Required protected-environment value ${variable_name} is not configured."
+              exit 1
+            }
+          done
+
+      - name: Run B0 release evaluation
+        run: |
+          uv run python scripts/run_evaluation.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --repository-root . \
+            --executor "$BASELINE_EXECUTOR" \
+            --output artifacts/b0-release-run.json \
+            --max-expected-cost "$B0_MAX_EXPECTED_COST" \
+            --max-concurrency 1
+
+      - name: Run grounded release evaluation
+        run: |
+          uv run python scripts/run_evaluation.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --repository-root . \
+            --executor "$GROUNDED_EXECUTOR" \
+            --output artifacts/grounded-release-run.json \
+            --max-expected-cost "$GROUNDED_MAX_EXPECTED_COST" \
+            --max-concurrency 1
+
+      - name: Score release reports
+        run: |
+          uv run python scripts/score_evaluation_run.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --ground-truth fixtures/benchmark/ground-truth.v1.yaml \
+            --run-report artifacts/b0-release-run.json \
+            --output artifacts/b0-release-score.json
+
+          uv run python scripts/score_evaluation_run.py \
+            --fixture fixtures/benchmark/evaluation-cases.v1.yaml \
+            --ground-truth fixtures/benchmark/ground-truth.v1.yaml \
+            --run-report artifacts/grounded-release-run.json \
+            --output artifacts/grounded-release-score.json
+
+      - name: Require passing release score reports
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for report_path in (
+              Path("artifacts/b0-release-score.json"),
+              Path("artifacts/grounded-release-score.json"),
+          ):
+              report = json.loads(report_path.read_text(encoding="utf-8"))
+              if report.get("passed") is not True:
+                  raise SystemExit(f"Evaluation score report failed: {report_path}")
+          PY
+
+      - name: Compare B0 and grounded release evidence
+        run: |
+          uv run python scripts/compare_evaluation_score_reports.py \
+            --baseline-score-report artifacts/b0-release-score.json \
+            --grounded-score-report artifacts/grounded-release-score.json \
+            --baseline-label B0 \
+            --grounded-label grounded \
+            --output artifacts/b0-vs-grounded-release.json \
+            --markdown-output artifacts/b0-vs-grounded-release.md
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: evaluation-release-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: warn
