@@ -1,6 +1,39 @@
-# Project Status — AI Quality Engineering Copilot
+# Project Status â€” AI Quality Engineering Copilot
 
-## EXEC-008 integration update — 2026-09-14
+## EXEC-008 parser-evidence promotion update â€” 2026-09-14
+
+**Candidate branch:** `feat/exec-008-parser-promotion` (locally verified;
+not yet PR-accepted or merged).
+
+EXEC-008 now provides one restricted Markdown/text parser-promotion worker turn.
+It claims only supported document types; reads quarantined bytes through a private
+worker-side capability; rechecks the opaque lease before and after storage I/O;
+and verifies document type, MIME type, byte length, SHA-256 digest, and source
+provenance before parsing.
+
+Promotion recomputes the bounded parser output from the exact bytes and rejects
+forged sections, locations, ordinals, text, or digests. It creates source
+locations and document sections, replaces the pending parser identity with the
+versioned Markdown/text parser identity, and accepts the parser job in one
+transaction. Expiry, stale claims, competing promotion attempts, or database
+write failures leave no partially published evidence.
+
+Local verification on 2026-09-14 passed: Ruff, strict mypy across 174 source
+files, the full API suite with 662 passed and 56 intentionally skipped tests,
+and `py scripts/tasks.py db-check`. The isolated PostgreSQL/pgvector lifecycle
+completed upgrade, 107 integration tests, downgrade, re-upgrade, and cleanup.
+`db-check` now includes parser-evidence promotion coverage rather than only
+parser-job claims.
+
+This is component and database-integration evidence only. It does not provide a
+deployed scheduler or long-running worker process, production private-object
+storage, a user-facing parsing route, retrieval/indexing completion, live model
+calls, safe HTTP execution, evaluation, or deployment acceptance.
+
+Next: open the EXEC-008 pull request and require `application-ci` and
+`docs-validation` to pass on its exact reviewed commit before merge.
+
+## EXEC-008 integration update â€” 2026-09-14
 
 Working base: `67d0369d24e89892cb6fe7c49c3d592c3cf54fd4` (PR #111).
 This update supersedes the next-task position in the historical closeout below;
@@ -30,11 +63,11 @@ Full repository CI and Docker/PostgreSQL evidence passed locally on 2026-09-14:
 This is local component/integration evidence; it does not verify production
 parser-worker deployment or establish EXEC-008 acceptance.
 
-## Historical closeout — 2026-09-05
+## Historical closeout â€” 2026-09-05
 
 **Status date:** 2026-09-05<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, and EXEC-000 through EXEC-003 verified on `main`<br>
-**Current phase:** Phase 4 — EXEC-003 accepted; EXEC-004 is the next gated implementation item<br>
+**Current phase:** Phase 4 â€” EXEC-003 accepted; EXEC-004 is the next gated implementation item<br>
 **Health:** Green for accepted `main` at `e2fbe02124d86b9ae622b7e255d8c1e033861636`. Durable audit persistence, SG-05, live Cognito, production private-object storage, parser-worker deployment, live model/provider calls, real outbound execution, and deployment remain unverified
 
 ## Current status
@@ -1107,17 +1140,17 @@ has executed or passed.
 
 ## Phase 0 gate results
 
-1. **FND-002 — Linear plan verification:** **Resolved 2026-07-21.** The
+1. **FND-002 â€” Linear plan verification:** **Resolved 2026-07-21.** The
    project ID, milestone set, owned P0 issues, estimates, and acceptance
    criteria are recorded in `REPOSITORY_GOVERNANCE.md`.
-2. **FND-004 — GitHub repository controls:** **Resolved 2026-07-21.** The
+2. **FND-004 â€” GitHub repository controls:** **Resolved 2026-07-21.** The
    active `main` ruleset, preserved security-settings captures, and Dependabot
    bot-run evidence are recorded in `REPOSITORY_GOVERNANCE.md`.
-3. **FND-007 — Parser and untrusted-content contract:** **Resolved
+3. **FND-007 â€” Parser and untrusted-content contract:** **Resolved
    2026-07-21** as documented Phase 0 design and fixture-contract evidence.
-4. **FND-008 — Adversarial fixture catalog:** **Resolved 2026-07-21** as
+4. **FND-008 â€” Adversarial fixture catalog:** **Resolved 2026-07-21** as
    versioned fixture and deterministic-validator evidence.
-5. **FND-009 — Objective security release-gate matrix:** **Resolved
+5. **FND-009 â€” Objective security release-gate matrix:** **Resolved
    2026-07-21** as the committed, validated SG-01 through SG-08 matrix.
 
 The FND-005 repository-control dependency and the FND-006 Linear-verification

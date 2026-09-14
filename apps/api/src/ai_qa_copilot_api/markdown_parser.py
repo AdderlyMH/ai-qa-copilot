@@ -8,6 +8,7 @@ from hashlib import sha256
 
 
 MAX_TEXT_LINES = 100_000
+MAX_TEXT_CODEPOINTS = 500_000
 MAX_TEXT_LINE_BYTES = 16 * 1024
 PARSER_VERSION = "markdown-text-v1"
 NORMALIZATION_VERSION = "line-normalized-v1"
@@ -48,6 +49,8 @@ def parse_markdown_or_text(
         text = raw.decode("utf-8", errors="strict")
     except UnicodeDecodeError as error:
         raise DocumentParseRejected("PARSER_TEXT_ENCODING_INVALID") from error
+    if len(text) > MAX_TEXT_CODEPOINTS:
+        raise DocumentParseRejected("PARSER_TEXT_CODEPOINT_LIMIT")
     lines = text.splitlines()
     if len(lines) > MAX_TEXT_LINES:
         raise DocumentParseRejected("PARSER_LINE_COUNT_LIMIT")

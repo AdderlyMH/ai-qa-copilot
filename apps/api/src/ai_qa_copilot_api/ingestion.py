@@ -92,6 +92,8 @@ class QuarantineStorage(Protocol):
 
     def put(self, *, key: str, content: BinaryIO, content_type: str) -> None: ...
 
+    def read(self, *, key: str) -> tuple[bytes, str]: ...
+
     def delete(self, *, key: str) -> None: ...
 
 
@@ -106,6 +108,12 @@ class InMemoryQuarantineStorage:
             raise DocumentIntakeUnavailable
         self.objects[key] = (content.read(), content_type)
 
+    def read(self, *, key: str) -> tuple[bytes, str]:
+        try:
+            return self.objects[key]
+        except KeyError as error:
+            raise DocumentIntakeUnavailable from error
+
     def delete(self, *, key: str) -> None:
         self.objects.pop(key, None)
 
@@ -115,6 +123,10 @@ class UnavailableQuarantineStorage:
 
     def put(self, *, key: str, content: BinaryIO, content_type: str) -> None:
         del key, content, content_type
+        raise DocumentIntakeUnavailable
+
+    def read(self, *, key: str) -> tuple[bytes, str]:
+        del key
         raise DocumentIntakeUnavailable
 
     def delete(self, *, key: str) -> None:
@@ -335,6 +347,7 @@ class SqlAlchemyDocumentIntakeRepository:
                         created_at=now,
                     )
                     session.add(parser_version)
+                session.flush()
                 version = DocumentVersionRecord(
                     id=self._id_factory(),
                     document_id=document.id,
@@ -345,6 +358,8 @@ class SqlAlchemyDocumentIntakeRepository:
                     content_type=metadata.content_type,
                     created_at=now,
                 )
+                session.add(version)
+                session.flush()
                 record = DocumentIntakeRecord(
                     id=self._id_factory(),
                     project_id=project_id,
@@ -359,7 +374,7 @@ class SqlAlchemyDocumentIntakeRepository:
                     rejection_code=None,
                     created_at=now,
                 )
-                session.add_all((version, record))
+                session.add(record)
             return _intake_from_record(record)
         except SQLAlchemyError as error:
             raise DocumentIntakeUnavailable from error
