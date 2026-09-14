@@ -1,37 +1,45 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-## EXEC-008 parser-evidence promotion update â€” 2026-09-14
+## EXEC-008 final acceptance — 2026-09-14
 
-**Candidate branch:** `feat/exec-008-parser-promotion` (locally verified;
-not yet PR-accepted or merged).
+**Status:** Accepted on merged `main`
+`a897255dd81ec570f2c71a7c2ff05f79b1cfb412`.
 
-EXEC-008 now provides one restricted Markdown/text parser-promotion worker turn.
-It claims only supported document types; reads quarantined bytes through a private
-worker-side capability; rechecks the opaque lease before and after storage I/O;
-and verifies document type, MIME type, byte length, SHA-256 digest, and source
-provenance before parsing.
+PR #113 merged reviewed head
+`0156af4664805f5ac710f0b894cd8785ed12dd99`. The final acceptance comparison
+verified that current `main` is identical to merge commit `a897255…`; no
+unreviewed file changes were introduced by the merge.
 
-Promotion recomputes the bounded parser output from the exact bytes and rejects
+The accepted slice provides one restricted Markdown/text parser-promotion worker
+turn. It claims only supported document types; reads quarantined bytes through a
+private worker-side capability; rechecks the opaque lease before and after
+storage I/O; and verifies document type, MIME type, byte length, SHA-256 digest,
+and source provenance before parsing.
+
+Promotion recomputes bounded parser output from the exact bytes and rejects
 forged sections, locations, ordinals, text, or digests. It creates source
-locations and document sections, replaces the pending parser identity with the
-versioned Markdown/text parser identity, and accepts the parser job in one
-transaction. Expiry, stale claims, competing promotion attempts, or database
+locations and normalized document sections, replaces the pending parser identity
+with the versioned Markdown/text parser identity, and accepts the parser job in
+one transaction. Expiry, stale claims, competing promotion attempts, or database
 write failures leave no partially published evidence.
 
-Local verification on 2026-09-14 passed: Ruff, strict mypy across 174 source
-files, the full API suite with 662 passed and 56 intentionally skipped tests,
-and `py scripts/tasks.py db-check`. The isolated PostgreSQL/pgvector lifecycle
-completed upgrade, 107 integration tests, downgrade, re-upgrade, and cleanup.
-`db-check` now includes parser-evidence promotion coverage rather than only
-parser-job claims.
+Verified local evidence on 2026-09-14: `py scripts/tasks.py ci` passed with 662
+tests passed and 56 intentional skips; its deterministic security harness passed
+57 of 57 cases. `py scripts/tasks.py db-check` completed its isolated
+PostgreSQL/pgvector upgrade, 107 integration tests, downgrade, re-upgrade, and
+cleanup. `db-check` now includes parser-evidence promotion coverage rather than
+only parser-job claims. The reviewed head also passed GitHub `application-ci`
+run #199 and `docs-validation` run #266.
 
-This is component and database-integration evidence only. It does not provide a
-deployed scheduler or long-running worker process, production private-object
-storage, a user-facing parsing route, retrieval/indexing completion, live model
-calls, safe HTTP execution, evaluation, or deployment acceptance.
+This is accepted component and database-integration evidence only. It does not
+provide a deployed scheduler or long-running worker process, production
+private-object storage, a user-facing parsing route, retrieval/indexing
+completion, live model calls, safe HTTP execution, evaluation, or deployment
+acceptance.
 
-Next: open the EXEC-008 pull request and require `application-ci` and
-`docs-validation` to pass on its exact reviewed commit before merge.
+Next: select the next explicitly scoped retrieval/indexing and citation-linkage
+task. Preserve the quarantine boundary and do not introduce a deployed worker,
+production-system access, or broader execution capability without its own gate.
 
 ## EXEC-008 integration update â€” 2026-09-14
 

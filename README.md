@@ -32,11 +32,12 @@ constitute application, deployment, evaluation, cost, latency, or security-test
 success. See [project status](docs/PROJECT_STATUS.md) and [repository
 governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 
-The current EXEC-008 candidate adds bounded, claim-bound Markdown/text evidence
-promotion from private quarantine storage into normalized, source-located
-sections. Its SQLite and isolated PostgreSQL integration evidence is local-only:
-it is not yet PR-accepted, merged, deployed, connected to production object
-storage, or a running scheduler/worker service.
+EXEC-008 is accepted on `main` through PR #113. It adds bounded, claim-bound
+Markdown/text evidence promotion from private quarantine storage into normalized,
+source-located sections, verified through local SQLite and isolated PostgreSQL
+integration gates plus required PR checks. It does not add a deployed scheduler,
+production object storage, a running worker service, retrieval/indexing
+completion, safe HTTP execution, or deployment.
 
 ## Canonical documents
 
