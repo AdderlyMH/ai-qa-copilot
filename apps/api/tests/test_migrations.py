@@ -4,13 +4,17 @@ from typing import Protocol, cast
 import pytest
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
+import sqlalchemy as sa
 
 from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0016_evaluation_reviews"
+EXPECTED_REVISION = "0017_parser_job_claims"
+EVALUATION_REVIEW_REVISION = "0016_evaluation_reviews"
 QUALITY_REPORT_REVISION = "0015_quality_report_revisions"
 EXECUTION_RESULT_REVISION = "0014_execution_results"
 EXECUTION_JOB_REVISION = "0013_execution_jobs"
@@ -56,7 +60,57 @@ def test_database_url_is_read_from_environment_only() -> None:
         database_url_from_environment({})
 
 
-def test_alembic_has_reversible_evaluation_reviews_head() -> None:
+def test_parser_claim_migration_preserves_queued_rows_and_blocks_replay_on_downgrade() -> (
+    None
+):
+    engine = sa.create_engine("sqlite+pysqlite:///:memory:")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE document_intakes (id CHAR(32) PRIMARY KEY)"
+            )
+            with Operations.context(MigrationContext.configure(connection)):
+                migration_script(PARSER_JOB_REVISION).upgrade()
+                connection.execute(
+                    sa.text(
+                        "INSERT INTO parser_jobs (id, document_intake_id, state, created_at) "
+                        "VALUES (:id, :intake, 'queued', '2026-09-13 03:00:00')"
+                    ),
+                    {"id": "a" * 32, "intake": "b" * 32},
+                )
+                module = migration_script(EXPECTED_REVISION)
+                module.upgrade()
+                assert (
+                    connection.scalar(sa.text("SELECT state FROM parser_jobs"))
+                    == "queued"
+                )
+                assert (
+                    connection.scalar(sa.text("SELECT claim_token FROM parser_jobs"))
+                    is None
+                )
+                module.downgrade()
+                assert (
+                    connection.scalar(sa.text("SELECT count(*) FROM parser_jobs")) == 1
+                )
+                module.upgrade()
+                connection.execute(
+                    sa.text(
+                        "UPDATE parser_jobs SET state='claimed', claim_token=:token, "
+                        "claimed_at='2026-09-13 03:00:00', claim_expires_at='2026-09-13 03:01:00'"
+                    ),
+                    {"token": "c" * 32},
+                )
+                with pytest.raises(RuntimeError, match="previously claimed"):
+                    module.downgrade()
+                assert (
+                    connection.scalar(sa.text("SELECT state FROM parser_jobs"))
+                    == "claimed"
+                )
+    finally:
+        engine.dispose()
+
+
+def test_alembic_has_reversible_parser_claims_head() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
@@ -65,7 +119,11 @@ def test_alembic_has_reversible_evaluation_reviews_head() -> None:
 
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == QUALITY_REPORT_REVISION
+    assert revision.down_revision == EVALUATION_REVIEW_REVISION
+
+    evaluation_review_revision = script.get_revision(EVALUATION_REVIEW_REVISION)
+    assert evaluation_review_revision is not None
+    assert evaluation_review_revision.down_revision == QUALITY_REPORT_REVISION
 
     quality_report_revision = script.get_revision(QUALITY_REPORT_REVISION)
     assert quality_report_revision is not None
