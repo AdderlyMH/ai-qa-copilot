@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0016_evaluation_reviews"
+DB_CHECK_REVISION = "0017_parser_job_claims"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -530,6 +530,7 @@ def db_check() -> None:
             "apps/api/tests/test_projects_postgres.py",
             "apps/api/tests/test_quality_report_revisions.py",
             "apps/api/tests/test_evaluation_review_repository.py",
+            "apps/api/tests/test_parser_job_claims.py",
             env=project_api_environment,
         )
 

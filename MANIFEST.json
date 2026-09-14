@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 66981,
-      "sha256": "1903eab8d90388fa92047588f3de1274ab086b5ea22e92bf2e3e8582de73bb4a"
+      "bytes": 68899,
+      "sha256": "7ab2ca03546552f42a1b136f818efbe97a683a4c5a90eb8a3e44a8fe810e1a58"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -282,8 +282,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 30472,
-      "sha256": "902a90e9cbda3c4c68dda8a61e12468212f3f776aa08c8fc278ad93695cd01ca"
+      "bytes": 30527,
+      "sha256": "2d32fe921212e41508ca9f2e2bbe33f0732142ebeaf86934484520296d1267b5"
     },
     {
       "path": "scripts/validate_docs.py",

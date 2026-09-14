@@ -1,5 +1,37 @@
 # Project Status — AI Quality Engineering Copilot
 
+## EXEC-008 integration update — 2026-09-14
+
+Working base: `67d0369d24e89892cb6fe7c49c3d592c3cf54fd4` (PR #111).
+This update supersedes the next-task position in the historical closeout below;
+it does not establish acceptance of subsequent release or deployment gates.
+
+The local EXEC-008 test now exercises upload admission, quarantine, parser-job
+enqueue, direct Markdown parsing, grounded test generation, one-time execution
+through an in-process mock transport, and immutable report generation. It still
+constructs citation provenance and supplies generated tests through test helpers.
+It is component integration evidence, not completed end-to-end acceptance.
+
+Inspection found no production parser-job consumer or parsed-evidence promotion
+path. Migration `0017_parser_job_claims` and the claim repository add atomic
+opaque claims, deadlines, terminal rejection/failure, and expiry without retries.
+The accepted state is reserved for future atomic evidence promotion; this change
+does not provide an acceptance method, invoke a parser, or enable a worker.
+The existing network-denied worker profile and quarantine admission records are
+unchanged. Downgrade refuses when previously claimed jobs exist, preventing a
+rollback from silently reopening consumed work.
+
+Next: verify the claim migration and concurrency cases through `db-check`, then
+implement bounded isolated parsing, transactional evidence promotion, and real
+retrieval/citation linkage. EXEC-008 and parser runtime integration remain open.
+Full repository CI and Docker/PostgreSQL evidence passed locally on 2026-09-14:
+`py scripts/tasks.py ci` completed with 621 passed and 27 skipped tests, and
+`py scripts/tasks.py db-check` completed with 47 passed integration tests.
+This is local component/integration evidence; it does not verify production
+parser-worker deployment or establish EXEC-008 acceptance.
+
+## Historical closeout — 2026-09-05
+
 **Status date:** 2026-09-05<br>
 **Overall state:** Phase 0 documentation/governance baseline complete; SKEL-001 through SKEL-006, IAM-001, IAM-002, SEC-001, ING-000 through ING-006, RAG-001 through RAG-005, ANA-001 through ANA-005, TST-001 through TST-005, and EXEC-000 through EXEC-003 verified on `main`<br>
 **Current phase:** Phase 4 — EXEC-003 accepted; EXEC-004 is the next gated implementation item<br>
