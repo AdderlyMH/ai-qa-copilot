@@ -11,7 +11,11 @@ from sqlalchemy import select, true, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ai_qa_copilot_api.documents import DocumentIntakeRecord, ParserJobRecord
+from ai_qa_copilot_api.documents import (
+    DocumentIntakeRecord,
+    DocumentRecord,
+    ParserJobRecord,
+)
 from ai_qa_copilot_api.parser_queue import ParserJobQueueUnavailable, utc_now
 
 
@@ -47,9 +51,12 @@ class SqlAlchemyParserJobClaims:
         id_factory: Callable[[], UUID] = uuid4,
         claim_duration: timedelta = timedelta(seconds=60),
         intake_id: UUID | None = None,
+        document_types: frozenset[str] | None = None,
     ) -> None:
         if claim_duration <= timedelta(0):
             raise ValueError("Parser claim duration must be positive")
+        if document_types is not None and not document_types:
+            raise ValueError("Parser document-type scope must not be empty")
         self._sessions = session_factory
         self._clock = clock
         self._id_factory = id_factory
@@ -57,6 +64,11 @@ class SqlAlchemyParserJobClaims:
         self._scope = (
             ParserJobRecord.document_intake_id == intake_id
             if intake_id is not None
+            else true()
+        )
+        self._document_type_scope = (
+            DocumentRecord.document_type.in_(document_types)
+            if document_types is not None
             else true()
         )
 
@@ -70,11 +82,13 @@ class SqlAlchemyParserJobClaims:
                 DocumentIntakeRecord,
                 DocumentIntakeRecord.id == ParserJobRecord.document_intake_id,
             )
+            .join(DocumentRecord, DocumentRecord.id == DocumentIntakeRecord.document_id)
             .where(
                 ParserJobRecord.state == "queued",
                 ParserJobRecord.created_at <= now,
                 DocumentIntakeRecord.state == "quarantined",
                 self._scope,
+                self._document_type_scope,
             )
             .order_by(ParserJobRecord.created_at, ParserJobRecord.id)
             .limit(1)

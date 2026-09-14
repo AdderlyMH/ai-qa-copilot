@@ -265,3 +265,19 @@ def test_scoped_consumer_cannot_claim_or_complete_another_intake(
     with pytest.raises(ParserJobClaimRejected):
         other.fail(claim)
     assert harness.row().state == "claimed"
+
+
+def test_document_type_scope_leaves_nonmatching_job_queued(harness: Harness) -> None:
+    claims = SqlAlchemyParserJobClaims(
+        harness.sessions,
+        clock=lambda: NOW,
+        document_types=frozenset({"pdf"}),
+    )
+    assert claims.claim_next() is None
+    assert harness.row().state == "queued"
+    with pytest.raises(ValueError, match="must not be empty"):
+        SqlAlchemyParserJobClaims(
+            harness.sessions,
+            clock=lambda: NOW,
+            document_types=frozenset(),
+        )

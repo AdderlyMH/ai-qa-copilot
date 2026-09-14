@@ -531,6 +531,7 @@ def db_check() -> None:
             "apps/api/tests/test_quality_report_revisions.py",
             "apps/api/tests/test_evaluation_review_repository.py",
             "apps/api/tests/test_parser_job_claims.py",
+            "apps/api/tests/test_parser_evidence_promotion.py",
             env=project_api_environment,
         )
 

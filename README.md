@@ -32,6 +32,12 @@ constitute application, deployment, evaluation, cost, latency, or security-test
 success. See [project status](docs/PROJECT_STATUS.md) and [repository
 governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 
+The current EXEC-008 candidate adds bounded, claim-bound Markdown/text evidence
+promotion from private quarantine storage into normalized, source-located
+sections. Its SQLite and isolated PostgreSQL integration evidence is local-only:
+it is not yet PR-accepted, merged, deployed, connected to production object
+storage, or a running scheduler/worker service.
+
 ## Canonical documents
 
 - [Project charter](docs/PROJECT_CHARTER.md)

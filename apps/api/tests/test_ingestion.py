@@ -19,6 +19,7 @@ from ai_qa_copilot_api.documents import (
     ParserJobRecord,
 )
 from ai_qa_copilot_api.ingestion import (
+    DocumentIntakeUnavailable,
     InMemoryQuarantineStorage,
     SqlAlchemyDocumentIntakeRepository,
     UploadPolicy,
@@ -155,6 +156,38 @@ def test_owner_uploads_markdown_to_private_generated_quarantine_key(
     assert saved[0].quarantine_key == key
     assert saved[0].rejection_code is None
     assert queue.jobs == [ParserJob(document_intake_id=UUID(payload["id"]))]
+
+
+def test_private_quarantine_storage_reads_exact_uploaded_bytes(
+    sessions: sessionmaker[Session],
+    project_repository: ProjectRepository,
+) -> None:
+    project = project_repository.create(name="Ingestion", description=None)
+    storage = InMemoryQuarantineStorage()
+
+    with intake_client(
+        project_repository=project_repository,
+        sessions=sessions,
+        storage=storage,
+    ) as client:
+        response = upload(
+            client,
+            project.id,
+            filename="requirements.md",
+            content_type="text/markdown",
+            content=b"# Checkout\nREQ-001: Cart IDs are required.\n",
+        )
+
+    assert response.status_code == 202
+    intake = records(sessions)[0]
+    assert intake.quarantine_key is not None
+    assert storage.read(key=intake.quarantine_key) == (
+        b"# Checkout\nREQ-001: Cart IDs are required.\n",
+        "text/markdown",
+    )
+
+    with pytest.raises(DocumentIntakeUnavailable):
+        storage.read(key="quarantine/missing/raw")
 
 
 def test_rejections_persist_only_sanitized_outcomes_and_no_raw_object(
