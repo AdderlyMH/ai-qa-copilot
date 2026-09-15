@@ -1,9 +1,13 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-## RAG-007 retrieval-citation linkage candidate -- 2026-09-15
+## RAG-007 final acceptance -- 2026-09-15
 
-**Candidate branch:** `feat/rag-007-retrieval-citation-linkage` (locally
-verified; not yet PR-accepted or merged).
+**Status:** Accepted on merged `main`
+`c0c2aa1fb229610dec6220c2cc5fb8aed1fc6e2a`.
+
+PR #117 reviewed head
+`45d2b6962c27ef19af82e0f82ce09e0eaf52f12b` passed all required checks and
+merged as the current `main` commit.
 
 RAG-007 composes the accepted indexing, hybrid-retrieval, and citation seams
 into one authorized project-scoped `POST /projects/{project_id}/retrievals`
@@ -21,22 +25,21 @@ new batch. No deployment composition is supplied: the default API service
 fails closed with `503` until a durable retriever and embedding adapter are
 explicitly injected.
 
-Local verification on 2026-09-15 passed Ruff and strict mypy across 182 source
-files; 53 focused retrieval, citation, analysis, generation, and workflow
-tests; and the full API suite with 701 passed and 75 intentional skips. `py
-scripts/tasks.py db-check` completed its isolated PostgreSQL/pgvector lifecycle
-with 145 integration tests, including the durable hybrid retrieval-to-citation
-linkage, downgrade to base, re-upgrade, and Compose cleanup.
+Verified local evidence on 2026-09-15: `py scripts/tasks.py ci` passed with
+701 tests passed and 75 intentional skips; its deterministic security harness
+passed 57 of 57 cases. `py scripts/tasks.py db-check` completed its isolated
+PostgreSQL/pgvector upgrade, 145 integration tests, downgrade, re-upgrade, and
+cleanup. Documentation validation passed, and PR #117 checks passed on the
+reviewed head.
 
-This is candidate component and database-integration evidence only. It does
-not provide a live embedding provider, model-generated answer, production
-retrieval configuration, deployed scheduler or worker, production object
-storage, safe HTTP execution, evaluation, or deployment acceptance.
+This is accepted component and database-integration evidence only. It does not
+provide a live embedding provider, model-generated answer, production retrieval
+configuration, deployed scheduler or worker, production object storage, safe
+HTTP execution, evaluation, or deployment acceptance.
 
-Next: run the complete CI and documentation gates; then require the PR checks
-to pass on the exact reviewed commit before merge. Preserve project isolation,
-the quarantine boundary, and the fail-closed deployment composition.
-
+Next: select an explicitly scoped evaluation or production-composition task.
+Preserve project and selected-candidate provenance, the fail-closed default,
+and the boundary against caller-supplied vectors.
 ## RAG-006 final acceptance -- 2026-09-15
 
 **Status:** Accepted on merged `main`
