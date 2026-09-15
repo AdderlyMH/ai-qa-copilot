@@ -615,6 +615,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Deliverable:** Actor-bound, expiring, one-time approval.
 - **Acceptance:** Missing, expired, altered, replayed, and concurrent approvals fail closed.
 
+- **Status:** Accepted on main through PR #91.
+
 #### EXEC-005 — Implement restricted execution worker and outbound HTTP client
 
 - **Priority:** P0
@@ -622,6 +624,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Dependencies:** EXEC-000, EXEC-002, EXEC-003, EXEC-004
 - **Deliverable:** Approved-execution queue consumer, restricted worker entry point, bounded outbound HTTP client, deterministic assertions, cancellation, redacted evidence, and audit records.
 - **Acceptance:** This is the first issue permitted to introduce an outbound HTTP client. The worker executes only a valid, unexpired, one-time-approved immutable plan against a server-side allowlisted target. All `SEC-NET-*` and approval-integrity fixtures pass at 100% before the route or worker is enabled.
+
+- **Status:** Accepted on main through PR #94.
 
 #### EXEC-006 — Implement redaction and evidence viewer
 
@@ -631,6 +635,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Deliverable:** Request/response/assertion/timing display with sensitive-field masking.
 - **Acceptance:** Canary secrets do not appear in database display, logs, traces, or reports.
 
+- **Status:** Accepted on main through PR #96.
+
 #### EXEC-007 — Implement grounded failure analysis
 
 - **Priority:** P0
@@ -639,6 +645,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Deliverable:** Observations, hypotheses, alternatives, and next checks.
 - **Acceptance:** Root cause is not asserted when fixture evidence is insufficient.
 
+- **Status:** Accepted on main through PR #97.
+
 #### EXEC-008 — Complete full end-to-end workflow test
 
 - **Priority:** P0
@@ -646,6 +654,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Dependencies:** EXEC-007, REP-004
 - **Deliverable:** Upload → analyze → generate → approve → execute → report.
 - **Acceptance:** Runs in CI with a fake model or deterministic fixture and local mock API; it produces a schema-valid, cited, immutable, redacted report revision.
+
+- **Status:** Accepted on main through PR #114; the closeout records the combined EXEC-008 workflow evidence.
 
 ### Epic REP — Cited, immutable QA reporting
 
@@ -656,12 +666,16 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Dependencies:** ANA-003, TST-004
 - **Acceptance:** `QualityReportV1` validates; every material claim has valid evidence or an explicit unsupported state.
 
+- **Status:** Accepted on main through PR #98.
+
 #### REP-002 — Assemble immutable QA evidence snapshots
 
 - **Priority:** P0
 - **Estimate:** 3 h
 - **Dependencies:** REP-001, EXEC-006, EXEC-007, ING-006
 - **Acceptance:** Summary counts reconcile with detailed records; no-execution and insufficient-evidence states are explicit.
+
+- **Status:** Accepted on main through PR #99.
 
 #### REP-003 — Render and publish safe reports
 
@@ -670,12 +684,30 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Dependencies:** REP-002, IAM-002
 - **Acceptance:** Web, Markdown, and JSON derive from canonical JSON; guests see only published sanitized revisions.
 
+- **Status:** Accepted on main through PR #100.
+
 #### REP-004 — Verify report integrity, citations, and redaction
 
 - **Priority:** P0
 - **Estimate:** 2 h
 - **Dependencies:** REP-003
 - **Acceptance:** Tampering, foreign citations, stale evidence, guest access, and canary-secret tests fail closed.
+
+- **Status:** Accepted on main through PR #101.
+
+#### Accepted integration exceptions: REP-005 through REP-007
+
+REP-005 through REP-007 were implemented and accepted outside the canonical
+backlog sequence. They are recorded as accepted integration exceptions, not
+retroactive canonical backlog items:
+
+- REP-005: immutable report exports, accepted through PR #102.
+- REP-006: fail-closed report-revision integrity, accepted through PR #103.
+- REP-007: scoped redacted report-evidence security coverage, accepted through
+  PR #104.
+
+These exceptions do not add new canonical dependencies or change the authority
+of this backlog.
 
 **Phase 4 exit:** The core product workflow produces controlled execution evidence and a schema-valid, cited, immutable, redacted QA report.
 
@@ -691,6 +723,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Deliverable:** Filterable, resumable evaluation CLI and machine-readable results.
 - **Acceptance:** Runs selected cases with budget/concurrency caps and stable provenance.
 
+- **Status:** Accepted on main through PR #105.
+
 #### EVAL-002 — Implement deterministic scorers
 
 - **Priority:** P0
@@ -698,6 +732,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Dependencies:** EVAL-001
 - **Deliverable:** Schema, citation existence, traceability, policy, cost, and latency scorers.
 - **Acceptance:** Scorers have unit tests and explicit denominators.
+
+- **Status:** Accepted on main through PR #106.
 
 #### EVAL-003 — Implement human-review and independent-adjudication workflow
 
@@ -712,6 +748,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
   - Material disagreements remain visible and require documented adjudication.
   - Unresolved disagreement cannot be represented as an approved final label.
 
+- **Status:** Accepted on main through PR #107.
+
 #### EVAL-004 — Build B0 naive baseline
 
 - **Priority:** P1
@@ -720,6 +758,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Deliverable:** Single-prompt baseline configuration.
 - **Acceptance:** Results document why it succeeds or fails relative to grounded workflow.
 
+- **Status:** Accepted on main through PR #108.
+
 #### EVAL-005 — Expand development benchmark to 60 cases
 
 - **Priority:** P0
@@ -727,6 +767,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
 - **Dependencies:** EVAL-003
 - **Deliverable:** Balanced development cases and labels.
 - **Acceptance:** No prohibited/private data; category counts match plan.
+
+- **Status:** Accepted on main through PR #109.
 
 #### EVAL-006 — Add 20 validation and 20 holdout cases
 
@@ -740,6 +782,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
   - The independent-review selection method can select at least 10 eligible non-security validation cases and at least 10 eligible non-security holdout cases.
   - The selection method and seed are versioned before release-candidate evaluation.
   - Selected cases cannot be replaced because of poor candidate performance or reviewer disagreement.
+
+- **Status:** Accepted on main through PR #110.
 
 #### EVAL-007 — Implement AI smoke and release workflows
 
@@ -762,6 +806,8 @@ of this backlog. New work requires an explicitly listed backlog item first.
     - the candidate was not frozen before the holdout-review process.
   - No manual override or expected-failure status may convert an EG-09 failure into a passing release.
   - Workflow creation alone is not evidence that any evaluation gate has executed or passed.
+
+- **Status:** Accepted on main through PR #111.
 
 ### Epic OBS — Trace, cost, and reliability evidence
 
@@ -1077,13 +1123,18 @@ finding-schema and deterministic-validation evidence only: no model call,
 analysis workflow, persistence, API route, user decision, OpenAPI-diff
 extraction, execution, or deployment is accepted.
 
-Backlog reconciliation on 2026-09-15 records RAG-006 and RAG-007 as accepted
-integration exceptions only; they are not retroactive canonical backlog IDs.
-The accepted EXEC-008 record does not waive the declared dependencies of later
-execution work or authorize outbound execution.
+Backlog acceptance audit on 2026-09-15 verified that the following merged
+feature pull-request heads completed their required checks:
 
-The next authorized implementation item is EXEC-004: implement one-time
-approval state. EXEC-003 is accepted, and EXEC-004 must keep approval
-actor-bound, expiring, one-time, and bound to the immutable execution-plan
-hash. Do not introduce a worker, queue consumer, outbound HTTP client, or
-approval bypass in this item.
+- Canonical EXEC-004 through EXEC-007: PRs #91, #94, #96, and #97.
+- Canonical EXEC-008: PR #114 closeout records workflow evidence from PRs #112
+  and #113.
+- Canonical REP-001 through REP-004: PRs #98 through #101.
+- Canonical EVAL-001 through EVAL-007: PRs #105 through #111.
+- Accepted integration exceptions: REP-005 through REP-007, RAG-006, and
+  RAG-007.
+
+The next authorized implementation item is OBS-001: add end-to-end structured
+tracing. Preserve secret redaction and correlate API, job, retrieval, model,
+approval, execution, and evaluation spans without adding production deployment
+scope.
