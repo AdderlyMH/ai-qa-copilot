@@ -29,6 +29,7 @@ from ai_qa_copilot_api.execution_plans import (
     validate_execution_plan,
 )
 from ai_qa_copilot_api.target_registry import TargetId
+from ai_qa_copilot_api.observability import traced
 
 
 EXECUTION_APPROVAL_TTL = timedelta(minutes=10)
@@ -261,6 +262,7 @@ class ExecutionApprovalService:
     def __init__(self, repository: ExecutionApprovalRepository) -> None:
         self._repository = repository
 
+    @traced("execution.approval")
     def approve(
         self,
         *,

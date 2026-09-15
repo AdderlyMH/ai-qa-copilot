@@ -23,6 +23,7 @@ from ai_qa_copilot_api.execution_approvals import (
     ExecutionApprovalUnavailable,
     _approval_from_record,
 )
+from ai_qa_copilot_api.observability import current_trace_id, traced
 
 
 class ExecutionJobQueueUnavailable(RuntimeError):
@@ -42,6 +43,7 @@ class ExecutionJob:
     execution_approval_id: UUID
     plan_id: UUID
     plan_hash: str
+    workflow_trace_id: UUID | None
     state: ExecutionJobState
     created_at: datetime
     started_at: datetime | None
@@ -105,6 +107,7 @@ class SqlAlchemyExecutionJobQueue:
         engine = create_engine(database_url, pool_pre_ping=True)
         return cls(sessionmaker(engine, expire_on_commit=False))
 
+    @traced("execution.job_enqueue")
     def enqueue(self, *, approval: ExecutionApproval) -> ExecutionJob:
         now = _utc_datetime(self._clock())
         if approval.consumed_at is not None:
@@ -118,6 +121,7 @@ class SqlAlchemyExecutionJobQueue:
             execution_approval_id=approval.id,
             plan_id=approval.plan.id,
             plan_hash=approval.plan.plan_hash,
+            workflow_trace_id=current_trace_id(),
             state=ExecutionJobState.QUEUED.value,
             created_at=now,
             started_at=None,
@@ -329,6 +333,7 @@ def _job_from_record(record: ExecutionJobRecord) -> ExecutionJob:
         execution_approval_id=record.execution_approval_id,
         plan_id=record.plan_id,
         plan_hash=record.plan_hash,
+        workflow_trace_id=record.workflow_trace_id,
         state=ExecutionJobState(record.state),
         created_at=_utc_datetime(record.created_at),
         started_at=(

@@ -197,6 +197,7 @@ def claimed(
         execution_approval_id=approval.id,
         plan_id=immutable_plan.id,
         plan_hash=immutable_plan.plan_hash,
+        workflow_trace_id=None,
         state=ExecutionJobState.RUNNING,
         created_at=NOW,
         started_at=NOW,

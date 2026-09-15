@@ -570,6 +570,10 @@ class ExecutionJobRecord(Base):
     )
     plan_id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     plan_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    workflow_trace_id: Mapped[UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        nullable=True,
+    )
     state: Mapped[str] = mapped_column(String(16), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -11,6 +11,8 @@ from uuid import UUID
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from ai_qa_copilot_api.observability import traced
+
 
 OPENAI_RESPONSES_URL: Final = "https://api.openai.com/v1/responses"
 B1_MODEL_ID: Final = "gpt-5.6-terra"
@@ -237,6 +239,7 @@ class ModelGateway:
     def __init__(self, adapter: ModelAdapter) -> None:
         self._adapter = adapter
 
+    @traced("model.structured_generation")
     def generate_structured(
         self, request: StructuredModelRequest
     ) -> StructuredModelResponse:

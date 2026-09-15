@@ -24,6 +24,7 @@ from ai_qa_copilot_api.documents import (
     RetrievalTraceCandidateRecord,
     RetrievalTraceRecord,
 )
+from ai_qa_copilot_api.observability import traced
 
 
 HYBRID_RETRIEVAL_VERSION = "hybrid-v1"
@@ -127,6 +128,7 @@ class HybridRetrievalService:
     def __init__(self, store: HybridRetrievalStore) -> None:
         self._store = store
 
+    @traced("retrieval.hybrid")
     def retrieve(
         self,
         *,

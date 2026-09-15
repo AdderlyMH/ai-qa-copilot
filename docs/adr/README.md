@@ -30,6 +30,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-008](ADR-008-cognito-owner-guest-authorization.md) | Cognito owner authentication and scoped public-demo authorization | Accepted |
 | [ADR-009](ADR-009-parser-isolation.md) | Quarantine-first untrusted document parsing boundary | Accepted |
 | [ADR-010](ADR-010-canonical-report-revisions.md) | Immutable canonical QA-report revisions | Accepted |
+| [ADR-011](ADR-011-structured-workflow-tracing.md) | Safe correlated structured workflow tracing | Accepted |
 
 ## Required ADR structure
 

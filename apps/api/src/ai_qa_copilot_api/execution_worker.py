@@ -12,6 +12,7 @@ from uuid import UUID
 
 from ai_qa_copilot_api.documents import ExecutionResultOutcome
 from ai_qa_copilot_api.execution_jobs import ClaimedExecutionJob, ExecutionJob
+from ai_qa_copilot_api.observability import WorkflowTraceSink, traced, workflow_trace
 from ai_qa_copilot_api.execution_results import (
     ExecutionResultPayload,
     StoredExecutionResult,
@@ -84,10 +85,12 @@ class RestrictedExecutionWorker:
         jobs: ExecutionJobClaimer,
         executor: RestrictedExecutionRunner,
         results: ExecutionResultRecorder,
+        workflow_trace_sink: WorkflowTraceSink | None = None,
     ) -> None:
         self._jobs = jobs
         self._executor = executor
         self._results = results
+        self._workflow_trace_sink = workflow_trace_sink
 
     def run_once(self) -> ExecutionWorkerRun:
         """Process at most one claimed job; this method never retries."""
@@ -107,6 +110,18 @@ class RestrictedExecutionWorker:
             raise ExecutionWorkerInvariantError(
                 "The execution queue returned a malformed claimed job"
             )
+
+        with workflow_trace(
+            trace_id=claimed.job.workflow_trace_id,
+            sink=self._workflow_trace_sink,
+            name="execution.worker",
+            attributes={"execution.job_state": claimed.job.state.value},
+        ):
+            return self._execute_claimed_job(claimed)
+
+    @traced("execution.run")
+    def _execute_claimed_job(self, claimed: ClaimedExecutionJob) -> ExecutionWorkerRun:
+        """Execute one valid claim within its persisted or worker-created trace."""
 
         result = self._executor.execute(claimed)
         _require_result_for_claim(result=result, claimed=claimed)

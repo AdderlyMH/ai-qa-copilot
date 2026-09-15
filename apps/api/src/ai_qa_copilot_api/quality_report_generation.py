@@ -19,6 +19,7 @@ from ai_qa_copilot_api.quality_report_snapshots import (
     QualityReportSnapshotRejected,
     build_quality_report_snapshot,
 )
+from ai_qa_copilot_api.observability import traced
 
 
 class QualityReportEvidenceCollectionUnavailable(RuntimeError):
@@ -83,6 +84,7 @@ class QualityReportGenerationService:
         self._clock = clock
         self._id_factory = id_factory
 
+    @traced("report.generation")
     def generate(
         self,
         *,
