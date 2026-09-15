@@ -452,6 +452,21 @@ security release gate has executed or passed.
 - **Acceptance:** Baseline result is committed and limitations documented.
 - **Status:** Accepted on `main` through PR #60.
 
+#### Accepted integration exceptions: RAG-006 and RAG-007
+
+RAG-006 and RAG-007 were implemented and accepted outside this canonical
+backlog sequence. They are recorded as accepted integration exceptions, not
+retroactive canonical backlog items. Their acceptance evidence, scope, and
+limits are preserved in `docs/PROJECT_STATUS.md`:
+
+- RAG-006: durable indexing-job handoff and bounded worker claim protocol;
+  accepted through PR #115.
+- RAG-007: authorized retrieval-to-citation linkage with selected-candidate
+  provenance and fail-closed deployment composition; accepted through PR #117.
+
+These exceptions do not change the canonical order, dependencies, or authority
+of this backlog. New work requires an explicitly listed backlog item first.
+
 **Phase 2 exit:** Uploaded requirements and OpenAPI files produce versioned, project-scoped retrieval with navigable citations.
 
 ## 6. Phase 3 — Analysis and test design
@@ -1062,5 +1077,13 @@ finding-schema and deterministic-validation evidence only: no model call,
 analysis workflow, persistence, API route, user decision, OpenAPI-diff
 extraction, execution, or deployment is accepted.
 
-The next implementation item is ANA-002 — implement deterministic OpenAPI
-extraction and diff facts. ANA-001 is complete, so ANA-002 is unblocked.
+Backlog reconciliation on 2026-09-15 records RAG-006 and RAG-007 as accepted
+integration exceptions only; they are not retroactive canonical backlog IDs.
+The accepted EXEC-008 record does not waive the declared dependencies of later
+execution work or authorize outbound execution.
+
+The next authorized implementation item is EXEC-004: implement one-time
+approval state. EXEC-003 is accepted, and EXEC-004 must keep approval
+actor-bound, expiring, one-time, and bound to the immutable execution-plan
+hash. Do not introduce a worker, queue consumer, outbound HTTP client, or
+approval bypass in this item.
