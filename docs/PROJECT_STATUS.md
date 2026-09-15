@@ -1,5 +1,22 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Backlog reconciliation -- 2026-09-15
+
+**Planning authority:** `docs/BACKLOG.md` is the sole authority for new
+implementation work. A task absent from that backlog must be added and accepted
+as a planning change before implementation begins.
+
+RAG-006 and RAG-007 are accepted integration exceptions. They were implemented
+outside the canonical backlog sequence and are documented below for evidence
+and auditability; they are not retroactive canonical backlog IDs. Their
+acceptance does not authorize a new RAG-numbered task or change the canonical
+dependency order.
+
+**Next authorized implementation:** EXEC-004, one-time approval state. It must
+remain actor-bound, expiring, one-time, and bound to the immutable EXEC-003 plan
+hash. No execution worker, queue consumer, outbound HTTP client, or approval
+bypass is authorized by this reconciliation.
+
 ## RAG-007 final acceptance -- 2026-09-15
 
 **Status:** Accepted on merged `main`
