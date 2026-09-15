@@ -327,3 +327,24 @@ def test_requirement_analysis_route_rejects_empty_or_duplicate_citations(
         )
 
     assert response.status_code == 422
+
+
+def test_citation_batch_rejects_invalid_candidate_without_partial_write(
+    sessions: sessionmaker[Session],
+) -> None:
+    seed_selected_candidate(sessions)
+    repository = SqlAlchemyCitationRepository(
+        sessions, id_factory=lambda: CITATION_ID, clock=lambda: TIMESTAMP
+    )
+
+    with pytest.raises(CitationValidationError):
+        repository.create_from_selected_candidates(
+            project_id=PROJECT_ID,
+            retrieval_trace_id=TRACE_ID,
+            document_chunk_ids=(CHUNK_ID, UUID("00000000-0000-0000-0000-000000000a13")),
+        )
+
+    assert (
+        repository.get_for_project(project_id=PROJECT_ID, citation_id=CITATION_ID)
+        is None
+    )

@@ -47,6 +47,8 @@ from ai_qa_copilot_api.hybrid_retrieval import (
     HybridRetrievalService,
     SqlAlchemyHybridRetrievalStore,
 )
+from ai_qa_copilot_api.indexing import FakeEmbeddingAdapter
+from ai_qa_copilot_api.retrieval_citation_linkage import RetrievalCitationService
 from ai_qa_copilot_api.main import create_app
 from ai_qa_copilot_api.model_gateway import (
     B1_MODEL_ID,
@@ -593,6 +595,32 @@ def test_project_scoped_lexical_retrieval_returns_only_owned_chunks() -> None:
                 retrieval_trace_id=hybrid_response.trace_id,
                 document_chunk_id=matching_chunk_id,
             )
+        linked = RetrievalCitationService(
+            retriever=HybridRetrievalService(
+                SqlAlchemyHybridRetrievalStore.from_database_url(database_url)
+            ),
+            citations=citation_repository,
+            embedding_adapter=FakeEmbeddingAdapter({"FR-AUTH-001": (0.9, 0.1)}),
+        ).retrieve(
+            project_id=project_id,
+            query="  FR-AUTH-001  ",
+            document_version_ids=(version_id,),
+            document_types=("markdown",),
+            candidate_limit=10,
+            result_limit=10,
+        )
+
+        assert linked.retrieval.project_id == project_id
+        assert linked.retrieval.query == "FR-AUTH-001"
+        assert len(linked.results) == 1
+        linked_item = linked.results[0]
+        assert linked_item.rank == 1
+        assert linked_item.candidate.chunk_id == matching_chunk_id
+        assert linked_item.citation.project_id == project_id
+        assert linked_item.citation.retrieval_trace_id == linked.retrieval.trace_id
+        assert linked_item.citation.document_version_id == version_id
+        assert linked_item.citation.source_location.id == location_id
+        assert linked_item.citation.passage == target_text
     finally:
         with engine.begin() as connection:
             connection.execute(
@@ -904,6 +932,7 @@ def test_requirement_analysis_run_persists_and_is_project_scoped() -> None:
                 retrieval_trace_id=hybrid_response.trace_id,
                 document_chunk_id=matching_chunk_id,
             )
+
         analysis_repository = SqlAlchemyRequirementAnalysisRepository.from_database_url(
             database_url
         )

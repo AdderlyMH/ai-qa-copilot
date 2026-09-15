@@ -45,6 +45,14 @@ chunk-embedding attachments. Local SQLite and isolated PostgreSQL integration
 gates plus required PR checks passed. It does not add a deployed scheduler,
 production object storage, a live embedding provider, a user-facing retrieval
 route, safe HTTP execution, or deployment.
+RAG-007 is a locally verified candidate on
+`feat/rag-007-retrieval-citation-linkage`. It adds an authorized,
+project-scoped retrieval operation that creates an immutable hybrid retrieval
+trace and citations only for that trace's selected chunks. The endpoint accepts
+bounded query and filtering inputs, never caller-supplied vectors, and fails
+closed until deployment explicitly composes a durable retriever and embedding
+adapter. It does not add a live embedding provider, a generated answer, a
+deployed worker or scheduler, safe HTTP execution, evaluation, or deployment.
 ## Canonical documents
 
 - [Project charter](docs/PROJECT_CHARTER.md)

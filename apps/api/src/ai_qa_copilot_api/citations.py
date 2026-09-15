@@ -85,6 +85,16 @@ class UnavailableCitationRepository:
     ) -> Citation:
         raise CitationUnavailable
 
+    def create_from_selected_candidates(
+        self,
+        *,
+        project_id: UUID,
+        retrieval_trace_id: UUID,
+        document_chunk_ids: tuple[UUID, ...],
+    ) -> tuple[Citation, ...]:
+        del project_id, retrieval_trace_id, document_chunk_ids
+        raise CitationUnavailable
+
     def get_for_project(
         self, *, project_id: UUID, citation_id: UUID
     ) -> Citation | None:
@@ -153,6 +163,87 @@ class SqlAlchemyCitationRepository:
                     _citation_statement().where(CitationRecord.id == record.id)
                 ).one()
                 return _citation_from_row(row)
+        except CitationValidationError:
+            raise
+        except (IntegrityError, SQLAlchemyError) as error:
+            raise CitationUnavailable from error
+
+    def create_from_selected_candidates(
+        self,
+        *,
+        project_id: UUID,
+        retrieval_trace_id: UUID,
+        document_chunk_ids: tuple[UUID, ...],
+    ) -> tuple[Citation, ...]:
+        if not document_chunk_ids or len(set(document_chunk_ids)) != len(
+            document_chunk_ids
+        ):
+            raise CitationValidationError(
+                "Citation candidates must be a non-empty unique sequence"
+            )
+        try:
+            with self._session_factory.begin() as session:
+                selected = {
+                    row.document_chunk_id: row
+                    for row in session.execute(
+                        _selected_candidate_statement()
+                        .add_columns(RetrievalTraceCandidateRecord.document_chunk_id)
+                        .where(
+                            RetrievalTraceRecord.project_id == project_id,
+                            RetrievalTraceCandidateRecord.retrieval_trace_id
+                            == retrieval_trace_id,
+                            RetrievalTraceCandidateRecord.document_chunk_id.in_(
+                                document_chunk_ids
+                            ),
+                        )
+                    )
+                }
+                if len(selected) != len(document_chunk_ids):
+                    raise CitationValidationError(
+                        "Citation must reference selected candidates in its project"
+                    )
+                existing = {
+                    row.document_chunk_id: _citation_from_row(row)
+                    for row in session.execute(
+                        _citation_statement().where(
+                            CitationRecord.project_id == project_id,
+                            CitationRecord.retrieval_trace_id == retrieval_trace_id,
+                            CitationRecord.document_chunk_id.in_(document_chunk_ids),
+                        )
+                    )
+                }
+                created_ids: list[UUID] = []
+                for document_chunk_id in document_chunk_ids:
+                    if document_chunk_id in existing:
+                        continue
+                    candidate = selected[document_chunk_id]
+                    record = CitationRecord(
+                        id=self._id_factory(),
+                        project_id=project_id,
+                        retrieval_trace_id=retrieval_trace_id,
+                        document_chunk_id=document_chunk_id,
+                        document_version_id=candidate.document_version_id,
+                        source_location_id=candidate.source_location_id,
+                        created_at=self._clock(),
+                    )
+                    session.add(record)
+                    created_ids.append(record.id)
+                if created_ids:
+                    session.flush()
+                    existing.update(
+                        {
+                            row.document_chunk_id: _citation_from_row(row)
+                            for row in session.execute(
+                                _citation_statement().where(
+                                    CitationRecord.id.in_(created_ids)
+                                )
+                            )
+                        }
+                    )
+                return tuple(
+                    existing[document_chunk_id]
+                    for document_chunk_id in document_chunk_ids
+                )
         except CitationValidationError:
             raise
         except (IntegrityError, SQLAlchemyError) as error:
