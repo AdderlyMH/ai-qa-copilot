@@ -13,7 +13,9 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0017_parser_job_claims"
+EXPECTED_REVISION = "0018_indexing_jobs"
+INDEXING_JOB_REVISION = "0018_indexing_jobs"
+PARSER_CLAIM_REVISION = "0017_parser_job_claims"
 EVALUATION_REVIEW_REVISION = "0016_evaluation_reviews"
 QUALITY_REPORT_REVISION = "0015_quality_report_revisions"
 EXECUTION_RESULT_REVISION = "0014_execution_results"
@@ -78,7 +80,7 @@ def test_parser_claim_migration_preserves_queued_rows_and_blocks_replay_on_downg
                     ),
                     {"id": "a" * 32, "intake": "b" * 32},
                 )
-                module = migration_script(EXPECTED_REVISION)
+                module = migration_script(PARSER_CLAIM_REVISION)
                 module.upgrade()
                 assert (
                     connection.scalar(sa.text("SELECT state FROM parser_jobs"))
@@ -110,6 +112,83 @@ def test_parser_claim_migration_preserves_queued_rows_and_blocks_replay_on_downg
         engine.dispose()
 
 
+def test_alembic_has_reversible_indexing_jobs_head() -> None:
+    engine = sa.create_engine("sqlite+pysqlite:///:memory:")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE projects (id CHAR(32) PRIMARY KEY)"
+            )
+            connection.exec_driver_sql(
+                "CREATE TABLE document_versions (id CHAR(32) PRIMARY KEY)"
+            )
+            with Operations.context(MigrationContext.configure(connection)):
+                module = migration_script(INDEXING_JOB_REVISION)
+                module.upgrade()
+                connection.execute(
+                    sa.text(
+                        "INSERT INTO indexing_jobs ("
+                        "id, project_id, document_version_id, chunking_version, "
+                        "embedding_model, embedding_version, state, created_at"
+                        ") VALUES ("
+                        ":id, :project, :version, 'chunking-v1', "
+                        "'embedding-test-v1', 'embedding-v1', 'queued', "
+                        "'2026-09-14 03:00:00'"
+                        ")"
+                    ),
+                    {
+                        "id": "a" * 32,
+                        "project": "b" * 32,
+                        "version": "c" * 32,
+                    },
+                )
+                assert (
+                    connection.scalar(sa.text("SELECT state FROM indexing_jobs"))
+                    == "queued"
+                )
+
+                module.downgrade()
+                assert (
+                    connection.scalar(
+                        sa.text(
+                            "SELECT count(*) FROM sqlite_master "
+                            "WHERE type = 'table' AND name = 'indexing_jobs'"
+                        )
+                    )
+                    == 0
+                )
+
+                module.upgrade()
+                connection.execute(
+                    sa.text(
+                        "INSERT INTO indexing_jobs ("
+                        "id, project_id, document_version_id, chunking_version, "
+                        "embedding_model, embedding_version, state, created_at, "
+                        "claim_token, claimed_at, claim_expires_at"
+                        ") VALUES ("
+                        ":id, :project, :version, 'chunking-v1', "
+                        "'embedding-test-v1', 'embedding-v1', 'claimed', "
+                        "'2026-09-14 03:00:00', :token, "
+                        "'2026-09-14 03:00:00', '2026-09-14 03:01:00'"
+                        ")"
+                    ),
+                    {
+                        "id": "d" * 32,
+                        "project": "e" * 32,
+                        "version": "f" * 32,
+                        "token": "g" * 32,
+                    },
+                )
+                with pytest.raises(RuntimeError, match="previously claimed"):
+                    module.downgrade()
+                assert (
+                    connection.scalar(sa.text("SELECT state FROM indexing_jobs"))
+                    == "claimed"
+                )
+    finally:
+        engine.dispose()
+
+
 def test_alembic_has_reversible_parser_claims_head() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
@@ -119,7 +198,7 @@ def test_alembic_has_reversible_parser_claims_head() -> None:
 
     revision = script.get_revision(EXPECTED_REVISION)
     assert revision is not None
-    assert revision.down_revision == EVALUATION_REVIEW_REVISION
+    assert revision.down_revision == PARSER_CLAIM_REVISION
 
     evaluation_review_revision = script.get_revision(EVALUATION_REVIEW_REVISION)
     assert evaluation_review_revision is not None

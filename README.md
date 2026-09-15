@@ -35,9 +35,16 @@ governance evidence](docs/REPOSITORY_GOVERNANCE.md).
 EXEC-008 is accepted on `main` through PR #113. It adds bounded, claim-bound
 Markdown/text evidence promotion from private quarantine storage into normalized,
 source-located sections, verified through local SQLite and isolated PostgreSQL
-integration gates plus required PR checks. It does not add a deployed scheduler,
-production object storage, a running worker service, retrieval/indexing
-completion, safe HTTP execution, or deployment.
+integration gates plus required PR checks.
+
+The RAG-006 candidate adds durable, configuration-scoped indexing jobs that are
+created atomically with accepted parser evidence. A separate lease-bound worker
+uses injected, deterministic fake embeddings to create versioned chunks,
+project-scoped cache entries, and chunk-embedding attachments. Local SQLite and
+isolated PostgreSQL integration gates pass. This remains component and database
+evidence only: it does not add a deployed scheduler, production object storage,
+a live embedding provider, a user-facing retrieval route, safe HTTP execution,
+or deployment.
 
 ## Canonical documents
 

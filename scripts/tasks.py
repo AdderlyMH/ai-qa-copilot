@@ -24,7 +24,7 @@ DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
-DB_CHECK_REVISION = "0017_parser_job_claims"
+DB_CHECK_REVISION = "0018_indexing_jobs"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -370,6 +370,7 @@ def verify_migrated_database(
         "analysis_runs",
     )
     for table_name in (
+        "indexing_jobs",
         "parser_jobs",
         "document_intakes",
         "parser_versions",
@@ -441,6 +442,7 @@ def verify_rolled_back_database(
         "",
     )
     for table_name in (
+        "indexing_jobs",
         "parser_jobs",
         "document_intakes",
         "retrieval_trace_candidates",
@@ -531,6 +533,7 @@ def db_check() -> None:
             "apps/api/tests/test_quality_report_revisions.py",
             "apps/api/tests/test_evaluation_review_repository.py",
             "apps/api/tests/test_parser_job_claims.py",
+            "apps/api/tests/test_indexing_job_claims.py",
             "apps/api/tests/test_parser_evidence_promotion.py",
             env=project_api_environment,
         )

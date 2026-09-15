@@ -71,7 +71,7 @@ class FakeReader:
 @dataclass
 class FakePromoter:
     result: PromotedParserEvidence = PromotedParserEvidence(
-        uuid4(), uuid4(), (uuid4(),)
+        uuid4(), uuid4(), (uuid4(),), uuid4()
     )
     error: Exception | None = None
     calls: list[

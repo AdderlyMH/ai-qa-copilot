@@ -873,6 +873,15 @@ class ParserJobState(StrEnum):
     FAILED = "failed"
 
 
+class IndexingJobState(StrEnum):
+    """Durable lifecycle for one accepted-document indexing request."""
+
+    QUEUED = "queued"
+    CLAIMED = "claimed"
+    ACCEPTED = "accepted"
+    FAILED = "failed"
+
+
 class DocumentIntakeRecord(Base):
     """Private quarantine admission or sanitized preflight rejection record."""
 
@@ -951,6 +960,76 @@ class ParserJobRecord(Base):
         ForeignKey("document_intakes.id"),
         nullable=False,
     )
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    claim_token: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    claim_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    failure_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+
+
+class IndexingJobRecord(Base):
+    """Queue-owned indexing state; it never carries raw storage capabilities."""
+
+    __tablename__ = "indexing_jobs"
+    __table_args__ = (
+        CheckConstraint("length(trim(chunking_version)) > 0"),
+        CheckConstraint("length(trim(embedding_model)) > 0"),
+        CheckConstraint("length(trim(embedding_version)) > 0"),
+        CheckConstraint(
+            "(state = 'queued' AND claim_token IS NULL AND claimed_at IS NULL "
+            "AND claim_expires_at IS NULL AND completed_at IS NULL "
+            "AND failure_code IS NULL) OR "
+            "(state = 'claimed' AND claim_token IS NOT NULL AND claimed_at IS NOT NULL "
+            "AND claim_expires_at IS NOT NULL AND completed_at IS NULL "
+            "AND failure_code IS NULL) OR "
+            "(state = 'accepted' AND claim_token IS NOT NULL AND claimed_at IS NOT NULL "
+            "AND claim_expires_at IS NOT NULL AND completed_at IS NOT NULL "
+            "AND failure_code IS NULL) OR "
+            "(state = 'failed' AND claim_token IS NOT NULL AND claimed_at IS NOT NULL "
+            "AND claim_expires_at IS NOT NULL AND completed_at IS NOT NULL "
+            "AND failure_code IS NOT NULL)",
+            name="ck_indexing_jobs_lifecycle",
+        ),
+        CheckConstraint(
+            "claimed_at IS NULL OR "
+            "(claimed_at >= created_at AND claim_expires_at > claimed_at "
+            "AND (completed_at IS NULL OR completed_at >= claimed_at))",
+            name="ck_indexing_jobs_timestamps",
+        ),
+        CheckConstraint(
+            "failure_code IS NULL OR failure_code IN "
+            "('INDEXING_WORKER_FAILED', 'INDEXING_CLAIM_EXPIRED')",
+            name="ck_indexing_jobs_failure_code",
+        ),
+        UniqueConstraint(
+            "document_version_id",
+            "chunking_version",
+            "embedding_model",
+            "embedding_version",
+            name="uq_indexing_jobs_version_configuration",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("projects.id"), nullable=False
+    )
+    document_version_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("document_versions.id"), nullable=False
+    )
+    chunking_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding_model: Mapped[str] = mapped_column(String(128), nullable=False)
+    embedding_version: Mapped[str] = mapped_column(String(64), nullable=False)
     state: Mapped[str] = mapped_column(String(16), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
