@@ -2,8 +2,11 @@
 
 ## Current state
 
-The repository has completed its Phase 0 documentation and governance baseline,
-and Phase 1 is active. SKEL-001 through SKEL-006, IAM-001, IAM-002, and
+The repository has completed its Phase 0 documentation and governance baseline.
+Accepted component, integration, and evaluation work now spans Phase 1 through
+Phase 5; OBS-001 is the next authorized canonical implementation item.
+
+SKEL-001 through SKEL-006, IAM-001, IAM-002, and
 SEC-001 are verified on `main`. SKEL-006 supplies the application-CI baseline,
 and SEC-001 supplies a deterministic fixture-policy harness plus required
 dependency and static-analysis scans. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
@@ -52,6 +55,10 @@ bounded query and filtering inputs, never caller-supplied vectors, and fails
 closed until deployment explicitly composes a durable retriever and embedding
 adapter. It does not add a live embedding provider, a generated answer, a
 deployed worker or scheduler, safe HTTP execution, evaluation, or deployment.
+The 2026-09-15 backlog acceptance audit verified the accepted execution,
+reporting, and evaluation slices through EVAL-007. The next authorized
+canonical implementation item is OBS-001, end-to-end structured tracing.
+
 ## Canonical documents
 
 - [Project charter](docs/PROJECT_CHARTER.md)

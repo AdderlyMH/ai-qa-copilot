@@ -1,21 +1,26 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-## Backlog reconciliation -- 2026-09-15
+## Backlog acceptance audit -- 2026-09-15
 
 **Planning authority:** `docs/BACKLOG.md` is the sole authority for new
 implementation work. A task absent from that backlog must be added and accepted
 as a planning change before implementation begins.
 
-RAG-006 and RAG-007 are accepted integration exceptions. They were implemented
-outside the canonical backlog sequence and are documented below for evidence
-and auditability; they are not retroactive canonical backlog IDs. Their
-acceptance does not authorize a new RAG-numbered task or change the canonical
-dependency order.
+This audit corrects the prior EXEC-004 pointer. The feature was already merged
+through PR #91, with its reviewed head passing quality, security-harness,
+migration-check, security-scan, parser-worker-isolation, and documentation
+checks. The approved one-time-approval state is actor-bound, expiring, bound to
+the immutable plan hash, and atomically consumed.
 
-**Next authorized implementation:** EXEC-004, one-time approval state. It must
-remain actor-bound, expiring, one-time, and bound to the immutable EXEC-003 plan
-hash. No execution worker, queue consumer, outbound HTTP client, or approval
-bypass is authorized by this reconciliation.
+The audit also verified successful required checks on the reviewed heads for
+canonical EXEC-005 through EXEC-008, REP-001 through REP-004, and EVAL-001
+through EVAL-007. REP-005 through REP-007, RAG-006, and RAG-007 remain accepted
+integration exceptions because their IDs are not canonical backlog items.
+
+**Next authorized implementation:** OBS-001, end-to-end structured tracing.
+It must correlate API, job, retrieval, model, approval, execution, and
+evaluation spans without exposing secrets. No deployment scope is authorized by
+this documentation correction.
 
 ## RAG-007 final acceptance -- 2026-09-15
 
@@ -1277,7 +1282,6 @@ release milestone.
 
 ## Next action
 
-Select EXEC-004 from accepted `main`. Preserve the required pull-request checks
-and keep approval state actor-bound, expiring, one-time, and bound to the
-immutable EXEC-003 plan hash. Do not introduce an execution worker, outbound
-HTTP transport, or approval bypass in this item.
+Implement OBS-001 from accepted `main`. Preserve secret redaction and add only
+correlated structured spans for API, job, retrieval, model, approval,
+execution, and evaluation paths. Do not add deployment scope in this item.
