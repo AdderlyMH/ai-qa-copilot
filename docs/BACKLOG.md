@@ -818,6 +818,7 @@ of this backlog.
 - **Dependencies:** EXEC-008
 - **Deliverable:** Correlated API, job, retrieval, model, approval, execution, and evaluation spans.
 - **Acceptance:** One workflow can be followed without exposing secrets.
+- **Status:** Accepted on main through PR #121.
 
 #### OBS-002 — Add metrics and cost accounting
 
@@ -1134,7 +1135,7 @@ feature pull-request heads completed their required checks:
 - Accepted integration exceptions: REP-005 through REP-007, RAG-006, and
   RAG-007.
 
-The next authorized implementation item is OBS-001: add end-to-end structured
-tracing. Preserve secret redaction and correlate API, job, retrieval, model,
-approval, execution, and evaluation spans without adding production deployment
-scope.
+OBS-001 is accepted on main through PR #121. The next authorized implementation
+item is OBS-002: add metrics and cost accounting. Preserve OBS-001 secret-safe
+trace boundaries and make tokens, cost, p50/p95, retries, and failures traceable
+to provider usage. Do not add production deployment scope.

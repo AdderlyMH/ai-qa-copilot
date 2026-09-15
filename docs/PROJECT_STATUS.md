@@ -1,9 +1,13 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-## OBS-001 structured tracing candidate -- 2026-09-15
+## OBS-001 final acceptance -- 2026-09-15
 
-**Candidate branch:** `feat/obs-001-structured-tracing` (implementation and
-focused verification pending).
+**Status:** Accepted on merged `main`
+`270000839caee317b0c02b7f9db5b4de881c8532`.
+
+PR #121 reviewed head
+`dbf9ba4965b6e8e2e564c5d0c4bbdf76811c5eb5` passed all required checks and
+merged as the current `main` commit.
 
 OBS-001 adds server-generated, structured workflow tracing without an external
 telemetry dependency. API middleware creates one root trace and reuses its UUID
@@ -26,9 +30,12 @@ the observability contract tests passed. The isolated PostgreSQL/pgvector
 database lifecycle upgraded to `0019_execution_job_trace`, ran 145 integration
 tests, downgraded to base, re-upgraded, and cleaned up successfully.
 
-This candidate adds no telemetry exporter, metrics, cost accounting, live model
-provider, scheduler, deployment, or new execution authorization. Acceptance
-remains pending required PR review and checks on the exact reviewed commit.
+This is accepted component and database-integration evidence only. It does not
+provide a telemetry exporter, metrics, cost accounting, live model provider,
+scheduler, deployment, or new execution authorization.
+
+Next: implement canonical OBS-002 metrics and cost accounting. Preserve the
+secret-safe tracing contract and do not add production deployment scope.
 
 ## Backlog acceptance audit -- 2026-09-15
 
