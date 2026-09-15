@@ -1,5 +1,44 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## RAG-006 durable parser-evidence indexing candidate -- 2026-09-15
+
+**Candidate branch:** `feat/rag-006-parser-evidence-indexing` (locally verified;
+not yet PR-accepted or merged).
+
+RAG-006 adds a durable `indexing_jobs` handoff from accepted parser evidence.
+Parser promotion creates one queued job per document-version and
+chunking/embedding configuration in the same transaction that publishes
+normalized sections and accepts the parser claim. The job contains project and
+document-version identity plus configuration provenance only; it contains no
+raw bytes, quarantine key, filename, or embedding-provider capability.
+
+A separate indexing worker claims one configuration-scoped job with an opaque,
+time-bounded lease. It verifies runtime policy before claiming, invokes the
+injected indexing service with only project and document-version IDs, and
+accepts or terminally fails the exact claim. Altered, expired, stale, competing,
+or terminal claims cannot publish or replay indexing work. Expired claims become
+terminal failures; no automatic replay is introduced.
+
+The worker uses the existing bounded, versioned chunking and project-scoped
+embedding-cache contract. Local integration uses `FakeEmbeddingAdapter` only:
+no live embedding provider or network authority is configured. Accepted parser
+evidence was verified to create one job, then create chunks, cache entries, and
+chunk-embedding attachments before the indexing job becomes accepted.
+
+Verified local evidence on 2026-09-15: Ruff and strict mypy passed across 179
+source files; the full API suite passed with 691 tests passed and 75 intentional
+skips. `py scripts/tasks.py db-check` completed isolated PostgreSQL/pgvector
+upgrade to Alembic `0018_indexing_jobs`, 145 integration tests, downgrade to
+base, re-upgrade, and Compose cleanup.
+
+This is candidate component and database-integration evidence only. It does not
+provide a deployed scheduler or long-running worker process, production private
+object storage, a live embedding provider, a user-facing retrieval or citation
+route, model calls, safe HTTP execution, evaluation, or deployment acceptance.
+
+Next: run the complete deterministic CI gate, then open a PR and require the
+repository checks on its exact reviewed commit.
+
 ## EXEC-008 final acceptance — 2026-09-14
 
 **Status:** Accepted on merged `main`

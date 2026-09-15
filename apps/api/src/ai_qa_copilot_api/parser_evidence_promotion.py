@@ -24,9 +24,16 @@ from ai_qa_copilot_api.documents import (
     DocumentRecord,
     DocumentSectionRecord,
     DocumentVersionRecord,
+    IndexingJobRecord,
+    IndexingJobState,
     ParserJobRecord,
     ParserVersionRecord,
     SourceLocationRecord,
+)
+from ai_qa_copilot_api.indexing import (
+    DEFAULT_CHUNKING_VERSION,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EMBEDDING_VERSION,
 )
 from ai_qa_copilot_api.markdown_parser import (
     DocumentParseRejected,
@@ -69,6 +76,7 @@ class PromotedParserEvidence:
     document_version_id: UUID
     parser_version_id: UUID
     section_ids: tuple[UUID, ...]
+    indexing_job_id: UUID
 
 
 def _utc(value: datetime) -> datetime:
@@ -300,6 +308,7 @@ class SqlAlchemyParserEvidencePromotion:
                 parser_id = _parser_version(session, now)
                 version.parser_version_id = parser_id
                 section_ids: list[UUID] = []
+
                 for item in requirements:
                     location_id = self._id_factory()
                     session.add(
@@ -316,6 +325,7 @@ class SqlAlchemyParserEvidencePromotion:
                         )
                     )
                     session.flush()
+
                     section_id = self._id_factory()
                     session.add(
                         DocumentSectionRecord(
@@ -329,6 +339,29 @@ class SqlAlchemyParserEvidencePromotion:
                         )
                     )
                     section_ids.append(section_id)
+
+                session.flush()
+
+                # One indexing job per document version/configuration,
+                # created only after all sections have been inserted.
+                indexing_job_id = self._id_factory()
+                session.add(
+                    IndexingJobRecord(
+                        id=indexing_job_id,
+                        project_id=source_document.project_id,
+                        document_version_id=version.id,
+                        chunking_version=DEFAULT_CHUNKING_VERSION,
+                        embedding_model=DEFAULT_EMBEDDING_MODEL,
+                        embedding_version=DEFAULT_EMBEDDING_VERSION,
+                        state=IndexingJobState.QUEUED,
+                        created_at=now,
+                        claim_token=None,
+                        claimed_at=None,
+                        claim_expires_at=None,
+                        completed_at=None,
+                        failure_code=None,
+                    )
+                )
                 session.flush()
                 finished = _utc(self._clock())
                 if (
@@ -346,7 +379,10 @@ class SqlAlchemyParserEvidencePromotion:
                         "Parser job claim expired during promotion"
                     )
                 result = PromotedParserEvidence(
-                    version.id, parser_id, tuple(section_ids)
+                    version.id,
+                    parser_id,
+                    tuple(section_ids),
+                    indexing_job_id,
                 )
             return result
         except SQLAlchemyError as error:

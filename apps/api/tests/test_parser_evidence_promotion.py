@@ -12,7 +12,7 @@ from threading import Barrier
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, delete, event, select, update
+from sqlalchemy import create_engine, delete, event, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from ai_qa_copilot_api.documents import (
@@ -24,6 +24,9 @@ from ai_qa_copilot_api.documents import (
     ParserJobRecord,
     ParserVersionRecord,
     SourceLocationRecord,
+    IndexingJobRecord,
+    DocumentChunkEmbeddingRecord,
+    EmbeddingCacheRecord,
 )
 from ai_qa_copilot_api.ingestion import (
     DocumentIntake,
@@ -58,6 +61,16 @@ from ai_qa_copilot_api.parser_promotion_worker import (
     ParserPromotionRunState,
     create_markdown_text_promotion_worker,
 )
+from ai_qa_copilot_api.indexing import (
+    FakeEmbeddingAdapter,
+    DEFAULT_CHUNKING_VERSION,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_EMBEDDING_VERSION,
+)
+from ai_qa_copilot_api.indexing_worker import (
+    IndexingRunState,
+    create_indexing_worker,
+)
 
 
 NOW = datetime(2026, 9, 14, tzinfo=timezone.utc)
@@ -90,7 +103,11 @@ class Harness:
 
     def assert_unpublished(self) -> None:
         with self.sessions() as session:
-            for record in (DocumentSectionRecord, SourceLocationRecord):
+            for record in (
+                DocumentSectionRecord,
+                SourceLocationRecord,
+                IndexingJobRecord,
+            ):
                 assert (
                     session.scalar(
                         select(record.id).where(
@@ -167,6 +184,28 @@ def harness(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Harness]
         with sessions.begin() as session:
             for table, condition in (
                 (
+                    DocumentChunkEmbeddingRecord,
+                    DocumentChunkEmbeddingRecord.document_chunk_id.in_(
+                        select(DocumentChunkRecord.id).where(
+                            DocumentChunkRecord.document_version_id
+                            == intake.document_version_id
+                        )
+                    ),
+                ),
+                (
+                    DocumentChunkRecord,
+                    DocumentChunkRecord.document_version_id
+                    == intake.document_version_id,
+                ),
+                (
+                    EmbeddingCacheRecord,
+                    EmbeddingCacheRecord.project_id == project.id,
+                ),
+                (
+                    IndexingJobRecord,
+                    IndexingJobRecord.document_version_id == intake.document_version_id,
+                ),
+                (
                     DocumentSectionRecord,
                     DocumentSectionRecord.document_version_id
                     == intake.document_version_id,
@@ -205,6 +244,30 @@ def test_promotion_persists_exact_evidence_and_accepts_once(harness: Harness) ->
             version is not None
             and version.parser_version_id == result.parser_version_id
         )
+        indexing_job = session.get(IndexingJobRecord, result.indexing_job_id)
+        assert indexing_job is not None
+        assert (
+            indexing_job.project_id,
+            indexing_job.document_version_id,
+            indexing_job.chunking_version,
+            indexing_job.embedding_model,
+            indexing_job.embedding_version,
+            indexing_job.state,
+        ) == (
+            harness.intake.project_id,
+            result.document_version_id,
+            DEFAULT_CHUNKING_VERSION,
+            DEFAULT_EMBEDDING_MODEL,
+            DEFAULT_EMBEDDING_VERSION,
+            "queued",
+        )
+        assert (
+            indexing_job.claim_token,
+            indexing_job.claimed_at,
+            indexing_job.claim_expires_at,
+            indexing_job.completed_at,
+            indexing_job.failure_code,
+        ) == (None, None, None, None, None)
         parser = session.get(ParserVersionRecord, result.parser_version_id)
         assert parser is not None
         assert (parser.parser_version, parser.normalization_version) == (
@@ -252,6 +315,70 @@ def test_promotion_persists_exact_evidence_and_accepts_once(harness: Harness) ->
         )
     with pytest.raises(ParserJobClaimRejected):
         harness.read()
+
+
+def test_promoted_evidence_drives_real_indexing_worker_once(harness: Harness) -> None:
+    requirements = parse_markdown_or_text(document_type="markdown", raw=RAW)
+    adapter = FakeEmbeddingAdapter(
+        {item.normalized_text: (float(item.ordinal + 1),) for item in requirements}
+    )
+
+    promotion = harness.promote()
+    worker = create_indexing_worker(
+        harness.sessions,
+        adapter,
+        runtime_verifier=lambda: None,
+    )
+    run = worker.run_once()
+
+    assert run.state == IndexingRunState.ACCEPTED
+    assert run.job_id == promotion.indexing_job_id
+    assert run.document_version_id == promotion.document_version_id
+    assert (
+        run.chunk_count,
+        run.chunks_created,
+        run.embeddings_created,
+        run.embedding_cache_hits,
+    ) == (2, 2, 2, 0)
+    assert adapter.requests == [tuple(item.normalized_text for item in requirements)]
+
+    with harness.sessions() as session:
+        job = session.get(IndexingJobRecord, promotion.indexing_job_id)
+        assert job is not None
+        assert job.state == "accepted"
+        assert job.completed_at is not None
+        assert job.failure_code is None
+
+        chunks = tuple(
+            session.scalars(
+                select(DocumentChunkRecord)
+                .where(
+                    DocumentChunkRecord.document_version_id
+                    == promotion.document_version_id
+                )
+                .order_by(DocumentChunkRecord.ordinal)
+            )
+        )
+        assert [chunk.normalized_text for chunk in chunks] == [
+            item.normalized_text for item in requirements
+        ]
+
+        attachment_count = session.scalar(
+            select(func.count(DocumentChunkEmbeddingRecord.id))
+            .join(
+                DocumentChunkRecord,
+                DocumentChunkRecord.id
+                == DocumentChunkEmbeddingRecord.document_chunk_id,
+            )
+            .where(
+                DocumentChunkRecord.document_version_id == promotion.document_version_id
+            )
+        )
+        assert attachment_count == 2
+
+    second = worker.run_once()
+    assert second.state == IndexingRunState.IDLE
+    assert adapter.requests == [tuple(item.normalized_text for item in requirements)]
 
 
 @pytest.mark.parametrize(
