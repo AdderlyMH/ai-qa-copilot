@@ -37,6 +37,14 @@ from ai_qa_copilot_api.citations import (
     UnavailableCitationRepository,
     citation_repository_from_environment,
 )
+from ai_qa_copilot_api.retrieval_citation_linkage import (
+    MAX_RETRIEVAL_QUERY_CHARACTERS,
+    RETRIEVAL_CITATION_UNAVAILABLE_DETAIL,
+    RetrievalCitationResult,
+    RetrievalCitationService,
+    RetrievalCitationUnavailable,
+    UnavailableRetrievalCitationService,
+)
 from ai_qa_copilot_api.execution_plans import (
     DEFAULT_EXECUTION_LIMITS,
     MAX_PLAN_ASSERTIONS,
@@ -289,6 +297,58 @@ class CitationResponse(BaseModel):
     display_name: str
     passage: str
     created_at: datetime
+
+
+class RetrievalCitationCreateRequest(BaseModel):
+    """Bounded evidence query; the server never accepts caller-supplied vectors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1, max_length=MAX_RETRIEVAL_QUERY_CHARACTERS)
+    document_version_ids: list[UUID] | None = Field(default=None, max_length=100)
+    document_types: list[str] | None = Field(default=None, max_length=20)
+    candidate_limit: int = Field(default=20, ge=1, le=100)
+    result_limit: int = Field(default=20, ge=1, le=100)
+
+    @field_validator("document_version_ids")
+    @classmethod
+    def document_version_ids_must_not_repeat(
+        cls, value: list[UUID] | None
+    ) -> list[UUID] | None:
+        if value is not None and len(set(value)) != len(value):
+            raise ValueError("document_version_ids must not repeat")
+        return value
+
+    @field_validator("document_types")
+    @classmethod
+    def document_types_must_be_non_empty(
+        cls, value: list[str] | None
+    ) -> list[str] | None:
+        if value is not None and (not value or any(not item.strip() for item in value)):
+            raise ValueError("document_types must contain non-empty values")
+        return value
+
+
+class RetrievalCitationItemResponse(BaseModel):
+    """One selected rank with its validated immutable citation."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    rank: int
+    citation: CitationResponse
+
+
+class RetrievalCitationResponse(BaseModel):
+    """Project-scoped retrieval trace and cited evidence, without an answer."""
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+    project_id: UUID
+    retrieval_trace_id: UUID
+    retrieval_version: str
+    fusion_method: str
+    query: str
+    results: list[RetrievalCitationItemResponse]
 
 
 class RequirementAnalysisRunCreateRequest(BaseModel):
@@ -601,6 +661,9 @@ def create_app(
     authorization_audit_sink: AuthorizationAuditSink | None = None,
     project_repository: ProjectRepository | None = None,
     citation_repository: CitationRepository | None = None,
+    retrieval_citation_service: RetrievalCitationService
+    | UnavailableRetrievalCitationService
+    | None = None,
     document_intake_repository: DocumentIntakeRepository | None = None,
     quarantine_storage: QuarantineStorage | None = None,
     parser_job_queue: ParserJobQueue | None = None,
@@ -699,6 +762,11 @@ def create_app(
             citation_repository
             if citation_repository is not None
             else citation_repository_from_environment()
+        )
+        application.state.retrieval_citation_service = (
+            retrieval_citation_service
+            if retrieval_citation_service is not None
+            else UnavailableRetrievalCitationService()
         )
         application.state.document_intake_service = DocumentIntakeService(
             (
@@ -1008,6 +1076,57 @@ def create_app(
             _raise_citation_not_found(correlation_id)
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _citation_response(citation)
+
+    @application.post(
+        "/projects/{project_id}/retrievals",
+        status_code=status.HTTP_201_CREATED,
+        response_model=RetrievalCitationResponse,
+    )
+    def retrieve_project_evidence(
+        project_id: UUID,
+        payload: RetrievalCitationCreateRequest,
+        request: Request,
+        response: Response,
+    ) -> RetrievalCitationResponse:
+        """Persist a project retrieval trace and citations, never a generated answer."""
+
+        correlation_id = uuid4()
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.MUTATE,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+        try:
+            result = _retrieval_citation_service(request).retrieve(
+                project_id=project_id,
+                query=payload.query,
+                document_version_ids=(
+                    tuple(payload.document_version_ids)
+                    if payload.document_version_ids is not None
+                    else None
+                ),
+                document_types=(
+                    tuple(payload.document_types)
+                    if payload.document_types is not None
+                    else None
+                ),
+                candidate_limit=payload.candidate_limit,
+                result_limit=payload.result_limit,
+            )
+        except RetrievalCitationUnavailable:
+            _raise_retrieval_citation_unavailable(correlation_id)
+        except ValueError as error:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Invalid retrieval request",
+                headers={"X-Correlation-ID": str(correlation_id)},
+            ) from error
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _retrieval_citation_response(result)
 
     @application.post(
         "/projects/{project_id}/requirement-analysis-runs",
@@ -1827,6 +1946,18 @@ def _quality_report_revision_response(
     )
 
 
+def _retrieval_citation_service(
+    request: Request,
+) -> RetrievalCitationService | UnavailableRetrievalCitationService:
+    service = getattr(request.app.state, "retrieval_citation_service", None)
+    if not isinstance(
+        service,
+        (RetrievalCitationService, UnavailableRetrievalCitationService),
+    ):
+        raise RuntimeError("Retrieval-citation boundary was not initialized")
+    return service
+
+
 def _citation_repository(request: Request) -> CitationRepository:
     repository = getattr(request.app.state, "citation_repository", None)
     if not isinstance(
@@ -1991,6 +2122,14 @@ def _raise_analysis_runs_unavailable(correlation_id: UUID) -> Never:
     )
 
 
+def _raise_retrieval_citation_unavailable(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=RETRIEVAL_CITATION_UNAVAILABLE_DETAIL,
+        headers={"X-Correlation-ID": str(correlation_id)},
+    )
+
+
 def _raise_citations_unavailable(correlation_id: UUID) -> Never:
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -2019,6 +2158,25 @@ def _document_intake_response(intake: DocumentIntake) -> DocumentIntakeResponse:
         rejection_code=intake.rejection_code,
         deduplicated=intake.deduplicated,
         created_at=intake.created_at,
+    )
+
+
+def _retrieval_citation_response(
+    result: RetrievalCitationResult,
+) -> RetrievalCitationResponse:
+    return RetrievalCitationResponse(
+        project_id=result.retrieval.project_id,
+        retrieval_trace_id=result.retrieval.trace_id,
+        retrieval_version=result.retrieval.retrieval_version,
+        fusion_method=result.retrieval.fusion_method,
+        query=result.retrieval.query,
+        results=[
+            RetrievalCitationItemResponse(
+                rank=item.rank,
+                citation=_citation_response(item.citation),
+            )
+            for item in result.results
+        ],
     )
 
 

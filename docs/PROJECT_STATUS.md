@@ -1,5 +1,42 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## RAG-007 retrieval-citation linkage candidate -- 2026-09-15
+
+**Candidate branch:** `feat/rag-007-retrieval-citation-linkage` (locally
+verified; not yet PR-accepted or merged).
+
+RAG-007 composes the accepted indexing, hybrid-retrieval, and citation seams
+into one authorized project-scoped `POST /projects/{project_id}/retrievals`
+operation. It persists the existing immutable hybrid retrieval trace and
+creates citations only for that trace's selected chunks. The API accepts bounded
+query, filter, and limit inputs; it never accepts caller-supplied vectors or
+returns a model-generated answer. Because trace and citation creation mutate
+durable state, the route requires project `MUTATE` authorization.
+
+The linkage service derives the embedding identity from its injected adapter,
+binds the query to the existing chunking identity, rejects cross-project
+candidates or changed citation provenance, and creates the citation batch in
+one transaction. A missing or invalid selected candidate rolls back the entire
+new batch. No deployment composition is supplied: the default API service
+fails closed with `503` until a durable retriever and embedding adapter are
+explicitly injected.
+
+Local verification on 2026-09-15 passed Ruff and strict mypy across 182 source
+files; 53 focused retrieval, citation, analysis, generation, and workflow
+tests; and the full API suite with 701 passed and 75 intentional skips. `py
+scripts/tasks.py db-check` completed its isolated PostgreSQL/pgvector lifecycle
+with 145 integration tests, including the durable hybrid retrieval-to-citation
+linkage, downgrade to base, re-upgrade, and Compose cleanup.
+
+This is candidate component and database-integration evidence only. It does
+not provide a live embedding provider, model-generated answer, production
+retrieval configuration, deployed scheduler or worker, production object
+storage, safe HTTP execution, evaluation, or deployment acceptance.
+
+Next: run the complete CI and documentation gates; then require the PR checks
+to pass on the exact reviewed commit before merge. Preserve project isolation,
+the quarantine boundary, and the fail-closed deployment composition.
+
 ## RAG-006 final acceptance -- 2026-09-15
 
 **Status:** Accepted on merged `main`
