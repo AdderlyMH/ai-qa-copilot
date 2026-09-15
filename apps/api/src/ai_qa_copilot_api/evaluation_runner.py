@@ -18,6 +18,7 @@ from ai_qa_copilot_api.evaluation_cases import (
     EvaluationCaseSuite,
     filter_evaluation_cases,
 )
+from ai_qa_copilot_api.observability import traced
 
 
 EVALUATION_RUN_SCHEMA_VERSION = "evaluation-run/v1"
@@ -76,6 +77,7 @@ class EvaluationRun:
         )
 
 
+@traced("evaluation.run")
 def run_evaluation_cases(
     suite: EvaluationCaseSuite,
     *,

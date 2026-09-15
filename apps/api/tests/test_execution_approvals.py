@@ -49,6 +49,7 @@ from ai_qa_copilot_api.execution_results import (
     SqlAlchemyExecutionResultRepository,
 )
 from ai_qa_copilot_api.execution_jobs import SqlAlchemyExecutionJobQueue
+from ai_qa_copilot_api.observability import workflow_trace
 
 
 PROJECT_ID = UUID("00000000-0000-0000-0000-000000000801")
@@ -423,6 +424,32 @@ def test_execution_job_is_idempotently_bound_to_one_unconsumed_approval(
         assert created.started_at is None
         assert created.finished_at is None
         assert created.cancelled_at is None
+    finally:
+        engine.dispose()
+
+
+def test_execution_job_persists_the_active_workflow_trace_id(tmp_path: Path) -> None:
+    clock = MutableClock(datetime(2026, 9, 7, tzinfo=timezone.utc))
+    approval_service, _, engine = service(tmp_path, clock)
+    queue = job_queue(engine, clock)
+    immutable_plan = plan()
+    trace_id = UUID("00000000-0000-0000-0000-000000000805")
+
+    try:
+        approval = approval_service.approve(
+            project_id=PROJECT_ID,
+            plan=immutable_plan,
+            expected_plan_hash=immutable_plan.plan_hash,
+            approver=LocalDevelopmentOwnerPrincipal(),
+            comment=None,
+        )
+        with workflow_trace(trace_id=trace_id):
+            queued = queue.enqueue(approval=approval)
+
+        assert queued.workflow_trace_id == trace_id
+        claimed = queue.claim_next()
+        assert claimed is not None
+        assert claimed.job.workflow_trace_id == trace_id
     finally:
         engine.dispose()
 

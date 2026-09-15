@@ -1,5 +1,35 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-001 structured tracing candidate -- 2026-09-15
+
+**Candidate branch:** `feat/obs-001-structured-tracing` (implementation and
+focused verification pending).
+
+OBS-001 adds server-generated, structured workflow tracing without an external
+telemetry dependency. API middleware creates one root trace and reuses its UUID
+for authorization evidence and the response correlation header. Instrumented
+service boundaries cover retrieval, structured model generation, requirement
+analysis, test generation, approval, job enqueue, restricted execution, report
+generation, and evaluation.
+
+Execution jobs persist only an optional workflow trace UUID. The restricted
+worker resumes that same trace after a durable claim; it never receives stored
+payloads, credentials, cookies, prompts, response bodies, or error text. Span
+metadata is bounded scalar data and rejects sensitive-content keys, nested
+values, unbounded strings, and non-finite numbers. The reversible migration
+refuses to discard existing workflow-trace evidence on downgrade.
+
+Verified local evidence on 2026-09-15: the full application suite passed
+714 tests with 75 intentional skips; strict mypy passed across 185 source
+files; the deterministic security harness passed 57 of 57 cases; and
+the observability contract tests passed. The isolated PostgreSQL/pgvector
+database lifecycle upgraded to `0019_execution_job_trace`, ran 145 integration
+tests, downgraded to base, re-upgraded, and cleaned up successfully.
+
+This candidate adds no telemetry exporter, metrics, cost accounting, live model
+provider, scheduler, deployment, or new execution authorization. Acceptance
+remains pending required PR review and checks on the exact reviewed commit.
+
 ## Backlog acceptance audit -- 2026-09-15
 
 **Planning authority:** `docs/BACKLOG.md` is the sole authority for new

@@ -13,7 +13,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0018_indexing_jobs"
+EXPECTED_REVISION = "0019_execution_job_trace"
+WORKFLOW_TRACE_REVISION = "0019_execution_job_trace"
 INDEXING_JOB_REVISION = "0018_indexing_jobs"
 PARSER_CLAIM_REVISION = "0017_parser_job_claims"
 EVALUATION_REVIEW_REVISION = "0016_evaluation_reviews"
@@ -189,6 +190,41 @@ def test_alembic_has_reversible_indexing_jobs_head() -> None:
         engine.dispose()
 
 
+def test_workflow_trace_migration_is_reversible_without_trace_evidence() -> None:
+    engine = sa.create_engine("sqlite+pysqlite:///:memory:")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE execution_jobs (id CHAR(32) PRIMARY KEY)"
+            )
+            with Operations.context(MigrationContext.configure(connection)):
+                module = migration_script(WORKFLOW_TRACE_REVISION)
+                module.upgrade()
+                columns = connection.execute(
+                    sa.text("PRAGMA table_info(execution_jobs)")
+                ).mappings()
+                assert "workflow_trace_id" in {column["name"] for column in columns}
+
+                module.downgrade()
+                columns = connection.execute(
+                    sa.text("PRAGMA table_info(execution_jobs)")
+                ).mappings()
+                assert "workflow_trace_id" not in {column["name"] for column in columns}
+
+                module.upgrade()
+                connection.execute(
+                    sa.text(
+                        "INSERT INTO execution_jobs (id, workflow_trace_id) "
+                        "VALUES (:id, :trace)"
+                    ),
+                    {"id": "a" * 32, "trace": "b" * 32},
+                )
+                with pytest.raises(RuntimeError, match="workflow trace evidence"):
+                    module.downgrade()
+    finally:
+        engine.dispose()
+
+
 def test_alembic_has_reversible_parser_claims_head() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
@@ -196,9 +232,13 @@ def test_alembic_has_reversible_parser_claims_head() -> None:
     assert config.get_main_option("sqlalchemy.url") is None
     assert script.get_heads() == [EXPECTED_REVISION]
 
-    revision = script.get_revision(EXPECTED_REVISION)
-    assert revision is not None
-    assert revision.down_revision == PARSER_CLAIM_REVISION
+    workflow_trace_revision = script.get_revision(WORKFLOW_TRACE_REVISION)
+    assert workflow_trace_revision is not None
+    assert workflow_trace_revision.down_revision == INDEXING_JOB_REVISION
+
+    indexing_job_revision = script.get_revision(INDEXING_JOB_REVISION)
+    assert indexing_job_revision is not None
+    assert indexing_job_revision.down_revision == PARSER_CLAIM_REVISION
 
     evaluation_review_revision = script.get_revision(EVALUATION_REVIEW_REVISION)
     assert evaluation_review_revision is not None

@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated, Literal, Never
@@ -14,6 +14,12 @@ from ai_qa_copilot_api.audit import (
     AuthorizationAuditUnavailable,
     AuthorizationAuditor,
     StructuredLoggingAuditSink,
+)
+from ai_qa_copilot_api.observability import (
+    StructuredLoggingTraceSink,
+    WorkflowTraceSink,
+    current_trace_id,
+    workflow_trace,
 )
 from ai_qa_copilot_api.analysis_runs import (
     ANALYSIS_RUNS_UNAVAILABLE_DETAIL,
@@ -680,6 +686,7 @@ def create_app(
     analysis_run_service: AnalysisRunService
     | UnavailableAnalysisRunService
     | None = None,
+    workflow_trace_sink: WorkflowTraceSink | None = None,
 ) -> FastAPI:
     """Build the API with identity and authorization initialized at startup."""
 
@@ -787,9 +794,34 @@ def create_app(
             if analysis_run_service is not None
             else analysis_run_service_from_environment()
         )
+        application.state.workflow_trace_sink = (
+            workflow_trace_sink
+            if workflow_trace_sink is not None
+            else StructuredLoggingTraceSink()
+        )
         yield
 
     application = FastAPI(lifespan=lifespan)
+
+    @application.middleware("http")
+    async def trace_api_request(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        """Create one server-owned root trace for every API request."""
+
+        sink = getattr(request.app.state, "workflow_trace_sink", None)
+        if not isinstance(sink, WorkflowTraceSink):
+            raise RuntimeError("Workflow trace sink was not initialized")
+        with workflow_trace(
+            sink=sink,
+            name="api.request",
+            attributes={"http.method": request.method, "http.path": request.url.path},
+        ) as trace_id:
+            request.state.workflow_trace_id = trace_id
+            response = await call_next(request)
+        response.headers["X-Correlation-ID"] = str(trace_id)
+        return response
 
     @application.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
@@ -801,7 +833,7 @@ def create_app(
         response_model=PublicDemoResponse,
     )
     def public_demo(request: Request, response: Response) -> PublicDemoResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary = getattr(request.app.state, "auth_boundary", None)
         service = getattr(request.app.state, "demo_publication_service", None)
         if not isinstance(boundary, AuthBoundary) or not isinstance(
@@ -858,7 +890,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> ProjectResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, repository = _project_dependencies(request)
         _authorize_project_collection(
             boundary=boundary,
@@ -878,7 +910,7 @@ def create_app(
 
     @application.get("/projects", response_model=list[ProjectResponse])
     def list_projects(request: Request, response: Response) -> list[ProjectResponse]:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, repository = _project_dependencies(request)
         _authorize_project_collection(
             boundary=boundary,
@@ -899,7 +931,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> ProjectResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -926,7 +958,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> ProjectResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -956,7 +988,7 @@ def create_app(
     ) -> DocumentIntakeResponse:
         """Accept raw bytes only after owner authorization and bounded preflight."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -994,7 +1026,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> AnalysisRunResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1025,7 +1057,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> list[AnalysisRunResponse]:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1055,7 +1087,7 @@ def create_app(
     ) -> CitationResponse:
         """Return a cited immutable passage only after project authorization."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1090,7 +1122,7 @@ def create_app(
     ) -> RetrievalCitationResponse:
         """Persist a project retrieval trace and citations, never a generated answer."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1139,7 +1171,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> RequirementAnalysisRunResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1173,7 +1205,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> RequirementAnalysisRunResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1212,7 +1244,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> FindingFeedbackResponse:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         scope = _authorize_project_resource(
             boundary=boundary,
@@ -1258,7 +1290,7 @@ def create_app(
         request: Request,
         response: Response,
     ) -> list[FindingFeedbackResponse]:
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1295,7 +1327,7 @@ def create_app(
     ) -> ExecutionPlanReviewResponse:
         """Build a project-authorized plan preview without persistence or I/O."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1357,7 +1389,7 @@ def create_app(
     ) -> ExecutionApprovalResponse:
         """Rebuild, revalidate, and durably approve one immutable plan."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         scope = _authorize_project_resource(
             boundary=boundary,
@@ -1433,7 +1465,7 @@ def create_app(
     ) -> ExecutionJobResponse:
         """Queue one already-approved immutable plan without executing it."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1481,7 +1513,7 @@ def create_app(
     ) -> ExecutionJobResponse:
         """Read project-scoped job state and any already-redacted terminal result."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1526,7 +1558,7 @@ def create_app(
     ) -> ExecutionEvidenceResponse:
         """Return one owner-only, re-redacted terminal evidence projection."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1579,7 +1611,7 @@ def create_app(
     ) -> QualityReportRevisionResponse:
         """Collect owned evidence and persist one new immutable report revision."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1617,7 +1649,7 @@ def create_app(
     ) -> list[QualityReportRevisionResponse]:
         """List immutable report revisions belonging only to one project."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1653,7 +1685,7 @@ def create_app(
     ) -> QualityReportRevisionResponse:
         """Read one validated immutable report revision in its owning project."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1692,7 +1724,7 @@ def create_app(
     ) -> Response:
         """Download one owned immutable report revision without regenerating it."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1749,7 +1781,7 @@ def create_app(
     ) -> ExecutionFailureAnalysisResponse:
         """Return deterministic hypotheses without asserting a root cause."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1807,7 +1839,7 @@ def create_app(
     ) -> ExecutionJobResponse:
         """Cancel only a queued job; running or terminal jobs remain immutable."""
 
-        correlation_id = uuid4()
+        correlation_id = _request_correlation_id(request)
         boundary, project_repository = _project_dependencies(request)
         _authorize_project_resource(
             boundary=boundary,
@@ -1848,6 +1880,18 @@ def create_app(
         return _execution_job_response(cancelled, result=None)
 
     return application
+
+
+def _request_correlation_id(request: Request) -> UUID:
+    """Return the root trace identifier created by API tracing middleware."""
+
+    trace_id = current_trace_id()
+    if trace_id is not None:
+        return trace_id
+    trace_id = getattr(request.state, "workflow_trace_id", None)
+    if isinstance(trace_id, UUID) and trace_id.int != 0:
+        return trace_id
+    return uuid4()
 
 
 def _raise_service_unavailable(correlation_id: UUID) -> Never:

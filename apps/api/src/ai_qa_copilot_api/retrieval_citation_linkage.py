@@ -29,6 +29,7 @@ from ai_qa_copilot_api.indexing import (
     EmbeddingConfiguration,
     EmbeddingProtocolError,
 )
+from ai_qa_copilot_api.observability import traced
 
 
 MAX_RETRIEVAL_QUERY_CHARACTERS = 4_000
@@ -102,6 +103,7 @@ class RetrievalCitationService:
         self._embedding = embedding
         self._chunking_version = chunking_version
 
+    @traced("retrieval.citation_linkage")
     def retrieve(
         self,
         *,

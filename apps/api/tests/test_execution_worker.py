@@ -20,6 +20,7 @@ from ai_qa_copilot_api.execution_worker import (
     ExecutionWorkerInvariantError,
     RestrictedExecutionWorker,
 )
+from ai_qa_copilot_api.observability import WorkflowTraceSink, WorkflowTraceSpan
 from ai_qa_copilot_api.generated_tests import (
     AssertionOperator,
     AssertionTarget,
@@ -40,6 +41,7 @@ PROJECT_ID = UUID("00000000-0000-0000-0000-000000000951")
 APPROVAL_ID = UUID("00000000-0000-0000-0000-000000000952")
 JOB_ID = UUID("00000000-0000-0000-0000-000000000953")
 RESULT_ID = UUID("00000000-0000-0000-0000-000000000954")
+WORKFLOW_TRACE_ID = UUID("00000000-0000-0000-0000-000000000957")
 
 
 @dataclass
@@ -100,6 +102,14 @@ class FakeResultRecorder:
         )
 
 
+@dataclass
+class RecordingTraceSink(WorkflowTraceSink):
+    spans: list[WorkflowTraceSpan] = field(default_factory=list)
+
+    def record(self, span: WorkflowTraceSpan) -> None:
+        self.spans.append(span)
+
+
 def claimed_job() -> ClaimedExecutionJob:
     job = ExecutionJob(
         id=JOB_ID,
@@ -107,6 +117,7 @@ def claimed_job() -> ClaimedExecutionJob:
         execution_approval_id=APPROVAL_ID,
         plan_id=UUID("00000000-0000-0000-0000-000000000955"),
         plan_hash="a" * 64,
+        workflow_trace_id=None,
         state=ExecutionJobState.RUNNING,
         created_at=NOW,
         started_at=NOW,
@@ -219,6 +230,33 @@ def test_worker_executes_and_records_one_claimed_job_once() -> None:
         "method": "POST",
         "url": "https://ai-qa-sandbox.onrender.com/api/orders?source=worker",
     }
+
+
+def test_worker_resumes_the_execution_job_workflow_trace() -> None:
+    claimed = claimed_job()
+    traced_claim = replace(
+        claimed,
+        job=replace(claimed.job, workflow_trace_id=WORKFLOW_TRACE_ID),
+    )
+    jobs = FakeJobClaimer(claimed=traced_claim)
+    executor = FakeExecutor(result=execution_result())
+    results = FakeResultRecorder()
+    sink = RecordingTraceSink()
+
+    run = RestrictedExecutionWorker(
+        jobs=jobs,
+        executor=executor,
+        results=results,
+        workflow_trace_sink=sink,
+    ).run_once()
+
+    assert run.claimed_job_id == JOB_ID
+    assert [span.name for span in sink.spans] == ["execution.run", "execution.worker"]
+    run_span, worker_span = sink.spans
+    assert run_span.trace_id == WORKFLOW_TRACE_ID
+    assert worker_span.trace_id == WORKFLOW_TRACE_ID
+    assert run_span.parent_span_id == worker_span.span_id
+    assert worker_span.parent_span_id is None
 
 
 @pytest.mark.parametrize(

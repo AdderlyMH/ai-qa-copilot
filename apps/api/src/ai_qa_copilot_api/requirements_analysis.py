@@ -26,6 +26,7 @@ from ai_qa_copilot_api.documents import (
     RequirementAnalysisRunRecord,
     RequirementFindingRecord,
 )
+from ai_qa_copilot_api.observability import traced
 
 
 def citation_ids_for_storage(citation_ids: tuple[UUID, ...]) -> list[str]:
@@ -540,6 +541,7 @@ class RequirementAnalysisService:
         self._citation_repository = citation_repository
         self._repository = repository
 
+    @traced("analysis.requirements")
     def analyze(
         self,
         *,

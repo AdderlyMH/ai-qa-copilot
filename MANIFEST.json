@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 76733,
-      "sha256": "70b75cb251bd26d695f0324beb97fa897bc1b9443f79bb856ac1ff27e663e5df"
+      "bytes": 78440,
+      "sha256": "c16d770445010d4cd5e5f307dc3b44a6656c50105e7fc09f415306dd1cb98529"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -186,9 +186,14 @@
       "sha256": "36abb7fc084edd4aaf1d4b5435209b9f1efa3388565424cadc36efd50f88fe9f"
     },
     {
+      "path": "docs/adr/ADR-011-structured-workflow-tracing.md",
+      "bytes": 5930,
+      "sha256": "f087318ad15253d1d26852a8144d69232523f79053e84f63a9971325262a164f"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 2269,
-      "sha256": "4e9e5c9f30aeae54ddd7d4da59930423aa8cdb2b824e258790d46a2b8d790638"
+      "bytes": 2380,
+      "sha256": "e2738adc62c9f0fb9713e761d211bc60a43a30db954b66f901f3002ae32bcd86"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",
@@ -282,8 +287,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 30695,
-      "sha256": "3c03dd16556fe092dfb91924e9e2ddd156fa961d74c4af0846e2023587313eab"
+      "bytes": 30701,
+      "sha256": "3f13d7f9959ae250a201ca0680e39b03f742437be9002788f24069d61c9f357a"
     },
     {
       "path": "scripts/validate_docs.py",

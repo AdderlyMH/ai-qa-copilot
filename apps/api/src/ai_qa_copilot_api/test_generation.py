@@ -18,6 +18,7 @@ from ai_qa_copilot_api.generated_tests import (
     RequestTemplateV1,
     validate_generated_test_case,
 )
+from ai_qa_copilot_api.observability import traced
 
 
 GROUNDED_TEST_GENERATOR_VERSION: Final = "grounded-test-generator/v1"
@@ -49,6 +50,7 @@ class GroundedTestGenerationService:
     def __init__(self, *, citation_repository: CitationRepository) -> None:
         self._citation_repository = citation_repository
 
+    @traced("test_generation.grounded")
     def generate(
         self,
         *,
