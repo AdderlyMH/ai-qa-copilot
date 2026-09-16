@@ -4,8 +4,9 @@
 
 The repository has completed its Phase 0 documentation and governance baseline.
 Accepted component, integration, and evaluation work now spans Phase 1 through
-Phase 5; OBS-001 is accepted on `main` through PR #121, and OBS-002 is the
-next authorized canonical implementation item.
+Phase 5; OBS-001 is accepted on `main` through PR #121, and OBS-002 is
+accepted through PR #126. OBS-003 is the next authorized canonical
+implementation item.
 
 SKEL-001 through SKEL-006, IAM-001, IAM-002, and
 SEC-001 are verified on `main`. SKEL-006 supplies the application-CI baseline,
@@ -58,7 +59,7 @@ adapter. It does not add a live embedding provider, a generated answer, a
 deployed worker or scheduler, safe HTTP execution, evaluation, or deployment.
 The 2026-09-15 backlog acceptance audit verified the accepted execution,
 reporting, and evaluation slices through EVAL-007. The next authorized
-canonical implementation item is OBS-002, metrics and cost accounting.
+canonical implementation item is OBS-003, routing and retrieval ablations.
 
 ## Canonical documents
 

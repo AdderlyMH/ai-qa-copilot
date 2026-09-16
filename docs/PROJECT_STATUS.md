@@ -1,9 +1,13 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-## OBS-002 metrics and cost accounting candidate -- 2026-09-16
+## OBS-002 final acceptance -- 2026-09-16
 
-**Candidate branch:** `feat/obs-002-metrics-cost-accounting` (full
-verification pending).
+**Status:** Accepted on merged `main`
+`f987e9a51e805f62c74e823f1d7578cecc985c32`.
+
+PR #126 reviewed head
+`e1cc0335f51a574a1ef5048e1dd899872126ad2f` passed all required checks and
+merged as the current `main` commit.
 
 OBS-002 adds deterministic, content-free model accounting. An injected,
 versioned `ProviderPricing` schedule identifies the provider, model, pricing
@@ -19,14 +23,18 @@ automatic retry and therefore records zero retries unless a future explicit
 retry policy changes that boundary.
 
 Verified local evidence on 2026-09-16: `py scripts/tasks.py ci` passed with
-722 tests passed and 75 intentional skips; strict mypy passed across 187 source
+723 tests passed and 75 intentional skips; strict mypy passed across 187 source
 files; and the deterministic security harness passed 57 of 57 cases.
-Documentation validation passed with a 60-file manifest. Required PR review and
-checks on the exact reviewed commit remain pending.
+Documentation validation passed with a 60-file manifest. PR #126 checks passed
+on the reviewed head.
 
-This candidate adds no live provider pricing claim, runtime pricing lookup,
-telemetry exporter, durable accounting ledger, dashboard, budget enforcement,
-deployment, or new API route.
+This is accepted component-level accounting evidence only. It does not provide a
+live provider pricing claim, runtime pricing lookup, telemetry exporter, durable
+accounting ledger, dashboard, budget enforcement, deployment, or new API route.
+
+Next: run canonical OBS-003 routing and retrieval ablations. Preserve OBS-001
+secret-safe trace boundaries and OBS-002 pricing provenance; compare at least
+three planned ablations using quality, latency, and cost evidence.
 
 ## OBS-001 final acceptance -- 2026-09-15
 
