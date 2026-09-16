@@ -1,22 +1,25 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-## OBS-003 B1 reference evidence candidate -- 2026-09-16
+## OBS-003 B1 reference evidence component acceptance -- 2026-09-16
 
-**Candidate branch:** `feat/obs-003-b1-reference-evidence` (PR review pending).
+**Status:** Accepted on merged `main`
+`2ffd8c01f110498a25c0249c6ad86729aa971044`.
 
-This candidate adds a pure, content-free `B1ReferenceRun` contract. It binds
-the pinned B1/v1 configuration hashes, the full 100-case evaluation run, its
-scored report, one root workflow trace, provider-usage measurements, derived
-cost/p50/p95 metrics, and categorized quality, security, and cost failures.
-It rejects mismatched evaluation provenance, non-B1 pricing/model evidence,
-multiple pricing revisions, and measurements from another workflow trace.
+PR #129 reviewed head
+`3a7131e1d3b73ec83609cdb51c25d95fc4d41c6c` passed all required checks and
+merged unchanged.
 
-Local validation passed: Ruff and mypy passed; `uv run python -m pytest` passed
-with 727 tests and 75 intentional skips.
+The accepted pure, content-free `B1ReferenceRun` contract binds pinned B1/v1
+configuration hashes, the full 100-case evaluation run, scored provenance, one
+root workflow trace, provider-usage measurements, derived cost/p50/p95 metrics,
+and categorized quality, security, and cost failures. It rejects mismatched
+evaluation provenance, non-B1 pricing/model evidence, multiple pricing
+revisions, and measurements from another workflow trace.
 
-This candidate does not execute an evaluation or provider call, persist a B1
-reference artifact, activate B2 routing, change retrieval, or deploy anything.
-An actual immutable B1 reference run remains required before routing ablations.
+This is accepted component evidence only. It does not execute an evaluation or
+provider call, persist a B1 reference artifact, activate B2 routing, change
+retrieval, or deploy anything. An actual immutable B1 reference run remains
+required before routing ablations.
 
 ## OBS-003 B1 reference-run planning -- 2026-09-16
 
@@ -61,9 +64,9 @@ This is accepted component-level accounting evidence only. It does not provide a
 live provider pricing claim, runtime pricing lookup, telemetry exporter, durable
 accounting ledger, dashboard, budget enforcement, deployment, or new API route.
 
-Next: OBS-003 planning establishes the immutable B1/v1 reference run that gates
-all routing evaluation. Preserve OBS-001 secret-safe trace boundaries and
-OBS-002 pricing provenance. The committed retrieval baseline remains
+Next: assemble and preserve an actual immutable B1/v1 reference run using the
+accepted B1 evidence contract. Preserve OBS-001 secret-safe trace boundaries
+and OBS-002 pricing provenance. The committed retrieval baseline remains
 development-only regression evidence, not a B1 reference run or holdout result.
 
 ## OBS-001 final acceptance -- 2026-09-15
