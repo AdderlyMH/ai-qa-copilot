@@ -22,6 +22,21 @@ from ai_qa_copilot_api.model_gateway import (
     StructuredModelResponse,
     UrllibJsonHttpTransport,
 )
+from ai_qa_copilot_api.metrics import (
+    InMemoryWorkflowMetrics,
+    ProviderPricing,
+)
+from ai_qa_copilot_api.observability import workflow_trace
+
+
+PRICING = ProviderPricing(
+    provider="openai",
+    model_id=B1_MODEL_ID,
+    pricing_version="test-pricing/v1",
+    source_reference="test-fixture",
+    input_microusd_per_million_tokens=1_250_000,
+    output_microusd_per_million_tokens=2_000_000,
+)
 
 
 def request() -> StructuredModelRequest:
@@ -59,6 +74,96 @@ def test_fake_adapter_drives_a_typed_deterministic_model_call() -> None:
     assert model_response.output_json == {"summary": "Synthetic finding"}
     assert model_response.usage.total_tokens == 16
     assert model_response.configuration_version == "B1/v1"
+
+
+def test_gateway_records_provider_usage_against_configured_pricing() -> None:
+    model_request = request()
+    metrics = InMemoryWorkflowMetrics()
+    timestamps = iter((100.0, 100.125))
+    gateway = ModelGateway(
+        FakeModelAdapter([response(model_request.correlation_id)]),
+        metrics=metrics,
+        pricing=PRICING,
+        monotonic_clock=lambda: next(timestamps),
+    )
+
+    gateway.generate_structured(model_request)
+
+    measurement = metrics.measurements()[0]
+    assert measurement.correlation_id == model_request.correlation_id
+    assert measurement.trace_id is None
+    assert measurement.pricing == PRICING
+    assert measurement.outcome == "succeeded"
+    assert measurement.duration_ms == 125.0
+    assert measurement.retry_count == 0
+    assert measurement.input_tokens == 12
+    assert measurement.output_tokens == 4
+    assert measurement.total_tokens == 16
+
+    summary = metrics.report().summaries[0]
+    assert summary.success_count == 1
+    assert summary.failure_count == 0
+    assert summary.cost_microusd == 23
+
+
+def test_gateway_records_failure_without_forged_provider_usage() -> None:
+    metrics = InMemoryWorkflowMetrics()
+    timestamps = iter((50.0, 50.05))
+    gateway = ModelGateway(
+        FakeModelAdapter([]),
+        metrics=metrics,
+        pricing=PRICING,
+        monotonic_clock=lambda: next(timestamps),
+    )
+
+    with pytest.raises(model_gateway.ModelGatewayUnavailable):
+        gateway.generate_structured(request())
+
+    measurement = metrics.measurements()[0]
+    assert measurement.outcome == "failed"
+    assert measurement.duration_ms == 50.0
+    assert measurement.input_tokens is None
+    assert measurement.output_tokens is None
+    assert measurement.total_tokens is None
+
+    summary = metrics.report().summaries[0]
+    assert summary.success_count == 0
+    assert summary.failure_count == 1
+    assert summary.cost_microusd == 0
+
+
+def test_gateway_links_usage_measurement_to_active_workflow_trace() -> None:
+    model_request = request()
+    metrics = InMemoryWorkflowMetrics()
+    trace_id = uuid4()
+    timestamps = iter((10.0, 10.01))
+    gateway = ModelGateway(
+        FakeModelAdapter([response(model_request.correlation_id)]),
+        metrics=metrics,
+        pricing=PRICING,
+        monotonic_clock=lambda: next(timestamps),
+    )
+
+    with workflow_trace(trace_id=trace_id):
+        gateway.generate_structured(model_request)
+
+    measurement = metrics.measurements()[0]
+    assert measurement.correlation_id == model_request.correlation_id
+    assert measurement.trace_id == trace_id
+
+
+def test_gateway_rejects_partial_accounting_configuration() -> None:
+    with pytest.raises(ValueError, match="Metrics and pricing"):
+        ModelGateway(
+            FakeModelAdapter([]),
+            metrics=InMemoryWorkflowMetrics(),
+        )
+
+    with pytest.raises(ValueError, match="Metrics and pricing"):
+        ModelGateway(
+            FakeModelAdapter([]),
+            pricing=PRICING,
+        )
 
 
 class RecordingTransport:

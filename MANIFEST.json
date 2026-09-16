@@ -117,8 +117,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 78666,
-      "sha256": "eebcac256fa541ab82b1fb98b1afe49de543db9c4e8b8f8e1fdb56dc0edce4ee"
+      "bytes": 80157,
+      "sha256": "42aa138a9052b1bd9335bda90ffdb801b1fd6fb4292da8347bbd0fdc11e8cd87"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -191,9 +191,14 @@
       "sha256": "f087318ad15253d1d26852a8144d69232523f79053e84f63a9971325262a164f"
     },
     {
+      "path": "docs/adr/ADR-012-deterministic-provider-usage-accounting.md",
+      "bytes": 6233,
+      "sha256": "2b0755caf4f1c2fec629c2de2c2bfc1b0cc567ac5134cfbeabaff9f362d2fac5"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 2380,
-      "sha256": "e2738adc62c9f0fb9713e761d211bc60a43a30db954b66f901f3002ae32bcd86"
+      "bytes": 2520,
+      "sha256": "e69386c412f1232d32d1aa4048adf296645b0a9f1bd17aaa62e8b15a8986cce2"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",

@@ -31,6 +31,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-009](ADR-009-parser-isolation.md) | Quarantine-first untrusted document parsing boundary | Accepted |
 | [ADR-010](ADR-010-canonical-report-revisions.md) | Immutable canonical QA-report revisions | Accepted |
 | [ADR-011](ADR-011-structured-workflow-tracing.md) | Safe correlated structured workflow tracing | Accepted |
+| [ADR-012](ADR-012-deterministic-provider-usage-accounting.md) | Deterministic provider-usage cost and reliability accounting | Accepted |
 
 ## Required ADR structure
 

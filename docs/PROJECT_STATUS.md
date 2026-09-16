@@ -1,5 +1,33 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-002 metrics and cost accounting candidate -- 2026-09-16
+
+**Candidate branch:** `feat/obs-002-metrics-cost-accounting` (full
+verification pending).
+
+OBS-002 adds deterministic, content-free model accounting. An injected,
+versioned `ProviderPricing` schedule identifies the provider, model, pricing
+revision, source reference, and input/output micro-USD rates. The model gateway
+records typed provider usage, duration, outcome, and retry count against the
+existing correlation UUID and active workflow trace when present.
+
+The pricing-grouped report provides input, output, and total tokens; aggregate
+cost; success and failure counts; retry count; success rate; and nearest-rank
+p50/p95 latency. Successful calls require complete typed provider usage;
+failures record no fabricated usage or cost. The current gateway performs no
+automatic retry and therefore records zero retries unless a future explicit
+retry policy changes that boundary.
+
+Verified local evidence on 2026-09-16: `py scripts/tasks.py ci` passed with
+722 tests passed and 75 intentional skips; strict mypy passed across 187 source
+files; and the deterministic security harness passed 57 of 57 cases.
+Documentation validation passed with a 60-file manifest. Required PR review and
+checks on the exact reviewed commit remain pending.
+
+This candidate adds no live provider pricing claim, runtime pricing lookup,
+telemetry exporter, durable accounting ledger, dashboard, budget enforcement,
+deployment, or new API route.
+
 ## OBS-001 final acceptance -- 2026-09-15
 
 **Status:** Accepted on merged `main`
