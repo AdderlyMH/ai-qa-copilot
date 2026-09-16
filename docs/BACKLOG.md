@@ -1136,8 +1136,9 @@ feature pull-request heads completed their required checks:
 - Accepted integration exceptions: REP-005 through REP-007, RAG-006, and
   RAG-007.
 
-OBS-001 and OBS-002 are accepted on main through PRs #121 and #126. The next
-authorized implementation item is OBS-003: run routing and retrieval ablations.
-It depends on accepted EVAL-006 and OBS-002 evidence and must compare at least
-three planned ablations using quality, latency, and cost evidence. Do not add
-production deployment scope.
+OBS-001 and OBS-002 are accepted on main through PRs #121 and #126. OBS-003 is
+in planning. Before any routing ablation, preserve an immutable B1/v1 reference
+run with benchmark, configuration, quality, latency, cost, failure, and
+security-gate provenance. The subsequent controlled comparisons must cover at
+least three planned retrieval/routing ablations and use quality, latency, and
+cost evidence. Do not add production deployment scope.

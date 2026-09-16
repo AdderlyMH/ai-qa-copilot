@@ -1,5 +1,16 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-003 B1 reference-run planning -- 2026-09-16
+
+**Status:** Planning only.
+
+OBS-003 requires an immutable B1/v1 reference run before B2 deterministic
+routing or routing ablations may be evaluated. `docs/OBS-003_ABLATION_PLAN.md`
+defines the required provenance, holdout isolation, measures, three planned
+comparisons, and advancement criteria. No B1 reference result, B2 result,
+runtime route, retrieval-path change, provider call, or deployment claim is
+recorded by this planning update.
+
 ## OBS-002 final acceptance -- 2026-09-16
 
 **Status:** Accepted on merged `main`
@@ -32,9 +43,10 @@ This is accepted component-level accounting evidence only. It does not provide a
 live provider pricing claim, runtime pricing lookup, telemetry exporter, durable
 accounting ledger, dashboard, budget enforcement, deployment, or new API route.
 
-Next: run canonical OBS-003 routing and retrieval ablations. Preserve OBS-001
-secret-safe trace boundaries and OBS-002 pricing provenance; compare at least
-three planned ablations using quality, latency, and cost evidence.
+Next: OBS-003 planning establishes the immutable B1/v1 reference run that gates
+all routing evaluation. Preserve OBS-001 secret-safe trace boundaries and
+OBS-002 pricing provenance. The committed retrieval baseline remains
+development-only regression evidence, not a B1 reference run or holdout result.
 
 ## OBS-001 final acceptance -- 2026-09-15
 
