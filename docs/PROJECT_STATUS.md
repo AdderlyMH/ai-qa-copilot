@@ -1,5 +1,23 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-003 B1 reference evidence candidate -- 2026-09-16
+
+**Candidate branch:** `feat/obs-003-b1-reference-evidence` (PR review pending).
+
+This candidate adds a pure, content-free `B1ReferenceRun` contract. It binds
+the pinned B1/v1 configuration hashes, the full 100-case evaluation run, its
+scored report, one root workflow trace, provider-usage measurements, derived
+cost/p50/p95 metrics, and categorized quality, security, and cost failures.
+It rejects mismatched evaluation provenance, non-B1 pricing/model evidence,
+multiple pricing revisions, and measurements from another workflow trace.
+
+Local validation passed: Ruff and mypy passed; `uv run python -m pytest` passed
+with 727 tests and 75 intentional skips.
+
+This candidate does not execute an evaluation or provider call, persist a B1
+reference artifact, activate B2 routing, change retrieval, or deploy anything.
+An actual immutable B1 reference run remains required before routing ablations.
+
 ## OBS-003 B1 reference-run planning -- 2026-09-16
 
 **Status:** Planning only.

@@ -25,6 +25,19 @@ No B2 routing configuration may be promoted unless its controlled comparison
 shows no task-success or security regression and documents the quality, latency,
 and cost trade-off.
 
+## Implemented component contract (candidate)
+
+`apps/api/src/ai_qa_copilot_api/b1_reference_evidence.py` provides the
+data-only evidence envelope required to assemble a B1 reference record. It
+does not invoke the evaluation executor or model gateway. The caller must
+supply the completed full-suite run, score report, B1 configuration hashes, and
+content-free provider measurements from the same root workflow trace.
+
+The component preserves failures rather than treating a reference record as a
+pass: policy-boundary and side-effect failures are security categories,
+maximum-expected-cost failures are cost categories, and remaining failed scorer
+checks are quality categories. It is candidate implementation evidence only,
+not an executed B1 reference result.
 ## Stage 1 — Immutable B1 reference run
 
 The B1 reference run must use the versioned 100-case benchmark and preserve:
