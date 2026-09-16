@@ -92,8 +92,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 59193,
-      "sha256": "127b5115415a131f701456f056c2647b1b0476ed58a46ac32fd921e1fc5606b0"
+      "bytes": 59292,
+      "sha256": "c9ddec481079a951bf1d1b960ada949f0e8dacd6c20f5418755b0319b17677e0"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -104,6 +104,11 @@
       "path": "docs/EVALUATION_PLAN.md",
       "bytes": 48189,
       "sha256": "2ce1a979c2a281f0fc3950eb744adf267f60675339faa3b8da8a675df9a8c0c6"
+    },
+    {
+      "path": "docs/OBS-003_ABLATION_PLAN.md",
+      "bytes": 3412,
+      "sha256": "efd38f0bad3bbc30a8c9be3dc792654d89ed592dd3cc544aea8c5e09bfb35b48"
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
@@ -117,8 +122,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 80513,
-      "sha256": "43bcfbe76513f74772249d7bb9efc24cd4f10cd48232a0fdb8a1efe2132080ad"
+      "bytes": 81087,
+      "sha256": "c1266d187827d714a310a9323b7d8bd64bbd20f3b57e9b6edff894daea1039a3"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
