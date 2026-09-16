@@ -4,14 +4,20 @@ from __future__ import annotations
 
 import json
 import os
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final, Protocol
 from uuid import UUID
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from collections.abc import Callable, Mapping
+from time import perf_counter
 
-from ai_qa_copilot_api.observability import traced
+from ai_qa_copilot_api.metrics import (
+    ModelInvocationMeasurement,
+    ProviderPricing,
+    WorkflowMetricsRecorder,
+)
+from ai_qa_copilot_api.observability import current_trace_id, traced
 
 
 OPENAI_RESPONSES_URL: Final = "https://api.openai.com/v1/responses"
@@ -236,14 +242,74 @@ class FakeModelAdapter:
 class ModelGateway:
     """Application-facing boundary for one typed, structured model invocation."""
 
-    def __init__(self, adapter: ModelAdapter) -> None:
+    def __init__(
+        self,
+        adapter: ModelAdapter,
+        *,
+        metrics: WorkflowMetricsRecorder | None = None,
+        pricing: ProviderPricing | None = None,
+        monotonic_clock: Callable[[], float] = perf_counter,
+    ) -> None:
+        if (metrics is None) != (pricing is None):
+            raise ValueError("Metrics and pricing must be configured together")
         self._adapter = adapter
+        self._metrics = metrics
+        self._pricing = pricing
+        self._monotonic_clock = monotonic_clock
 
     @traced("model.structured_generation")
     def generate_structured(
         self, request: StructuredModelRequest
     ) -> StructuredModelResponse:
-        return self._adapter.generate(request)
+        if self._metrics is None:
+            return self._adapter.generate(request)
+
+        started_at = self._monotonic_clock()
+        try:
+            response = self._adapter.generate(request)
+        except Exception:
+            self._record_measurement(
+                request,
+                duration_ms=(self._monotonic_clock() - started_at) * 1_000,
+                response=None,
+            )
+            raise
+
+        self._record_measurement(
+            request,
+            duration_ms=(self._monotonic_clock() - started_at) * 1_000,
+            response=response,
+        )
+        return response
+
+    def _record_measurement(
+        self,
+        request: StructuredModelRequest,
+        *,
+        duration_ms: float,
+        response: StructuredModelResponse | None,
+    ) -> None:
+        assert self._metrics is not None
+        assert self._pricing is not None
+
+        if response is not None and response.model_id != self._pricing.model_id:
+            raise ValueError(
+                "Provider response model does not match configured pricing"
+            )
+
+        self._metrics.record(
+            ModelInvocationMeasurement(
+                correlation_id=request.correlation_id,
+                trace_id=current_trace_id(),
+                pricing=self._pricing,
+                outcome="succeeded" if response is not None else "failed",
+                duration_ms=round(duration_ms, 3),
+                retry_count=0,
+                input_tokens=response.usage.input_tokens if response else None,
+                output_tokens=response.usage.output_tokens if response else None,
+                total_tokens=response.usage.total_tokens if response else None,
+            )
+        )
 
 
 def _response_from_provider_payload(
