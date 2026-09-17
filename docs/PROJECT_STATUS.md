@@ -1,23 +1,32 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-## OBS-003 fail-closed B1 reference assembly candidate -- 2026-09-17
+## OBS-003 fail-closed B1 reference assembly acceptance -- 2026-09-17
 
-**Candidate branch:** `feat/obs-003-b1-reference-run` (PR review pending).
+**Status:** Accepted on merged `main`
+`e752b9995178c81e4e6af5dc782e63934ff6e12f`.
 
-This candidate adds a fail-closed CLI and typed decoders that assemble an
-immutable B1 artifact only from recorded evidence. It binds the pinned B1/v1
-configuration, current 100-case corpus, completed evaluation and score reports,
-one root workflow trace, content-free provider measurements, derived metrics,
-and categorized failures.
+PR #131 reviewed head
+`48165760565dd2ed6ad64664ba64266d0b2daca6` passed all required checks and
+merged unchanged.
 
-It rejects incomplete or mismatched provenance and invokes the existing EG-09
+The accepted fail-closed CLI and typed decoders assemble an immutable B1
+artifact only from recorded evidence. They bind the pinned B1/v1 configuration,
+current 100-case corpus, completed evaluation and score reports, one root
+workflow trace, content-free provider measurements, derived metrics, and
+categorized failures.
+
+The assembly path rejects incomplete or mismatched provenance and invokes EG-09
 independent-review, label-completeness, holdout-isolation, and adjudication
-validation before an exclusive, non-overwriting artifact write. The currently
-missing release-review manifest therefore blocks artifact creation.
+validation before an exclusive, non-overwriting artifact write. The missing
+release-review manifest therefore correctly blocks artifact creation.
 
-This is candidate assembly capability only. It does not execute an evaluation
+This is accepted component capability only. It does not execute an evaluation
 or provider call, create reviewer labels or attestations, persist an actual B1
 reference result, activate B2 routing, change retrieval, or deploy anything.
+
+Next: collect genuine EG-09 evidence using
+`docs/OBS-003_EG-09_REVIEW_READINESS.md`. Only then may an authorized B1/v1
+evaluation be executed and preserved.
 
 ## OBS-003 B1 reference evidence component acceptance -- 2026-09-16
 
