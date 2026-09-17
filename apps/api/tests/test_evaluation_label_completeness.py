@@ -141,6 +141,7 @@ def test_valid_manifest_satisfies_eg_09_evidence_contract(tmp_path: Path) -> Non
     assert result.case_count == 100
     assert result.validation_independent_review_count == 10
     assert result.holdout_independent_review_count == 10
+    assert result.candidate_commit_sha == "c" * 40
 
 
 def test_missing_manifest_is_rejected(tmp_path: Path) -> None:

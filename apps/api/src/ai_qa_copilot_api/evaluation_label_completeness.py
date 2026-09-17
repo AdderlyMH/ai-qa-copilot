@@ -36,6 +36,7 @@ class LabelCompletenessAndAdjudicationResult:
     case_count: int
     validation_independent_review_count: int
     holdout_independent_review_count: int
+    candidate_commit_sha: str
 
 
 def verify_label_completeness_and_adjudication(
@@ -184,6 +185,7 @@ def verify_label_completeness_and_adjudication(
             )
 
     return LabelCompletenessAndAdjudicationResult(
+        candidate_commit_sha=candidate_commit_sha,
         suite_id=suite.suite_id,
         case_count=len(labels),
         validation_independent_review_count=independent_counts["validation"],
