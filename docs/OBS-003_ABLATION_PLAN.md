@@ -39,12 +39,13 @@ maximum-expected-cost failures are cost categories, and remaining failed scorer
 checks are quality categories. It is accepted component evidence only,
 not an executed B1 reference result.
 
-## Candidate fail-closed assembly component
+## Accepted fail-closed assembly component
 
-The candidate assembly path decodes only recorded B1 metadata, full-suite
-evaluation and score reports, and content-free provider-usage measurements. It
-requires the current versioned 100-case corpus, the pinned B1/v1 configuration,
-one root workflow trace, and matching benchmark and ground-truth provenance.
+PR #131 accepts the assembly path that decodes only recorded B1 metadata,
+full-suite evaluation and score reports, and content-free provider-usage
+measurements. It requires the current versioned 100-case corpus, the pinned
+B1/v1 configuration, one root workflow trace, and matching benchmark and
+ground-truth provenance.
 
 Before creating an artifact, it invokes the existing independent-review,
 label-completeness, holdout-isolation, and adjudication validation. Artifact
@@ -52,9 +53,19 @@ creation is exclusive and non-overwriting. A missing or invalid review manifest,
 incomplete corpus, inconsistent score report, mismatched measurement, or
 existing output causes rejection without creating a reference artifact.
 
-This candidate does not execute an evaluation or provider call, create
+`docs/OBS-003_EG-09_REVIEW_READINESS.md` defines the human-review sequence and
+the records that must exist before a real manifest can be assembled. This
+accepted component does not execute an evaluation or provider call, create
 synthetic reviewer labels or attestations, activate routing, change retrieval,
 or claim that an immutable B1 reference run exists.
+
+## Stage 0 -- EG-09 independent-review readiness
+
+Before B1 execution, follow
+`docs/OBS-003_EG-09_REVIEW_READINESS.md` to collect genuine immutable labels,
+attestations, independent reviews, and adjudications. The readiness packet is
+an operational guide only; it is not a release-review manifest or EG-09
+evidence.
 
 ## Stage 1 — Immutable B1 reference run
 

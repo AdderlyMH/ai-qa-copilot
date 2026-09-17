@@ -836,10 +836,10 @@ of this backlog.
 - **Dependencies:** EVAL-006, OBS-002
 - **Deliverable:** Candidate comparisons for at least three planned ablations.
 - **Acceptance:** Selection is justified by quality, latency, and cost evidence.
-- **Status:** In progress. The B1 reference-evidence contract is accepted on
-  main through PR #129. A fail-closed reference-assembly candidate validates
-  recorded evidence and EG-09 review gates, but an actual immutable B1
-  reference run is still required before routing ablations.
+- **Status:** In progress. The B1 reference-evidence contract and fail-closed
+  reference-assembly component are accepted on main through PRs #129 and #131.
+  Genuine EG-09 review evidence and an actual immutable B1 reference run are
+  still required before routing ablations.
 
 **Phase 5 exit:** A 100-case benchmark, CI gates, traces, and cost/latency evidence support the release candidate.
 
@@ -1141,10 +1141,11 @@ feature pull-request heads completed their required checks:
   RAG-007.
 
 OBS-001 and OBS-002 are accepted on main through PRs #121 and #126. OBS-003's
-B1 reference-evidence contract is accepted through PR #129, and its
-fail-closed assembly path is under review. Before any routing ablation, obtain
-genuine EG-09 independent-review evidence and assemble and preserve an actual
-immutable B1/v1 reference run with benchmark, configuration, quality, latency,
-cost, failure, and security-gate provenance. The subsequent controlled
-comparisons must cover at least three planned retrieval/routing ablations and
-use quality, latency, and cost evidence. Do not add production deployment scope.
+B1 reference-evidence contract and fail-closed assembly component are accepted
+through PRs #129 and #131. Before any routing ablation, obtain genuine EG-09
+independent-review evidence using `docs/OBS-003_EG-09_REVIEW_READINESS.md`,
+then assemble and preserve an actual immutable B1/v1 reference run with
+benchmark, configuration, quality, latency, cost, failure, and security-gate
+provenance. The subsequent controlled comparisons must cover at least three
+planned retrieval/routing ablations and use quality, latency, and cost evidence.
+Do not add production deployment scope.
