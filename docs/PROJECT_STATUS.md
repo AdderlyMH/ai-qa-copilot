@@ -1,5 +1,24 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-003 fail-closed B1 reference assembly candidate -- 2026-09-17
+
+**Candidate branch:** `feat/obs-003-b1-reference-run` (PR review pending).
+
+This candidate adds a fail-closed CLI and typed decoders that assemble an
+immutable B1 artifact only from recorded evidence. It binds the pinned B1/v1
+configuration, current 100-case corpus, completed evaluation and score reports,
+one root workflow trace, content-free provider measurements, derived metrics,
+and categorized failures.
+
+It rejects incomplete or mismatched provenance and invokes the existing EG-09
+independent-review, label-completeness, holdout-isolation, and adjudication
+validation before an exclusive, non-overwriting artifact write. The currently
+missing release-review manifest therefore blocks artifact creation.
+
+This is candidate assembly capability only. It does not execute an evaluation
+or provider call, create reviewer labels or attestations, persist an actual B1
+reference result, activate B2 routing, change retrieval, or deploy anything.
+
 ## OBS-003 B1 reference evidence component acceptance -- 2026-09-16
 
 **Status:** Accepted on merged `main`
@@ -64,10 +83,12 @@ This is accepted component-level accounting evidence only. It does not provide a
 live provider pricing claim, runtime pricing lookup, telemetry exporter, durable
 accounting ledger, dashboard, budget enforcement, deployment, or new API route.
 
-Next: assemble and preserve an actual immutable B1/v1 reference run using the
-accepted B1 evidence contract. Preserve OBS-001 secret-safe trace boundaries
-and OBS-002 pricing provenance. The committed retrieval baseline remains
-development-only regression evidence, not a B1 reference run or holdout result.
+Next: obtain genuine EG-09 independent-review evidence, then supply the
+recorded full-suite evaluation, score report, and provider measurements to the
+reviewed fail-closed assembly path. Preserve OBS-001 secret-safe trace
+boundaries and OBS-002 pricing provenance. The committed retrieval baseline
+remains development-only regression evidence, not a B1 reference run or
+holdout result.
 
 ## OBS-001 final acceptance -- 2026-09-15
 
