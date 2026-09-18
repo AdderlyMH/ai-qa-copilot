@@ -429,6 +429,13 @@ release_status:
   eg_09_eligible: false
 ```
 
+The implemented label contract is
+`fixtures/benchmark/evaluation-review-rubric.v1.yaml`, with label schema
+`evaluation-review-label/v1`. Primary, independent, and adjudicated labels are
+validated and stored as immutable revisions before their differences are
+classified for adjudication. The release-review manifest itself remains
+planned until genuine reviewer evidence exists.
+
 This is a planned contract. The Phase 0 documentation does not claim that the
 manifest, reviewer, or completed reviews currently exist.
 

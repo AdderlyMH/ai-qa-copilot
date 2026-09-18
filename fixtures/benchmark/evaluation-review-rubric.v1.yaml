@@ -1,0 +1,60 @@
+schema_version: evaluation-review-rubric/v1
+rubric_id: EVALUATION-REVIEW-RUBRIC-V1
+status: approved_contract
+
+label_schema:
+  schema_version: evaluation-review-label/v1
+  subject_kinds:
+    - finding
+    - test_case
+    - failure_analysis
+
+common_required_fields:
+  - schema_version
+  - subject_kind
+  - evidence_locators
+  - rationale
+
+finding:
+  score_range: [0, 2]
+  criteria:
+    - material_issue
+    - category
+    - source
+    - explanation
+  criterion_values:
+    - meets
+    - partially_meets
+    - does_not_meet
+  unsupported_claim_present: boolean
+  scoring:
+    correct: 2
+    partially_correct: 1
+    incorrect: 0
+
+test_case:
+  dimensions:
+    - objective
+    - preconditions_and_input
+    - procedure_or_request
+    - expected_result
+    - evidence_and_traceability
+  dimension_score_range: [0, 2]
+  accepted_when:
+    no_dimension_is_zero: true
+    minimum_total_score: 8
+    execution_policy_violation: false
+    material_duplicate: false
+
+failure_analysis:
+  criteria:
+    - observations_match_evidence
+    - hypotheses_clearly_labeled
+    - likely_cause_plausible
+    - alternatives_considered_when_material
+    - recommended_next_checks_actionable
+    - no_unsupported_root_cause_claim
+  criterion_values:
+    - meets
+    - partially_meets
+    - does_not_meet

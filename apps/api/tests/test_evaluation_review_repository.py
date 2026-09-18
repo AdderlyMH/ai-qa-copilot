@@ -23,9 +23,31 @@ CASE_ID = "EVAL-FIND-001"
 CASE_SHA256 = "a" * 64
 CANDIDATE_OUTPUT_SHA256 = "b" * 64
 DATASET_VERSION = "evaluation-cases/v1"
-RUBRIC_VERSION = "evaluation-rubric/v1"
+RUBRIC_VERSION = "evaluation-review-rubric/v1"
 SUBJECT_ID = "candidate-finding-001"
 POSTGRES_INTEGRATION_DATABASE_URL = "AI_QA_COPILOT_POSTGRES_INTEGRATION_DATABASE_URL"
+
+
+def finding_labels(
+    *,
+    category: str = "meets",
+    score: int = 2,
+    rationale: str = "The finding is correctly supported by the source evidence.",
+) -> dict[str, object]:
+    return {
+        "schema_version": "evaluation-review-label/v1",
+        "subject_kind": "finding",
+        "score": score,
+        "criteria": {
+            "material_issue": "meets",
+            "category": category,
+            "source": "meets",
+            "explanation": "meets",
+        },
+        "unsupported_claim_present": False,
+        "evidence_locators": ["REQ-BASE-001#REQ-ORDER-004:statement"],
+        "rationale": rationale,
+    }
 
 
 def repository() -> tuple[
@@ -68,7 +90,7 @@ def test_repository_round_trips_immutable_adjudicated_review() -> None:
         subject_id=SUBJECT_ID,
         reviewer_id="primary-reviewer",
         reviewer_attestation_id=primary_attestation.id,
-        labels={"verdict": "correct", "severity": "high"},
+        labels=finding_labels(category="partially_meets", score=1),
         candidate_output_sha256=CANDIDATE_OUTPUT_SHA256,
     )
 
@@ -86,13 +108,14 @@ def test_repository_round_trips_immutable_adjudicated_review() -> None:
         subject_id=SUBJECT_ID,
         reviewer_id="independent-reviewer",
         reviewer_attestation_id=independent_attestation.id,
-        labels={"verdict": "correct", "severity": "medium"},
+        labels=finding_labels(),
     )
 
     disagreements = service.record_material_disagreements(
         independent_label_id=independent.id
     )
-    assert len(disagreements) == 1
+    assert len(disagreements) == 2
+    assert all(item.material for item in disagreements)
 
     adjudicator_attestation = service.record_attestation(
         reviewer_id="adjudicator",
@@ -106,9 +129,11 @@ def test_repository_round_trips_immutable_adjudicated_review() -> None:
         independent_label_id=independent.id,
         adjudicator_id="adjudicator",
         adjudicator_attestation_id=adjudicator_attestation.id,
-        labels={"verdict": "correct", "severity": "high"},
+        labels=finding_labels(category="partially_meets", score=1),
         rationales_by_disagreement_id={
-            disagreements[0].id: "The source evidence supports high severity."
+            item.id: "The source evidence supports the adjudicated judgment."
+            for item in disagreements
+            if item.material
         },
     )
 
@@ -158,7 +183,7 @@ def test_repository_rejects_a_durable_label_hash_mismatch() -> None:
         subject_id=SUBJECT_ID,
         reviewer_id="primary-reviewer",
         reviewer_attestation_id=attestation.id,
-        labels={"verdict": "correct"},
+        labels=finding_labels(),
         candidate_output_sha256=CANDIDATE_OUTPUT_SHA256,
     )
 
@@ -215,7 +240,7 @@ def test_postgres_repository_persists_adjudicated_review() -> None:
             subject_id=SUBJECT_ID,
             reviewer_id="primary-reviewer",
             reviewer_attestation_id=primary_attestation.id,
-            labels={"verdict": "correct", "severity": "high"},
+            labels=finding_labels(),
             candidate_output_sha256=CANDIDATE_OUTPUT_SHA256,
         )
 
@@ -233,7 +258,7 @@ def test_postgres_repository_persists_adjudicated_review() -> None:
             subject_id=SUBJECT_ID,
             reviewer_id="independent-reviewer",
             reviewer_attestation_id=independent_attestation.id,
-            labels={"verdict": "correct", "severity": "medium"},
+            labels=finding_labels(category="partially_meets", score=1),
         )
         disagreements = service.record_material_disagreements(
             independent_label_id=independent.id
@@ -251,9 +276,11 @@ def test_postgres_repository_persists_adjudicated_review() -> None:
             independent_label_id=independent.id,
             adjudicator_id="adjudicator",
             adjudicator_attestation_id=adjudicator_attestation.id,
-            labels={"verdict": "correct", "severity": "high"},
+            labels=finding_labels(category="partially_meets", score=1),
             rationales_by_disagreement_id={
-                disagreements[0].id: "Source evidence supports high severity."
+                item.id: "The source evidence supports the adjudicated judgment."
+                for item in disagreements
+                if item.material
             },
         )
 
@@ -273,7 +300,7 @@ def test_postgres_repository_persists_adjudicated_review() -> None:
                 )
             ).one()
 
-        assert counts == (3, 3, 1, 1)
+        assert counts == (3, 3, 2, 2)
     finally:
         with engine.begin() as connection:
             connection.execute(

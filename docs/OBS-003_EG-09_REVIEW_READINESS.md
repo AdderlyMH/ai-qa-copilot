@@ -15,6 +15,25 @@ records below have actually been completed and immutably locked. Do not insert
 placeholder reviewer identities, timestamps, hashes, label revisions, or
 release-status booleans.
 
+## Implemented contract support
+
+The repository now provides the machine-enforced label contract that future
+review records must use:
+
+- `fixtures/benchmark/evaluation-review-rubric.v1.yaml` defines the approved
+  rubric identity `evaluation-review-rubric/v1`.
+- `evaluation-review-label/v1` validates finding, test-case, and
+  failure-analysis labels before storage.
+- `EvaluationReviewService` preserves labels immutably and records all
+  differences, while only rubric-defined decision fields are material for
+  adjudication.
+- A change limited to rationale or evidence locators remains visible as a
+  non-material difference and does not require adjudication.
+
+This support is not human-review evidence and does not yet provide a
+reviewer-facing capture or manifest-assembly workflow. Do not create labels,
+attestations, or the release-review manifest from test data or placeholders.
+
 ## Frozen selection
 
 The independent-review selection is already fixed by

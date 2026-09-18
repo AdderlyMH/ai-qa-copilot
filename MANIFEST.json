@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 48189,
-      "sha256": "2ce1a979c2a281f0fc3950eb744adf267f60675339faa3b8da8a675df9a8c0c6"
+      "bytes": 48569,
+      "sha256": "8bf2145be3abaea81a99ab2617a69ffad3250117794b7e73d73eae3062b0966c"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -112,8 +112,8 @@
     },
     {
       "path": "docs/OBS-003_EG-09_REVIEW_READINESS.md",
-      "bytes": 5332,
-      "sha256": "67a24c0ddd26cb1294b4f3b2c44ac9d8aa2afc5011e1846132966f0ea4d503e5"
+      "bytes": 6221,
+      "sha256": "c0c82fba6da48b2302bad56457df0b32a1fbb9b7920ddc8c39da1e477fc21bac"
     },
     {
       "path": "docs/PRODUCT_REQUIREMENTS.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 83433,
-      "sha256": "f2bd02a44227fcfb05ccee064629ee6c93fbd01d28497d5c47da4a05b597ac86"
+      "bytes": 84963,
+      "sha256": "c7e6abc108fba4f2976a9bbb5b7ceaff7f8b1f983d5a3cfebb5618cc75747a6e"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -244,6 +244,11 @@
       "path": "fixtures/benchmark/evaluation-cases.v1.yaml",
       "bytes": 125735,
       "sha256": "25632db0fb444cbdc4c212a0f6bc44efc07b1536aa15e5e6e34eb5876913bd8e"
+    },
+    {
+      "path": "fixtures/benchmark/evaluation-review-rubric.v1.yaml",
+      "bytes": 1277,
+      "sha256": "1cc28a80fc143bdc4e2e19b8a4f21b6577ccab14f8efe0634b3c87c9fca02d32"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",

@@ -1,5 +1,37 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-003 EG-09 review-label contract implementation -- 2026-09-18
+
+**Status:** Implemented and locally validated on the feature branch; not merged
+and not EG-09 evidence.
+
+The repository now has a versioned review rubric at
+`fixtures/benchmark/evaluation-review-rubric.v1.yaml` and a strict
+`evaluation-review-label/v1` validator for finding, test-case, and
+failure-analysis labels.
+
+`EvaluationReviewService` validates every primary, independent, and
+adjudicated label before immutable storage. It also classifies only
+rubric-defined decision fields as material disagreements, so rationale-only or
+evidence-locator-only wording differences remain visible but do not force
+adjudication.
+
+Focused local validation passed Ruff formatting and checks, mypy, and the
+EG-09 test gate: 29 passed and 1 skipped. The skipped test is optional only
+when no isolated PostgreSQL database is supplied.
+
+`py scripts/tasks.py db-check` then created an isolated PostgreSQL Compose
+project, migrated it to Alembic head, ran the full integration lifecycle
+including evaluation-review persistence, rolled back to base, migrated again,
+and cleaned up successfully: 145 passed.
+
+This capability does not create genuine reviewer attestations or labels,
+provide a reviewer-facing capture workflow, create the release-review manifest,
+satisfy EG-09, authorize B1 evaluation, or activate B2 routing.
+
+Next: add the reviewer-facing evidence-capture workflow, then collect genuine
+primary and blind independent review evidence under the frozen selection.
+
 ## OBS-003 fail-closed B1 reference assembly acceptance -- 2026-09-17
 
 **Status:** Accepted on merged `main`

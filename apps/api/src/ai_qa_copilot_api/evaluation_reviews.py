@@ -23,6 +23,11 @@ from ai_qa_copilot_api.documents import (
     EvaluationReviewLabelRecord,
     EvaluationReviewerAttestationRecord,
 )
+from ai_qa_copilot_api.evaluation_review_labels import (
+    EvaluationReviewLabelValidationError,
+    is_material_review_label_field,
+    validate_evaluation_review_label,
+)
 
 
 class EvaluationReviewRejected(ValueError):
@@ -751,7 +756,10 @@ class EvaluationReviewService:
                         field_path=field_path,
                         primary_value_json=_value_snapshot(primary_value),
                         independent_value_json=_value_snapshot(independent_value),
-                        material=True,
+                        material=is_material_review_label_field(
+                            subject_kind=primary.subject_kind.value,
+                            field_path=field_path,
+                        ),
                         created_at=_aware_timestamp(self._clock()),
                     )
                 )
@@ -930,7 +938,15 @@ class EvaluationReviewService:
                 "Independent and adjudicated labels cannot retain candidate-output hashes"
             )
 
-        label_json = _label_snapshot(labels)
+        try:
+            validated_labels = validate_evaluation_review_label(
+                subject_kind=subject_kind.value,
+                labels=labels,
+            )
+        except EvaluationReviewLabelValidationError as error:
+            raise EvaluationReviewRejected(str(error)) from error
+
+        label_json = _label_snapshot(validated_labels)
         prior = self._latest_label(
             case_id=normalized_case_id,
             subject_kind=subject_kind,
