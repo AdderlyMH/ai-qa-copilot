@@ -6,6 +6,7 @@ from uuid import UUID
 import pytest
 
 from ai_qa_copilot_api.evaluation_reviews import (
+    EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION,
     EvaluationReviewRejected,
     EvaluationReviewRole,
     EvaluationReviewService,
@@ -23,6 +24,7 @@ CANDIDATE_OUTPUT_SHA256 = "b" * 64
 DATASET_VERSION = "evaluation-cases/v1"
 RUBRIC_VERSION = "evaluation-review-rubric/v1"
 SUBJECT_ID = "candidate-finding-001"
+REVIEW_PACKET_SHA256 = "c" * 64
 
 
 def finding_labels(
@@ -77,6 +79,7 @@ def primary_label(
     reviewer_id: str = "primary-reviewer",
     attestation_id: UUID | None = None,
     labels: dict[str, object] | None = None,
+    review_packet_sha256: str = REVIEW_PACKET_SHA256,
 ) -> EvaluationReviewLabel:
     if attestation_id is None:
         attestation_id = attestation(
@@ -95,6 +98,7 @@ def primary_label(
         reviewer_attestation_id=attestation_id,
         labels=labels if labels is not None else finding_labels(),
         candidate_output_sha256=CANDIDATE_OUTPUT_SHA256,
+        review_packet_sha256=review_packet_sha256,
     )
 
 
@@ -103,6 +107,7 @@ def independent_label(
     *,
     reviewer_id: str = "independent-reviewer",
     labels: dict[str, object] | None = None,
+    review_packet_sha256: str = REVIEW_PACKET_SHA256,
 ) -> EvaluationReviewLabel:
     reviewer_attestation = attestation(
         review_service,
@@ -115,6 +120,7 @@ def independent_label(
         subject_id=SUBJECT_ID,
         reviewer_id=reviewer_id,
         reviewer_attestation_id=reviewer_attestation.id,
+        review_packet_sha256=review_packet_sha256,
         labels=(
             labels
             if labels is not None
@@ -148,6 +154,35 @@ def test_primary_review_rejects_an_invalid_label_contract() -> None:
         primary_label(
             review_service,
             labels={"verdict": "correct"},
+        )
+
+
+def test_captured_reviews_bind_the_versioned_packet() -> None:
+    review_service = service()
+
+    primary = primary_label(review_service)
+    independent = independent_label(review_service)
+
+    assert (
+        primary.review_capture_schema_version
+        == EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION
+    )
+    assert primary.review_packet_sha256 == REVIEW_PACKET_SHA256
+    assert (
+        independent.review_capture_schema_version
+        == EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION
+    )
+    assert independent.review_packet_sha256 == REVIEW_PACKET_SHA256
+    assert independent.candidate_output_sha256 is None
+
+
+def test_primary_review_rejects_an_invalid_review_packet_hash() -> None:
+    review_service = service()
+
+    with pytest.raises(EvaluationReviewRejected, match="Review-packet SHA-256"):
+        primary_label(
+            review_service,
+            review_packet_sha256="not-a-sha256",
         )
 
 
@@ -186,6 +221,7 @@ def test_independent_reviewer_must_be_attested_and_different() -> None:
             reviewer_id="primary-reviewer",
             reviewer_attestation_id=primary_attestation.id,
             labels=finding_labels(),
+            review_packet_sha256=REVIEW_PACKET_SHA256,
         )
 
     independent = independent_label(review_service)

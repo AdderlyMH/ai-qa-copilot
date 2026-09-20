@@ -127,13 +127,18 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 84963,
-      "sha256": "c7e6abc108fba4f2976a9bbb5b7ceaff7f8b1f983d5a3cfebb5618cc75747a6e"
+      "bytes": 86446,
+      "sha256": "48befe5f20b678d7872e6eb61e2b9b4cd05c41f9d0bde7a155b3bcdaac25b456"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
       "bytes": 6217,
       "sha256": "ef9a83060605a6e027c34f85914435341a2b9e571ee4a93a8ade172bbd9f0e8e"
+    },
+    {
+      "path": "docs/REVIEW_EVIDENCE_CAPTURE.md",
+      "bytes": 3431,
+      "sha256": "d118fb740c696f62d128d95f6b0d63aba0c966e6874f6e0abc14e5505e99cff1"
     },
     {
       "path": "docs/SKILLS_PROFILE.md",
@@ -307,8 +312,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 30701,
-      "sha256": "3f13d7f9959ae250a201ca0680e39b03f742437be9002788f24069d61c9f357a"
+      "bytes": 30703,
+      "sha256": "499cd74fe9e4aa7c1ea5dc00d80a75375073c8b44e2356587f5e980d77342f6b"
     },
     {
       "path": "scripts/validate_docs.py",

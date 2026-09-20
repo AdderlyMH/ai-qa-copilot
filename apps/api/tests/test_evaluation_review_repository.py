@@ -26,6 +26,7 @@ DATASET_VERSION = "evaluation-cases/v1"
 RUBRIC_VERSION = "evaluation-review-rubric/v1"
 SUBJECT_ID = "candidate-finding-001"
 POSTGRES_INTEGRATION_DATABASE_URL = "AI_QA_COPILOT_POSTGRES_INTEGRATION_DATABASE_URL"
+REVIEW_PACKET_SHA256 = "c" * 64
 
 
 def finding_labels(
@@ -90,6 +91,7 @@ def test_repository_round_trips_immutable_adjudicated_review() -> None:
         subject_id=SUBJECT_ID,
         reviewer_id="primary-reviewer",
         reviewer_attestation_id=primary_attestation.id,
+        review_packet_sha256=REVIEW_PACKET_SHA256,
         labels=finding_labels(category="partially_meets", score=1),
         candidate_output_sha256=CANDIDATE_OUTPUT_SHA256,
     )
@@ -108,6 +110,7 @@ def test_repository_round_trips_immutable_adjudicated_review() -> None:
         subject_id=SUBJECT_ID,
         reviewer_id="independent-reviewer",
         reviewer_attestation_id=independent_attestation.id,
+        review_packet_sha256=REVIEW_PACKET_SHA256,
         labels=finding_labels(),
     )
 
@@ -183,6 +186,7 @@ def test_repository_rejects_a_durable_label_hash_mismatch() -> None:
         subject_id=SUBJECT_ID,
         reviewer_id="primary-reviewer",
         reviewer_attestation_id=attestation.id,
+        review_packet_sha256=REVIEW_PACKET_SHA256,
         labels=finding_labels(),
         candidate_output_sha256=CANDIDATE_OUTPUT_SHA256,
     )
@@ -240,6 +244,7 @@ def test_postgres_repository_persists_adjudicated_review() -> None:
             subject_id=SUBJECT_ID,
             reviewer_id="primary-reviewer",
             reviewer_attestation_id=primary_attestation.id,
+            review_packet_sha256=REVIEW_PACKET_SHA256,
             labels=finding_labels(),
             candidate_output_sha256=CANDIDATE_OUTPUT_SHA256,
         )
@@ -258,6 +263,7 @@ def test_postgres_repository_persists_adjudicated_review() -> None:
             subject_id=SUBJECT_ID,
             reviewer_id="independent-reviewer",
             reviewer_attestation_id=independent_attestation.id,
+            review_packet_sha256=REVIEW_PACKET_SHA256,
             labels=finding_labels(category="partially_meets", score=1),
         )
         disagreements = service.record_material_disagreements(

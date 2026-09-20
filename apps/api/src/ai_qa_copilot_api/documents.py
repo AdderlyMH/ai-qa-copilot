@@ -725,6 +725,25 @@ class EvaluationReviewLabelRecord(Base):
         CheckConstraint(
             "candidate_output_sha256 IS NULL OR length(candidate_output_sha256) = 64"
         ),
+        CheckConstraint(
+            "review_capture_schema_version IS NULL OR "
+            "review_capture_schema_version = 'evaluation-review-capture/v1'"
+        ),
+        CheckConstraint(
+            "review_packet_sha256 IS NULL OR length(review_packet_sha256) = 64"
+        ),
+        CheckConstraint(
+            "review_capture_schema_version IS NULL OR "
+            "((role = 'primary' "
+            "AND candidate_output_sha256 IS NOT NULL "
+            "AND review_packet_sha256 IS NOT NULL) OR "
+            "(role = 'independent' "
+            "AND candidate_output_sha256 IS NULL "
+            "AND review_packet_sha256 IS NOT NULL) OR "
+            "(role = 'adjudicated' "
+            "AND candidate_output_sha256 IS NULL "
+            "AND review_packet_sha256 IS NULL))"
+        ),
         CheckConstraint("revision_number > 0"),
         CheckConstraint(
             "(role = 'primary' "
@@ -766,6 +785,14 @@ class EvaluationReviewLabelRecord(Base):
     label_json: Mapped[str] = mapped_column(Text, nullable=False)
     label_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     candidate_output_sha256: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+    review_capture_schema_version: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+    review_packet_sha256: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
     )
