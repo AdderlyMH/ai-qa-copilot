@@ -13,8 +13,9 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0019_execution_job_trace"
+EXPECTED_REVISION = "0020_review_packet_binding"
 WORKFLOW_TRACE_REVISION = "0019_execution_job_trace"
+REVIEW_PACKET_BINDING_REVISION = "0020_review_packet_binding"
 INDEXING_JOB_REVISION = "0018_indexing_jobs"
 PARSER_CLAIM_REVISION = "0017_parser_job_claims"
 EVALUATION_REVIEW_REVISION = "0016_evaluation_reviews"
@@ -225,12 +226,76 @@ def test_workflow_trace_migration_is_reversible_without_trace_evidence() -> None
         engine.dispose()
 
 
+def test_review_packet_binding_migration_preserves_capture_evidence() -> None:
+    engine = sa.create_engine("sqlite+pysqlite:///:memory:")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE evaluation_review_labels ("
+                "id CHAR(32) PRIMARY KEY, "
+                "role VARCHAR(16) NOT NULL, "
+                "candidate_output_sha256 VARCHAR(64)"
+                ")"
+            )
+
+            with Operations.context(MigrationContext.configure(connection)):
+                module = migration_script(REVIEW_PACKET_BINDING_REVISION)
+                module.upgrade()
+
+                columns = {
+                    column["name"]
+                    for column in connection.execute(
+                        sa.text("PRAGMA table_info(evaluation_review_labels)")
+                    ).mappings()
+                }
+                assert "review_capture_schema_version" in columns
+                assert "review_packet_sha256" in columns
+
+                module.downgrade()
+
+                columns = {
+                    column["name"]
+                    for column in connection.execute(
+                        sa.text("PRAGMA table_info(evaluation_review_labels)")
+                    ).mappings()
+                }
+                assert "review_capture_schema_version" not in columns
+                assert "review_packet_sha256" not in columns
+
+                module.upgrade()
+                connection.execute(
+                    sa.text(
+                        "INSERT INTO evaluation_review_labels ("
+                        "id, role, candidate_output_sha256, "
+                        "review_capture_schema_version, review_packet_sha256"
+                        ") VALUES ("
+                        ":id, 'primary', :candidate, "
+                        "'evaluation-review-capture/v1', :packet"
+                        ")"
+                    ),
+                    {
+                        "id": "a" * 32,
+                        "candidate": "b" * 64,
+                        "packet": "c" * 64,
+                    },
+                )
+
+                with pytest.raises(RuntimeError, match="capture evidence"):
+                    module.downgrade()
+    finally:
+        engine.dispose()
+
+
 def test_alembic_has_reversible_parser_claims_head() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
     assert config.get_main_option("sqlalchemy.url") is None
     assert script.get_heads() == [EXPECTED_REVISION]
+
+    review_packet_binding_revision = script.get_revision(REVIEW_PACKET_BINDING_REVISION)
+    assert review_packet_binding_revision is not None
+    assert review_packet_binding_revision.down_revision == WORKFLOW_TRACE_REVISION
 
     workflow_trace_revision = script.get_revision(WORKFLOW_TRACE_REVISION)
     assert workflow_trace_revision is not None

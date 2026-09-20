@@ -1,5 +1,33 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-003 EG-09 review-evidence capture implementation -- 2026-09-20
+
+**Status:** Implemented and locally validated on
+`feat/obs-003-eg-09-review-capture`; not merged and not EG-09 evidence.
+
+The repository now provides immutable reviewer-packet construction and a CLI that
+writes content-bearing packets only outside the repository. Primary packets bind
+the exact candidate-output SHA-256; independent packets exclude candidate output.
+New review records persist the capture-schema version and packet SHA-256, enforced
+by the review-packet binding migration and validation rules.
+
+`docs/REVIEW_EVIDENCE_CAPTURE.md` defines the coordinator and reviewer procedure,
+including source-hash verification, ground-truth separation, reviewer
+independence, and the rule that packets, labels, and reviewer identities must not
+be committed.
+
+Focused local validation passed: Ruff format left 10 files unchanged, Ruff check
+passed, mypy passed for four source files, and the OBS-003 test scope passed
+**49 tests with 1 skipped**. The skipped integration test remains optional only
+when no isolated PostgreSQL database is supplied.
+
+This is operational preparation only. No real candidate output, reviewer packet,
+attestation, primary or independent label, adjudication, release-review manifest,
+EG-09 evidence, B1 execution, or B2 activation has been created.
+
+Next: collect genuine review evidence using the completed capture workflow only
+when authorized, real candidate material is available.
+
 ## OBS-003 EG-09 review-label contract implementation -- 2026-09-18
 
 **Status:** Implemented and locally validated on the feature branch; not merged
@@ -29,7 +57,7 @@ This capability does not create genuine reviewer attestations or labels,
 provide a reviewer-facing capture workflow, create the release-review manifest,
 satisfy EG-09, authorize B1 evaluation, or activate B2 routing.
 
-Next: add the reviewer-facing evidence-capture workflow, then collect genuine
+Next: use the reviewer-facing evidence-capture workflow to collect genuine
 primary and blind independent review evidence under the frozen selection.
 
 ## OBS-003 fail-closed B1 reference assembly acceptance -- 2026-09-17

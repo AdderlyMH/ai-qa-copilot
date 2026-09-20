@@ -54,6 +54,9 @@ class EvaluationReviewSubjectKind(StrEnum):
     FAILURE_ANALYSIS = "failure_analysis"
 
 
+EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION: Final = "evaluation-review-capture/v1"
+
+
 @dataclass(frozen=True)
 class EvaluationReviewerAttestation:
     """Immutable reviewer qualification and independence evidence."""
@@ -85,6 +88,8 @@ class EvaluationReviewLabel:
     label_json: str
     label_sha256: str
     candidate_output_sha256: str | None
+    review_capture_schema_version: str | None
+    review_packet_sha256: str | None
     revision_number: int
     parent_revision_id: UUID | None
     primary_label_id: UUID | None
@@ -341,6 +346,8 @@ class SqlAlchemyEvaluationReviewRepository:
             label_json=label.label_json,
             label_sha256=label.label_sha256,
             candidate_output_sha256=label.candidate_output_sha256,
+            review_capture_schema_version=label.review_capture_schema_version,
+            review_packet_sha256=label.review_packet_sha256,
             revision_number=label.revision_number,
             parent_revision_id=label.parent_revision_id,
             primary_label_id=label.primary_label_id,
@@ -613,6 +620,7 @@ class EvaluationReviewService:
         reviewer_id: str,
         reviewer_attestation_id: UUID,
         labels: Mapping[str, object],
+        review_packet_sha256: str,
         candidate_output_sha256: str | None,
     ) -> EvaluationReviewLabel:
         self._attestation_for(
@@ -634,6 +642,8 @@ class EvaluationReviewService:
             reviewer_attestation_id=reviewer_attestation_id,
             labels=labels,
             candidate_output_sha256=candidate_output_sha256,
+            review_capture_schema_version=EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION,
+            review_packet_sha256=review_packet_sha256,
             primary_label_id=None,
             independent_label_id=None,
         )
@@ -674,6 +684,7 @@ class EvaluationReviewService:
         reviewer_id: str,
         reviewer_attestation_id: UUID,
         labels: Mapping[str, object],
+        review_packet_sha256: str,
     ) -> EvaluationReviewLabel:
         packet = self.blind_independent_review_packet(
             case_id=case_id,
@@ -712,6 +723,8 @@ class EvaluationReviewService:
             reviewer_attestation_id=reviewer_attestation_id,
             labels=labels,
             candidate_output_sha256=None,
+            review_capture_schema_version=EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION,
+            review_packet_sha256=review_packet_sha256,
             primary_label_id=primary.id,
             independent_label_id=None,
         )
@@ -835,6 +848,8 @@ class EvaluationReviewService:
             reviewer_attestation_id=adjudicator_attestation_id,
             labels=labels,
             candidate_output_sha256=None,
+            review_capture_schema_version=EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION,
+            review_packet_sha256=None,
             primary_label_id=primary.id,
             independent_label_id=independent.id,
         )
@@ -919,6 +934,8 @@ class EvaluationReviewService:
         reviewer_attestation_id: UUID,
         labels: Mapping[str, object],
         candidate_output_sha256: str | None,
+        review_capture_schema_version: str,
+        review_packet_sha256: str | None,
         primary_label_id: UUID | None,
         independent_label_id: UUID | None,
     ) -> EvaluationReviewLabel:
@@ -933,6 +950,48 @@ class EvaluationReviewService:
             if candidate_output_sha256 is None
             else _sha256(candidate_output_sha256, "Candidate-output SHA-256")
         )
+        normalized_capture_schema_version = _required_text(
+            review_capture_schema_version,
+            "Review-capture schema version",
+        )
+        if (
+            normalized_capture_schema_version
+            != EVALUATION_REVIEW_CAPTURE_SCHEMA_VERSION
+        ):
+            raise EvaluationReviewRejected(
+                "Review-capture schema version is unsupported"
+            )
+
+        normalized_review_packet_sha256 = (
+            None
+            if review_packet_sha256 is None
+            else _sha256(review_packet_sha256, "Review-packet SHA-256")
+        )
+
+        if role is EvaluationReviewRole.PRIMARY:
+            if normalized_candidate_sha256 is None:
+                raise EvaluationReviewRejected(
+                    "Captured primary review requires candidate-output SHA-256"
+                )
+            if normalized_review_packet_sha256 is None:
+                raise EvaluationReviewRejected(
+                    "Captured primary review requires review-packet SHA-256"
+                )
+        elif role is EvaluationReviewRole.INDEPENDENT:
+            if normalized_candidate_sha256 is not None:
+                raise EvaluationReviewRejected(
+                    "Independent review cannot retain candidate-output hashes"
+                )
+            if normalized_review_packet_sha256 is None:
+                raise EvaluationReviewRejected(
+                    "Captured independent review requires review-packet SHA-256"
+                )
+        elif normalized_candidate_sha256 is not None or (
+            normalized_review_packet_sha256 is not None
+        ):
+            raise EvaluationReviewRejected(
+                "Adjudicated review cannot retain candidate-output or packet hashes"
+            )
         if role is not EvaluationReviewRole.PRIMARY and normalized_candidate_sha256:
             raise EvaluationReviewRejected(
                 "Independent and adjudicated labels cannot retain candidate-output hashes"
@@ -972,6 +1031,8 @@ class EvaluationReviewService:
             label_json=label_json,
             label_sha256=_sha256_digest(label_json),
             candidate_output_sha256=normalized_candidate_sha256,
+            review_capture_schema_version=normalized_capture_schema_version,
+            review_packet_sha256=normalized_review_packet_sha256,
             revision_number=1 if prior is None else prior.revision_number + 1,
             parent_revision_id=None if prior is None else prior.id,
             primary_label_id=primary_label_id,
@@ -1170,6 +1231,15 @@ def _label_from_record(
             else _sha256(
                 record.candidate_output_sha256,
                 "Stored candidate-output SHA-256",
+            )
+        ),
+        review_capture_schema_version=record.review_capture_schema_version,
+        review_packet_sha256=(
+            None
+            if record.review_packet_sha256 is None
+            else _sha256(
+                record.review_packet_sha256,
+                "Stored review-packet SHA-256",
             )
         ),
         revision_number=record.revision_number,
