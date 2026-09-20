@@ -19,7 +19,7 @@ def packet_cli() -> Callable[[list[str] | None], int]:
     return cast(Callable[[list[str] | None], int], namespace["main"])
 
 
-def test_primary_packet_is_written_outside_the_repository(tmp_path) -> None:
+def test_primary_packet_is_written_outside_the_repository(tmp_path: Path) -> None:
     candidate_output = tmp_path / "candidate-output.json"
     candidate_output.write_bytes(b'{"findings": []}\n')
     packet_path = tmp_path / "primary-review-packet.json"
@@ -55,7 +55,7 @@ def test_primary_packet_is_written_outside_the_repository(tmp_path) -> None:
 
 
 def test_cli_refuses_to_write_a_review_packet_inside_the_repository(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     candidate_output = tmp_path / "candidate-output.json"
     candidate_output.write_bytes(b'{"findings": []}\n')

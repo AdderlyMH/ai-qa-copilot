@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-
+from pathlib import Path
 import pytest
 
 from ai_qa_copilot_api.evaluation_cases import (
@@ -51,7 +51,7 @@ def review_case(source_sha256: str) -> EvaluationCase:
     )
 
 
-def write_source(tmp_path) -> tuple[EvaluationCase, str]:
+def write_source(tmp_path: Path) -> tuple[EvaluationCase, str]:
     source_path = tmp_path / "fixtures" / "review-source.md"
     source_path.parent.mkdir()
     source_text = "REQ-ORDER-004: cancellation is allowed for 15 minutes.\n"
@@ -61,7 +61,7 @@ def write_source(tmp_path) -> tuple[EvaluationCase, str]:
 
 
 def test_primary_packet_is_deterministic_and_binds_candidate_output(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     case, source_text = write_source(tmp_path)
 
@@ -106,7 +106,7 @@ def test_primary_packet_is_deterministic_and_binds_candidate_output(
 
 
 def test_independent_packet_excludes_candidate_output_and_ground_truth(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     case, _ = write_source(tmp_path)
 
@@ -128,7 +128,7 @@ def test_independent_packet_excludes_candidate_output_and_ground_truth(
     assert "ground_truth" not in packet.as_json()
 
 
-def test_independent_packet_rejects_candidate_output(tmp_path) -> None:
+def test_independent_packet_rejects_candidate_output(tmp_path: Path) -> None:
     case, _ = write_source(tmp_path)
 
     with pytest.raises(
@@ -150,7 +150,7 @@ def test_independent_packet_rejects_candidate_output(tmp_path) -> None:
 
 
 def test_packet_rejects_source_content_that_differs_from_case_hash(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     case, _ = write_source(tmp_path)
     source_path = tmp_path / "fixtures" / "review-source.md"
