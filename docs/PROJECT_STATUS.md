@@ -1,5 +1,42 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OBS-003 B1 candidate-executor contract -- 2026-09-22
+
+**Status:** Implemented and locally validated on
+`feat/obs-003-b1-candidate-executor`; not merged and not authorization for B1
+execution.
+
+Issue #136 now defines the fail-closed
+`ai_qa_copilot_api.b1_candidate_executor:create_b1_candidate_executor`
+contract. Its versioned, canonical configuration binds executor identity,
+candidate-output schema, exact `case_id` to review-subject mapping, cost,
+side-effect limits, and a deterministic SHA-256 configuration hash.
+
+Candidate output is non-empty UTF-8 text written exclusively outside the
+repository and bound by a content-free receipt. It is intentionally excluded
+from `evaluation-run/v1` reports. The entry-point factory remains disabled and
+raises unless a future, separately approved implementation supplies an adapter,
+configuration, and external output location.
+
+The current `evaluation-cases/v1` fixture declares zero cost and zero values
+for every `side-effects/v1` field. The contract therefore rejects non-zero
+cost or side effects; this is an incompatibility boundary for a future live B1
+candidate, not a claim that such a candidate is free or has no effects.
+
+Focused local validation passed Ruff formatting and checks, mypy, and 14
+pytest tests covering mapping, budget rejection, external exclusive output,
+content-free reports, and the disabled factory.
+
+This does not make a provider or network call, execute a B1 candidate, produce
+candidate evidence, create a review packet, label, attestation, adjudication,
+release-review manifest, B1 reference artifact, B2 route, retrieval-path
+change, or deployment.
+
+Next: review and merge the contract capability. A separate approved
+candidate-execution request must then identify the real adapter, provider or
+model, versioned configuration, non-zero limits if applicable, authorized
+operator, and external retention controls before any B1 execution.
+
 ## OBS-003 EG-09 review-evidence capture implementation -- 2026-09-20
 
 **Status:** Implemented and locally validated on

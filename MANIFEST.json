@@ -91,6 +91,11 @@
       "sha256": "aeb9a3d82ab4fbf49f1a3541e04689c42dc71ce0d47e55e14437ec9b32fd8f91"
     },
     {
+      "path": "docs/B1_CANDIDATE_EXECUTOR.md",
+      "bytes": 4559,
+      "sha256": "0fe9ac8a24116dbdb85154120e66c5b5ad166ec5611487d54dc14169ab50d888"
+    },
+    {
       "path": "docs/BACKLOG.md",
       "bytes": 59783,
       "sha256": "5c26c7520257086593f32f4b7b5162430db257199d18baa304b393bba9a3eaf3"
@@ -127,8 +132,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 86446,
-      "sha256": "48befe5f20b678d7872e6eb61e2b9b4cd05c41f9d0bde7a155b3bcdaac25b456"
+      "bytes": 88367,
+      "sha256": "1072cb20010763ea196b00f15880835ede8bb5b92de4a31a37d58132b1ef1db3"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
