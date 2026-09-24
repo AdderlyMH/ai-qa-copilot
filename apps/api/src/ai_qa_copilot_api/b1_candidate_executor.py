@@ -16,6 +16,7 @@ from typing import Final, Protocol
 
 from ai_qa_copilot_api.evaluation_cases import (
     SIDE_EFFECT_FIELD_NAMES,
+    EvaluationArtifact,
     EvaluationCase,
 )
 from ai_qa_copilot_api.evaluation_reviews import EvaluationReviewSubjectKind
@@ -26,7 +27,7 @@ from ai_qa_copilot_api.evaluation_runner import (
 )
 
 
-B1_CANDIDATE_EXECUTOR_SCHEMA_VERSION: Final = "b1-candidate-executor/v1"
+B1_CANDIDATE_EXECUTOR_SCHEMA_VERSION: Final = "b1-candidate-executor/v2"
 CANDIDATE_OUTPUT_SCHEMA_VERSION: Final = "candidate-output/v1"
 B1_CANDIDATE_EXECUTOR_FACTORY: Final = (
     "ai_qa_copilot_api.b1_candidate_executor:create_b1_candidate_executor"
@@ -47,21 +48,44 @@ class B1CandidateSubject:
 
 
 @dataclass(frozen=True)
-class B1CandidateExecutorConfig:
-    """Immutable, hashable configuration for the B1 executor contract.
+class B1CandidateCaseLimit:
+    """Maximum cost and exact side effects authorized for one case."""
 
-    The current evaluation-case v1 fixtures allow no cost and no side effects.
-    Consequently this contract accepts only zero-cost, zero-side-effect
-    configurations until a separately approved fixture/configuration revision
-    exists.
+    case_id: str
+    maximum_cost: int | float
+    side_effects: tuple[tuple[str, int], ...]
+
+    def __post_init__(self) -> None:
+        if not self.case_id.strip():
+            raise B1CandidateExecutorRejected("B1 case limit ID must be non-empty")
+        object.__setattr__(
+            self,
+            "maximum_cost",
+            _finite_non_negative_number(self.maximum_cost, "B1 case maximum cost"),
+        )
+        object.__setattr__(
+            self, "side_effects", _canonical_side_effects(self.side_effects)
+        )
+
+    @property
+    def side_effects_mapping(self) -> dict[str, int]:
+        return dict(self.side_effects)
+
+
+@dataclass(frozen=True)
+class B1CandidateExecutorConfig:
+    """Immutable, hashable configuration with explicit per-case limits.
+
+    The frozen evaluation cases permit one model call for analysis cases and
+    zero model calls for policy cases; all have zero maximum expected cost.
+    AWS infrastructure spending is accounted for separately.
     """
 
     schema_version: str
     executor_id: str
     executor_version: int
     candidate_output_schema_version: str
-    maximum_cost: int | float
-    side_effects: tuple[tuple[str, int], ...]
+    case_limits: tuple[B1CandidateCaseLimit, ...]
     case_subjects: tuple[B1CandidateSubject, ...]
 
     def __post_init__(self) -> None:
@@ -86,23 +110,6 @@ class B1CandidateExecutorConfig:
                 "B1 candidate output has an unsupported schema version"
             )
 
-        maximum_cost = _finite_non_negative_number(
-            self.maximum_cost,
-            "B1 candidate executor maximum cost",
-        )
-        if maximum_cost != 0:
-            raise B1CandidateExecutorRejected(
-                "Evaluation-case v1 permits only zero-cost B1 configurations"
-            )
-        object.__setattr__(self, "maximum_cost", maximum_cost)
-
-        canonical_side_effects = _canonical_side_effects(self.side_effects)
-        if any(value != 0 for _, value in canonical_side_effects):
-            raise B1CandidateExecutorRejected(
-                "Evaluation-case v1 permits only zero-side-effect B1 configurations"
-            )
-        object.__setattr__(self, "side_effects", canonical_side_effects)
-
         case_ids: set[str] = set()
         for subject in self.case_subjects:
             if not subject.case_id.strip() or not subject.subject_id.strip():
@@ -120,9 +127,11 @@ class B1CandidateExecutorConfig:
                 "B1 configuration must define at least one case-to-subject mapping"
             )
 
-    @property
-    def side_effects_mapping(self) -> dict[str, int]:
-        return dict(self.side_effects)
+        limit_ids = [limit.case_id for limit in self.case_limits]
+        if len(set(limit_ids)) != len(limit_ids) or set(limit_ids) != case_ids:
+            raise B1CandidateExecutorRejected(
+                "B1 case limits must map each review subject exactly once"
+            )
 
     @property
     def configuration_sha256(self) -> str:
@@ -146,9 +155,17 @@ class B1CandidateExecutorConfig:
                 "executor_factory": B1_CANDIDATE_EXECUTOR_FACTORY,
                 "executor_id": self.executor_id,
                 "executor_version": self.executor_version,
-                "maximum_cost": self.maximum_cost,
+                "case_limits": [
+                    {
+                        "case_id": limit.case_id,
+                        "maximum_cost": limit.maximum_cost,
+                        "side_effects": limit.side_effects_mapping,
+                    }
+                    for limit in sorted(
+                        self.case_limits, key=lambda limit: limit.case_id
+                    )
+                ],
                 "schema_version": self.schema_version,
-                "side_effects": dict(self.side_effects),
             },
             sort_keys=True,
             separators=(",", ":"),
@@ -163,10 +180,40 @@ class B1CandidateExecutionResult:
     candidate_output: str
 
 
-class B1CandidateExecutionAdapter(Protocol):
-    """Bounded seam for a future approved B1 implementation."""
+@dataclass(frozen=True)
+class B1CandidateSourceSnapshot:
+    """Verified UTF-8 source material supplied to a candidate adapter."""
 
-    def execute(self, case: EvaluationCase) -> B1CandidateExecutionResult: ...
+    artifact_id: str
+    path: str
+    sha256: str
+    content: str
+
+
+@dataclass(frozen=True)
+class B1CandidateAdapterInput:
+    """Allowlisted case input: no expected values or ground truth."""
+
+    case_id: str
+    run_mode: str
+    user_request: str
+    source_snapshots: tuple[B1CandidateSourceSnapshot, ...]
+
+
+class B1CandidateExecutionAdapter(Protocol):
+    """Bounded seam for future approved one-call analysis."""
+
+    def execute(
+        self, inputs: B1CandidateAdapterInput
+    ) -> B1CandidateExecutionResult: ...
+
+
+class B1CandidatePolicyAdapter(Protocol):
+    """Separate seam for deterministic policy processing without model access."""
+
+    def execute(
+        self, inputs: B1CandidateAdapterInput
+    ) -> B1CandidateExecutionResult: ...
 
 
 @dataclass(frozen=True)
@@ -182,18 +229,20 @@ class B1CandidateOutputReceipt:
 
 
 class B1CandidateExecutor(EvaluationCaseExecutor):
-    """Execute only a supplied adapter under the current v1 zero-effect limits."""
+    """Use explicit case limits and keep evaluation expectations private."""
 
     def __init__(
         self,
         *,
         configuration: B1CandidateExecutorConfig,
         adapter: B1CandidateExecutionAdapter,
+        policy_adapter: B1CandidatePolicyAdapter | None = None,
         repository_root: Path,
         output_directory: Path,
     ) -> None:
         self._configuration = configuration
         self._adapter = adapter
+        self._policy_adapter = policy_adapter
         self._repository_root = repository_root.resolve()
         self._output_directory = output_directory.resolve()
         self._lock = Lock()
@@ -236,9 +285,11 @@ class B1CandidateExecutor(EvaluationCaseExecutor):
             self._reserved_case_ids.add(case.id)
 
         try:
-            self._validate_case_budget(case)
-            result = self._adapter.execute(case)
-            observation = self._validated_observation(result.observation)
+            limit = self._validate_case_budget(case)
+            adapter = self._adapter_for(case)
+            inputs = self._adapter_input(case)
+            result = adapter.execute(inputs)
+            observation = self._validated_observation(result.observation, limit)
             candidate_output = _utf8_candidate_output(result.candidate_output)
 
             try:
@@ -284,19 +335,93 @@ class B1CandidateExecutor(EvaluationCaseExecutor):
             ) from error
         return output_path
 
-    def _validate_case_budget(self, case: EvaluationCase) -> None:
-        if dict(case.expected.side_effects) != self._configuration.side_effects_mapping:
+    def _validate_case_budget(self, case: EvaluationCase) -> B1CandidateCaseLimit:
+        limit = next(
+            (
+                item
+                for item in self._configuration.case_limits
+                if item.case_id == case.id
+            ),
+            None,
+        )
+        if limit is None:
+            raise B1CandidateExecutorRejected(
+                f"B1 configuration does not define limits for {case.id}"
+            )
+        if dict(case.expected.side_effects) != limit.side_effects_mapping:
             raise B1CandidateExecutorRejected(
                 f"Evaluation case {case.id} side effects differ from B1 configuration"
             )
-        if case.expected.maximum_expected_cost != self._configuration.maximum_cost:
+        if case.expected.maximum_expected_cost != limit.maximum_cost:
             raise B1CandidateExecutorRejected(
                 f"Evaluation case {case.id} expected cost differs from B1 configuration"
             )
+        calls = limit.side_effects_mapping["model_calls"]
+        if (case.run_mode, calls) not in {("analysis", 1), ("policy", 0)}:
+            raise B1CandidateExecutorRejected(
+                f"Evaluation case {case.id} has incompatible run mode or model calls"
+            )
+        return limit
+
+    def _adapter_for(
+        self, case: EvaluationCase
+    ) -> B1CandidateExecutionAdapter | B1CandidatePolicyAdapter:
+        if case.run_mode == "analysis":
+            return self._adapter
+        if case.run_mode == "policy" and self._policy_adapter is not None:
+            return self._policy_adapter
+        raise B1CandidateExecutorRejected(
+            f"B1 policy case {case.id} requires an approved zero-call adapter"
+        )
+
+    def _adapter_input(self, case: EvaluationCase) -> B1CandidateAdapterInput:
+        return B1CandidateAdapterInput(
+            case_id=case.id,
+            run_mode=case.run_mode,
+            user_request=case.inputs.user_request,
+            source_snapshots=tuple(
+                self._source_snapshot(artifact)
+                for artifact in case.inputs.artifacts + case.inputs.overlays
+            ),
+        )
+
+    def _source_snapshot(
+        self, artifact: EvaluationArtifact
+    ) -> B1CandidateSourceSnapshot:
+        relative_path = Path(artifact.path)
+        if relative_path.is_absolute():
+            raise B1CandidateExecutorRejected("B1 source path must be relative")
+        source_path = (self._repository_root / relative_path).resolve()
+        if (
+            not source_path.is_relative_to(self._repository_root)
+            or not source_path.is_file()
+        ):
+            raise B1CandidateExecutorRejected(
+                "B1 source must be a file inside the repository"
+            )
+        contents = source_path.read_bytes()
+        actual_hash = hashlib.sha256(contents).hexdigest()
+        if actual_hash != artifact.sha256:
+            raise B1CandidateExecutorRejected(
+                f"B1 source hash differs from fixture for {artifact.artifact_id}"
+            )
+        try:
+            text = contents.decode("utf-8")
+        except UnicodeDecodeError as error:
+            raise B1CandidateExecutorRejected(
+                f"B1 source must be UTF-8 for {artifact.artifact_id}"
+            ) from error
+        return B1CandidateSourceSnapshot(
+            artifact_id=artifact.artifact_id,
+            path=artifact.path,
+            sha256=actual_hash,
+            content=text,
+        )
 
     def _validated_observation(
         self,
         observation: EvaluationObservation,
+        limit: B1CandidateCaseLimit,
     ) -> EvaluationObservation:
         if not observation.boundary.strip():
             raise B1CandidateExecutorRejected(
@@ -304,7 +429,7 @@ class B1CandidateExecutor(EvaluationCaseExecutor):
             )
 
         side_effects = _canonical_side_effects(tuple(observation.side_effects.items()))
-        if dict(side_effects) != self._configuration.side_effects_mapping:
+        if dict(side_effects) != limit.side_effects_mapping:
             raise B1CandidateExecutorRejected(
                 "B1 candidate observation side effects differ from configuration"
             )
@@ -313,9 +438,9 @@ class B1CandidateExecutor(EvaluationCaseExecutor):
             observation.cost,
             "B1 candidate observation cost",
         )
-        if cost != self._configuration.maximum_cost:
+        if cost > limit.maximum_cost:
             raise B1CandidateExecutorRejected(
-                "B1 candidate observation cost differs from configuration"
+                "B1 candidate observation cost exceeds case limit"
             )
 
         return EvaluationObservation(

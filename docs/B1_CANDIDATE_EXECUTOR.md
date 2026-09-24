@@ -28,7 +28,7 @@ The implemented schema identifiers are:
 
 | Contract | Value |
 |---|---|
-| Candidate executor | `b1-candidate-executor/v1` |
+| Candidate executor | `b1-candidate-executor/v2` |
 | Candidate output | `candidate-output/v1` |
 | Review subject kinds | `finding`, `test_case`, `failure_analysis` |
 
@@ -42,8 +42,7 @@ It binds:
 - executor ID and positive executor version;
 - the fixed `module:factory` identity;
 - candidate-output schema version;
-- maximum cost;
-- exact `side-effects/v1` fields;
+- per-case maximum expected cost and exact `side-effects/v1` counts;
 - an explicit `case_id` to `subject_kind` and `subject_id` mapping.
 
 Each written candidate-output receipt binds the case, mapped review subject,
@@ -68,20 +67,26 @@ The content is intentionally not added to `EvaluationObservation` or the
 `evaluation-run/v1` report. Candidate output remains content-bearing material
 for the separate reviewer-packet workflow only.
 
-## Current v1 compatibility boundary
+## Frozen evaluation-case compatibility
 
-The current `evaluation-cases/v1` fixtures declare:
+The frozen `evaluation-cases/v1` fixture contains 100 cases. Its 75 analysis
+cases declare `model_calls: 1`, and its 25 policy cases declare
+`model_calls: 0`. All declare `maximum_expected_cost: 0`.
 
-- `maximum_expected_cost: 0`;
-- zero values for every `side-effects/v1` field.
+The v2 executor configuration binds exact `side-effects/v1` counts and a
+maximum expected cost for each case. The executor checks those values against
+the frozen case before calling an adapter and validates the returned observation
+before writing candidate output. Its adapter input contains only the case ID,
+run mode, user request, and verified source snapshots. Evaluation expectations
+and ground truth remain outside the adapter input.
 
-Therefore this contract accepts only zero-cost and zero-side-effect
-configurations and observations. Any non-zero model call, embedding, retrieval,
-network request, retry, execution candidate, or cost is rejected before it can
-be represented as a compatible B1 result.
+Policy cases require a separate zero-call policy adapter. A synthetic fake is
+used in tests; no real policy adapter or llama.cpp adapter is installed. The
+factory remains disabled, so this change does not execute the 100-case corpus.
 
-This is an explicit incompatibility boundary, not evidence that a live B1
-candidate is free or has no side effects.
+The fixture's zero maximum expected cost does not mean an AWS instance has no
+cost. Cloud infrastructure spending must be accounted for separately under the
+proposed all-in cap before any execution is authorized.
 
 ## Activation prerequisites
 
@@ -94,7 +99,8 @@ separately reviewed and approved:
 2. A versioned B1 configuration and its SHA-256 define the real cost and
    side-effect limits.
 3. The evaluation-case contract is revised when actual limits differ from the
-   current zero-cost, zero-side-effect v1 fixture.
+   frozen evaluation-case v1 fixture: 75 one-call analysis cases, 25 zero-call
+   policy cases, and zero maximum expected cost in every case.
 4. The complete case-to-review-subject mapping is approved before candidate
    execution.
 5. The candidate-output retention location is external to Git and has an
