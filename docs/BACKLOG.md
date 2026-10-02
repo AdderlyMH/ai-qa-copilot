@@ -792,22 +792,39 @@ of this backlog.
 - **Dependencies:** EVAL-002, EVAL-004, EVAL-006
 - **Deliverable:** GitHub Actions workflows for a 5–10 case AI smoke evaluation and a protected full release evaluation over the pinned baseline, complete versioned 100-case corpus, scorer versions, and configuration revisions.
 - **Acceptance:**
-  - The smoke workflow runs only the configured representative subset under its documented cost ceiling.
-  - The full release workflow refuses to start when the B0 baseline, complete 60/20/20 corpus, ground-truth registry, scorer versions, or immutable artifact hashes are missing or inconsistent.
-  - The release workflow executes the complete versioned corpus, preserves holdout isolation, records commit and configuration provenance, enforces spend caps, and returns nonzero exit codes when any mandatory EG or SG gate fails.
-  - The full release workflow invokes `label_completeness_and_adjudication_v1`.
-  - The workflow fails before publishing release metrics when:
-    - fewer than 10 eligible validation cases have completed independent review;
-    - fewer than 10 eligible holdout cases have completed independent review;
-    - any required reviewer is ineligible;
-    - any selected case lacks immutable primary or independent labels;
-    - any material disagreement remains unresolved;
-    - required review provenance is missing;
-    - the candidate was not frozen before the holdout-review process.
-  - No manual override or expected-failure status may convert an EG-09 failure into a passing release.
-  - Workflow creation alone is not evidence that any evaluation gate has executed or passed.
+  - The release workflow requires complete labels and provenance, candidate
+  freeze, holdout-access evidence, and all deterministic security gates in
+  every review mode.
+  - In internal mode, the workflow records that external independent review
+  was not performed and identifies results as not independently validated.
+  - When independent review is claimed, the workflow requires at least 10
+  eligible validation and 10 eligible holdout reviews, immutable labels,
+  resolved material disagreements, and complete review provenance.
+  - No manual override or expected-failure status may convert a security,
+  benchmark-integrity, or holdout-isolation failure into a passing release.
 
 - **Status:** Accepted on main through PR #111.
+
+#### EVAL-008 — Support explicitly disclosed internal benchmark review
+
+- **Priority:** P0
+- **Estimate:** 5 h
+- **Dependencies:** EVAL-003, EVAL-006, and the accepted B1 reference assembly capability (PR #131).
+- **Deliverable:** An explicit internal-review mode that preserves benchmark,
+  provenance, and holdout controls without claiming independent review or
+  external custody.
+- **Acceptance:**
+  - The mode is explicit, versioned, and recorded in review and release
+    artifacts.
+  - Owner-authored or same-owner re-review is never represented as independent
+    review, external custody, or independent adjudication.
+  - Outputs disclose when the benchmark has not been independently validated.
+  - Label provenance, frozen selection, candidate freeze, holdout-access
+    records, and deterministic security gates remain enforced.
+  - B1 reference assembly preserves the review mode and does not fabricate
+    missing independent-review or custody evidence.
+  - Tests cover internal-mode success, missing provenance, false independence
+    claims, holdout violations, and security-gate failures.
 
 ### Epic OBS — Trace, cost, and reliability evidence
 
@@ -833,13 +850,15 @@ of this backlog.
 
 - **Priority:** P1
 - **Estimate:** 2 h
-- **Dependencies:** EVAL-006, OBS-002
+- **Dependencies:** EVAL-006, EVAL-008, OBS-002
 - **Deliverable:** Candidate comparisons for at least three planned ablations.
 - **Acceptance:** Selection is justified by quality, latency, and cost evidence.
 - **Status:** In progress. The B1 reference-evidence contract and fail-closed
   reference-assembly component are accepted on main through PRs #129 and #131.
-  Genuine EG-09 review evidence and an actual immutable B1 reference run are
-  still required before routing ablations.
+  Implement EVAL-008 before assembling an internal-mode B1/v1 reference run.
+  An actual immutable B1/v1 reference run is still required before routing
+  ablations. External review is not a prerequisite under ADR-007; any internal
+  result must be disclosed as not independently validated.
 
 **Phase 5 exit:** A 100-case benchmark, CI gates, traces, and cost/latency evidence support the release candidate.
 
@@ -1142,10 +1161,10 @@ feature pull-request heads completed their required checks:
 
 OBS-001 and OBS-002 are accepted on main through PRs #121 and #126. OBS-003's
 B1 reference-evidence contract and fail-closed assembly component are accepted
-through PRs #129 and #131. Before any routing ablation, obtain genuine EG-09
-independent-review evidence using `docs/OBS-003_EG-09_REVIEW_READINESS.md`,
-then assemble and preserve an actual immutable B1/v1 reference run with
-benchmark, configuration, quality, latency, cost, failure, and security-gate
-provenance. The subsequent controlled comparisons must cover at least three
-planned retrieval/routing ablations and use quality, latency, and cost evidence.
-Do not add production deployment scope.
+through PRs #129 and #131. EVAL-008 must implement the internal review mode
+selected in ADR-007 before an internal-mode B1/v1 reference run is assembled.
+Preserve benchmark, label, configuration, holdout-access, quality, latency,
+cost, failure, and security-gate provenance. An actual immutable B1/v1
+reference run remains required before routing ablations. Any result without
+qualifying independent review must be disclosed as not independently
+validated. Do not add production deployment scope.

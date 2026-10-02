@@ -286,28 +286,25 @@ No partial credit is given for critical policy violations.
 
 The project owner performs primary labeling using QA domain expertise.
 
-### 8.1 Mandatory independent second review
+### 8.1 Review modes and label completeness
 
-Before a portfolio release, a qualified independent reviewer shall complete a
-blind second review of at least 20 non-security release cases:
+Every benchmark case must have complete, rubric-based labels and recorded
+provenance before candidate evaluation. Each evaluation must identify its
+review mode.
 
-- At least 10 cases from the validation split.
-- At least 10 cases from the holdout split.
-- Every non-security benchmark category containing validation or holdout cases
-  shall be represented where the split permits it.
-- Remaining review slots shall be allocated proportionally across the eligible
-  categories.
-- Security-policy cases do not count toward the 20-case minimum because their
-  expected boundaries and prohibited side effects are evaluated
-  deterministically under SG-01 through SG-08.
+In internal mode, the owner may provide the labels and review. External
+independent review and custody are desirable but are not prerequisites for
+internal evaluation under ADR-007. Owner-authored labels and same-owner
+re-reviews are internal evidence; they do not count as blind independent
+review, external custody, or independent adjudication. Results must disclose
+when they have not been independently validated.
 
-The case-selection rule, random or deterministic seed, benchmark-manifest
-version, selected case IDs, and selection timestamp shall be recorded before
-the release candidate is evaluated. Selected cases shall not be replaced
-because they are difficult, produce disagreement, or reduce reported quality.
-
-The independent review is mandatory. It is not optional, best-effort, or
-subject to availability. Failure to complete it blocks EG-09 and the portfolio release.
+When an evaluation claims independent review, a qualified independent reviewer
+must blindly review at least 20 non-security release cases, including at least
+10 validation and 10 holdout cases. The selection method, seed, version,
+selected case IDs, and selection timestamp must be recorded before the
+release candidate is evaluated. Selected cases must not be replaced because
+they are difficult, produce disagreement, or reduce reported quality.
 
 ### 8.2 Reviewer eligibility and independence
 
@@ -360,8 +357,10 @@ After both reviews are locked:
    evidence and published rubric.
 4. If consensus is not reached, a third qualified reviewer performs an
    independent adjudication.
-5. If no qualified third reviewer is available or the disagreement remains
-   unresolved, the case remains unresolved and EG-09 fails.
+5. For an evaluation claiming independent review, unresolved material
+   disagreement fails the independent-review result. In internal mode, the owner
+   must record any unresolved label uncertainty; an owner decision must not be
+   reported as independent adjudication.
 
 A disagreement shall not be silently removed, averaged away, or resolved by
 selecting the label that improves the candidate's score.
@@ -428,6 +427,13 @@ release_status:
   all_disagreements_resolved: false
   eg_09_eligible: false
 ```
+
+The manifest must identify the review mode and the status of independent
+review. In internal mode, record independent review as not performed and
+include the reason. Do not populate independent-reviewer or adjudicator fields
+with the owner in a way that implies independence. EVAL-008 implements this
+contract; until it is merged, the current validator and B1 assembly behavior
+remain authoritative.
 
 The implemented label contract is
 `fixtures/benchmark/evaluation-review-rubric.v1.yaml`, with label schema
@@ -596,48 +602,50 @@ cost per successful workflow = total workflow AI cost / workflows meeting succes
 
 ### Scorer and validator registry
 
-| ID                                       | Purpose                                                                                                                                                                                                                               | Type                       | Implementation status |
-|------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|-----------------------|
-| `finding_concept_and_citation_v1`        | Match finding concept, category, and citations                                                                                                                                                                                        | Hybrid deterministic/human | Planned               |
-| `exact_policy_boundary_v1`               | Verify the exact boundary and exact complete `side-effects/v1` vector                                                                                                                                                                 | Deterministic              | Planned               |
-| `benchmark_integrity_v1`                 | Validate case count, split, hashes, labels, and scorer references                                                                                                                                                                     | Deterministic              | Planned               |
-| `schema_validity_v1`                     | Validate model output against the versioned schema                                                                                                                                                                                    | Deterministic              | Planned               |
-| `retrieval_and_citation_v1`              | Calculate retrieval and citation metrics                                                                                                                                                                                              | Deterministic/human        | Planned               |
-| `test_acceptance_and_coverage_v1`        | Apply the test rubric and coverage-concept scoring                                                                                                                                                                                    | Human-assisted             | Planned               |
-| `traceability_and_unsupported_claim_v1`  | Score source links and unsupported claims                                                                                                                                                                                             | Deterministic/human        | Planned               |
-| `core_workflow_success_v1`               | Verify required stages, expected boundary, and exact complete `side-effects/v1` vector                                                                                                                                                | Deterministic              | Planned               |
-| `operational_evidence_v1`                | Calculate latency, cost, provenance, and budget compliance                                                                                                                                                                            | Deterministic              | Planned               |
-| `label_completeness_and_adjudication_v1` | Verify that all 100 cases have required labels and that the selected minimum 20 non-security release cases have eligible blind independent reviews, immutable review records, resolved adjudications, and preserved holdout isolation | Deterministic              | Planned               |
-| `security_scanner_exit_status_v1`        | Aggregate required scanner results                                                                                                                                                                                                    | Deterministic              | Planned               |
-| `deployment_policy_v1`                   | Verify IaC and live exposure policy                                                                                                                                                                                                   | Deterministic              | Planned               |
+| ID                                       | Purpose                                                                                                                                                                                                                                                | Type                       | Implementation status |
+|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------|-----------------------|
+| `finding_concept_and_citation_v1`        | Match finding concept, category, and citations                                                                                                                                                                                                         | Hybrid deterministic/human | Planned               |
+| `exact_policy_boundary_v1`               | Verify the exact boundary and exact complete `side-effects/v1` vector                                                                                                                                                                                  | Deterministic              | Planned               |
+| `benchmark_integrity_v1`                 | Validate case count, split, hashes, labels, and scorer references                                                                                                                                                                                      | Deterministic              | Planned               |
+| `schema_validity_v1`                     | Validate model output against the versioned schema                                                                                                                                                                                                     | Deterministic              | Planned               |
+| `retrieval_and_citation_v1`              | Calculate retrieval and citation metrics                                                                                                                                                                                                               | Deterministic/human        | Planned               |
+| `test_acceptance_and_coverage_v1`        | Apply the test rubric and coverage-concept scoring                                                                                                                                                                                                     | Human-assisted             | Planned               |
+| `traceability_and_unsupported_claim_v1`  | Score source links and unsupported claims                                                                                                                                                                                                              | Deterministic/human        | Planned               |
+| `core_workflow_success_v1`               | Verify required stages, expected boundary, and exact complete `side-effects/v1` vector                                                                                                                                                                 | Deterministic              | Planned               |
+| `operational_evidence_v1`                | Calculate latency, cost, provenance, and budget compliance                                                                                                                                                                                             | Deterministic              | Planned               |
+| `label_completeness_and_adjudication_v1` | Verify complete labels, provenance, review mode, candidate freeze, and holdout isolation for all 100 cases. When independent review is claimed, also verify reviewer eligibility, blindness, selected-case counts, immutable labels, and adjudication. | Deterministic              | Planned               |
+| `security_scanner_exit_status_v1`        | Aggregate required scanner results                                                                                                                                                                                                                     | Deterministic              | Planned               |
+| `deployment_policy_v1`                   | Verify IaC and live exposure policy                                                                                                                                                                                                                    | Deterministic              | Planned               |
 
 The planned `label_completeness_and_adjudication_v1` scorer shall verify:
 
-- 100 cases labeled.
-- At least 10 validation reviews.
-- At least 10 holdout reviews.
-- Eligible independent reviewer.
-- Locked reviews.
-- No unresolved disagreements.
-- Complete provenance.
-- Candidate frozen before holdout review.
-- No review record reused against an invalidated dataset version.
+- All 100 cases have complete, rubric-based labels and provenance before
+  candidate evaluation.
+- The evaluation records its review mode and the candidate-freeze provenance.
+- Holdout selection, access recording, and isolation requirements are met.
+- Internal mode discloses that results have not been independently validated.
+- When independent review is claimed, at least 10 eligible validation and 10
+  eligible holdout cases have immutable independent labels, reviewer
+  eligibility and blindness are recorded, and material disagreements are
+  adjudicated.
+- Owner review or same-owner re-review is never accepted as independent
+  review or independent adjudication.
 
 ## 10. Evaluation release gates
 
 Every release gate must report its numerator, denominator, case-manifest version, commit SHA, configuration version, and pass/fail CI exit result. Critical cases cannot be skipped, marked expected-failure, or accepted as inconclusive.
 
-| Gate                             | Required result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-|----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| EG-01 Benchmark integrity        | Exactly 100 immutable cases: 60 development, 20 validation, and 20 holdout. Every case has artifact hashes, ground-truth IDs, expected boundary, and scorer version.                                                                                                                                                                                                                                                                                                                                                                                               |
-| EG-02 Structured-output validity | 100% post-repair schema validity; no invalid model output is persisted or treated as a successful result.                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| EG-03 Finding quality            | Across the 35 requirement-quality and requirement/OpenAPI-consistency cases: precision ≥85%, recall ≥80%, and F1 ≥82%.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| EG-04 Retrieval and citations    | Exact-source Recall@10 ≥90%; no-answer false-positive rate = 0%; citation existence = 100%; citation-support precision ≥90%.                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| EG-05 Generated tests            | Across all 20 test-generation cases: 100% policy-safe, human test acceptance ≥85%, and coverage-concept recall ≥85%.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| EG-06 Traceability and claims    | Traceability correctness ≥95%; unsupported material-claim rate ≤2%.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| EG-07 Core workflow              | Core-workflow success ≥90%. An expected parser or policy rejection counts as success only when it occurs at the expected boundary with an exact complete `side-effects/v1` vector.                                                                                                                                                                                                                                                                                                                                                                                 |
-| EG-08 Operational evidence       | Standard workflow p95 ≤30 seconds; full 100-case release evaluation ≤USD 10; all required provenance is retained.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| EG-09 Label quality              | Every benchmark case is labeled before candidate evaluation. At least 20 non-security release cases have a blind independent second review: at least 10 validation and at least 10 holdout cases selected through a frozen stratified process. All material disagreements are adjudicated with immutable primary, secondary, and adjudicated label records. Missing reviews, reviewer ineligibility, unresolved disagreements, candidate-output exposure before independent labeling, or incomplete review provenance fails the gate and blocks portfolio release. |
+| Gate                             | Required result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+|----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| EG-01 Benchmark integrity        | Exactly 100 immutable cases: 60 development, 20 validation, and 20 holdout. Every case has artifact hashes, ground-truth IDs, expected boundary, and scorer version.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| EG-02 Structured-output validity | 100% post-repair schema validity; no invalid model output is persisted or treated as a successful result.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| EG-03 Finding quality            | Across the 35 requirement-quality and requirement/OpenAPI-consistency cases: precision ≥85%, recall ≥80%, and F1 ≥82%.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| EG-04 Retrieval and citations    | Exact-source Recall@10 ≥90%; no-answer false-positive rate = 0%; citation existence = 100%; citation-support precision ≥90%.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| EG-05 Generated tests            | Across all 20 test-generation cases: 100% policy-safe, human test acceptance ≥85%, and coverage-concept recall ≥85%.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| EG-06 Traceability and claims    | Traceability correctness ≥95%; unsupported material-claim rate ≤2%.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| EG-07 Core workflow              | Core-workflow success ≥90%. An expected parser or policy rejection counts as success only when it occurs at the expected boundary with an exact complete `side-effects/v1` vector.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| EG-08 Operational evidence       | Standard workflow p95 ≤30 seconds; full 100-case release evaluation ≤USD 10; all required provenance is retained.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| EG-09 Review integrity           | Every benchmark case has complete, rubric-based labels and provenance before candidate evaluation. The report identifies whether the run used internal owner review or qualifying independent review. Internal mode must disclose that results have not been independently validated. When independent review is claimed, at least 20 non-security release cases are blindly reviewed, including at least 10 validation and 10 holdout cases, with eligible reviewers, immutable labels, resolved material disagreements, and complete provenance. Holdout isolation and deterministic security gates remain mandatory in either mode. |
 
 Security Gates (`SG-01` through `SG-08`) defined in `THREAT_MODEL.md` are also mandatory release gates. Evaluation gates do not replace deterministic security controls.
 

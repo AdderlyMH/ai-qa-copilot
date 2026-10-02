@@ -18,20 +18,20 @@ decision trigger and cannot be treated as an implemented or verified choice.
 
 ## ADR index
 
-| ADR | Decision | Status |
-|---|---|---|
-| [ADR-001](ADR-001-modular-monolith.md) | Modular monolith instead of microservices | Accepted |
-| [ADR-002](ADR-002-direct-responses-orchestration.md) | Direct Responses API orchestration | Accepted |
-| [ADR-003](ADR-003-hybrid-retrieval.md) | PostgreSQL full-text plus pgvector hybrid retrieval | Accepted |
-| [ADR-004](ADR-004-safe-http-execution-topology.md) | Safe HTTP execution topology: model proposes, code validates, owner approves, restricted worker executes | Accepted |
-| [ADR-005](ADR-005-aws-serverless-and-database.md) | AWS application tier and production database choice | Proposed |
-| [ADR-006](ADR-006-public-demo-data-policy.md) | Synthetic/public data and public-demo data policy | Accepted |
-| [ADR-007](ADR-007-three-level-evaluation.md) | Three-level evaluation strategy | Accepted |
-| [ADR-008](ADR-008-cognito-owner-guest-authorization.md) | Cognito owner authentication and scoped public-demo authorization | Accepted |
-| [ADR-009](ADR-009-parser-isolation.md) | Quarantine-first untrusted document parsing boundary | Accepted |
-| [ADR-010](ADR-010-canonical-report-revisions.md) | Immutable canonical QA-report revisions | Accepted |
-| [ADR-011](ADR-011-structured-workflow-tracing.md) | Safe correlated structured workflow tracing | Accepted |
-| [ADR-012](ADR-012-deterministic-provider-usage-accounting.md) | Deterministic provider-usage cost and reliability accounting | Accepted |
+| ADR                                                           | Decision                                                                                                 | Status   |
+|---------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|----------|
+| [ADR-001](ADR-001-modular-monolith.md)                        | Modular monolith instead of microservices                                                                | Accepted |
+| [ADR-002](ADR-002-direct-responses-orchestration.md)          | Direct Responses API orchestration                                                                       | Accepted |
+| [ADR-003](ADR-003-hybrid-retrieval.md)                        | PostgreSQL full-text plus pgvector hybrid retrieval                                                      | Accepted |
+| [ADR-004](ADR-004-safe-http-execution-topology.md)            | Safe HTTP execution topology: model proposes, code validates, owner approves, restricted worker executes | Accepted |
+| [ADR-005](ADR-005-aws-serverless-and-database.md)             | AWS application tier and production database choice                                                      | Proposed |
+| [ADR-006](ADR-006-public-demo-data-policy.md)                 | Synthetic/public data and public-demo data policy                                                        | Accepted |
+| [ADR-007](ADR-007-three-level-evaluation.md)                  | Three-level evaluation strategy                                                                          | Accepted |
+| [ADR-008](ADR-008-cognito-owner-guest-authorization.md)       | Cognito owner authentication and scoped public-demo authorization                                        | Accepted |
+| [ADR-009](ADR-009-parser-isolation.md)                        | Quarantine-first untrusted document parsing boundary                                                     | Accepted |
+| [ADR-010](ADR-010-canonical-report-revisions.md)              | Immutable canonical QA-report revisions                                                                  | Accepted |
+| [ADR-011](ADR-011-structured-workflow-tracing.md)             | Safe correlated structured workflow tracing                                                              | Accepted |
+| [ADR-012](ADR-012-deterministic-provider-usage-accounting.md) | Deterministic provider-usage cost and reliability accounting                                             | Accepted |
 
 ## Required ADR structure
 
