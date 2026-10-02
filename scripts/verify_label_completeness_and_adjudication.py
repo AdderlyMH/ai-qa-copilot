@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
+import hashlib
+import json
 from pathlib import Path
 
 from ai_qa_copilot_api.evaluation_label_completeness import (
@@ -12,15 +15,17 @@ from ai_qa_copilot_api.evaluation_label_completeness import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_MANIFEST = Path("evaluation/reviews/release-review-manifest.v1.yaml")
+DEFAULT_MANIFEST = Path("evaluation/reviews/release-review-manifest.v2.yaml")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Verify label_completeness_and_adjudication_v1 evidence."
+        description="Verify versioned release review evidence."
     )
     parser.add_argument("--repository-root", type=Path, default=ROOT)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--expected-candidate-commit-sha")
+    parser.add_argument("--output", type=Path)
     return parser.parse_args()
 
 
@@ -39,9 +44,34 @@ def main() -> int:
     except LabelCompletenessAndAdjudicationRejected as error:
         raise SystemExit(str(error)) from error
 
+    if (
+        args.expected_candidate_commit_sha is not None
+        and result.candidate_commit_sha != args.expected_candidate_commit_sha
+    ):
+        raise SystemExit(
+            "Release review candidate SHA does not match checked-out commit"
+        )
+
+    if args.output is not None:
+        payload = {
+            "schema_version": "release-review-verification/v1",
+            "release_review_manifest_sha256": hashlib.sha256(
+                manifest_path.read_bytes()
+            ).hexdigest(),
+            "review": asdict(result),
+        }
+        try:
+            with args.output.open("x", encoding="utf-8", newline="\n") as target:
+                target.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        except OSError as error:
+            raise SystemExit(
+                f"Cannot write release review verification: {error}"
+            ) from error
+
     print(
-        "label_completeness_and_adjudication_v1 passed: "
+        "release review verification passed: "
         f"suite={result.suite_id}, cases={result.case_count}, "
+        f"mode={result.review_mode}, disclosure={result.disclosure}, "
         f"validation_reviews={result.validation_independent_review_count}, "
         f"holdout_reviews={result.holdout_independent_review_count}"
     )

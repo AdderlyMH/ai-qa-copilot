@@ -58,6 +58,20 @@ def test_release_preflight_requires_a_committed_review_manifest(tmp_path: Path) 
         )
 
 
+def test_release_preflight_rejects_invalid_manifest_contents(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "release-review-manifest.v2.yaml"
+    manifest_path.write_text(
+        "schema_version: release-review-manifest/v2\n", encoding="utf-8"
+    )
+    with pytest.raises(EvaluationWorkflowContractRejected, match="manifest is invalid"):
+        verify_release_workflow_preflight(
+            ROOT,
+            baseline_executor=VALID_BASELINE_EXECUTOR,
+            grounded_executor=VALID_GROUNDED_EXECUTOR,
+            release_review_manifest=manifest_path,
+        )
+
+
 def test_preflight_rejects_an_invalid_executor_specification() -> None:
     with pytest.raises(
         EvaluationWorkflowContractRejected,

@@ -82,14 +82,16 @@ jobs:
             --mode release \
             --baseline-executor "$BASELINE_EXECUTOR" \
             --grounded-executor "$GROUNDED_EXECUTOR" \
-            --release-review-manifest evaluation/reviews/release-review-manifest.v1.yaml \
+            --release-review-manifest evaluation/reviews/release-review-manifest.v2.yaml \
             --require-positive-case-budgets
       
-      - name: Run label_completeness_and_adjudication_v1
+      - name: Verify versioned release review evidence
         run: |
           uv run python scripts/verify_label_completeness_and_adjudication.py \
             --repository-root . \
-            --manifest evaluation/reviews/release-review-manifest.v1.yaml
+            --manifest evaluation/reviews/release-review-manifest.v2.yaml \
+            --expected-candidate-commit-sha "$GITHUB_SHA" \
+            --output artifacts/release-review-verification.json
 
       - name: Verify model runtime prerequisites
         run: |
