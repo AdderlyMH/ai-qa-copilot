@@ -1,5 +1,26 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Path 1 internal benchmark governance decision — 2026-10-01
+
+The project owner selected internally governed benchmark operation when
+occasional external review or custody is unavailable. External review and
+custody remain desirable, but are not prerequisites for internal evaluation or
+an explicitly limited portfolio release. Any result without qualifying
+independent review must be identified as not independently validated.
+
+This decision preserves benchmark provenance, label completeness, candidate
+freeze, holdout-access recording, and deterministic security gates. It does not
+claim that internal owner review is independent or that the current code
+supports the new mode.
+
+**Next implementation:** EVAL-008, to add the explicit internal review mode to
+the validators and B1 reference assembly. OBS-003 remains downstream until
+EVAL-008 is implemented and validated; an immutable B1/v1 reference run is
+still required before routing ablations.
+
+No reviewer evidence, candidate execution, B1 reference artifact, or release
+gate was created or passed by this decision.
+
 ## OBS-003 B1 candidate-executor contract -- 2026-09-22
 
 **Status:** Implemented and locally validated on

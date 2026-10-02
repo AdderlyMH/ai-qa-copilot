@@ -13,6 +13,22 @@ Without explicit levels, expensive tests may run indiscriminately, hard determin
 
 ## Decision
 
+### Internally governed benchmark mode
+
+When occasional external review or custody is unavailable, the project uses an
+internally governed benchmark. External review and custody are desirable but
+are not prerequisites for internal evaluation or an explicitly limited
+portfolio release.
+
+Owner-authored labels and same-owner re-reviews are internal evidence; they do
+not count as independent review, external custody, or independent adjudication.
+Reports must disclose when results have not been independently validated.
+Versioned cases, label and evaluation provenance, candidate freeze, holdout
+access recording, holdout isolation, deterministic security gates, execution
+approval, and cost and side-effect limits remain required.
+
+This decision does not authorize a provider call or candidate execution.
+
 ### Level 1 — Deterministic checks
 
 Run on every relevant CI change:
@@ -41,26 +57,38 @@ Run manually for release candidates:
 - Complete versioned 100-case corpus.
 - B0, B1, and B2 comparison.
 - Holdout isolation.
-- The Level 3 release evaluation requires complete label provenance and the
-  mandatory independent second-review process defined by EG-09.
-- At least 10 eligible non-security validation cases and 10 eligible
-  non-security holdout cases require blind independent review.
-- Incomplete review, reviewer ineligibility, unresolved disagreement, or
-  holdout-process violation blocks release.
+- Level 3 requires complete label provenance and holdout isolation.
+- Internal evaluation may use the internal benchmark mode defined in this ADR
+  when external review or custody is unavailable. Such results must be
+  disclosed as not independently validated.
+- When independent review is claimed, the eligibility, blindness, review
+  counts, immutable labels, and adjudication requirements in EG-09 apply.
+- Missing independent-review evidence blocks an independent-review claim; it
+  does not convert internal owner review into independent evidence.
+- Incomplete required label provenance or a holdout-process violation blocks
+  release. When independent review is claimed, incomplete review, reviewer
+  ineligibility, or unresolved material disagreement blocks the independent-
+  review result and the associated claim.
 - Cost and latency reporting.
 - EG and SG release-gate assessment.
 
 ## Alternatives considered
 
-| Alternative | Decision | Reason |
-|---|---|---|
-| Full benchmark on every commit | Rejected | It would consume unnecessary time and model budget and would slow ordinary feedback. |
-| Manual-only evaluation | Rejected | It would leave deterministic regressions and frequent changes without timely repeatable checks. |
-| LLM-as-judge-only scoring | Rejected | Deterministic scorers and human review are required where a model judge can hide errors or bias. |
-| No holdout set | Rejected | It would allow tuning against the release assessment and weaken confidence in generalization. |
+| Alternative                                          | Decision | Reason                                                                                                   |
+|------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------|
+| Full benchmark on every commit                       | Rejected | It would consume unnecessary time and model budget and would slow ordinary feedback.                     |
+| Manual-only evaluation                               | Rejected | It would leave deterministic regressions and frequent changes without timely repeatable checks.          |
+| LLM-as-judge-only scoring                            | Rejected | Deterministic scorers and human review are required where a model judge can hide errors or bias.         |
+| No holdout set                                       | Rejected | It would allow tuning against the release assessment and weaken confidence in generalization.            |
 | Production telemetry as the only quality measurement | Rejected | Telemetry is reactive and cannot substitute for controlled benchmark, safety, and release-gate evidence. |
 
 ## Consequences
+
+This ADR adopts internally governed benchmark operation when external review
+or custody is unavailable. External review is desirable but is not a
+prerequisite for internal evaluation. Reports must disclose when results have
+not been independently validated. All other evaluation and security controls
+remain in force.
 
 ### Positive consequences
 
@@ -95,15 +123,15 @@ Run manually for release candidates:
 
 The following are planned acceptance conditions; this ADR records no executed validation evidence.
 
-| Validation | Required result |
-|---|---|
-| CI trigger tests | Workflow tests show that relevant deterministic changes invoke Level 1 and AI-affecting changes invoke Level 2 according to documented rules. |
-| Dataset split validation | The corpus contains the required versioned 60 development, 20 validation, and 20 holdout cases with immutable artifact and ground-truth references. |
-| Holdout-access audit | Holdout use is recorded and restricted to release-candidate assessment; tuning access is detected and handled as an evaluation-integrity incident. |
-| Fixed budget ceilings | Level 2 and Level 3 stop or fail safely when configured spend ceilings are exceeded. |
-| Versioned scorers | Every score records its scorer and rubric version with explicit denominator and failure category. |
-| Release report provenance | Each release report includes commit, dataset, configuration, model, prompt, retrieval, latency, cost, gate, and reviewer provenance. |
-| Independent label review | `label_completeness_and_adjudication_v1` verifies selected-case counts, reviewer eligibility, review blindness, immutable revisions, disagreement resolution, and candidate-freeze provenance. |
+| Validation                       | Required result                                                                                                                                                                                                                                                                   |
+|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| CI trigger tests                 | Workflow tests show that relevant deterministic changes invoke Level 1 and AI-affecting changes invoke Level 2 according to documented rules.                                                                                                                                     |
+| Dataset split validation         | The corpus contains the required versioned 60 development, 20 validation, and 20 holdout cases with immutable artifact and ground-truth references.                                                                                                                               |
+| Holdout-access audit             | Holdout use is recorded and restricted to release-candidate assessment; tuning access is detected and handled as an evaluation-integrity incident.                                                                                                                                |
+| Fixed budget ceilings            | Level 2 and Level 3 stop or fail safely when configured spend ceilings are exceeded.                                                                                                                                                                                              |
+| Versioned scorers                | Every score records its scorer and rubric version with explicit denominator and failure category.                                                                                                                                                                                 |
+| Release report provenance        | Each release report includes commit, dataset, configuration, model, prompt, retrieval, latency, cost, gate, and reviewer provenance.                                                                                                                                              |
+| Review-mode and label validation | `label_completeness_and_adjudication_v1` verifies labels, provenance, review mode, holdout isolation, and candidate-freeze provenance. It verifies reviewer eligibility, blindness, immutable independent labels, and disagreement resolution when independent review is claimed. |
 
 ## Rollback criteria
 
@@ -111,8 +139,10 @@ The following are planned acceptance conditions; this ADR records no executed va
 - Restore the last validated configuration while preserving evaluation results, budget records, scorer versions, and holdout-access audit information.
 - Do not replace the three-level program with manual-only evaluation or production telemetry as a rollback action.
 - Re-enable a changed configuration only after the required deterministic checks, smoke evaluation, release assessment, and gate evidence meet the documented criteria.
-- A release candidate shall be withdrawn when independent-review evidence is
-  incomplete or holdout isolation is violated.
+- A release candidate shall be withdrawn for a holdout-isolation violation or
+  incomplete required label provenance. If the report claims independent
+  review, missing or invalid independent-review evidence blocks that claim and
+  the corresponding independent-review result.
 - A materially corrected holdout label requires a new dataset version and a
   new frozen release candidate; the same holdout shall not be reused for
   tuning and rescoring.

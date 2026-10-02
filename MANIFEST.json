@@ -97,18 +97,18 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 59783,
-      "sha256": "5c26c7520257086593f32f4b7b5162430db257199d18baa304b393bba9a3eaf3"
+      "bytes": 60449,
+      "sha256": "4fb8abd7dd71c8dd30461367f0d205cc7fa96bd5eb5c64fe016030e1920c940d"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 30346,
-      "sha256": "27f095689af6826491c8a7f378a150085e6f46626baa807449754a9ba5dad652"
+      "bytes": 34869,
+      "sha256": "eaaed78feefee9adadbb7301091192e2397e0f5f0dc77c72e16df2ff4eaf7744"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 48569,
-      "sha256": "8bf2145be3abaea81a99ab2617a69ffad3250117794b7e73d73eae3062b0966c"
+      "bytes": 50384,
+      "sha256": "4ce13dc5e7170793b2b4474bfcfdce57895523be27e17ba634bbb2a1bbf33822"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -132,8 +132,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 88367,
-      "sha256": "1072cb20010763ea196b00f15880835ede8bb5b92de4a31a37d58132b1ef1db3"
+      "bytes": 89446,
+      "sha256": "7da107a2479961855480d088ae7e67adb09a6cc2b34cbc1a809978a0ea11c07b"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -187,8 +187,8 @@
     },
     {
       "path": "docs/adr/ADR-007-three-level-evaluation.md",
-      "bytes": 6990,
-      "sha256": "c861e676abcc31a2dd7dff42f92391dcc25a65964841ef01d956bade108b04d7"
+      "bytes": 10803,
+      "sha256": "2e713bd12bf0d6aa707f7291dfbee4343f1ee5d23c49ff50664da0c57e78cf98"
     },
     {
       "path": "docs/adr/ADR-008-cognito-owner-guest-authorization.md",
@@ -217,8 +217,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 2520,
-      "sha256": "e69386c412f1232d32d1aa4048adf296645b0a9f1bd17aaa62e8b15a8986cce2"
+      "bytes": 3639,
+      "sha256": "46c0d723d5cbfd0ed414d025303ec36d0daa665a0a6dca0858b999832861f3bb"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",
