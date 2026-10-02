@@ -1,5 +1,24 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## EVAL-008 internal benchmark review implementation — 2026-10-02
+
+**Status:** Implementation prepared for review; not merged and not release
+evidence. The v2 release-review manifest declares internal or independent
+review mode. Internal mode requires an explicit disclosure, complete primary
+labels and selection provenance, candidate freeze, and recorded access to
+selected holdout cases. It rejects independent or custody claims and holdout
+tuning. Independent mode retains the selected 10 validation and 10 holdout
+reviews and adjudication checks. The release preflight validates manifest
+content. The release workflow binds the manifest candidate SHA to the checked-out
+commit and uploads a hashed verification record with the mode and disclosure.
+B1 artifact v2 serializes the mode and disclosure while requiring the existing
+quality, security, and cost gates.
+
+The access validator checks supplied records; it cannot prove that an access
+was omitted from the log. No actual release-review evidence or benchmark run
+is created by this implementation. Next: apply the implementation to the
+EVAL-008 branch, run full CI, and review the PR before accepting the mode.
+
 ## Path 1 internal benchmark governance decision — 2026-10-01
 
 The project owner selected internally governed benchmark operation when

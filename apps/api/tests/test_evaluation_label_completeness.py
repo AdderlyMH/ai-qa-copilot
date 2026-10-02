@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 import yaml
@@ -188,4 +191,229 @@ def test_candidate_output_exposure_before_independent_lock_is_rejected(
         verify_label_completeness_and_adjudication(
             repository_root=ROOT,
             manifest_path=write_manifest(tmp_path, manifest),
+        )
+
+
+def internal_manifest() -> dict[str, object]:
+    manifest = release_review_manifest()
+    manifest["schema_version"] = "release-review-manifest/v2"
+    manifest["review_mode"] = {
+        "schema_version": "evaluation-review-mode/v1",
+        "mode": "internal",
+        "independent_review_status": "not_performed",
+        "external_custody_claimed": False,
+        "disclosure": "results_not_independently_validated",
+        "rationale": "No qualifying independent reviewer was available.",
+    }
+    attestations = manifest["reviewer_attestations"]
+    assert isinstance(attestations, list)
+    manifest["reviewer_attestations"] = attestations[:1]
+    labels = manifest["labels"]
+    assert isinstance(labels, list)
+    for label in labels:
+        assert isinstance(label, dict)
+        label.pop("independent", None)
+    selection = yaml.safe_load(SELECTION_FIXTURE.read_text(encoding="utf-8"))
+    assert isinstance(selection, dict)
+    selected_holdouts = [
+        record["case_id"]
+        for record in selection["selected_cases"]
+        if isinstance(record, dict) and record.get("split") == "holdout"
+    ]
+    assert len(selected_holdouts) == 10
+    manifest["holdout_access"] = {
+        "schema_version": "holdout-access-log/v1",
+        "events": [
+            {
+                "event_id": "assessment-1",
+                "accessor_id": "primary-reviewer",
+                "purpose": "release_candidate_assessment",
+                "accessed_at": LOCKED_AT,
+                "candidate_commit_sha": "c" * 40,
+                "case_ids": selected_holdouts,
+            }
+        ],
+    }
+    manifest["release_status"] = {
+        "primary_labels_complete": True,
+        "independent_review_complete": False,
+        "adjudication_complete": False,
+        "eg_09_eligible": False,
+    }
+    return manifest
+
+
+def test_internal_mode_preserves_disclosure_and_zero_independent_counts(
+    tmp_path: Path,
+) -> None:
+    result = verify_label_completeness_and_adjudication(
+        repository_root=ROOT,
+        manifest_path=write_manifest(tmp_path, internal_manifest()),
+    )
+    assert result.review_mode == "internal"
+    assert result.manifest_schema_version == "release-review-manifest/v2"
+    assert result.disclosure == "results_not_independently_validated"
+    assert result.validation_independent_review_count == 0
+    assert result.holdout_independent_review_count == 0
+    assert result.holdout_access_event_count == 1
+
+
+def test_release_verification_artifact_records_mode_and_manifest_hash(
+    tmp_path: Path,
+) -> None:
+    manifest_path = write_manifest(tmp_path, internal_manifest())
+    output_path = tmp_path / "release-review-verification.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/verify_label_completeness_and_adjudication.py"),
+            "--repository-root",
+            str(ROOT),
+            "--manifest",
+            str(manifest_path),
+            "--expected-candidate-commit-sha",
+            "c" * 40,
+            "--output",
+            str(output_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "release-review-verification/v1"
+    assert payload["review"]["review_mode"] == "internal"
+    assert payload["review"]["disclosure"] == "results_not_independently_validated"
+    assert len(payload["release_review_manifest_sha256"]) == 64
+
+
+def test_release_verification_refuses_another_candidate_before_writing(
+    tmp_path: Path,
+) -> None:
+    manifest_path = write_manifest(tmp_path, internal_manifest())
+    output_path = tmp_path / "release-review-verification.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/verify_label_completeness_and_adjudication.py"),
+            "--repository-root",
+            str(ROOT),
+            "--manifest",
+            str(manifest_path),
+            "--expected-candidate-commit-sha",
+            "d" * 40,
+            "--output",
+            str(output_path),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode != 0
+    assert "does not match checked-out commit" in completed.stderr
+    assert not output_path.exists()
+
+
+def test_v2_independent_mode_preserves_existing_review_requirements(
+    tmp_path: Path,
+) -> None:
+    manifest = release_review_manifest()
+    manifest["schema_version"] = "release-review-manifest/v2"
+    manifest["review_mode"] = {
+        "schema_version": "evaluation-review-mode/v1",
+        "mode": "independent",
+        "independent_review_status": "completed",
+        "external_custody_claimed": False,
+        "disclosure": "independently_reviewed",
+    }
+    selection = yaml.safe_load(SELECTION_FIXTURE.read_text(encoding="utf-8"))
+    assert isinstance(selection, dict)
+    holdouts = [
+        record["case_id"]
+        for record in selection["selected_cases"]
+        if isinstance(record, dict) and record.get("split") == "holdout"
+    ]
+    manifest["holdout_access"] = {
+        "schema_version": "holdout-access-log/v1",
+        "events": [
+            {
+                "event_id": "assessment",
+                "accessor_id": "primary-reviewer",
+                "purpose": "release_candidate_assessment",
+                "accessed_at": LOCKED_AT,
+                "candidate_commit_sha": "c" * 40,
+                "case_ids": holdouts,
+            },
+            {
+                "event_id": "independent-review",
+                "accessor_id": "independent-reviewer",
+                "purpose": "independent_review",
+                "accessed_at": LOCKED_AT,
+                "candidate_commit_sha": "c" * 40,
+                "case_ids": holdouts,
+            },
+        ],
+    }
+    status = manifest["release_status"]
+    assert isinstance(status, dict)
+    status["independent_review_complete"] = True
+    status["adjudication_complete"] = True
+    result = verify_label_completeness_and_adjudication(
+        repository_root=ROOT, manifest_path=write_manifest(tmp_path, manifest)
+    )
+    assert result.review_mode == "independent"
+    assert result.holdout_independent_review_count == 10
+    assert result.holdout_access_event_count == 2
+
+
+@pytest.mark.parametrize(
+    ("case", "error"),
+    [
+        ("provenance", "selection_id"),
+        ("custody", "External custody"),
+        ("status", "not independently validated"),
+        ("eg09", "falsely claims"),
+        ("tuning", "Prohibited holdout"),
+        ("pre_freeze", "predates freeze"),
+        ("missing_access", "lack recorded"),
+        ("independence", "cannot claim independent review"),
+    ],
+)
+def test_internal_mode_rejects_invalid_evidence(
+    tmp_path: Path, case: str, error: str
+) -> None:
+    manifest = internal_manifest()
+    if case == "provenance":
+        manifest.pop("release_review_selection_id")
+    elif case in {"custody", "status"}:
+        mode = manifest["review_mode"]
+        assert isinstance(mode, dict)
+        mode[
+            "external_custody_claimed"
+            if case == "custody"
+            else "independent_review_status"
+        ] = True if case == "custody" else "completed"
+    elif case == "eg09":
+        release_status = manifest["release_status"]
+        assert isinstance(release_status, dict)
+        release_status["eg_09_eligible"] = True
+    elif case in {"tuning", "pre_freeze", "missing_access"}:
+        access = manifest["holdout_access"]
+        assert isinstance(access, dict)
+        events = access["events"]
+        assert isinstance(events, list)
+        event = events[0]
+        assert isinstance(event, dict)
+        if case == "tuning":
+            event["purpose"] = "tuning"
+        elif case == "pre_freeze":
+            event["accessed_at"] = "2026-09-11T23:59:00Z"
+        else:
+            event["case_ids"] = ["EVAL-081"]
+    else:
+        selected_label(manifest)["independent"] = {}
+    with pytest.raises(LabelCompletenessAndAdjudicationRejected, match=error):
+        verify_label_completeness_and_adjudication(
+            repository_root=ROOT, manifest_path=write_manifest(tmp_path, manifest)
         )

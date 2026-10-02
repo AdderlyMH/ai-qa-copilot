@@ -21,6 +21,7 @@ from ai_qa_copilot_api.evaluation_label_completeness import (
 
 
 B1_REFERENCE_ARTIFACT_SCHEMA_VERSION = "b1-reference-artifact/v1"
+B1_REVIEW_MODE_ARTIFACT_SCHEMA_VERSION = "b1-reference-artifact/v2"
 
 
 class B1ReferenceArtifactRejected(ValueError):
@@ -77,6 +78,14 @@ def assemble_b1_reference_artifact(
         raise B1ReferenceArtifactRejected(
             "B1 reference run must have a non-zero reference UUID"
         )
+    if not (
+        reference_run.quality_passed
+        and reference_run.security_gate_passed
+        and reference_run.cost_budget_passed
+    ):
+        raise B1ReferenceArtifactRejected(
+            "B1 reference run must pass quality, security, and cost gates"
+        )
 
     try:
         review = verify_label_completeness_and_adjudication(
@@ -89,7 +98,11 @@ def assemble_b1_reference_artifact(
         ) from error
 
     return B1ReferenceArtifact(
-        schema_version=B1_REFERENCE_ARTIFACT_SCHEMA_VERSION,
+        schema_version=(
+            B1_REVIEW_MODE_ARTIFACT_SCHEMA_VERSION
+            if review.manifest_schema_version == "release-review-manifest/v2"
+            else B1_REFERENCE_ARTIFACT_SCHEMA_VERSION
+        ),
         b1_reference_run_sha256=_sha256_text(reference_run.as_json()),
         candidate_commit_sha=review.candidate_commit_sha,
         release_review_manifest_sha256=_sha256_file(release_review_manifest_path),

@@ -389,61 +389,109 @@ re-evaluate the same unchanged holdout set.
 
 ### 8.6 Release-review manifest
 
-The independent-review evidence shall be represented by a versioned
-machine-readable manifest, planned at:
+The release-review manifest records the review mode, candidate and selection
+freeze, label provenance, review status, and known holdout access for a release
+evaluation. The verifier accepts v1 independent-review evidence and v2
+review-mode evidence. The release workflow uses
+`evaluation/reviews/release-review-manifest.v2.yaml` with schema
+`release-review-manifest/v2`.
 
-`evaluation/reviews/release-review-manifest.v1.yaml`
-
-The manifest contract shall include:
+The following v2 shape illustrates the EVAL-008 contract. Its placeholder
+values and single displayed label and access event are not complete release
+evidence. A release requires an actual manifest that passes the verifier,
+workflow preflight, B1 assembly, and applicable security gates.
 
 ```yaml
-schema_version: release-review-manifest/v1
-review_manifest_id: RELEASE-REVIEW-V1
-benchmark_manifest_id: BENCHMARK-FIXTURES-V1
+schema_version: release-review-manifest/v2
+dataset_version: "<evaluation case suite ID>"
+release_review_selection_id: "<frozen selection ID>"
+case_fixture_semantic_sha256: "<64-character SHA-256>"
+ground_truth_fixture_semantic_sha256: "<64-character SHA-256>"
+
+review_mode:
+  schema_version: evaluation-review-mode/v1
+  mode: internal
+  independent_review_status: not_performed
+  external_custody_claimed: false
+  disclosure: results_not_independently_validated
+  rationale: "<reason for internal review>"
+
 candidate:
-  commit_sha: "<frozen-candidate-sha>"
-  configuration_id: "<frozen-configuration-id>"
-selection:
-  method: stratified
-  seed: "<recorded-seed>"
-  selected_before_candidate_execution: true
-  validation_case_count: 10
-  holdout_case_count: 10
-reviewers:
-  primary_reviewer_id: "<stable-id>"
-  independent_reviewer_id: "<stable-id>"
-  independent_reviewer_eligible: true
-  independence_attestation_recorded: true
-cases:
-  - case_id: "<case-id>"
-    split: validation
-    category: "<category>"
-    primary_label_revision: "<revision>"
-    independent_label_revision: "<revision>"
-    disagreement_status: none
-    adjudication_status: not_required
+  commit_sha: "<40-character lowercase Git SHA>"
+  frozen_at: "<timezone-aware ISO 8601 timestamp>"
+
+reviewer_attestations:
+  - attestation_id: "<primary attestation ID>"
+    reviewer_id: "<owner ID>"
+    qualification_summary: "<qualification summary>"
+    eligible: true
+    independent: false
+    attested_at: "<timezone-aware ISO 8601 timestamp>"
+
+labels:
+  # One complete record is required for every case in the case fixture.
+  - case_id: "<case ID>"
+    split: holdout
+    category: "<category from the case fixture>"
+    primary:
+      label_revision: "<unique immutable revision>"
+      label_sha256: "<64-character SHA-256>"
+      reviewer_id: "<owner ID>"
+      reviewer_attestation_id: "<primary attestation ID>"
+      locked_at: "<timezone-aware ISO 8601 timestamp>"
+    disagreement:
+      status: none
+      material_disagreement_ids: []
+    approved_final_label_revision: "<same primary label revision>"
+
+holdout_access:
+  schema_version: holdout-access-log/v1
+  events:
+    - event_id: "<unique event ID>"
+      accessor_id: "<owner ID>"
+      purpose: release_candidate_assessment
+      accessed_at: "<timestamp after candidate freeze>"
+      candidate_commit_sha: "<same candidate commit SHA>"
+      case_ids:
+        - "<accessed holdout case ID>"
+
 release_status:
-  all_required_reviews_complete: false
-  all_disagreements_resolved: false
+  primary_labels_complete: true
+  independent_review_complete: false
+  adjudication_complete: false
   eg_09_eligible: false
 ```
 
 The manifest must identify the review mode and the status of independent
-review. In internal mode, record independent review as not performed and
-include the reason. Do not populate independent-reviewer or adjudicator fields
-with the owner in a way that implies independence. EVAL-008 implements this
-contract; until it is merged, the current validator and B1 assembly behavior
-remain authoritative.
+review. In internal mode, record independent review as not performed and state
+the reason. Do not populate independent-reviewer or adjudicator fields with
+the owner in a way that implies independence. Internal-mode outputs must
+disclose that the results have not been independently validated.
 
 The implemented label contract is
 `fixtures/benchmark/evaluation-review-rubric.v1.yaml`, with label schema
-`evaluation-review-label/v1`. Primary, independent, and adjudicated labels are
-validated and stored as immutable revisions before their differences are
-classified for adjudication. The release-review manifest itself remains
-planned until genuine reviewer evidence exists.
+`evaluation-review-label/v1`. Primary, independent, and adjudicated labels
+are validated and stored as immutable revisions before their differences
+are classified for adjudication. A v2 release-review manifest must preserve
+the applicable label and provenance checks.
 
-This is a planned contract. The Phase 0 documentation does not claim that the
-manifest, reviewer, or completed reviews currently exist.
+The holdout access log records declared access events; validating it cannot
+prove that an access was never omitted. Release-candidate assessment must
+occur after candidate freeze and identify the frozen candidate commit.
+Holdout use for tuning must fail validation. The B1 reference artifact must
+preserve the review mode and disclosure without creating missing independent
+review or custody evidence.
+
+The release workflow compares the manifest candidate SHA with the checked-out
+commit before evaluation. It uploads `artifacts/release-review-verification.json`,
+which records the manifest hash, validated review mode, disclosure, and review
+counts. This verification record does not constitute completed review evidence
+when the underlying manifest lacks genuine records.
+
+EVAL-008 implements and tests this v2 contract. The v1 verifier path remains
+available for existing independent-review evidence; the release workflow
+requires v2. This example does not assert that a completed release-review
+manifest, reviewer evidence, benchmark run, or B1 artifact exists.
 
 ### Finding rubric
 

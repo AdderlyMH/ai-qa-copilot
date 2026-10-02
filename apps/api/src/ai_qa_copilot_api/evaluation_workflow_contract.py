@@ -22,6 +22,10 @@ from ai_qa_copilot_api.evaluation_release_benchmark import (
 from ai_qa_copilot_api.evaluation_release_review_selection import (
     load_release_review_selection,
 )
+from ai_qa_copilot_api.evaluation_label_completeness import (
+    LabelCompletenessAndAdjudicationRejected,
+    verify_label_completeness_and_adjudication,
+)
 from ai_qa_copilot_api.evaluation_scoring import load_ground_truth_catalog
 from ai_qa_copilot_api.naive_baseline import load_naive_baseline_config
 
@@ -32,7 +36,7 @@ B0_CONFIG_RELATIVE_PATH: Final = Path(
     "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml"
 )
 DEFAULT_RELEASE_REVIEW_MANIFEST_RELATIVE_PATH: Final = Path(
-    "evaluation/reviews/release-review-manifest.v1.yaml"
+    "evaluation/reviews/release-review-manifest.v2.yaml"
 )
 
 SMOKE_CASE_IDS: Final = (
@@ -131,13 +135,22 @@ def verify_release_workflow_preflight(
     selection = load_release_review_selection(repository_root)
     if len(selection.selected_cases) != 20:
         raise EvaluationWorkflowContractRejected(
-            "Frozen independent-review selection must contain 20 cases"
+            "Frozen release-review selection must contain 20 cases"
         )
 
     if not release_review_manifest.is_file():
         raise EvaluationWorkflowContractRejected(
             f"Release review manifest does not exist: {release_review_manifest}"
         )
+    try:
+        verify_label_completeness_and_adjudication(
+            repository_root=repository_root,
+            manifest_path=release_review_manifest,
+        )
+    except LabelCompletenessAndAdjudicationRejected as error:
+        raise EvaluationWorkflowContractRejected(
+            f"Release review manifest is invalid: {error}"
+        ) from error
 
     _require_positive_case_budgets(
         suite.cases,

@@ -107,8 +107,8 @@
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 50384,
-      "sha256": "4ce13dc5e7170793b2b4474bfcfdce57895523be27e17ba634bbb2a1bbf33822"
+      "bytes": 52766,
+      "sha256": "783d485e03ad561a32f0b2fec08baaaf36d4bbf6b8c2a49c42a347810597fe7d"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -132,8 +132,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 89446,
-      "sha256": "7da107a2479961855480d088ae7e67adb09a6cc2b34cbc1a809978a0ea11c07b"
+      "bytes": 90619,
+      "sha256": "e06661be2d076e8d0110f9b724719d6b18046195ee8f3749cd8c5880b489c467"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",

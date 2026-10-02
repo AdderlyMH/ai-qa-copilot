@@ -20,6 +20,10 @@ RELEASE_SELECTION_RELATIVE_PATH = Path(
     "fixtures/benchmark/release-review-selection.v1.yaml"
 )
 RELEASE_REVIEW_MANIFEST_SCHEMA_VERSION = "release-review-manifest/v1"
+INTERNAL_REVIEW_MANIFEST_SCHEMA_VERSION = "release-review-manifest/v2"
+REVIEW_MODE_SCHEMA_VERSION = "evaluation-review-mode/v1"
+HOLDOUT_ACCESS_SCHEMA_VERSION = "holdout-access-log/v1"
+INTERNAL_DISCLOSURE = "results_not_independently_validated"
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 _COMMIT_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
@@ -37,6 +41,13 @@ class LabelCompletenessAndAdjudicationResult:
     validation_independent_review_count: int
     holdout_independent_review_count: int
     candidate_commit_sha: str
+    manifest_schema_version: str = RELEASE_REVIEW_MANIFEST_SCHEMA_VERSION
+    review_mode_schema_version: str = REVIEW_MODE_SCHEMA_VERSION
+    review_mode: str = "independent"
+    independent_review_status: str = "completed"
+    external_custody_claimed: bool = False
+    disclosure: str = "independently_reviewed"
+    holdout_access_event_count: int = 0
 
 
 def verify_label_completeness_and_adjudication(
@@ -56,9 +67,18 @@ def verify_label_completeness_and_adjudication(
     cases_by_id = {case.id: case for case in suite.cases}
 
     _require_text(manifest, "schema_version", "Release review manifest")
-    if manifest["schema_version"] != RELEASE_REVIEW_MANIFEST_SCHEMA_VERSION:
+    schema_version = manifest["schema_version"]
+    if schema_version not in (
+        RELEASE_REVIEW_MANIFEST_SCHEMA_VERSION,
+        INTERNAL_REVIEW_MANIFEST_SCHEMA_VERSION,
+    ):
         raise LabelCompletenessAndAdjudicationRejected(
             "Unsupported release review manifest schema version"
+        )
+    is_v2 = schema_version == INTERNAL_REVIEW_MANIFEST_SCHEMA_VERSION
+    if not is_v2 and "review_mode" in manifest:
+        raise LabelCompletenessAndAdjudicationRejected(
+            "v1 manifest cannot declare a v2 review mode"
         )
     if _require_text(manifest, "dataset_version", "Release review manifest") != (
         suite.suite_id
@@ -75,10 +95,79 @@ def verify_label_completeness_and_adjudication(
             "candidate.commit_sha must be a 40-character lowercase Git SHA"
         )
     candidate_frozen_at = _require_timestamp(candidate, "frozen_at", "candidate")
+    if is_v2:
+        selection_policy = _require_mapping(
+            selection, "selection", "Release review selection"
+        )
+        selected_at = _require_timestamp(
+            selection_policy, "recorded_at", "Release review selection.selection"
+        )
+        if (
+            selection_policy.get("selected_before_candidate_execution") is not True
+            or selection_policy.get("replacement_policy") != "no_replacement"
+            or selected_at > candidate_frozen_at
+        ):
+            raise LabelCompletenessAndAdjudicationRejected(
+                "Release selection must be frozen without replacement before candidate freeze"
+            )
+    review_mode = "independent"
+    disclosure = "independently_reviewed"
+    independent_review_status = "completed"
+    external_custody_claimed = False
+    access_event_count = 0
+    if is_v2:
+        mode = _require_mapping(manifest, "review_mode", "Release review manifest")
+        if mode.get("schema_version") != REVIEW_MODE_SCHEMA_VERSION:
+            raise LabelCompletenessAndAdjudicationRejected(
+                "Unsupported review mode schema"
+            )
+        review_mode = _require_text(mode, "mode", "review_mode")
+        if review_mode not in {"internal", "independent"}:
+            raise LabelCompletenessAndAdjudicationRejected("Unsupported review mode")
+        independent_review_status = _require_text(
+            mode, "independent_review_status", "review_mode"
+        )
+        disclosure = _require_text(mode, "disclosure", "review_mode")
+        if mode.get("external_custody_claimed") is not False:
+            raise LabelCompletenessAndAdjudicationRejected(
+                "External custody requires separate verified evidence"
+            )
+        if review_mode == "internal":
+            if (independent_review_status, disclosure) != (
+                "not_performed",
+                INTERNAL_DISCLOSURE,
+            ):
+                raise LabelCompletenessAndAdjudicationRejected(
+                    "Internal review must disclose that it was not independently validated"
+                )
+            _require_text(mode, "rationale", "review_mode")
+        elif (independent_review_status, disclosure) != (
+            "completed",
+            "independently_reviewed",
+        ):
+            raise LabelCompletenessAndAdjudicationRejected(
+                "Independent review mode requires completed independent review"
+            )
 
     selected_cases = _selected_cases(selection, cases_by_id)
     attestations = _attestations(manifest)
     labels = _labels(manifest, cases_by_id)
+    if is_v2:
+        access_event_count = _validate_holdout_access(
+            manifest=manifest,
+            cases_by_id=cases_by_id,
+            selected_cases=selected_cases,
+            labels=labels,
+            candidate_commit_sha=candidate_commit_sha,
+            candidate_frozen_at=candidate_frozen_at,
+            review_mode=review_mode,
+        )
+    if review_mode == "internal" and any(
+        attestation["independent"] is True for attestation in attestations.values()
+    ):
+        raise LabelCompletenessAndAdjudicationRejected(
+            "Internal mode cannot contain independent reviewer attestations"
+        )
 
     seen_revisions: set[str] = set()
     independent_counts: Counter[str] = Counter()
@@ -105,7 +194,13 @@ def verify_label_completeness_and_adjudication(
 
         independent = _optional_mapping(label, "independent", f"Label {case_id}")
         is_selected = case_id in selected_cases
-        if is_selected and independent is None:
+        if review_mode == "internal" and (
+            independent is not None or label.get("adjudication") is not None
+        ):
+            raise LabelCompletenessAndAdjudicationRejected(
+                f"Internal mode cannot claim independent review or adjudication for {case_id}"
+            )
+        if is_selected and independent is None and review_mode == "independent":
             raise LabelCompletenessAndAdjudicationRejected(
                 f"Selected case {case_id} lacks an independent review"
             )
@@ -163,7 +258,9 @@ def verify_label_completeness_and_adjudication(
             f"missing={missing}, unexpected={unexpected}"
         )
 
-    if independent_counts != Counter({"validation": 10, "holdout": 10}):
+    if review_mode == "independent" and independent_counts != Counter(
+        {"validation": 10, "holdout": 10}
+    ):
         raise LabelCompletenessAndAdjudicationRejected(
             "Selected independent-review counts must be exactly "
             f"10 validation and 10 holdout; found={dict(independent_counts)}"
@@ -174,14 +271,39 @@ def verify_label_completeness_and_adjudication(
         "release_status",
         "Release review manifest",
     )
-    for field_name in (
-        "all_required_reviews_complete",
-        "all_disagreements_resolved",
-        "eg_09_eligible",
-    ):
-        if release_status.get(field_name) is not True:
+    if review_mode == "internal":
+        expected_status = {
+            "primary_labels_complete": True,
+            "independent_review_complete": False,
+            "adjudication_complete": False,
+            "eg_09_eligible": False,
+        }
+        if any(
+            release_status.get(key) is not value
+            for key, value in expected_status.items()
+        ) or any(
+            release_status.get(key) is True
+            for key in ("all_required_reviews_complete", "all_disagreements_resolved")
+        ):
             raise LabelCompletenessAndAdjudicationRejected(
-                f"release_status.{field_name} must be true"
+                "Internal release status falsely claims independent review or EG-09 eligibility"
+            )
+    else:
+        for field_name in (
+            "all_required_reviews_complete",
+            "all_disagreements_resolved",
+            "eg_09_eligible",
+        ):
+            if release_status.get(field_name) is not True:
+                raise LabelCompletenessAndAdjudicationRejected(
+                    f"release_status.{field_name} must be true"
+                )
+        if is_v2 and (
+            release_status.get("independent_review_complete") is not True
+            or release_status.get("adjudication_complete") is not True
+        ):
+            raise LabelCompletenessAndAdjudicationRejected(
+                "Independent release status requires completed review and adjudication"
             )
 
     return LabelCompletenessAndAdjudicationResult(
@@ -190,7 +312,121 @@ def verify_label_completeness_and_adjudication(
         case_count=len(labels),
         validation_independent_review_count=independent_counts["validation"],
         holdout_independent_review_count=independent_counts["holdout"],
+        manifest_schema_version=schema_version,
+        review_mode=review_mode,
+        independent_review_status=independent_review_status,
+        external_custody_claimed=external_custody_claimed,
+        disclosure=disclosure,
+        holdout_access_event_count=access_event_count,
     )
+
+
+def _validate_holdout_access(
+    *,
+    manifest: Mapping[str, object],
+    cases_by_id: Mapping[str, object],
+    selected_cases: Mapping[str, Mapping[str, object]],
+    labels: Mapping[str, Mapping[str, object]],
+    candidate_commit_sha: str,
+    candidate_frozen_at: datetime,
+    review_mode: str,
+) -> int:
+    log = _require_mapping(manifest, "holdout_access", "Release review manifest")
+    if log.get("schema_version") != HOLDOUT_ACCESS_SCHEMA_VERSION:
+        raise LabelCompletenessAndAdjudicationRejected(
+            "Unsupported holdout access log schema"
+        )
+    events = _require_list(log, "events", "holdout_access")
+    if not events:
+        raise LabelCompletenessAndAdjudicationRejected(
+            "Holdout access events are required"
+        )
+    event_ids: set[str] = set()
+    assessed: set[str] = set()
+    independently_reviewed: set[str] = set()
+    for raw_event in events:
+        event = _mapping(raw_event, "Holdout access event")
+        event_id = _require_text(event, "event_id", "Holdout access event")
+        if event_id in event_ids:
+            raise LabelCompletenessAndAdjudicationRejected(
+                f"Duplicate holdout access event {event_id}"
+            )
+        event_ids.add(event_id)
+        accessor = _require_text(event, "accessor_id", f"Holdout access {event_id}")
+        purpose = _require_text(event, "purpose", f"Holdout access {event_id}")
+        if purpose not in {
+            "owner_labeling",
+            "release_candidate_assessment",
+            "independent_review",
+        }:
+            raise LabelCompletenessAndAdjudicationRejected(
+                f"Prohibited holdout access purpose {purpose}"
+            )
+        if purpose == "independent_review" and review_mode == "internal":
+            raise LabelCompletenessAndAdjudicationRejected(
+                "Internal mode cannot record independent holdout review"
+            )
+        accessed_at = _require_timestamp(
+            event, "accessed_at", f"Holdout access {event_id}"
+        )
+        raw_case_ids = _require_list(event, "case_ids", f"Holdout access {event_id}")
+        if not raw_case_ids or len(raw_case_ids) != len(set(map(str, raw_case_ids))):
+            raise LabelCompletenessAndAdjudicationRejected(
+                f"Holdout access {event_id} requires distinct case IDs"
+            )
+        for case_id in raw_case_ids:
+            if (
+                not isinstance(case_id, str)
+                or case_id not in cases_by_id
+                or getattr(cases_by_id[case_id], "split") != "holdout"
+            ):
+                raise LabelCompletenessAndAdjudicationRejected(
+                    f"Holdout access {event_id} contains an unknown or non-holdout case"
+                )
+            if purpose == "release_candidate_assessment":
+                primary = _require_mapping(
+                    labels[case_id], "primary", f"Label {case_id}"
+                )
+                if primary.get("reviewer_id") != accessor:
+                    raise LabelCompletenessAndAdjudicationRejected(
+                        f"Holdout assessment accessor differs from primary reviewer for {case_id}"
+                    )
+                assessed.add(case_id)
+            if purpose == "independent_review":
+                independent = _require_mapping(
+                    labels[case_id], "independent", f"Label {case_id}"
+                )
+                if independent.get("reviewer_id") != accessor:
+                    raise LabelCompletenessAndAdjudicationRejected(
+                        f"Holdout review accessor differs from independent reviewer for {case_id}"
+                    )
+                independently_reviewed.add(case_id)
+        if purpose == "owner_labeling":
+            if event.get("candidate_commit_sha", "missing") is not None:
+                raise LabelCompletenessAndAdjudicationRejected(
+                    f"Owner labeling access {event_id} must have a null candidate SHA"
+                )
+        elif (
+            event.get("candidate_commit_sha") != candidate_commit_sha
+            or accessed_at < candidate_frozen_at
+        ):
+            raise LabelCompletenessAndAdjudicationRejected(
+                f"Holdout access {event_id} predates freeze or names another candidate"
+            )
+    selected_holdouts = {
+        case_id
+        for case_id in selected_cases
+        if getattr(cases_by_id[case_id], "split") == "holdout"
+    }
+    if not selected_holdouts <= assessed:
+        raise LabelCompletenessAndAdjudicationRejected(
+            "Selected holdout cases lack recorded candidate assessment access"
+        )
+    if review_mode == "independent" and not selected_holdouts <= independently_reviewed:
+        raise LabelCompletenessAndAdjudicationRejected(
+            "Selected holdout cases lack recorded independent-review access"
+        )
+    return len(events)
 
 
 def _validate_provenance(

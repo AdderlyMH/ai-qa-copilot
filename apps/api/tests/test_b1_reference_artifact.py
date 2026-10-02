@@ -106,3 +106,50 @@ def test_assembly_rejects_missing_review_manifest(tmp_path: Path) -> None:
             release_review_manifest_path=tmp_path / "missing.yaml",
             reference_run=reference_run(),
         )
+
+
+def test_internal_mode_is_preserved_without_fabricating_independent_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest_path = tmp_path / "release-review-manifest.v2.yaml"
+    manifest_path.write_text("recorded evidence\n", encoding="utf-8")
+    review = LabelCompletenessAndAdjudicationResult(
+        suite_id="evaluation-corpus/v1",
+        case_count=100,
+        validation_independent_review_count=0,
+        holdout_independent_review_count=0,
+        candidate_commit_sha="c" * 40,
+        manifest_schema_version="release-review-manifest/v2",
+        review_mode="internal",
+        independent_review_status="not_performed",
+        disclosure="results_not_independently_validated",
+        holdout_access_event_count=1,
+    )
+    monkeypatch.setattr(
+        artifact_module,
+        "verify_label_completeness_and_adjudication",
+        lambda **_: review,
+    )
+    artifact = assemble_b1_reference_artifact(
+        repository_root=ROOT,
+        release_review_manifest_path=manifest_path,
+        reference_run=reference_run(),
+    )
+    payload = json.loads(artifact.as_json())["release_review"]
+    assert artifact.schema_version == "b1-reference-artifact/v2"
+    assert payload["review_mode"] == "internal"
+    assert payload["independent_review_status"] == "not_performed"
+    assert payload["disclosure"] == "results_not_independently_validated"
+    assert payload["holdout_independent_review_count"] == 0
+    assert payload["external_custody_claimed"] is False
+
+
+def test_assembly_rejects_failed_security_gate(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    with pytest.raises(B1ReferenceArtifactRejected, match="security"):
+        assemble_b1_reference_artifact(
+            repository_root=ROOT,
+            release_review_manifest_path=tmp_path / "missing.yaml",
+            reference_run=replace(reference_run(), security_gate_passed=False),
+        )

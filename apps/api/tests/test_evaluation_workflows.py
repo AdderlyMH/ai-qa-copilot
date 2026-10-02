@@ -69,7 +69,7 @@ def test_release_workflow_is_protected_main_only_and_full_corpus() -> None:
     assert "--mode release" in text
     assert (
         "--release-review-manifest "
-        "evaluation/reviews/release-review-manifest.v1.yaml" in text
+        "evaluation/reviews/release-review-manifest.v2.yaml" in text
     )
     assert "--case-id" not in text
     assert "--split" not in text
@@ -77,5 +77,7 @@ def test_release_workflow_is_protected_main_only_and_full_corpus() -> None:
     assert '--max-expected-cost "$GROUNDED_MAX_EXPECTED_COST"' in text
     assert 'B0_MAX_EXPECTED_COST: "2"' in text
     assert 'GROUNDED_MAX_EXPECTED_COST: "8"' in text
-    assert "Run label_completeness_and_adjudication_v1" in text
+    assert "Verify versioned release review evidence" in text
     assert "scripts/verify_label_completeness_and_adjudication.py" in text
+    assert '--expected-candidate-commit-sha "$GITHUB_SHA"' in text
+    assert "--output artifacts/release-review-verification.json" in text
