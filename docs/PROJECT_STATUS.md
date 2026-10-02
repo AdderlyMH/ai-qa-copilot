@@ -2,9 +2,11 @@
 
 ## EVAL-008 internal benchmark review implementation — 2026-10-02
 
-**Status:** Implementation prepared for review; not merged and not release
-evidence. The v2 release-review manifest declares internal or independent
-review mode. Internal mode requires an explicit disclosure, complete primary
+**Status:** Accepted on main through PR #143 (merge commit
+`a03aca2f705ae6cb390b72ba5bc1d22a84ecf88a`). This is an implementation
+acceptance, not release evidence. The v2 release-review manifest declares
+internal or independent review mode. Internal mode requires an explicit
+disclosure, complete primary
 labels and selection provenance, candidate freeze, and recorded access to
 selected holdout cases. It rejects independent or custody claims and holdout
 tuning. Independent mode retains the selected 10 validation and 10 holdout
@@ -14,10 +16,16 @@ commit and uploads a hashed verification record with the mode and disclosure.
 B1 artifact v2 serializes the mode and disclosure while requiring the existing
 quality, security, and cost gates.
 
+Windows local CI passed with 778 tests passed and 75 skipped. At PR head
+`79013123ea68778966f6b1838f548666e9b1a6fc`, GitHub docs-validation and
+application CI passed, including quality, security scans, security harness,
+migration check, and parser-worker isolation.
+
 The access validator checks supplied records; it cannot prove that an access
 was omitted from the log. No actual release-review evidence or benchmark run
-is created by this implementation. Next: apply the implementation to the
-EVAL-008 branch, run full CI, and review the PR before accepting the mode.
+was created by this implementation. Next: collect genuine primary-label
+provenance and holdout-access records before attempting a B1 reference run;
+candidate execution and a protected release evaluation remain separate gates.
 
 ## Path 1 internal benchmark governance decision — 2026-10-01
 

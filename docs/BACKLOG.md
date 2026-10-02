@@ -826,6 +826,9 @@ of this backlog.
   - Tests cover internal-mode success, missing provenance, false independence
     claims, holdout violations, and security-gate failures.
 
+- **Status:** Accepted on main through PR #143. This is implementation evidence;
+  no benchmark review or release evaluation was performed.
+
 ### Epic OBS — Trace, cost, and reliability evidence
 
 #### OBS-001 — Add end-to-end structured tracing
