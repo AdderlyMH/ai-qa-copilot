@@ -9,6 +9,9 @@ import pytest
 import ai_qa_copilot_api.model_gateway as model_gateway
 from ai_qa_copilot_api.model_gateway import (
     B1_MODEL_ID,
+    C1_CONFIGURATION_VERSION,
+    C1_MODEL_ID,
+    AnthropicGatewaySettings,
     MODEL_GATEWAY_TIMEOUT_SECONDS,
     FakeModelAdapter,
     ModelGateway,
@@ -21,6 +24,7 @@ from ai_qa_copilot_api.model_gateway import (
     StructuredModelRequest,
     StructuredModelResponse,
     UrllibJsonHttpTransport,
+    model_provider_from_mapping,
 )
 from ai_qa_copilot_api.metrics import (
     InMemoryWorkflowMetrics,
@@ -322,3 +326,77 @@ def test_settings_fail_closed_outside_pinned_b1_configuration(
 ) -> None:
     with pytest.raises(ModelGatewayConfigurationError):
         settings.validate()
+
+
+@pytest.mark.parametrize(
+    ("environment", "expected"),
+    [
+        ({}, "openai"),
+        ({"MODEL_PROVIDER": ""}, "openai"),
+        ({"MODEL_PROVIDER": "  "}, "openai"),
+        ({"MODEL_PROVIDER": "openai"}, "openai"),
+        ({"MODEL_PROVIDER": "anthropic"}, "anthropic"),
+        ({"MODEL_PROVIDER": " anthropic "}, "anthropic"),
+    ],
+)
+def test_provider_selection_defaults_to_openai(
+    environment: Mapping[str, str], expected: str
+) -> None:
+    assert model_provider_from_mapping(environment) == expected
+
+
+@pytest.mark.parametrize(
+    "provider", ["Anthropic", "claude", "azure", "openai,anthropic"]
+)
+def test_provider_selection_fails_closed_on_unknown_values(provider: str) -> None:
+    with pytest.raises(ModelGatewayConfigurationError, match="MODEL_PROVIDER"):
+        model_provider_from_mapping({"MODEL_PROVIDER": provider})
+
+
+def test_anthropic_settings_read_only_the_anthropic_credential() -> None:
+    settings = AnthropicGatewaySettings.from_mapping(
+        {"ANTHROPIC_API_KEY": " test-anthropic-key ", "OPENAI_API_KEY": "other"}
+    )
+
+    settings.validate()
+    assert settings.api_key == "test-anthropic-key"
+    assert settings.model_id == C1_MODEL_ID == "claude-sonnet-5-5"
+    assert settings.effort == "medium"
+    assert settings.max_tokens == 4096
+    assert settings.timeout_seconds == 60.0
+    assert C1_CONFIGURATION_VERSION == "C1/v1"
+
+
+def test_openai_settings_ignore_the_anthropic_credential() -> None:
+    settings = ModelGatewaySettings.from_mapping({"ANTHROPIC_API_KEY": "test"})
+
+    with pytest.raises(ModelGatewayConfigurationError, match="OPENAI_API_KEY"):
+        settings.validate()
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        AnthropicGatewaySettings(api_key=""),
+        AnthropicGatewaySettings(api_key="test", model_id="claude-opus-5-5"),
+        AnthropicGatewaySettings(api_key="test", effort="high"),
+        AnthropicGatewaySettings(api_key="test", max_tokens=64_000),
+        AnthropicGatewaySettings(api_key="test", timeout_seconds=10.0),
+    ],
+)
+def test_anthropic_settings_fail_closed_outside_pinned_c1_configuration(
+    settings: AnthropicGatewaySettings,
+) -> None:
+    with pytest.raises(ModelGatewayConfigurationError):
+        settings.validate()
+
+
+def test_anthropic_configuration_error_does_not_echo_the_credential() -> None:
+    settings = AnthropicGatewaySettings(
+        api_key="secret-test-value", model_id="claude-opus-5-5"
+    )
+
+    with pytest.raises(ModelGatewayConfigurationError) as error:
+        settings.validate()
+
+    assert "secret-test-value" not in str(error.value)

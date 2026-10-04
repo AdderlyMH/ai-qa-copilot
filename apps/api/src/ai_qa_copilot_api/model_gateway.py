@@ -26,6 +26,16 @@ B1_REASONING_EFFORT: Final = "medium"
 MODEL_GATEWAY_TIMEOUT_SECONDS: Final = 10.0
 MODEL_GATEWAY_CONFIGURATION_VERSION: Final = "B1/v1"
 
+MODEL_PROVIDER_OPENAI: Final = "openai"
+MODEL_PROVIDER_ANTHROPIC: Final = "anthropic"
+MODEL_PROVIDERS: Final = frozenset({MODEL_PROVIDER_OPENAI, MODEL_PROVIDER_ANTHROPIC})
+
+C1_MODEL_ID: Final = "claude-sonnet-5-5"
+C1_EFFORT: Final = "medium"
+C1_MAX_TOKENS: Final = 4096
+C1_TIMEOUT_SECONDS: Final = 60.0
+C1_CONFIGURATION_VERSION: Final = "C1/v1"
+
 
 class ModelGatewayConfigurationError(RuntimeError):
     """Raised when the server-side model configuration is unsafe or incomplete."""
@@ -71,6 +81,52 @@ class ModelGatewaySettings:
             )
         if self.timeout_seconds != MODEL_GATEWAY_TIMEOUT_SECONDS:
             raise ModelGatewayConfigurationError("B1/v1 requires a 10 second timeout")
+
+
+def model_provider_from_mapping(environment: Mapping[str, str]) -> str:
+    """Select the server-side provider; unset keeps the OpenAI B1/v1 default."""
+
+    provider = environment.get("MODEL_PROVIDER", "").strip()
+    if not provider:
+        return MODEL_PROVIDER_OPENAI
+    if provider not in MODEL_PROVIDERS:
+        raise ModelGatewayConfigurationError(
+            "MODEL_PROVIDER must be openai or anthropic"
+        )
+    return provider
+
+
+@dataclass(frozen=True)
+class AnthropicGatewaySettings:
+    """Pinned C1/v1 provider configuration, sourced only from server environment."""
+
+    api_key: str
+    model_id: str = C1_MODEL_ID
+    effort: str = C1_EFFORT
+    max_tokens: int = C1_MAX_TOKENS
+    timeout_seconds: float = C1_TIMEOUT_SECONDS
+
+    @classmethod
+    def from_environment(cls) -> AnthropicGatewaySettings:
+        return cls.from_mapping(os.environ)
+
+    @classmethod
+    def from_mapping(cls, environment: Mapping[str, str]) -> AnthropicGatewaySettings:
+        return cls(api_key=environment.get("ANTHROPIC_API_KEY", "").strip())
+
+    def validate(self) -> None:
+        if not self.api_key:
+            raise ModelGatewayConfigurationError("ANTHROPIC_API_KEY must be configured")
+        if self.model_id != C1_MODEL_ID:
+            raise ModelGatewayConfigurationError(
+                "C1/v1 requires model claude-sonnet-5-5"
+            )
+        if self.effort != C1_EFFORT:
+            raise ModelGatewayConfigurationError("C1/v1 requires medium effort")
+        if self.max_tokens != C1_MAX_TOKENS:
+            raise ModelGatewayConfigurationError("C1/v1 requires 4096 max tokens")
+        if self.timeout_seconds != C1_TIMEOUT_SECONDS:
+            raise ModelGatewayConfigurationError("C1/v1 requires a 60 second timeout")
 
 
 @dataclass(frozen=True)

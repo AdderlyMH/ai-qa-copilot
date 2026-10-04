@@ -46,6 +46,10 @@ def test_worker_refuses_root_network_or_privileged_credentials() -> None:
         ParserWorkerRuntime.from_environment(
             {**valid, "OPENAI_API_KEY": "not-allowed"}, uid=10001
         )
+    with pytest.raises(ParserWorkerConfigurationError, match="forbidden credential"):
+        ParserWorkerRuntime.from_environment(
+            {**valid, "ANTHROPIC_API_KEY": "not-allowed"}, uid=10001
+        )
 
 
 def test_network_probe_accepts_a_denied_connection(
