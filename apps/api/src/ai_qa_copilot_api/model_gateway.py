@@ -26,6 +26,18 @@ B1_REASONING_EFFORT: Final = "medium"
 MODEL_GATEWAY_TIMEOUT_SECONDS: Final = 10.0
 MODEL_GATEWAY_CONFIGURATION_VERSION: Final = "B1/v1"
 
+MODEL_PROVIDER_OPENAI: Final = "openai"
+MODEL_PROVIDER_ANTHROPIC: Final = "anthropic"
+MODEL_PROVIDERS: Final = frozenset({MODEL_PROVIDER_OPENAI, MODEL_PROVIDER_ANTHROPIC})
+
+ANTHROPIC_MESSAGES_URL: Final = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_API_VERSION: Final = "2023-06-01"
+C1_MODEL_ID: Final = "claude-sonnet-5-5"
+C1_EFFORT: Final = "medium"
+C1_MAX_TOKENS: Final = 4096
+C1_TIMEOUT_SECONDS: Final = 60.0
+C1_CONFIGURATION_VERSION: Final = "C1/v1"
+
 
 class ModelGatewayConfigurationError(RuntimeError):
     """Raised when the server-side model configuration is unsafe or incomplete."""
@@ -41,6 +53,14 @@ class ModelGatewayTimeout(ModelGatewayUnavailable):
 
 class ModelGatewayProtocolError(ModelGatewayUnavailable):
     """Raised when the provider response cannot satisfy the typed contract."""
+
+
+class ModelGatewayRefusal(ModelGatewayUnavailable):
+    """Raised when the provider declines the request (``stop_reason: refusal``)."""
+
+
+class ModelGatewayTruncated(ModelGatewayProtocolError):
+    """Raised when output hit the token cap and cannot be trusted as complete."""
 
 
 @dataclass(frozen=True)
@@ -71,6 +91,52 @@ class ModelGatewaySettings:
             )
         if self.timeout_seconds != MODEL_GATEWAY_TIMEOUT_SECONDS:
             raise ModelGatewayConfigurationError("B1/v1 requires a 10 second timeout")
+
+
+def model_provider_from_mapping(environment: Mapping[str, str]) -> str:
+    """Select the server-side provider; unset keeps the OpenAI B1/v1 default."""
+
+    provider = environment.get("MODEL_PROVIDER", "").strip()
+    if not provider:
+        return MODEL_PROVIDER_OPENAI
+    if provider not in MODEL_PROVIDERS:
+        raise ModelGatewayConfigurationError(
+            "MODEL_PROVIDER must be openai or anthropic"
+        )
+    return provider
+
+
+@dataclass(frozen=True)
+class AnthropicGatewaySettings:
+    """Pinned C1/v1 provider configuration, sourced only from server environment."""
+
+    api_key: str
+    model_id: str = C1_MODEL_ID
+    effort: str = C1_EFFORT
+    max_tokens: int = C1_MAX_TOKENS
+    timeout_seconds: float = C1_TIMEOUT_SECONDS
+
+    @classmethod
+    def from_environment(cls) -> AnthropicGatewaySettings:
+        return cls.from_mapping(os.environ)
+
+    @classmethod
+    def from_mapping(cls, environment: Mapping[str, str]) -> AnthropicGatewaySettings:
+        return cls(api_key=environment.get("ANTHROPIC_API_KEY", "").strip())
+
+    def validate(self) -> None:
+        if not self.api_key:
+            raise ModelGatewayConfigurationError("ANTHROPIC_API_KEY must be configured")
+        if self.model_id != C1_MODEL_ID:
+            raise ModelGatewayConfigurationError(
+                "C1/v1 requires model claude-sonnet-5-5"
+            )
+        if self.effort != C1_EFFORT:
+            raise ModelGatewayConfigurationError("C1/v1 requires medium effort")
+        if self.max_tokens != C1_MAX_TOKENS:
+            raise ModelGatewayConfigurationError("C1/v1 requires 4096 max tokens")
+        if self.timeout_seconds != C1_TIMEOUT_SECONDS:
+            raise ModelGatewayConfigurationError("C1/v1 requires a 60 second timeout")
 
 
 @dataclass(frozen=True)
@@ -109,6 +175,7 @@ class StructuredModelResponse:
     output_json: Mapping[str, object]
     usage: ModelUsage
     configuration_version: str = MODEL_GATEWAY_CONFIGURATION_VERSION
+    provider: str = MODEL_PROVIDER_OPENAI
 
 
 class ModelAdapter(Protocol):
@@ -130,6 +197,39 @@ class JsonHttpTransport(Protocol):
     ) -> Mapping[str, object]: ...
 
 
+def _post_pinned_json(
+    *,
+    pinned_url: str,
+    rejection_message: str,
+    url: str,
+    headers: Mapping[str, str],
+    body: Mapping[str, object],
+    timeout_seconds: float,
+) -> Mapping[str, object]:
+    """POST JSON to exactly one pinned HTTPS URL; each transport owns its own pin."""
+
+    if url != pinned_url:
+        raise ModelGatewayConfigurationError(rejection_message)
+    encoded_body = json.dumps(body).encode("utf-8")
+    request = Request(url, data=encoded_body, headers=dict(headers), method="POST")
+    try:
+        # The URL is compared with the pinned HTTPS endpoint above, so no other
+        # protocol or host can be opened here.
+        with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
+            payload = json.loads(response.read().decode("utf-8"))
+    except TimeoutError as error:
+        raise ModelGatewayTimeout("Model provider timed out") from error
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ModelGatewayProtocolError(
+            "Model provider returned an invalid response"
+        ) from error
+    except (HTTPError, URLError, OSError) as error:
+        raise ModelGatewayUnavailable("Model provider is unavailable") from error
+    if not isinstance(payload, dict):
+        raise ModelGatewayProtocolError("Model provider returned an invalid response")
+    return payload
+
+
 class UrllibJsonHttpTransport:
     """Server-side HTTPS transport with no browser or API-route exposure."""
 
@@ -141,30 +241,42 @@ class UrllibJsonHttpTransport:
         body: Mapping[str, object],
         timeout_seconds: float,
     ) -> Mapping[str, object]:
-        if url != OPENAI_RESPONSES_URL:
-            raise ModelGatewayConfigurationError(
+        return _post_pinned_json(
+            pinned_url=OPENAI_RESPONSES_URL,
+            rejection_message=(
                 "The model transport only permits the pinned OpenAI HTTPS endpoint"
-            )
-        encoded_body = json.dumps(body).encode("utf-8")
-        request = Request(url, data=encoded_body, headers=dict(headers), method="POST")
-        try:
-            # The URL is compared with the pinned HTTPS endpoint above, so no other
-            # protocol or host can be opened here.
-            with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
-                payload = json.loads(response.read().decode("utf-8"))
-        except TimeoutError as error:
-            raise ModelGatewayTimeout("Model provider timed out") from error
-        except (UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise ModelGatewayProtocolError(
-                "Model provider returned an invalid response"
-            ) from error
-        except (HTTPError, URLError, OSError) as error:
-            raise ModelGatewayUnavailable("Model provider is unavailable") from error
-        if not isinstance(payload, dict):
-            raise ModelGatewayProtocolError(
-                "Model provider returned an invalid response"
-            )
-        return payload
+            ),
+            url=url,
+            headers=headers,
+            body=body,
+            timeout_seconds=timeout_seconds,
+        )
+
+
+class AnthropicUrllibJsonHttpTransport:
+    """Server-side HTTPS transport pinned to the Anthropic Messages endpoint only.
+
+    Deliberately separate from the OpenAI transport so neither allowlist widens.
+    """
+
+    def post(
+        self,
+        *,
+        url: str,
+        headers: Mapping[str, str],
+        body: Mapping[str, object],
+        timeout_seconds: float,
+    ) -> Mapping[str, object]:
+        return _post_pinned_json(
+            pinned_url=ANTHROPIC_MESSAGES_URL,
+            rejection_message=(
+                "The model transport only permits the pinned Anthropic HTTPS endpoint"
+            ),
+            url=url,
+            headers=headers,
+            body=body,
+            timeout_seconds=timeout_seconds,
+        )
 
 
 class OpenAIResponsesAdapter:
@@ -219,6 +331,69 @@ class OpenAIResponsesAdapter:
         return _response_from_provider_payload(
             payload, request.correlation_id, self._settings.model_id
         )
+
+
+class AnthropicMessagesAdapter:
+    """Direct, pinned Anthropic Messages API adapter for C1/v1.
+
+    One request, no tools, no streaming, no retry or repair loop.
+    """
+
+    def __init__(
+        self,
+        settings: AnthropicGatewaySettings,
+        transport: JsonHttpTransport | None = None,
+    ) -> None:
+        settings.validate()
+        self._settings = settings
+        self._transport = transport or AnthropicUrllibJsonHttpTransport()
+
+    def generate(self, request: StructuredModelRequest) -> StructuredModelResponse:
+        request.validate()
+        payload = self._transport.post(
+            url=ANTHROPIC_MESSAGES_URL,
+            headers={
+                "x-api-key": self._settings.api_key,
+                "anthropic-version": ANTHROPIC_API_VERSION,
+                "Content-Type": "application/json",
+            },
+            body={
+                "model": self._settings.model_id,
+                "max_tokens": self._settings.max_tokens,
+                "system": request.developer_instruction,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": request.user_input}],
+                    }
+                ],
+                "output_config": {
+                    "effort": self._settings.effort,
+                    "format": {
+                        "type": "json_schema",
+                        "schema": dict(request.schema),
+                    },
+                },
+            },
+            timeout_seconds=self._settings.timeout_seconds,
+        )
+        return _anthropic_response_from_payload(
+            payload, request.correlation_id, self._settings.model_id
+        )
+
+
+def model_adapter_from_mapping(environment: Mapping[str, str]) -> ModelAdapter:
+    """Compose exactly the selected provider's adapter; never fall back to another.
+
+    Raises ``ModelGatewayConfigurationError`` for an unknown ``MODEL_PROVIDER`` or a
+    missing/unsafe configuration of the selected provider only.
+    """
+
+    if model_provider_from_mapping(environment) == MODEL_PROVIDER_ANTHROPIC:
+        return AnthropicMessagesAdapter(
+            AnthropicGatewaySettings.from_mapping(environment)
+        )
+    return OpenAIResponsesAdapter(ModelGatewaySettings.from_mapping(environment))
 
 
 class FakeModelAdapter:
@@ -292,7 +467,10 @@ class ModelGateway:
         assert self._metrics is not None
         assert self._pricing is not None
 
-        if response is not None and response.model_id != self._pricing.model_id:
+        if response is not None and (
+            response.model_id != self._pricing.model_id
+            or response.provider != self._pricing.provider
+        ):
             raise ValueError(
                 "Provider response model does not match configured pricing"
             )
@@ -337,6 +515,115 @@ def _response_from_provider_payload(
         model_id=model_id,
         output_json=output_json,
         usage=usage,
+    )
+
+
+def _anthropic_response_from_payload(
+    payload: Mapping[str, object], correlation_id: UUID, expected_model_id: str
+) -> StructuredModelResponse:
+    response_id = payload.get("id")
+    model_id = payload.get("model")
+    if (
+        payload.get("type") != "message"
+        or payload.get("role") != "assistant"
+        or not isinstance(response_id, str)
+        or not response_id
+        or not isinstance(model_id, str)
+    ):
+        raise ModelGatewayProtocolError("Model provider response is missing provenance")
+    if model_id != expected_model_id:
+        raise ModelGatewayProtocolError("Model provider returned an unexpected model")
+
+    # Usage is billed even for refusals and truncation, so validate it first.
+    usage = _anthropic_usage_from_payload(payload.get("usage"))
+
+    stop_reason = payload.get("stop_reason")
+    if stop_reason == "refusal":
+        raise ModelGatewayRefusal("Model provider declined the request")
+    if stop_reason == "max_tokens":
+        raise ModelGatewayTruncated("Model provider output was truncated")
+    if stop_reason != "end_turn":
+        raise ModelGatewayProtocolError("Model provider stopped unexpectedly")
+
+    output_text = _anthropic_output_text(payload.get("content"))
+    try:
+        output_json = json.loads(output_text)
+    except json.JSONDecodeError as error:
+        raise ModelGatewayProtocolError(
+            "Model provider did not return valid JSON"
+        ) from error
+    if not isinstance(output_json, dict):
+        raise ModelGatewayProtocolError("Model provider JSON output must be an object")
+    return StructuredModelResponse(
+        correlation_id=correlation_id,
+        response_id=response_id,
+        model_id=model_id,
+        output_json=output_json,
+        usage=usage,
+        configuration_version=C1_CONFIGURATION_VERSION,
+        provider=MODEL_PROVIDER_ANTHROPIC,
+    )
+
+
+_ANTHROPIC_IGNORED_BLOCK_TYPES: Final = frozenset({"thinking", "redacted_thinking"})
+
+
+def _anthropic_output_text(value: object) -> str:
+    """Return the single text block; tolerate thinking, reject everything else."""
+
+    if not isinstance(value, list):
+        raise ModelGatewayProtocolError("Model provider response is missing output")
+    texts: list[str] = []
+    for block in value:
+        if not isinstance(block, dict):
+            raise ModelGatewayProtocolError("Model provider returned an invalid block")
+        block_type = block.get("type")
+        if block_type in _ANTHROPIC_IGNORED_BLOCK_TYPES:
+            continue
+        if block_type != "text":
+            # No tool-calling loop: a tool_use or any unknown block is never acted on.
+            raise ModelGatewayProtocolError(
+                "Model provider returned an unexpected content block"
+            )
+        text = block.get("text")
+        if not isinstance(text, str):
+            raise ModelGatewayProtocolError("Model provider returned an invalid block")
+        texts.append(text)
+    if not texts:
+        raise ModelGatewayProtocolError(
+            "Model provider response is missing output text"
+        )
+    if len(texts) > 1:
+        raise ModelGatewayProtocolError("Model provider returned multiple text blocks")
+    return texts[0]
+
+
+def _anthropic_usage_from_payload(value: object) -> ModelUsage:
+    if not isinstance(value, dict):
+        raise ModelGatewayProtocolError("Model provider response is missing usage")
+    input_tokens = value.get("input_tokens")
+    output_tokens = value.get("output_tokens")
+    if (
+        isinstance(input_tokens, bool)
+        or not isinstance(input_tokens, int)
+        or input_tokens < 0
+        or isinstance(output_tokens, bool)
+        or not isinstance(output_tokens, int)
+        or output_tokens < 0
+    ):
+        raise ModelGatewayProtocolError("Model provider response has invalid usage")
+    for cache_field in ("cache_creation_input_tokens", "cache_read_input_tokens"):
+        cache_tokens = value.get(cache_field)
+        # No cache_control is ever sent and ProviderPricing has no cache rate, so
+        # cached tokens would be unpriced; fail closed rather than undercount cost.
+        if cache_tokens not in (None, 0) or isinstance(cache_tokens, bool):
+            raise ModelGatewayProtocolError(
+                "Model provider reported unpriced cache usage"
+            )
+    return ModelUsage(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
     )
 
 

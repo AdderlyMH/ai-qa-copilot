@@ -27,10 +27,9 @@ from ai_qa_copilot_api.model_gateway import (
     ModelGateway,
     ModelGatewayConfigurationError,
     ModelGatewayUnavailable,
-    OpenAIResponsesAdapter,
     StructuredModelRequest,
     StructuredModelResponse,
-    ModelGatewaySettings,
+    model_adapter_from_mapping,
 )
 from ai_qa_copilot_api.projects import Base
 
@@ -78,6 +77,7 @@ class AnalysisRun:
     output_tokens: int
     total_tokens: int
     created_at: datetime
+    provider: str = "openai"
 
 
 class AnalysisRunRepository(Protocol):
@@ -104,6 +104,9 @@ class AnalysisRunRecord(Base):
     synthetic_text: Mapped[str] = mapped_column(Text, nullable=False)
     output_json: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
     provider_response_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="openai"
+    )
     model_id: Mapped[str] = mapped_column(String(120), nullable=False)
     configuration_version: Mapped[str] = mapped_column(String(32), nullable=False)
     prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -129,6 +132,7 @@ def _run_from_record(record: AnalysisRunRecord) -> AnalysisRun:
         synthetic_text=record.synthetic_text,
         output_json=record.output_json,
         provider_response_id=record.provider_response_id,
+        provider=record.provider,
         model_id=record.model_id,
         configuration_version=record.configuration_version,
         prompt_version=record.prompt_version,
@@ -170,6 +174,7 @@ class SqlAlchemyAnalysisRunRepository:
             synthetic_text=synthetic_text,
             output_json=dict(response.output_json),
             provider_response_id=response.response_id,
+            provider=response.provider,
             model_id=response.model_id,
             configuration_version=response.configuration_version,
             prompt_version=SYNTHETIC_ANALYSIS_PROMPT_VERSION,
@@ -283,7 +288,7 @@ def analysis_run_service_from_environment() -> (
     if isinstance(repository, UnavailableAnalysisRunRepository):
         return UnavailableAnalysisRunService()
     try:
-        adapter = OpenAIResponsesAdapter(ModelGatewaySettings.from_environment())
+        adapter = model_adapter_from_mapping(os.environ)
     except ModelGatewayConfigurationError:
         return UnavailableAnalysisRunService()
     return AnalysisRunService(repository, ModelGateway(adapter))

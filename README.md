@@ -222,6 +222,15 @@ or a permissive API CORS policy. A submitted synthetic analysis run requires
 with a correlation ID. The integration test injects a deterministic fake model
 and never makes a paid provider call.
 
+Anthropic Claude is available as an alternative provider (ADR-013). Set
+`MODEL_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in the API process only;
+unset or `openai` keeps the OpenAI B1/v1 default. Only the selected provider's
+credential is read and there is no fallback between providers, so an unknown
+`MODEL_PROVIDER` or a missing key fails closed. Claude runs use configuration
+version `C1/v1` (`claude-sonnet-5-5`) and record `provider`, `model_id`, and
+`configuration_version` on each persisted run (migration `0021`). They are not
+B1/v1 evidence, and no live Anthropic call is part of repository CI.
+
 ```powershell
 $env:APP_ENV = "local"
 $env:LOCAL_AUTH_BYPASS_ENABLED = "true"

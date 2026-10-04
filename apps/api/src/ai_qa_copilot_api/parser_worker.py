@@ -16,6 +16,7 @@ PARSER_WORKER_ROLE = "restricted-parser"
 FORBIDDEN_CREDENTIAL_ENVIRONMENT_VARIABLES = frozenset(
     {
         "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
         "AWS_ACCESS_KEY_ID",
         "AWS_SECRET_ACCESS_KEY",
         "AWS_SESSION_TOKEN",

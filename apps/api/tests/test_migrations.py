@@ -13,7 +13,8 @@ from ai_qa_copilot_api.migration_config import database_url_from_environment
 
 ROOT = Path(__file__).resolve().parents[3]
 ALEMBIC_CONFIG = ROOT / "apps" / "api" / "alembic.ini"
-EXPECTED_REVISION = "0020_review_packet_binding"
+EXPECTED_REVISION = "0021_analysis_run_provider"
+ANALYSIS_RUN_PROVIDER_REVISION = "0021_analysis_run_provider"
 WORKFLOW_TRACE_REVISION = "0019_execution_job_trace"
 REVIEW_PACKET_BINDING_REVISION = "0020_review_packet_binding"
 INDEXING_JOB_REVISION = "0018_indexing_jobs"
@@ -286,12 +287,73 @@ def test_review_packet_binding_migration_preserves_capture_evidence() -> None:
         engine.dispose()
 
 
+def test_analysis_run_provider_migration_defaults_legacy_rows_to_openai() -> None:
+    engine = sa.create_engine("sqlite+pysqlite:///:memory:")
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql(
+                "CREATE TABLE analysis_runs ("
+                "id CHAR(32) PRIMARY KEY, "
+                "model_id VARCHAR(120) NOT NULL, "
+                "configuration_version VARCHAR(32) NOT NULL)"
+            )
+            connection.exec_driver_sql(
+                "INSERT INTO analysis_runs VALUES ('legacy', 'gpt-5.6-terra', 'B1/v1')"
+            )
+
+            with Operations.context(MigrationContext.configure(connection)):
+                module = migration_script(ANALYSIS_RUN_PROVIDER_REVISION)
+                module.upgrade()
+
+                legacy = connection.execute(
+                    sa.text("SELECT provider FROM analysis_runs WHERE id = 'legacy'")
+                ).scalar_one()
+                assert legacy == "openai"
+
+                connection.execute(
+                    sa.text(
+                        "INSERT INTO analysis_runs VALUES "
+                        "('claude', 'claude-sonnet-5-5', 'C1/v1', 'anthropic')"
+                    )
+                )
+                with pytest.raises(sa.exc.IntegrityError):
+                    connection.execute(
+                        sa.text(
+                            "INSERT INTO analysis_runs VALUES "
+                            "('bad', 'm', 'v', 'other')"
+                        )
+                    )
+
+                with pytest.raises(RuntimeError, match="non-OpenAI runs"):
+                    module.downgrade()
+
+                connection.execute(
+                    sa.text("DELETE FROM analysis_runs WHERE id='claude'")
+                )
+                module.downgrade()
+                columns = {
+                    column["name"]
+                    for column in connection.execute(
+                        sa.text("PRAGMA table_info(analysis_runs)")
+                    ).mappings()
+                }
+                assert "provider" not in columns
+    finally:
+        engine.dispose()
+
+
 def test_alembic_has_reversible_parser_claims_head() -> None:
     config = Config(str(ALEMBIC_CONFIG))
     script = ScriptDirectory.from_config(config)
 
     assert config.get_main_option("sqlalchemy.url") is None
     assert script.get_heads() == [EXPECTED_REVISION]
+
+    analysis_run_provider_revision = script.get_revision(ANALYSIS_RUN_PROVIDER_REVISION)
+    assert analysis_run_provider_revision is not None
+    assert (
+        analysis_run_provider_revision.down_revision == REVIEW_PACKET_BINDING_REVISION
+    )
 
     review_packet_binding_revision = script.get_revision(REVIEW_PACKET_BINDING_REVISION)
     assert review_packet_binding_revision is not None

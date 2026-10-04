@@ -32,6 +32,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-010](ADR-010-canonical-report-revisions.md)              | Immutable canonical QA-report revisions                                                                  | Accepted |
 | [ADR-011](ADR-011-structured-workflow-tracing.md)             | Safe correlated structured workflow tracing                                                              | Accepted |
 | [ADR-012](ADR-012-deterministic-provider-usage-accounting.md) | Deterministic provider-usage cost and reliability accounting                                             | Accepted |
+| [ADR-013](ADR-013-anthropic-claude-second-provider.md)        | Anthropic Claude as a second, operator-selected model provider                                           | Accepted |
 
 ## Required ADR structure
 
