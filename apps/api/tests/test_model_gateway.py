@@ -11,7 +11,10 @@ from ai_qa_copilot_api.model_gateway import (
     ANTHROPIC_MESSAGES_URL,
     B1_MODEL_ID,
     C1_TIMEOUT_SECONDS,
+    AnthropicMessagesAdapter,
     AnthropicUrllibJsonHttpTransport,
+    ModelGatewayRefusal,
+    ModelGatewayTruncated,
     ModelGatewayUnavailable,
     C1_CONFIGURATION_VERSION,
     C1_MODEL_ID,
@@ -315,6 +318,324 @@ def test_server_transport_rejects_unpinned_urls_before_opening_them() -> None:
             body={},
             timeout_seconds=MODEL_GATEWAY_TIMEOUT_SECONDS,
         )
+
+
+def anthropic_payload() -> dict[str, object]:
+    return {
+        "id": "msg_test_123",
+        "type": "message",
+        "role": "assistant",
+        "model": C1_MODEL_ID,
+        "content": [{"type": "text", "text": '{"summary":"OK"}'}],
+        "stop_reason": "end_turn",
+        "usage": {"input_tokens": 12, "output_tokens": 4},
+    }
+
+
+def anthropic_adapter(payload: Mapping[str, object]) -> AnthropicMessagesAdapter:
+    return AnthropicMessagesAdapter(
+        AnthropicGatewaySettings(api_key="test-server-only-key"),
+        RecordingTransport(payload),
+    )
+
+
+def test_anthropic_adapter_builds_one_pinned_structured_request() -> None:
+    transport = RecordingTransport(anthropic_payload())
+    model_request = request()
+    adapter = AnthropicMessagesAdapter(
+        AnthropicGatewaySettings(api_key="test-server-only-key"), transport
+    )
+
+    model_response = adapter.generate(model_request)
+
+    assert len(transport.calls) == 1
+    call = transport.calls[0]
+    assert call["url"] == ANTHROPIC_MESSAGES_URL
+    assert call["timeout_seconds"] == C1_TIMEOUT_SECONDS
+    assert call["headers"] == {
+        "x-api-key": "test-server-only-key",
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+    }
+    body = cast(Mapping[str, object], call["body"])
+    assert body == {
+        "model": "claude-sonnet-5-5",
+        "max_tokens": 4096,
+        "system": model_request.developer_instruction,
+        "messages": [
+            {
+                "role": "user",
+                "content": [{"type": "text", "text": model_request.user_input}],
+            }
+        ],
+        "output_config": {
+            "effort": "medium",
+            "format": {"type": "json_schema", "schema": model_request.schema},
+        },
+    }
+    assert "tools" not in body
+    assert "stream" not in body
+    assert "test-server-only-key" not in str(body)
+    assert model_response.correlation_id == model_request.correlation_id
+    assert model_response.response_id == "msg_test_123"
+    assert model_response.model_id == "claude-sonnet-5-5"
+    assert model_response.output_json == {"summary": "OK"}
+    assert model_response.configuration_version == "C1/v1"
+
+
+def test_anthropic_usage_total_is_input_plus_output() -> None:
+    usage = anthropic_adapter(anthropic_payload()).generate(request()).usage
+
+    assert usage == ModelUsage(input_tokens=12, output_tokens=4, total_tokens=16)
+
+
+def test_anthropic_usage_is_not_taken_from_a_provider_total() -> None:
+    payload = anthropic_payload()
+    payload["usage"] = {"input_tokens": 7, "output_tokens": 3, "total_tokens": 999}
+
+    assert anthropic_adapter(payload).generate(request()).usage.total_tokens == 10
+
+
+def test_anthropic_adapter_ignores_thinking_blocks() -> None:
+    payload = anthropic_payload()
+    payload["content"] = [
+        {"type": "thinking", "thinking": "", "signature": "sig"},
+        {"type": "redacted_thinking", "data": "opaque"},
+        {"type": "text", "text": '{"summary":"OK"}'},
+    ]
+
+    response = anthropic_adapter(payload).generate(request())
+
+    assert response.output_json == {"summary": "OK"}
+
+
+def test_anthropic_refusal_is_a_distinct_unavailable_error() -> None:
+    payload = anthropic_payload()
+    payload["stop_reason"] = "refusal"
+    payload["content"] = [{"type": "text", "text": "I can't help with that."}]
+
+    with pytest.raises(ModelGatewayRefusal, match="declined") as error:
+        anthropic_adapter(payload).generate(request())
+
+    assert isinstance(error.value, ModelGatewayUnavailable)
+    assert "can't help" not in str(error.value)
+
+
+def test_anthropic_truncation_is_rejected_even_if_json_looks_complete() -> None:
+    payload = anthropic_payload()
+    payload["stop_reason"] = "max_tokens"
+
+    with pytest.raises(ModelGatewayTruncated, match="truncated"):
+        anthropic_adapter(payload).generate(request())
+
+
+@pytest.mark.parametrize(
+    "stop_reason", ["tool_use", "pause_turn", "stop_sequence", None]
+)
+def test_anthropic_unexpected_stop_reasons_fail_closed(stop_reason: object) -> None:
+    payload = anthropic_payload()
+    payload["stop_reason"] = stop_reason
+
+    with pytest.raises(ModelGatewayProtocolError, match="stopped unexpectedly"):
+        anthropic_adapter(payload).generate(request())
+
+
+@pytest.mark.parametrize(
+    ("content", "message"),
+    [
+        (None, "missing output"),
+        ("text", "missing output"),
+        ([], "missing output text"),
+        ([{"type": "thinking", "thinking": ""}], "missing output text"),
+        (["text"], "invalid block"),
+        ([{"type": "text"}], "invalid block"),
+        ([{"type": "text", "text": 5}], "invalid block"),
+        (
+            [
+                {"type": "tool_use", "id": "toolu_1", "name": "x", "input": {}},
+                {"type": "text", "text": '{"summary":"OK"}'},
+            ],
+            "unexpected content block",
+        ),
+        ([{"type": "server_tool_use"}], "unexpected content block"),
+        (
+            [
+                {"type": "text", "text": '{"summary":"A"}'},
+                {"type": "text", "text": '{"summary":"B"}'},
+            ],
+            "multiple text blocks",
+        ),
+        ([{"type": "text", "text": "not json"}], "valid JSON"),
+        ([{"type": "text", "text": "[]"}], "must be an object"),
+        ([{"type": "text", "text": '"x"'}], "must be an object"),
+    ],
+)
+def test_anthropic_content_block_shapes_fail_closed(
+    content: object, message: str
+) -> None:
+    payload = anthropic_payload()
+    payload["content"] = content
+
+    with pytest.raises(ModelGatewayProtocolError, match=message):
+        anthropic_adapter(payload).generate(request())
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        {"id": None},
+        {"id": ""},
+        {"id": 5},
+        {"model": None},
+        {"type": "error"},
+        {"role": "user"},
+    ],
+)
+def test_anthropic_missing_provenance_fails_closed(mutation: dict[str, object]) -> None:
+    payload = {**anthropic_payload(), **mutation}
+
+    with pytest.raises(ModelGatewayProtocolError, match="missing provenance"):
+        anthropic_adapter(payload).generate(request())
+
+
+@pytest.mark.parametrize("model", ["claude-opus-5-5", "claude-sonnet-5", ""])
+def test_anthropic_unexpected_model_fails_closed(model: str) -> None:
+    payload = {**anthropic_payload(), "model": model}
+
+    with pytest.raises(ModelGatewayProtocolError, match="unexpected model"):
+        anthropic_adapter(payload).generate(request())
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        None,
+        "usage",
+        {},
+        {"input_tokens": 1},
+        {"output_tokens": 1},
+        {"input_tokens": -1, "output_tokens": 1},
+        {"input_tokens": 1, "output_tokens": -1},
+        {"input_tokens": 1.5, "output_tokens": 1},
+        {"input_tokens": "1", "output_tokens": 1},
+        {"input_tokens": True, "output_tokens": 1},
+        {"input_tokens": 1, "output_tokens": False},
+    ],
+)
+def test_anthropic_missing_or_invalid_usage_fails_closed(usage: object) -> None:
+    payload = anthropic_payload()
+    payload["usage"] = usage
+
+    with pytest.raises(ModelGatewayProtocolError, match="usage"):
+        anthropic_adapter(payload).generate(request())
+
+
+def test_anthropic_refusal_and_truncation_still_require_valid_usage() -> None:
+    payload = anthropic_payload()
+    payload["stop_reason"] = "refusal"
+    payload["usage"] = {}
+
+    with pytest.raises(ModelGatewayProtocolError, match="usage"):
+        anthropic_adapter(payload).generate(request())
+
+
+@pytest.mark.parametrize(
+    "cache_usage",
+    [
+        {"cache_creation_input_tokens": 5},
+        {"cache_read_input_tokens": 5},
+        {"cache_read_input_tokens": True},
+        {"cache_creation_input_tokens": "0"},
+    ],
+)
+def test_anthropic_unpriced_cache_usage_fails_closed(
+    cache_usage: dict[str, object],
+) -> None:
+    payload = anthropic_payload()
+    payload["usage"] = {"input_tokens": 12, "output_tokens": 4, **cache_usage}
+
+    with pytest.raises(ModelGatewayProtocolError, match="cache usage"):
+        anthropic_adapter(payload).generate(request())
+
+
+def test_anthropic_zero_cache_usage_is_accepted() -> None:
+    payload = anthropic_payload()
+    payload["usage"] = {
+        "input_tokens": 12,
+        "output_tokens": 4,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+    }
+
+    assert anthropic_adapter(payload).generate(request()).usage.total_tokens == 16
+
+
+def test_anthropic_adapter_propagates_normalized_transport_errors() -> None:
+    class FailingTransport:
+        def __init__(self, error: Exception) -> None:
+            self._error = error
+
+        def post(self, **_: object) -> Mapping[str, object]:
+            raise self._error
+
+    settings = AnthropicGatewaySettings(api_key="test")
+    for error in (
+        ModelGatewayTimeout("Model provider timed out"),
+        ModelGatewayUnavailable("Model provider is unavailable"),
+    ):
+        with pytest.raises(type(error)):
+            AnthropicMessagesAdapter(settings, FailingTransport(error)).generate(
+                request()
+            )
+
+
+def test_anthropic_adapter_rejects_unsafe_settings_before_any_request() -> None:
+    transport = RecordingTransport(anthropic_payload())
+
+    with pytest.raises(ModelGatewayConfigurationError):
+        AnthropicMessagesAdapter(AnthropicGatewaySettings(api_key=""), transport)
+
+    assert transport.calls == []
+
+
+def test_gateway_accounts_anthropic_usage_against_anthropic_pricing() -> None:
+    model_request = request()
+    metrics = InMemoryWorkflowMetrics()
+    pricing = ProviderPricing(
+        provider="anthropic",
+        model_id=C1_MODEL_ID,
+        pricing_version="test-pricing/v1",
+        source_reference="test-fixture",
+        input_microusd_per_million_tokens=2_000_000,
+        output_microusd_per_million_tokens=10_000_000,
+    )
+    timestamps = iter((1.0, 1.5))
+    gateway = ModelGateway(
+        anthropic_adapter(anthropic_payload()),
+        metrics=metrics,
+        pricing=pricing,
+        monotonic_clock=lambda: next(timestamps),
+    )
+
+    gateway.generate_structured(model_request)
+
+    measurement = metrics.measurements()[0]
+    assert measurement.pricing == pricing
+    assert (measurement.input_tokens, measurement.output_tokens) == (12, 4)
+    assert measurement.total_tokens == 16
+    assert metrics.report().summaries[0].cost_microusd == 64
+
+
+def test_gateway_rejects_anthropic_response_priced_as_another_model() -> None:
+    metrics = InMemoryWorkflowMetrics()
+    gateway = ModelGateway(
+        anthropic_adapter(anthropic_payload()),
+        metrics=metrics,
+        pricing=PRICING,
+    )
+
+    with pytest.raises(ValueError, match="does not match configured pricing"):
+        gateway.generate_structured(request())
 
 
 def test_anthropic_transport_pins_only_the_messages_endpoint() -> None:
