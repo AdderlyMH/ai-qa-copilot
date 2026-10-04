@@ -231,6 +231,36 @@ A real B0-versus-grounded comparison requires a new immutable evaluation-case
 fixture version with approved nonzero USD budgets. Both workflows must run
 against that same future fixture version before publishing quantitative claims.
 
+## Budgeted v2 corpus for provider comparison
+
+`evaluation-cases.v2.yaml` (suite `evaluation-corpus/v2`) is the v1 corpus with
+one approved nonzero USD budget per case. Every other case field is identical,
+and `evaluation-cases.v1.yaml` is unchanged, so B1/v1 evidence bound to v1 is
+unaffected. v2 exists for budgeted provider-comparison runs (C1/v1 first); a v2
+result is not B1 evidence.
+
+Each case has `maximum_expected_cost: 0.09` (USD), approved on 2026-10-04:
+
+| Input | Value |
+|---|---|
+| Pricing | Claude Sonnet 5.5: 2 USD input, 10 USD output per million tokens ([source](https://platform.claude.com/docs/en/about-claude/pricing), verified 2026-10-04) |
+| Most expensive case | Largest B0 prompt, 38,713 characters at 2.1 characters per token = 18,435 input tokens |
+| Output bound | C1/v1 `max_tokens` 4,096 |
+| Worst case | 0.07783 USD |
+| Budget | Worst case + 10 percent, rounded up to the cent = 0.09 USD |
+
+Selection totals: 8-case smoke 0.72 USD, development split 5.40 USD, all 100
+cases 9.00 USD. These are declared budgets checked by the runner before
+execution and by the scorer afterwards; they do not limit actual provider
+spend. The token estimate is an approximation, not a provider count.
+
+Regenerate and verify with:
+
+```powershell
+uv run python scripts/generate_evaluation_cases.py --corpus v2 --write
+uv run python -m pytest apps/api/tests/test_evaluation_budgeted_benchmark.py
+```
+
 
 ## EVAL-005 development benchmark expansion
 
