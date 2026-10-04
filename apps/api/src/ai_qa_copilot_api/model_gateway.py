@@ -31,6 +31,7 @@ MODEL_PROVIDER_ANTHROPIC: Final = "anthropic"
 MODEL_PROVIDERS: Final = frozenset({MODEL_PROVIDER_OPENAI, MODEL_PROVIDER_ANTHROPIC})
 
 ANTHROPIC_MESSAGES_URL: Final = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_API_VERSION: Final = "2023-06-01"
 C1_MODEL_ID: Final = "claude-sonnet-5-5"
 C1_EFFORT: Final = "medium"
 C1_MAX_TOKENS: Final = 4096
@@ -52,6 +53,14 @@ class ModelGatewayTimeout(ModelGatewayUnavailable):
 
 class ModelGatewayProtocolError(ModelGatewayUnavailable):
     """Raised when the provider response cannot satisfy the typed contract."""
+
+
+class ModelGatewayRefusal(ModelGatewayUnavailable):
+    """Raised when the provider declines the request (``stop_reason: refusal``)."""
+
+
+class ModelGatewayTruncated(ModelGatewayProtocolError):
+    """Raised when output hit the token cap and cannot be trusted as complete."""
 
 
 @dataclass(frozen=True)
@@ -323,6 +332,55 @@ class OpenAIResponsesAdapter:
         )
 
 
+class AnthropicMessagesAdapter:
+    """Direct, pinned Anthropic Messages API adapter for C1/v1.
+
+    One request, no tools, no streaming, no retry or repair loop.
+    """
+
+    def __init__(
+        self,
+        settings: AnthropicGatewaySettings,
+        transport: JsonHttpTransport | None = None,
+    ) -> None:
+        settings.validate()
+        self._settings = settings
+        self._transport = transport or AnthropicUrllibJsonHttpTransport()
+
+    def generate(self, request: StructuredModelRequest) -> StructuredModelResponse:
+        request.validate()
+        payload = self._transport.post(
+            url=ANTHROPIC_MESSAGES_URL,
+            headers={
+                "x-api-key": self._settings.api_key,
+                "anthropic-version": ANTHROPIC_API_VERSION,
+                "Content-Type": "application/json",
+            },
+            body={
+                "model": self._settings.model_id,
+                "max_tokens": self._settings.max_tokens,
+                "system": request.developer_instruction,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": request.user_input}],
+                    }
+                ],
+                "output_config": {
+                    "effort": self._settings.effort,
+                    "format": {
+                        "type": "json_schema",
+                        "schema": dict(request.schema),
+                    },
+                },
+            },
+            timeout_seconds=self._settings.timeout_seconds,
+        )
+        return _anthropic_response_from_payload(
+            payload, request.correlation_id, self._settings.model_id
+        )
+
+
 class FakeModelAdapter:
     """Deterministic test adapter that never contacts a provider or uses a secret."""
 
@@ -439,6 +497,114 @@ def _response_from_provider_payload(
         model_id=model_id,
         output_json=output_json,
         usage=usage,
+    )
+
+
+def _anthropic_response_from_payload(
+    payload: Mapping[str, object], correlation_id: UUID, expected_model_id: str
+) -> StructuredModelResponse:
+    response_id = payload.get("id")
+    model_id = payload.get("model")
+    if (
+        payload.get("type") != "message"
+        or payload.get("role") != "assistant"
+        or not isinstance(response_id, str)
+        or not response_id
+        or not isinstance(model_id, str)
+    ):
+        raise ModelGatewayProtocolError("Model provider response is missing provenance")
+    if model_id != expected_model_id:
+        raise ModelGatewayProtocolError("Model provider returned an unexpected model")
+
+    # Usage is billed even for refusals and truncation, so validate it first.
+    usage = _anthropic_usage_from_payload(payload.get("usage"))
+
+    stop_reason = payload.get("stop_reason")
+    if stop_reason == "refusal":
+        raise ModelGatewayRefusal("Model provider declined the request")
+    if stop_reason == "max_tokens":
+        raise ModelGatewayTruncated("Model provider output was truncated")
+    if stop_reason != "end_turn":
+        raise ModelGatewayProtocolError("Model provider stopped unexpectedly")
+
+    output_text = _anthropic_output_text(payload.get("content"))
+    try:
+        output_json = json.loads(output_text)
+    except json.JSONDecodeError as error:
+        raise ModelGatewayProtocolError(
+            "Model provider did not return valid JSON"
+        ) from error
+    if not isinstance(output_json, dict):
+        raise ModelGatewayProtocolError("Model provider JSON output must be an object")
+    return StructuredModelResponse(
+        correlation_id=correlation_id,
+        response_id=response_id,
+        model_id=model_id,
+        output_json=output_json,
+        usage=usage,
+        configuration_version=C1_CONFIGURATION_VERSION,
+    )
+
+
+_ANTHROPIC_IGNORED_BLOCK_TYPES: Final = frozenset({"thinking", "redacted_thinking"})
+
+
+def _anthropic_output_text(value: object) -> str:
+    """Return the single text block; tolerate thinking, reject everything else."""
+
+    if not isinstance(value, list):
+        raise ModelGatewayProtocolError("Model provider response is missing output")
+    texts: list[str] = []
+    for block in value:
+        if not isinstance(block, dict):
+            raise ModelGatewayProtocolError("Model provider returned an invalid block")
+        block_type = block.get("type")
+        if block_type in _ANTHROPIC_IGNORED_BLOCK_TYPES:
+            continue
+        if block_type != "text":
+            # No tool-calling loop: a tool_use or any unknown block is never acted on.
+            raise ModelGatewayProtocolError(
+                "Model provider returned an unexpected content block"
+            )
+        text = block.get("text")
+        if not isinstance(text, str):
+            raise ModelGatewayProtocolError("Model provider returned an invalid block")
+        texts.append(text)
+    if not texts:
+        raise ModelGatewayProtocolError(
+            "Model provider response is missing output text"
+        )
+    if len(texts) > 1:
+        raise ModelGatewayProtocolError("Model provider returned multiple text blocks")
+    return texts[0]
+
+
+def _anthropic_usage_from_payload(value: object) -> ModelUsage:
+    if not isinstance(value, dict):
+        raise ModelGatewayProtocolError("Model provider response is missing usage")
+    input_tokens = value.get("input_tokens")
+    output_tokens = value.get("output_tokens")
+    if (
+        isinstance(input_tokens, bool)
+        or not isinstance(input_tokens, int)
+        or input_tokens < 0
+        or isinstance(output_tokens, bool)
+        or not isinstance(output_tokens, int)
+        or output_tokens < 0
+    ):
+        raise ModelGatewayProtocolError("Model provider response has invalid usage")
+    for cache_field in ("cache_creation_input_tokens", "cache_read_input_tokens"):
+        cache_tokens = value.get(cache_field)
+        # No cache_control is ever sent and ProviderPricing has no cache rate, so
+        # cached tokens would be unpriced; fail closed rather than undercount cost.
+        if cache_tokens not in (None, 0) or isinstance(cache_tokens, bool):
+            raise ModelGatewayProtocolError(
+                "Model provider reported unpriced cache usage"
+            )
+    return ModelUsage(
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=input_tokens + output_tokens,
     )
 
 
