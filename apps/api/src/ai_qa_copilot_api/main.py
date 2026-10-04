@@ -246,6 +246,7 @@ class AnalysisRunResponse(BaseModel):
     synthetic_text: str
     output_json: dict[str, object]
     provider_response_id: str
+    provider: str
     model_id: str
     configuration_version: str
     prompt_version: str

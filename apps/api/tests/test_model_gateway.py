@@ -31,6 +31,7 @@ from ai_qa_copilot_api.model_gateway import (
     StructuredModelRequest,
     StructuredModelResponse,
     UrllibJsonHttpTransport,
+    model_adapter_from_mapping,
     model_provider_from_mapping,
 )
 from ai_qa_copilot_api.metrics import (
@@ -636,6 +637,44 @@ def test_gateway_rejects_anthropic_response_priced_as_another_model() -> None:
 
     with pytest.raises(ValueError, match="does not match configured pricing"):
         gateway.generate_structured(request())
+
+
+def test_gateway_rejects_a_response_priced_under_another_provider() -> None:
+    model_request = request()
+    mislabeled = ProviderPricing(
+        provider="anthropic",
+        model_id=B1_MODEL_ID,
+        pricing_version="test-pricing/v1",
+        source_reference="test-fixture",
+        input_microusd_per_million_tokens=1,
+        output_microusd_per_million_tokens=1,
+    )
+    gateway = ModelGateway(
+        FakeModelAdapter([response(model_request.correlation_id)]),
+        metrics=InMemoryWorkflowMetrics(),
+        pricing=mislabeled,
+    )
+
+    with pytest.raises(ValueError, match="does not match configured pricing"):
+        gateway.generate_structured(model_request)
+
+
+def test_adapter_composition_selects_only_the_chosen_provider() -> None:
+    assert isinstance(
+        model_adapter_from_mapping({"OPENAI_API_KEY": "t"}), OpenAIResponsesAdapter
+    )
+    assert isinstance(
+        model_adapter_from_mapping(
+            {"MODEL_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "t"}
+        ),
+        AnthropicMessagesAdapter,
+    )
+    with pytest.raises(ModelGatewayConfigurationError, match="ANTHROPIC_API_KEY"):
+        model_adapter_from_mapping(
+            {"MODEL_PROVIDER": "anthropic", "OPENAI_API_KEY": "t"}
+        )
+    with pytest.raises(ModelGatewayConfigurationError, match="OPENAI_API_KEY"):
+        model_adapter_from_mapping({"ANTHROPIC_API_KEY": "t"})
 
 
 def test_anthropic_transport_pins_only_the_messages_endpoint() -> None:

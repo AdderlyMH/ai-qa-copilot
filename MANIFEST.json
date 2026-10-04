@@ -318,7 +318,7 @@
     {
       "path": "scripts/tasks.py",
       "bytes": 30703,
-      "sha256": "499cd74fe9e4aa7c1ea5dc00d80a75375073c8b44e2356587f5e980d77342f6b"
+      "sha256": "407e8cf7d8abd413111a5b1cd335dbdb5f298cee5a29c2203a6407e2d2b27293"
     },
     {
       "path": "scripts/validate_docs.py",

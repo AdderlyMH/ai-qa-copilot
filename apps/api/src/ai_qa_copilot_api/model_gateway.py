@@ -175,6 +175,7 @@ class StructuredModelResponse:
     output_json: Mapping[str, object]
     usage: ModelUsage
     configuration_version: str = MODEL_GATEWAY_CONFIGURATION_VERSION
+    provider: str = MODEL_PROVIDER_OPENAI
 
 
 class ModelAdapter(Protocol):
@@ -381,6 +382,20 @@ class AnthropicMessagesAdapter:
         )
 
 
+def model_adapter_from_mapping(environment: Mapping[str, str]) -> ModelAdapter:
+    """Compose exactly the selected provider's adapter; never fall back to another.
+
+    Raises ``ModelGatewayConfigurationError`` for an unknown ``MODEL_PROVIDER`` or a
+    missing/unsafe configuration of the selected provider only.
+    """
+
+    if model_provider_from_mapping(environment) == MODEL_PROVIDER_ANTHROPIC:
+        return AnthropicMessagesAdapter(
+            AnthropicGatewaySettings.from_mapping(environment)
+        )
+    return OpenAIResponsesAdapter(ModelGatewaySettings.from_mapping(environment))
+
+
 class FakeModelAdapter:
     """Deterministic test adapter that never contacts a provider or uses a secret."""
 
@@ -452,7 +467,10 @@ class ModelGateway:
         assert self._metrics is not None
         assert self._pricing is not None
 
-        if response is not None and response.model_id != self._pricing.model_id:
+        if response is not None and (
+            response.model_id != self._pricing.model_id
+            or response.provider != self._pricing.provider
+        ):
             raise ValueError(
                 "Provider response model does not match configured pricing"
             )
@@ -543,6 +561,7 @@ def _anthropic_response_from_payload(
         output_json=output_json,
         usage=usage,
         configuration_version=C1_CONFIGURATION_VERSION,
+        provider=MODEL_PROVIDER_ANTHROPIC,
     )
 
 
