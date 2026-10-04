@@ -15,12 +15,33 @@ from ai_qa_copilot_api.pdf_parser import (
 
 
 def _pdf(
-    *, pages: int = 1, text: bytes | None = None, compressed: bool = False
+    *,
+    pages: int = 1,
+    text: bytes | None = None,
+    compressed: bool = False,
+    font: bool = False,
 ) -> bytes:
     writer = PdfWriter()
     for index in range(pages):
         page = writer.add_blank_page(width=72, height=72)
         if text is not None and index == 0:
+            if font:
+                font_ref = writer._add_object(
+                    DictionaryObject(
+                        {
+                            NameObject("/Type"): NameObject("/Font"),
+                            NameObject("/Subtype"): NameObject("/Type1"),
+                            NameObject("/BaseFont"): NameObject("/Helvetica"),
+                        }
+                    )
+                )
+                page[NameObject("/Resources")] = DictionaryObject(
+                    {
+                        NameObject("/Font"): DictionaryObject(
+                            {NameObject("/F1"): font_ref}
+                        )
+                    }
+                )
             stream = DecodedStreamObject()
             stream.set_data(text)
             page[NameObject("/Contents")] = writer._add_object(
@@ -33,7 +54,8 @@ def _pdf(
 
 def test_pdf_parser_extracts_inert_text_with_one_based_page_locations() -> None:
     parsed = parse_pdf(
-        document_type="pdf", raw=_pdf(pages=2, text=b"BT (Hello PDF) Tj ET")
+        document_type="pdf",
+        raw=_pdf(pages=2, text=b"BT /F1 12 Tf (Hello PDF) Tj ET", font=True),
     )
 
     assert parsed.pages == (
