@@ -30,6 +30,7 @@ MODEL_PROVIDER_OPENAI: Final = "openai"
 MODEL_PROVIDER_ANTHROPIC: Final = "anthropic"
 MODEL_PROVIDERS: Final = frozenset({MODEL_PROVIDER_OPENAI, MODEL_PROVIDER_ANTHROPIC})
 
+ANTHROPIC_MESSAGES_URL: Final = "https://api.anthropic.com/v1/messages"
 C1_MODEL_ID: Final = "claude-sonnet-5-5"
 C1_EFFORT: Final = "medium"
 C1_MAX_TOKENS: Final = 4096
@@ -186,6 +187,39 @@ class JsonHttpTransport(Protocol):
     ) -> Mapping[str, object]: ...
 
 
+def _post_pinned_json(
+    *,
+    pinned_url: str,
+    rejection_message: str,
+    url: str,
+    headers: Mapping[str, str],
+    body: Mapping[str, object],
+    timeout_seconds: float,
+) -> Mapping[str, object]:
+    """POST JSON to exactly one pinned HTTPS URL; each transport owns its own pin."""
+
+    if url != pinned_url:
+        raise ModelGatewayConfigurationError(rejection_message)
+    encoded_body = json.dumps(body).encode("utf-8")
+    request = Request(url, data=encoded_body, headers=dict(headers), method="POST")
+    try:
+        # The URL is compared with the pinned HTTPS endpoint above, so no other
+        # protocol or host can be opened here.
+        with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
+            payload = json.loads(response.read().decode("utf-8"))
+    except TimeoutError as error:
+        raise ModelGatewayTimeout("Model provider timed out") from error
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ModelGatewayProtocolError(
+            "Model provider returned an invalid response"
+        ) from error
+    except (HTTPError, URLError, OSError) as error:
+        raise ModelGatewayUnavailable("Model provider is unavailable") from error
+    if not isinstance(payload, dict):
+        raise ModelGatewayProtocolError("Model provider returned an invalid response")
+    return payload
+
+
 class UrllibJsonHttpTransport:
     """Server-side HTTPS transport with no browser or API-route exposure."""
 
@@ -197,30 +231,42 @@ class UrllibJsonHttpTransport:
         body: Mapping[str, object],
         timeout_seconds: float,
     ) -> Mapping[str, object]:
-        if url != OPENAI_RESPONSES_URL:
-            raise ModelGatewayConfigurationError(
+        return _post_pinned_json(
+            pinned_url=OPENAI_RESPONSES_URL,
+            rejection_message=(
                 "The model transport only permits the pinned OpenAI HTTPS endpoint"
-            )
-        encoded_body = json.dumps(body).encode("utf-8")
-        request = Request(url, data=encoded_body, headers=dict(headers), method="POST")
-        try:
-            # The URL is compared with the pinned HTTPS endpoint above, so no other
-            # protocol or host can be opened here.
-            with urlopen(request, timeout=timeout_seconds) as response:  # nosec B310
-                payload = json.loads(response.read().decode("utf-8"))
-        except TimeoutError as error:
-            raise ModelGatewayTimeout("Model provider timed out") from error
-        except (UnicodeDecodeError, json.JSONDecodeError) as error:
-            raise ModelGatewayProtocolError(
-                "Model provider returned an invalid response"
-            ) from error
-        except (HTTPError, URLError, OSError) as error:
-            raise ModelGatewayUnavailable("Model provider is unavailable") from error
-        if not isinstance(payload, dict):
-            raise ModelGatewayProtocolError(
-                "Model provider returned an invalid response"
-            )
-        return payload
+            ),
+            url=url,
+            headers=headers,
+            body=body,
+            timeout_seconds=timeout_seconds,
+        )
+
+
+class AnthropicUrllibJsonHttpTransport:
+    """Server-side HTTPS transport pinned to the Anthropic Messages endpoint only.
+
+    Deliberately separate from the OpenAI transport so neither allowlist widens.
+    """
+
+    def post(
+        self,
+        *,
+        url: str,
+        headers: Mapping[str, str],
+        body: Mapping[str, object],
+        timeout_seconds: float,
+    ) -> Mapping[str, object]:
+        return _post_pinned_json(
+            pinned_url=ANTHROPIC_MESSAGES_URL,
+            rejection_message=(
+                "The model transport only permits the pinned Anthropic HTTPS endpoint"
+            ),
+            url=url,
+            headers=headers,
+            body=body,
+            timeout_seconds=timeout_seconds,
+        )
 
 
 class OpenAIResponsesAdapter:

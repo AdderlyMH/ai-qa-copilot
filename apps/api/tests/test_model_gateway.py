@@ -8,7 +8,11 @@ import pytest
 
 import ai_qa_copilot_api.model_gateway as model_gateway
 from ai_qa_copilot_api.model_gateway import (
+    ANTHROPIC_MESSAGES_URL,
     B1_MODEL_ID,
+    C1_TIMEOUT_SECONDS,
+    AnthropicUrllibJsonHttpTransport,
+    ModelGatewayUnavailable,
     C1_CONFIGURATION_VERSION,
     C1_MODEL_ID,
     AnthropicGatewaySettings,
@@ -311,6 +315,122 @@ def test_server_transport_rejects_unpinned_urls_before_opening_them() -> None:
             body={},
             timeout_seconds=MODEL_GATEWAY_TIMEOUT_SECONDS,
         )
+
+
+def test_anthropic_transport_pins_only_the_messages_endpoint() -> None:
+    assert ANTHROPIC_MESSAGES_URL == "https://api.anthropic.com/v1/messages"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://api.anthropic.com/v1/messages",
+        "https://api.anthropic.com/v1/messages/batches",
+        "https://api.anthropic.com/v1/messages?x=1",
+        "https://api.anthropic.com/v1/messages/",
+        "https://api.anthropic.com.evil.example/v1/messages",
+        "https://api.openai.com/v1/responses",
+        "http://127.0.0.1/internal",
+    ],
+)
+def test_anthropic_transport_rejects_unpinned_urls_before_opening_them(
+    url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def forbidden_urlopen(*_: object, **__: object) -> object:
+        raise AssertionError("urlopen must not be reached")
+
+    monkeypatch.setattr(model_gateway, "urlopen", forbidden_urlopen)
+
+    with pytest.raises(ModelGatewayConfigurationError, match="pinned Anthropic HTTPS"):
+        AnthropicUrllibJsonHttpTransport().post(
+            url=url, headers={}, body={}, timeout_seconds=C1_TIMEOUT_SECONDS
+        )
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://api.anthropic.com/v1/messages",
+        "https://api.anthropic.com/v1/messages/batches",
+    ],
+)
+def test_openai_transport_allowlist_was_not_widened_to_anthropic(
+    url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def forbidden_urlopen(*_: object, **__: object) -> object:
+        raise AssertionError("urlopen must not be reached")
+
+    monkeypatch.setattr(model_gateway, "urlopen", forbidden_urlopen)
+
+    with pytest.raises(ModelGatewayConfigurationError, match="pinned OpenAI HTTPS"):
+        UrllibJsonHttpTransport().post(
+            url=url, headers={}, body={}, timeout_seconds=MODEL_GATEWAY_TIMEOUT_SECONDS
+        )
+
+
+def test_anthropic_transport_posts_to_the_pinned_endpoint_and_normalizes_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened: list[tuple[str, float]] = []
+
+    class JsonResponse:
+        def __init__(self, data: bytes) -> None:
+            self._data = data
+
+        def __enter__(self) -> JsonResponse:
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return self._data
+
+    def ok_urlopen(request: object, timeout: float) -> JsonResponse:
+        opened.append((getattr(request, "full_url"), timeout))
+        return JsonResponse(b'{"id":"msg_1"}')
+
+    monkeypatch.setattr(model_gateway, "urlopen", ok_urlopen)
+    transport = AnthropicUrllibJsonHttpTransport()
+
+    payload = transport.post(
+        url=ANTHROPIC_MESSAGES_URL, headers={}, body={}, timeout_seconds=60.0
+    )
+
+    assert payload == {"id": "msg_1"}
+    assert opened == [(ANTHROPIC_MESSAGES_URL, 60.0)]
+
+    for data, expected in (
+        (b"not json", ModelGatewayProtocolError),
+        (b"[]", ModelGatewayProtocolError),
+    ):
+        monkeypatch.setattr(
+            model_gateway, "urlopen", lambda *_, d=data, **__: JsonResponse(d)
+        )
+        with pytest.raises(expected, match="invalid response"):
+            transport.post(
+                url=ANTHROPIC_MESSAGES_URL, headers={}, body={}, timeout_seconds=60.0
+            )
+
+    def timing_out_urlopen(*_: object, **__: object) -> object:
+        raise TimeoutError("socket detail")
+
+    monkeypatch.setattr(model_gateway, "urlopen", timing_out_urlopen)
+    with pytest.raises(ModelGatewayTimeout, match="timed out") as timeout_error:
+        transport.post(
+            url=ANTHROPIC_MESSAGES_URL, headers={}, body={}, timeout_seconds=60.0
+        )
+    assert "socket detail" not in str(timeout_error.value)
+
+    def unavailable_urlopen(*_: object, **__: object) -> object:
+        raise OSError("secret-host-detail")
+
+    monkeypatch.setattr(model_gateway, "urlopen", unavailable_urlopen)
+    with pytest.raises(ModelGatewayUnavailable, match="unavailable") as down_error:
+        transport.post(
+            url=ANTHROPIC_MESSAGES_URL, headers={}, body={}, timeout_seconds=60.0
+        )
+    assert "secret-host-detail" not in str(down_error.value)
 
 
 @pytest.mark.parametrize(
