@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 13829,
-      "sha256": "d0597ead81bb4bed6c5d65c41d5652afa4477c4bd7818a49bf36ef318d880d80"
+      "bytes": 14437,
+      "sha256": "0d062a95713e410259d9a3d2823b2793bebae951364559fe3960a44b22961fb8"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -216,9 +216,14 @@
       "sha256": "2b0755caf4f1c2fec629c2de2c2bfc1b0cc567ac5134cfbeabaff9f362d2fac5"
     },
     {
+      "path": "docs/adr/ADR-013-anthropic-claude-second-provider.md",
+      "bytes": 7332,
+      "sha256": "374aa6dc3d528b71a0d6c6834d946ca816d24b983a0629e34b16f72d930ea975"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 3639,
-      "sha256": "46c0d723d5cbfd0ed414d025303ec36d0daa665a0a6dca0858b999832861f3bb"
+      "bytes": 3823,
+      "sha256": "3d6d02c8b19d04c2038516a01c50313d0a1234405e6ed79079ac4cdcc2eccdb1"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",
