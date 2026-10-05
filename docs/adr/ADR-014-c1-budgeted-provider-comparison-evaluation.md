@@ -177,23 +177,31 @@ outside this ADR.
 
 ### Fixture locator inconsistency (recorded, not fixed)
 
-The fixtures README locator syntax and EVAL-001 (three occurrences in each of
-v1 and v2) use the colon form `REQ-ORDER-004:statement`, for example
-`REQ-BASE-001#REQ-ORDER-004:statement`. The ground-truth catalog, the case
-generator, and 97 of the 100 cases use the hash form (`REQ-ORDER-004#statement`,
-`REQ-REFUND-001#AC-2`). **Decision:** the hash form is canonical. The colon
-form is to be fixed in a future fixture version; v1 and v2 are not edited
-(v1 is hash-pinned and bound to B1 evidence, and a v2 edit would change a
-fixture a run may already reference).
+The fixtures README locator syntax uses a colon between a requirement ID and
+the locator kind (`REQ-ORDER-004:statement`). In `evaluation-cases.v2.yaml`
+(and identically in v1), exactly one reference uses that colon form,
+`REQ-BASE-001#REQ-ORDER-004:statement`, once in each of EVAL-001, EVAL-061 and
+EVAL-081 (3 occurrences in 3 cases). The generator hard-codes it for those
+three cases. Every other requirement reference uses the hash form
+(`REQ-BASE-001#REQ-REFUND-001#AC-5`, `REQ-BASE-001#REQ-ORDER-008#statement`):
+121 occurrences in 71 cases, and the ground-truth catalog (19 occurrences, none
+with a colon) uses it too. The other 26 cases carry no requirement locator.
+**Decision:** the hash form is canonical. The colon form is to be fixed in a
+future fixture version; v1 and v2 are not edited (v1 is hash-pinned and bound to
+B1 evidence, and a v2 edit would change a fixture a run may already reference).
 
 ### Operator error: per-call limit
 
-The per-call limit entered for the first run was 0.49 USD, a mistake for the
-0.09 default (0.49 is the smoke run's arithmetic worst case). The workflow did
-not refuse it, because it only required the limit to be positive and not above
-the run limit. The run remained bounded by the 0.72 USD run limit. A follow-up
-change makes the workflow refuse a per-call limit above the v2 per-case budget
-of 0.09 USD.
+The per-call limit entered for the first run was 0.49 USD. This was an operator
+mistake, confirmed by the operator: they typed it into the run form believing
+it was the smoke worst case (0.49 USD, the run's arithmetic worst case), when
+the field takes a per-call limit and the intended value was the 0.09 default.
+The workflow did not refuse it, because it only required the limit to be
+positive and not above the run limit. The run remained bounded by the 0.72 USD
+run limit. The workflow now refuses a per-call limit above 0.09 USD, the v2
+per-case budget. The validation step holds that value as a named constant
+(the validation script runs without the fixture's YAML dependency), and a test
+pins it to the budgets in `evaluation-cases.v2.yaml`.
 
 ## Security, cost, and operational impact
 

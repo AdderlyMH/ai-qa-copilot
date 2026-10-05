@@ -272,6 +272,32 @@ def test_hard_maximum_on_the_run_limit_exists() -> None:
     assert 'if limits["MAX_RUN_COST_USD"] > HARD_MAX_RUN_COST_USD:' in validation
 
 
+def test_per_call_limit_constant_matches_the_v2_fixture_budget() -> None:
+    validation = run_script("Validate inputs and spend limits")
+    fixture = yaml.safe_load(
+        (ROOT / "fixtures" / "benchmark" / "evaluation-cases.v2.yaml").read_text(
+            encoding="utf-8"
+        )
+    )
+    budgets = {
+        str(case["expected"]["maximum_expected_cost"]) for case in fixture["cases"]
+    }
+
+    assert budgets == {"0.09"}
+    assert 'MAX_CALL_COST_USD_LIMIT = Decimal("0.09")' in validation
+    assert 'if limits["MAX_CALL_COST_USD"] > MAX_CALL_COST_USD_LIMIT:' in validation
+
+
+@pytest.mark.parametrize("max_call", ["0.09", "0.05", "0.090000"])
+def test_validation_accepts_per_call_limits_up_to_the_case_budget(
+    tmp_path: Path, max_call: str
+) -> None:
+    result, outputs = run_validation(tmp_path, MAX_CALL_COST_USD=max_call)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert outputs == {"prefix": "c1-smoke", "scope_budget_usd": "0.72"}
+
+
 @pytest.mark.parametrize(
     ("scope", "max_run", "prefix", "budget"),
     [
@@ -298,6 +324,17 @@ def test_validation_accepts_approved_limits(
         ({"MAX_RUN_COST_USD": "0"}, "positive USD amount"),
         ({"MAX_CALL_COST_USD": "-0.09"}, "positive USD amount"),
         ({"MAX_CALL_COST_USD": "1.00"}, "cannot exceed"),
+        ({"MAX_CALL_COST_USD": "0.10"}, "per-case budget"),
+        ({"MAX_CALL_COST_USD": "0.090001"}, "per-case budget"),
+        ({"MAX_CALL_COST_USD": "0.49"}, "per-case budget"),
+        (
+            {
+                "SCOPE": "development",
+                "MAX_RUN_COST_USD": "5.40",
+                "MAX_CALL_COST_USD": "0.49",
+            },
+            "per-case budget",
+        ),
         ({"SCOPE": "development", "MAX_RUN_COST_USD": "0.72"}, "must cover"),
         ({"SCOPE": "holdout"}, "scope must be"),
         ({"MODEL_PROVIDER": "openai"}, "not yet identified"),

@@ -16,12 +16,13 @@ The score report's overall result was **0 of 8 cases passed**.
   so the 2.1 characters-per-token estimate is conservative for these prompts
   (the calibration check guards only against underestimates).
 - Output was **320 to 1,868 tokens per call**, well under the 4,096 limit.
-- The per-call limit entered for this run was **0.49 USD, which was a
-  mistake**: the intended value was the 0.09 default (the 0.49 figure is the
-  arithmetic worst case for the whole smoke run, not a per-call limit). The
-  workflow did not refuse it, because it only checked that the per-call limit
-  was positive and not above the run limit. The run was still bounded by the
-  0.72 USD run limit. The workflow now refuses a per-call limit above 0.09 USD.
+- The per-call limit entered for this run was **0.49 USD, which was an operator
+  mistake** (confirmed by the operator): the operator typed it into the run form
+  believing it was the smoke worst case, when the field takes a per-call limit
+  and the intended value was the 0.09 default. The workflow did not refuse it,
+  because it only checked that the per-call limit was positive and not above the
+  run limit. The run was still bounded by the 0.72 USD run limit. The workflow
+  now refuses a per-call limit above 0.09 USD, the v2 per-case budget.
 
 **The 0 of 8 score is not a model comparison.** Under B0 the five analysis
 cases cannot be judged on ground-truth-ID or source-reference checks: the B0
@@ -61,7 +62,7 @@ Dispatch the workflow with:
 |---|---|
 | `model_provider` | `anthropic` |
 | `scope` | `smoke` |
-| `max_call_cost_usd` | `0.09` (default; the workflow refuses anything higher) |
+| `max_call_cost_usd` | `0.09` (default). The workflow refuses a value above 0.09 USD, the v2 per-case budget. Enter the per-call limit here, not the run's worst case. |
 | `max_run_cost_usd` | `0.72` (default) |
 | `openai_b0_model_factory` | leave empty |
 
@@ -92,7 +93,7 @@ holds four files: `c1-smoke-run.json`, `c1-smoke-score.json`,
   0.49 USD). The first run ended at 162,444. It is always at or below
   `max_run_microusd` (720,000).
 - `max_call_microusd` 90,000 and `max_run_microusd` 720,000 on every line (the
-  first run recorded the mistaken 490,000 per-call limit).
+  first run recorded 490,000, the mistaken per-call limit).
 - The same `pricing_version`
   (`anthropic-claude-sonnet-5-5/2026-10-04/standard-global-no-inference-geo`),
   `model_id` `claude-sonnet-5-5`, and `configuration_version` `C1/v1`.
@@ -115,7 +116,7 @@ that input; do not raise limits, re-derive the budgets first.
 - `suite_id: "evaluation-corpus/v2"` and `max_concurrency: 1`.
 - `git_commit` equal to the commit you dispatched.
 - `max_call_cost_microusd` 90000 and `max_run_cost_microusd` 720000 (the first
-  run recorded 490000 for the call limit, entered by mistake).
+  run recorded 490000 for the call limit, an operator mistake).
 - `ledger_call_count` 8 and `ledger_charged_microusd` equal to the sum of the
   ledger's `charged_microusd`.
 - Hashes that match the files: `run_report_sha256`, `ledger_sha256`,

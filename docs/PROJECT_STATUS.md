@@ -38,8 +38,8 @@ future fixture version. The existing
 `evaluation-smoke.yml` cannot pass its preflight with the zero-budget v1
 fixture (ADR-014).
 
-Next: a workflow guard refusing a per-call limit above 0.09 USD (the first run
-mistakenly used 0.49). A meaningful provider comparison needs a candidate prompt
+The workflow now refuses a per-call limit above 0.09 USD (the first run used
+0.49 by operator mistake). A meaningful provider comparison needs a candidate prompt
 beyond B0.
 
 ## EVAL-008 internal benchmark review implementation — 2026-10-02

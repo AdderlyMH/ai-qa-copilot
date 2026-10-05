@@ -126,12 +126,14 @@ marking them as expected failures.
 - Explicit absence assertion: `OAS-BASE-001#absence:X-Correlation-ID`
 
 **Known inconsistency.** The requirement examples above use a colon between the
-requirement ID and the locator kind (`REQ-ORDER-004:statement`, `:AC-02`), and
-EVAL-001 (three occurrences each in v1 and v2) does too. The ground-truth
-catalog, the case generator, and 97 of the 100 cases use the hash form
-(`REQ-ORDER-004#statement`, `REQ-REFUND-001#AC-2`). The hash form is canonical;
-the colon form will be fixed in a future fixture version. v1 and v2 are not
-edited ([ADR-014](../../docs/adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md)).
+requirement ID and the locator kind (`REQ-ORDER-004:statement`, `:AC-02`). In
+v1 and v2 only one reference does too, `REQ-BASE-001#REQ-ORDER-004:statement`,
+once in each of EVAL-001, EVAL-061 and EVAL-081 (3 occurrences in 3 cases). The
+other requirement references (121 occurrences in 71 cases; 26 cases have none)
+and the ground-truth catalog use the hash form
+(`REQ-BASE-001#REQ-REFUND-001#AC-5`). The hash form is canonical; the colon form
+will be fixed in a future fixture version. v1 and v2 are not edited
+([ADR-014](../../docs/adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md)).
 
 `~1` represents `/` in an OpenAPI JSON Pointer. Absence locators are allowed
 only in ground-truth records and must name the scope in which the expected
@@ -370,8 +372,8 @@ read-only repository permissions, and one run at a time.
 |---|---|
 | `model_provider` | `anthropic` (default) or `openai` |
 | `scope` | `smoke` (default, 8 cases, 0.72 USD budget) or `development` (60 cases, 5.40 USD budget); validation and holdout are not available |
-| `max_call_cost_usd` | Default `0.09` |
-| `max_run_cost_usd` | Default `0.72`; must cover the scope budget; hard maximum 6.00 |
+| `max_call_cost_usd` | Default `0.09`; refused above 0.09 (the v2 per-case budget) |
+| `max_run_cost_usd` | Default `0.72`; must cover the scope budget; hard maximum 6.00. The per-call limit may not exceed it. |
 | `openai_b0_model_factory` | Required for `openai` |
 
 The run uses `--max-concurrency 1`. The provider key is exposed only to the
