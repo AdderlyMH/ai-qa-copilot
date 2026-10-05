@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import sys
+from decimal import Decimal
 from pathlib import Path
 from typing import cast
 
@@ -82,6 +83,7 @@ def test_inputs_are_bounded_to_the_approved_choices_and_defaults() -> None:
 
     assert set(inputs) == {
         "model_provider",
+        "baseline",
         "scope",
         "max_call_cost_usd",
         "max_run_cost_usd",
@@ -89,6 +91,9 @@ def test_inputs_are_bounded_to_the_approved_choices_and_defaults() -> None:
     }
     assert inputs["model_provider"]["options"] == ["anthropic", "openai"]
     assert inputs["model_provider"]["default"] == "anthropic"
+    assert inputs["baseline"]["options"] == ["b0", "informed"]
+    assert inputs["baseline"]["default"] == "b0"
+    assert inputs["baseline"]["required"] is True
     assert inputs["scope"]["options"] == ["smoke", "development"]
     assert inputs["scope"]["default"] == "smoke"
     assert inputs["max_call_cost_usd"]["required"] is True
@@ -272,20 +277,110 @@ def test_hard_maximum_on_the_run_limit_exists() -> None:
     assert 'if limits["MAX_RUN_COST_USD"] > HARD_MAX_RUN_COST_USD:' in validation
 
 
-def test_per_call_limit_constant_matches_the_v2_fixture_budget() -> None:
-    validation = run_script("Validate inputs and spend limits")
-    fixture = yaml.safe_load(
-        (ROOT / "fixtures" / "benchmark" / "evaluation-cases.v2.yaml").read_text(
-            encoding="utf-8"
-        )
-    )
-    budgets = {
-        str(case["expected"]["maximum_expected_cost"]) for case in fixture["cases"]
-    }
+BASELINE_FIXTURES = {
+    "b0": ROOT / "fixtures" / "benchmark" / "evaluation-cases.v2.yaml",
+    "informed": ROOT / "fixtures" / "benchmark" / "evaluation-cases.v3.yaml",
+}
 
-    assert budgets == {"0.09"}
-    assert 'MAX_CALL_COST_USD_LIMIT = Decimal("0.09")' in validation
-    assert 'if limits["MAX_CALL_COST_USD"] > MAX_CALL_COST_USD_LIMIT:' in validation
+
+def fixture_case_budget(baseline: str) -> Decimal:
+    fixture = yaml.safe_load(BASELINE_FIXTURES[baseline].read_text(encoding="utf-8"))
+    budgets = {
+        Decimal(str(case["expected"]["maximum_expected_cost"]))
+        for case in fixture["cases"]
+    }
+    assert len(budgets) == 1
+    return budgets.pop()
+
+
+def smoke_case_ids() -> list[str]:
+    return re.findall(r"--case-id (EVAL-\d{3})", run_script("Run evaluation"))
+
+
+@pytest.mark.parametrize(
+    ("baseline", "budget"), [("b0", Decimal("0.09")), ("informed", Decimal("0.10"))]
+)
+def test_per_call_limit_map_matches_each_fixture_budget(
+    baseline: str, budget: Decimal
+) -> None:
+    validation = run_script("Validate inputs and spend limits")
+    entry = f'("{baseline}", "anthropic"): Decimal("{budget}"),'
+
+    assert fixture_case_budget(baseline) == budget
+    assert entry in validation
+    assert "call_limit = PER_CALL_LIMIT_USD[(baseline, provider)]" in validation
+    assert 'if limits["MAX_CALL_COST_USD"] > call_limit:' in validation
+    # Only the two approved entries exist; OpenAI has no per-call limit.
+    assert validation.count('"anthropic"): Decimal(') == 2
+    assert '("b0", "openai")' not in validation
+    assert '("informed", "openai")' not in validation
+
+
+@pytest.mark.parametrize("baseline", ["b0", "informed"])
+def test_validation_enforces_exactly_the_fixture_budget_per_call(
+    tmp_path: Path, baseline: str
+) -> None:
+    budget = fixture_case_budget(baseline)
+    smoke_budget = budget * len(smoke_case_ids())
+
+    accepted, _ = run_validation(
+        tmp_path,
+        BASELINE=baseline,
+        MAX_CALL_COST_USD=str(budget),
+        MAX_RUN_COST_USD=str(smoke_budget),
+    )
+    rejected, outputs = run_validation(
+        tmp_path,
+        BASELINE=baseline,
+        MAX_CALL_COST_USD=str(budget + Decimal("0.000001")),
+        MAX_RUN_COST_USD=str(smoke_budget),
+    )
+
+    assert accepted.returncode == 0, accepted.stdout + accepted.stderr
+    assert rejected.returncode != 0
+    assert "per-case budget" in rejected.stdout
+    assert outputs == {}
+
+
+@pytest.mark.parametrize(
+    ("baseline", "scope", "budget"),
+    [
+        ("b0", "smoke", "0.72"),
+        ("b0", "development", "5.40"),
+        ("informed", "smoke", "0.80"),
+        ("informed", "development", "6.00"),
+    ],
+)
+def test_scope_budgets_are_case_count_times_the_fixture_budget(
+    tmp_path: Path, baseline: str, scope: str, budget: str
+) -> None:
+    fixture = yaml.safe_load(BASELINE_FIXTURES[baseline].read_text(encoding="utf-8"))
+    development = [c for c in fixture["cases"] if c["split"] == "development"]
+    selected = len(smoke_case_ids()) if scope == "smoke" else len(development)
+
+    assert selected == (8 if scope == "smoke" else 60)
+    assert fixture_case_budget(baseline) * selected == Decimal(budget)
+    assert Decimal(budget) <= Decimal("6.00")
+
+    exact, outputs = run_validation(
+        tmp_path,
+        BASELINE=baseline,
+        SCOPE=scope,
+        MAX_CALL_COST_USD="0.05",
+        MAX_RUN_COST_USD=budget,
+    )
+    assert exact.returncode == 0, exact.stdout + exact.stderr
+    assert outputs["scope_budget_usd"] == budget
+
+    short, _ = run_validation(
+        tmp_path,
+        BASELINE=baseline,
+        SCOPE=scope,
+        MAX_CALL_COST_USD="0.05",
+        MAX_RUN_COST_USD=str(Decimal(budget) - Decimal("0.000001")),
+    )
+    assert short.returncode != 0
+    assert "must cover" in short.stdout
 
 
 @pytest.mark.parametrize("max_call", ["0.09", "0.05", "0.090000"])
@@ -355,3 +450,202 @@ def test_validation_rejects_unsafe_inputs(
     assert result.returncode != 0
     assert message in result.stdout
     assert outputs == {}
+
+
+# Informed baseline
+
+
+@pytest.mark.parametrize("max_call", ["0.10", "0.05", "0.100000"])
+def test_informed_validation_accepts_per_call_limits_up_to_the_v3_budget(
+    tmp_path: Path, max_call: str
+) -> None:
+    result, outputs = run_validation(
+        tmp_path,
+        BASELINE="informed",
+        MAX_CALL_COST_USD=max_call,
+        MAX_RUN_COST_USD="0.80",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert outputs == {"prefix": "informed-anthropic-smoke", "scope_budget_usd": "0.80"}
+
+
+@pytest.mark.parametrize("max_call", ["0.11", "0.100001", "0.49"])
+def test_informed_validation_rejects_per_call_limits_above_the_v3_budget(
+    tmp_path: Path, max_call: str
+) -> None:
+    result, outputs = run_validation(
+        tmp_path,
+        BASELINE="informed",
+        MAX_CALL_COST_USD=max_call,
+        MAX_RUN_COST_USD="0.80",
+    )
+
+    assert result.returncode != 0
+    assert "informed per-case budget 0.10 USD" in result.stdout
+    assert outputs == {}
+
+
+def test_informed_development_scope_fits_the_hard_maximum(tmp_path: Path) -> None:
+    result, outputs = run_validation(
+        tmp_path,
+        BASELINE="informed",
+        SCOPE="development",
+        MAX_CALL_COST_USD="0.10",
+        MAX_RUN_COST_USD="6.00",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert outputs == {
+        "prefix": "informed-anthropic-development",
+        "scope_budget_usd": "6.00",
+    }
+
+
+def test_b0_guard_is_unchanged_by_the_informed_budget(tmp_path: Path) -> None:
+    accepted, outputs = run_validation(
+        tmp_path, BASELINE="b0", MAX_CALL_COST_USD="0.09"
+    )
+    rejected, _ = run_validation(tmp_path, BASELINE="b0", MAX_CALL_COST_USD="0.10")
+
+    assert accepted.returncode == 0, accepted.stdout + accepted.stderr
+    assert outputs == {"prefix": "c1-smoke", "scope_budget_usd": "0.72"}
+    assert rejected.returncode != 0
+    assert "b0 per-case budget 0.09 USD" in rejected.stdout
+
+
+@pytest.mark.parametrize("factory", ["", "external_module:create_model"])
+@pytest.mark.parametrize("baseline", ["b0", "informed"])
+def test_both_baselines_refuse_openai(
+    tmp_path: Path, baseline: str, factory: str
+) -> None:
+    result, outputs = run_validation(
+        tmp_path,
+        BASELINE=baseline,
+        MODEL_PROVIDER="openai",
+        OPENAI_B0_MODEL_FACTORY=factory,
+        MAX_CALL_COST_USD="0.05",
+        MAX_RUN_COST_USD="0.80",
+    )
+
+    assert result.returncode != 0
+    assert "not yet" in result.stdout
+    if baseline == "informed":
+        assert "not yet supported for the informed baseline" in result.stdout
+    assert outputs == {}
+
+
+@pytest.mark.parametrize(
+    "baseline", ["", "B0", "Informed", "informed ", "b1", "release", "holdout"]
+)
+def test_invalid_baseline_values_are_refused(tmp_path: Path, baseline: str) -> None:
+    result, outputs = run_validation(tmp_path, BASELINE=baseline)
+
+    assert result.returncode != 0
+    assert "baseline must be b0 or informed" in result.stdout
+    assert outputs == {}
+
+
+def test_every_step_receives_the_baseline_through_env() -> None:
+    for name in (
+        "Validate inputs and spend limits",
+        "Run evaluation",
+        "Score run report",
+        "Record run provenance",
+    ):
+        environment = cast(dict[str, str], step(name)["env"])
+        assert environment["BASELINE"] == "${{ inputs.baseline }}"
+
+
+def test_inputs_are_never_interpolated_into_shell_commands() -> None:
+    for item in steps():
+        if "run" in item:
+            assert "${{" not in cast(str, item["run"]), item.get("name")
+
+
+def test_baseline_branches_are_strict_in_every_shell_step() -> None:
+    for name in ("Run evaluation", "Score run report", "Record run provenance"):
+        script = run_script(name)
+        assert 'case "$BASELINE" in' in script
+        assert "b0)" in script
+        assert "informed)" in script
+        assert "*)" in script
+        assert 'echo "::error::baseline must be b0 or informed."' in script
+
+
+def test_informed_run_uses_v3_the_informed_executor_and_its_factory() -> None:
+    script = run_script("Run evaluation")
+    environment = cast(dict[str, str], step("Run evaluation")["env"])
+    informed = script.split("informed)", 1)[1].split(";;", 1)[0]
+
+    assert "--fixture fixtures/benchmark/evaluation-cases.v3.yaml" in informed
+    assert (
+        "--executor ai_qa_copilot_api.informed_baseline:"
+        "create_informed_baseline_executor" in informed
+    )
+    assert '"${run_arguments[@]}"' in script
+    assert script.count("--max-concurrency 1") == 1
+    assert environment["AI_QA_COPILOT_INFORMED_MODEL_FACTORY"] == (
+        "ai_qa_copilot_api.informed_claude_evaluation_model:create_informed_claude_model"
+    )
+    assert environment == environment | {
+        "AI_QA_COPILOT_INFORMED_PRICING_PATH": (
+            "fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml"
+        ),
+        "AI_QA_COPILOT_INFORMED_MAX_CALL_COST_USD": "${{ inputs.max_call_cost_usd }}",
+        "AI_QA_COPILOT_INFORMED_MAX_RUN_COST_USD": "${{ inputs.max_run_cost_usd }}",
+        "AI_QA_COPILOT_INFORMED_CALL_LEDGER_PATH": (
+            "artifacts/${{ steps.plan.outputs.prefix }}-ledger.jsonl"
+        ),
+        "AI_QA_COPILOT_INFORMED_CONFIG_PATH": (
+            "fixtures/benchmark/baselines/informed-single-prompt.v1.yaml"
+        ),
+        "AI_QA_COPILOT_INFORMED_REPOSITORY_ROOT": ".",
+    }
+
+
+def test_informed_settings_are_not_secrets_and_not_derived_from_the_key() -> None:
+    environment = cast(dict[str, str], step("Run evaluation")["env"])
+    informed = {
+        name: value
+        for name, value in environment.items()
+        if name.startswith("AI_QA_COPILOT_INFORMED_")
+    }
+
+    assert len(informed) == 7
+    for value in informed.values():
+        assert "secrets." not in value
+        assert "KEY" not in value
+        assert "model_provider" not in value
+
+
+def test_informed_scoring_and_provenance_use_v3_and_the_v2_recorder() -> None:
+    score = run_script("Score run report").split("informed)", 1)[1].split(";;", 1)[0]
+    provenance = run_script("Record run provenance")
+    informed = provenance.split("informed)", 1)[1].split(";;", 1)[0]
+    b0 = provenance.split("b0)", 1)[1].split(";;", 1)[0]
+
+    assert "fixtures/benchmark/evaluation-cases.v3.yaml" in score
+    assert "scripts/record_informed_evaluation_provenance.py" in informed
+    assert "--fixture fixtures/benchmark/evaluation-cases.v3.yaml" in informed
+    assert (
+        "--informed-configuration "
+        "fixtures/benchmark/baselines/informed-single-prompt.v1.yaml" in informed
+    )
+    assert '"${ledger_arguments[@]}"' in informed
+    assert '--git-commit "$GITHUB_SHA"' in informed
+    assert "scripts/record_evaluation_provenance.py" in b0
+    assert "--fixture fixtures/benchmark/evaluation-cases.v2.yaml" in b0
+    assert "record_informed" not in b0
+
+
+def test_informed_artifact_names_are_provider_and_baseline_prefixed() -> None:
+    validation = run_script("Validate inputs and spend limits")
+
+    assert (
+        'INFORMED_ARTIFACT_PREFIX = {"anthropic": "informed-anthropic"}' in validation
+    )
+    assert (
+        'prefixes = ARTIFACT_PREFIX if baseline == "b0" else INFORMED_ARTIFACT_PREFIX'
+        in validation
+    )
