@@ -15,9 +15,11 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
 from typing import Final, Protocol, cast
 
@@ -50,6 +52,14 @@ INFORMED_PROMPT_VERSION: Final = "informed-single-prompt/v1"
 INFORMED_DATA_CLASSIFICATION: Final = "synthetic_or_public_only"
 INFORMED_SCHEMA_NAME: Final = "informed_observation_v1"
 ANALYSIS_BOUNDARY: Final = "analysis_only"
+
+INFORMED_CONFIG_PATH_ENVIRONMENT_VARIABLE: Final = "AI_QA_COPILOT_INFORMED_CONFIG_PATH"
+INFORMED_MODEL_FACTORY_ENVIRONMENT_VARIABLE: Final = (
+    "AI_QA_COPILOT_INFORMED_MODEL_FACTORY"
+)
+INFORMED_REPOSITORY_ROOT_ENVIRONMENT_VARIABLE: Final = (
+    "AI_QA_COPILOT_INFORMED_REPOSITORY_ROOT"
+)
 
 DEFAULT_INFORMED_CONFIG_PATH: Final = Path(
     "fixtures/benchmark/baselines/informed-single-prompt.v1.yaml"
@@ -202,6 +212,82 @@ class InformedBaselineExecutor(EvaluationCaseExecutor):
                 f"--- end artifact: {artifact.artifact_id} ---",
             )
         )
+
+
+def informed_configuration_from_environment(
+    environment: Mapping[str, str],
+) -> tuple[InformedBaselineConfig, Path]:
+    """Load the configuration and repository root named by explicit environment."""
+
+    configuration_path = Path(
+        environment.get(
+            INFORMED_CONFIG_PATH_ENVIRONMENT_VARIABLE, DEFAULT_INFORMED_CONFIG_PATH
+        )
+    )
+    repository_root = Path(
+        environment.get(INFORMED_REPOSITORY_ROOT_ENVIRONMENT_VARIABLE, Path.cwd())
+    )
+    if not configuration_path.is_file():
+        raise InformedBaselineRejected(
+            f"Informed configuration does not exist: {configuration_path}"
+        )
+    if not repository_root.is_dir():
+        raise InformedBaselineRejected(
+            f"Informed repository root does not exist: {repository_root}"
+        )
+    return load_informed_baseline_config(configuration_path), repository_root
+
+
+def create_informed_baseline_executor() -> InformedBaselineExecutor:
+    """CLI-compatible executor factory (``--executor``); the model comes from env."""
+
+    configuration, repository_root = informed_configuration_from_environment(os.environ)
+    specification = os.environ.get(INFORMED_MODEL_FACTORY_ENVIRONMENT_VARIABLE)
+    if not specification:
+        raise InformedBaselineRejected(
+            f"{INFORMED_MODEL_FACTORY_ENVIRONMENT_VARIABLE} must be set to "
+            "module:attribute before running the informed baseline"
+        )
+    return InformedBaselineExecutor(
+        configuration=configuration,
+        repository_root=repository_root,
+        model=_model_from_factory_specification(specification),
+    )
+
+
+def _model_from_factory_specification(specification: str) -> InformedBaselineModel:
+    module_name, separator, attribute_name = specification.partition(":")
+    if not separator or not module_name or not attribute_name:
+        raise InformedBaselineRejected(
+            f"{INFORMED_MODEL_FACTORY_ENVIRONMENT_VARIABLE} must use "
+            "module:attribute form"
+        )
+    try:
+        module = import_module(module_name)
+    except ModuleNotFoundError as error:
+        raise InformedBaselineRejected(
+            f"Informed model factory module could not be imported: {module_name}"
+        ) from error
+    factory = getattr(module, attribute_name, None)
+    if not callable(factory):
+        raise InformedBaselineRejected(
+            f"Informed model factory is missing or not callable: {specification}"
+        )
+    model = factory()
+    if not callable(getattr(model, "complete", None)):
+        raise InformedBaselineRejected(
+            f"Informed model factory did not return an object with complete(): "
+            f"{specification}"
+        )
+    return cast(InformedBaselineModel, model)
+
+
+def validate_informed_output(
+    content: str, configuration: InformedBaselineConfig, catalog: GroundTruthCatalog
+) -> None:
+    """Strictly validate model output; raises ``InformedBaselineRejected``."""
+
+    _validated_output(content, configuration, catalog)
 
 
 def load_informed_baseline_config(path: Path) -> InformedBaselineConfig:
