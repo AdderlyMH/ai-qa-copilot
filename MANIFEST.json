@@ -271,6 +271,11 @@
       "sha256": "e70fca75527918df5d5c4578c29586874c406d4d52c4c20a92d9c62513210c5f"
     },
     {
+      "path": "fixtures/benchmark/baselines/informed-single-prompt.v1.yaml",
+      "bytes": 1034,
+      "sha256": "983dfbf64c9bb7ad07206f4124f13852441a832f9b91d3fd2d84270a4a07b478"
+    },
+    {
       "path": "fixtures/benchmark/evaluation-cases.v1.yaml",
       "bytes": 125735,
       "sha256": "25632db0fb444cbdc4c212a0f6bc44efc07b1536aa15e5e6e34eb5876913bd8e"
