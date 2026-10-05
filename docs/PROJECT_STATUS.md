@@ -1,5 +1,47 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Informed-baseline prompt, executor, and fixture v3 — 2026-10-05
+
+**Status:** Implemented on branch `feature/informed-baseline-fixture-v3`, not yet
+merged. This is tooling and fixture work, not evaluation evidence. No provider
+call has been made, no spend has been authorized, and no quality, cost, or
+latency result is claimed. Decisions are recorded in
+[ADR-015](adr/ADR-015-informed-baseline-development-comparison.md), building on
+ADR-013 and ADR-014.
+
+Delivered, in three commits: ADR-015; the `informed-single-prompt/v1` baseline
+(`baselines/informed-single-prompt.v1.yaml` and `informed_baseline.py`), a
+one-call, no-retrieval executor with a static developer text (four boundary
+codes, the hash-form reference grammar with non-answer examples, and the 19
+ground-truth catalog entries rendered from catalog fields only), one JSON Schema
+shared by both providers, and strict local output validation, covered by
+fake-model tests only; and `evaluation-corpus/v3`, which is v2 with hash-form
+source references everywhere (the colon locator kind in EVAL-001, 061, and 081,
+45 `##` references, and one doubled artifact prefix are repaired) and a 0.10 USD
+per-case budget (largest informed prompt 43,197 characters, 20,570 estimated
+input tokens, worst case 0.08210 USD, plus 10 percent, rounded up to the cent).
+v1 and v2 bytes are unchanged and their SHA-256 values are pinned by tests. B0
+and `naive_baseline.py`, B1, `model_gateway.py`, `c1_evaluation_model.py`, the
+provenance code, the workflows, and the pricing file are unchanged. Local
+`python scripts/tasks.py ci` passed at each stage.
+
+Known limitations: the task is catalog selection, not issue discovery, and the
+development split was used to design the prompt, so a development score is a
+design-set result; release cases copy development templates, so validation and
+holdout would not be independent (and are not run); results are never B1, B2, or
+gate evidence. At most 28 of 60 development cases can pass overall (15 policy
+cases fail the side-effects check, and 17 cases expect anchors that cannot be
+derived from the documents; the two groups do not overlap), so reporting must use
+discriminating checks, not "cases passed". There is no OpenAI adapter, factory,
+pricing file, provenance support, or workflow path yet. Still unverified until a
+live probe: that OpenAI explicit cache mode with no breakpoints is accepted and
+yields zero cache tokens, that a 4,096-token output cap (which includes hidden
+reasoning) is enough for `gpt-6.1-sol` at `medium` effort, that `medium` means
+comparable effort on both providers, the OpenAI tokenizer ratio against the 2.1
+characters-per-token estimate, and whether Anthropic reports thinking tokens
+separately. Next action: provider factories, OpenAI pricing and provenance, and
+workflow support under their own review, then 8-case smoke runs per provider.
+
 ## C1/v1 provider-comparison evaluation tooling — 2026-10-04
 
 **Status:** Merged to `main` (PR #149). This is tooling acceptance, not
@@ -33,8 +75,8 @@ every model: the B0 prompt supplies no boundary codes, ground-truth catalog, or
 locator suffix, and B0 fixes one model call while the policy cases expect none,
 so B0 scores are not a model comparison, development scope should not be run
 with B0, and the workflow reports the score without gating. A fixture locator
-inconsistency (colon vs hash form) is recorded in ADR-014 and to be fixed in a
-future fixture version. The existing
+inconsistency (colon vs hash form) is recorded in ADR-014 and is fixed in
+`evaluation-corpus/v3` (ADR-015). The existing
 `evaluation-smoke.yml` cannot pass its preflight with the zero-budget v1
 fixture (ADR-014).
 
