@@ -322,6 +322,39 @@ provenance) to the ledger. No prompt, output, or credential is recorded.
   running total and a new ledger, so total spend across resumed runs is the sum
   of their ledgers.
 
+### Run provenance
+
+`evaluation-run/v1` reports have a fixed field set, so each C1 run gets a
+separate provenance file, written next to its run report:
+
+```powershell
+uv run python scripts/record_evaluation_provenance.py `
+  --run-report artifacts/c1-smoke-run.json `
+  --ledger artifacts/c1-smoke-ledger.jsonl `
+  --pricing fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml `
+  --git-commit <40-character commit SHA> `
+  --max-call-cost-usd 0.09 `
+  --max-run-cost-usd 0.72 `
+  --output artifacts/c1-smoke-run.provenance.json
+```
+
+The `evaluation-run-provenance/v1` file records provider, model ID,
+configuration version `C1/v1`, prompt version `b0-single-prompt/v1`, the
+pricing version and pricing-file hash, the fixture, run-report, B0
+configuration, and ledger hashes, the git commit, the run limits, the ledger
+call count and charged total, and `b1_evidence: false`. It contains no prompt,
+model output, or credential. Pass `--ledger` once per resumed invocation.
+
+The recorder refuses a run that is not on `evaluation-corpus/v2`, was not run
+with `max_concurrency` 1, has no explicit `max_expected_cost`, or whose ledgers
+disagree with the declared limits or pricing. It writes only next to the run
+report, never under `evaluation/reviews/`, and never replaces an existing file.
+
+B1 reference assembly rejects C1 evidence through its existing strict
+validation: a provenance file or any input carrying `b1_evidence` is not a B1
+assembly input, a C1 configuration is not B1/v1, a C1 ledger is not B1
+measurements, and a v2 run does not match the B1 corpus.
+
 
 ## EVAL-005 development benchmark expansion
 
