@@ -87,6 +87,10 @@ jobs:
           from decimal import Decimal
 
           HARD_MAX_RUN_COST_USD = Decimal("6.00")
+          # The v2 per-case budget (maximum_expected_cost in
+          # fixtures/benchmark/evaluation-cases.v2.yaml). A test pins this value
+          # to the fixture; update both together.
+          MAX_CALL_COST_USD_LIMIT = Decimal("0.09")
           SCOPE_BUDGET_USD = {"smoke": Decimal("0.72"), "development": Decimal("5.40")}
           ARTIFACT_PREFIX = {"anthropic": "c1", "openai": "b0-openai"}
           USD_PATTERN = re.compile(r"^[0-9]+(\.[0-9]{1,6})?$")
@@ -126,6 +130,11 @@ jobs:
               fail(f"max_run_cost_usd exceeds the hard maximum {HARD_MAX_RUN_COST_USD}.")
           if limits["MAX_CALL_COST_USD"] > limits["MAX_RUN_COST_USD"]:
               fail("max_call_cost_usd cannot exceed max_run_cost_usd.")
+          if limits["MAX_CALL_COST_USD"] > MAX_CALL_COST_USD_LIMIT:
+              fail(
+                  "max_call_cost_usd exceeds the v2 per-case budget "
+                  f"{MAX_CALL_COST_USD_LIMIT} USD."
+              )
           if limits["MAX_RUN_COST_USD"] < SCOPE_BUDGET_USD[scope]:
               fail(
                   f"max_run_cost_usd must cover the {scope} budget "
