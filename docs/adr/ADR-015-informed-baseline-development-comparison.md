@@ -27,7 +27,7 @@ colon locator kind recorded in ADR-014 occurs once in each of EVAL-001, EVAL-061
 and EVAL-081. In addition, `_source_references` in
 `evaluation_development_benchmark.py` prefixes `OAS-BASE-001#` to catalog
 locators that already begin with `#/`, or already carry the artifact prefix. The
-v2 fixture therefore holds `OAS-BASE-001##/paths/...` (46 occurrences) and one
+v2 fixture therefore holds `OAS-BASE-001##/paths/...` (45 occurrences) and one
 `OAS-BASE-001#OAS-BASE-001#absence:X-Correlation-ID`, which contradict the
 documented grammar (`OAS-BASE-001#/paths/~1orders/get/security`).
 
@@ -155,9 +155,12 @@ estimated input tokens (characters at 2.1 per token, covering the user message,
 the developer text and the output schema) at 2 USD per million plus the
 4,096-token output cap at 10 USD per million. It is computed from the real
 informed prompts measured with the committed builder, and applies to every case
-in `evaluation-corpus/v3`. The draft estimate was 0.10 USD; the computed value
-is pinned by a test when the fixture is generated. Input at 15 percent above the
-estimate (the calibration tolerance) must still fit under the budget. Per-call
+in `evaluation-corpus/v3`. Computed 2026-10-05 from the 100 real prompts: the
+largest (EVAL-069, 070 and 071 tie) is 43,197 characters including the output
+schema, or 20,570 estimated input tokens, so the worst case is 0.08210 USD, plus
+10 percent is 0.09031 USD, rounded up to the cent: **0.10 USD**. A test
+recomputes this from the committed builder. Input at 15 percent above the
+estimate (the calibration tolerance) costs at most 0.08827 USD and still fits. Per-call
 limits, run limits and the 6.00 USD hard maximum are workflow matters decided
 later. Calibration constants are per provider and are established by measured
 smoke runs; the Claude smoke run measured 65 to 77 percent of the 2.1
@@ -241,10 +244,12 @@ a run may already reference v2.
 
 ### Cost
 
-- No spend is authorized by this record. The estimated cost of a 60-case
-  development run is about 4.05 USD per provider in the worst case (arithmetic
-  from estimates), to be confirmed when budgets are computed. Actual spend is
-  bounded later by per-call and per-run limits.
+- No spend is authorized by this record. The arithmetic worst case for the 60
+  development cases, from real prompt sizes, is about 4.02 USD per provider
+  (4.25 USD with input 15 percent over the estimate); the 8-case smoke set is
+  0.52 USD (0.55 USD). Declared budgets are 6.00 USD (development) and 0.80 USD
+  (smoke) at 0.10 USD per case. Actual spend is bounded later by per-call and
+  per-run limits.
 
 ### Operations
 

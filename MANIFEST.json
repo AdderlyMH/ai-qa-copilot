@@ -232,8 +232,8 @@
     },
     {
       "path": "docs/adr/ADR-015-informed-baseline-development-comparison.md",
-      "bytes": 16732,
-      "sha256": "d82c6f3f0ad715dea13b20afeb9e24e8bba98dc0aef63f17dcf6cf2bec4a6406"
+      "bytes": 17094,
+      "sha256": "072435c400838b9492618fd0b55ed5acb61b403afb0408fc62021dfa3fc0114f"
     },
     {
       "path": "docs/adr/README.md",
@@ -262,8 +262,8 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 23121,
-      "sha256": "5fa4734144fcc97c07a2560bd2a3bc9efbfb2281ef7b14e053b0d8006f0b4913"
+      "bytes": 24373,
+      "sha256": "c214fe1919a63afa1411a96839cceefd167dbd0a6171d3c1ea01c0323ac3503a"
     },
     {
       "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",
@@ -284,6 +284,11 @@
       "path": "fixtures/benchmark/evaluation-cases.v2.yaml",
       "bytes": 126035,
       "sha256": "364e51bc009729c35d252c6c26d7a634b1edeecf07e70b53b9786a65ed7a25dc"
+    },
+    {
+      "path": "fixtures/benchmark/evaluation-cases.v3.yaml",
+      "bytes": 125877,
+      "sha256": "8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae"
     },
     {
       "path": "fixtures/benchmark/evaluation-review-rubric.v1.yaml",
