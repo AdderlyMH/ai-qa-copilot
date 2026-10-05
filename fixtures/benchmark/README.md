@@ -350,6 +350,39 @@ with `max_concurrency` 1, has no explicit `max_expected_cost`, or whose ledgers
 disagree with the declared limits or pricing. It writes only next to the run
 report, never under `evaluation/reviews/`, and never replaces an existing file.
 
+### Provider-comparison workflow
+
+`.github/workflows/evaluation-provider-comparison.yml` runs the B0 prompt for
+one provider on the v2 corpus. It is manual only (`workflow_dispatch`), has
+read-only repository permissions, and one run at a time.
+
+| Input | Values |
+|---|---|
+| `model_provider` | `anthropic` (default) or `openai` |
+| `scope` | `smoke` (default, 8 cases, 0.72 USD budget) or `development` (60 cases, 5.40 USD budget); validation and holdout are not available |
+| `max_call_cost_usd` | Default `0.09` |
+| `max_run_cost_usd` | Default `0.72`; must cover the scope budget; hard maximum 6.00 |
+| `openai_b0_model_factory` | Required for `openai` |
+
+The run uses `--max-concurrency 1`. The provider key is exposed only to the
+single run step. After the run, the workflow scores the report, records
+provenance with every ledger, reports the score's `passed` value in the job
+summary without failing on it, and uploads the run report, score report,
+provenance, and ledger as an artifact named `c1-<scope>-<commit>` (for
+Anthropic). Nothing is written under `evaluation/reviews/`.
+
+**OpenAI is not runnable yet.** The external B0 model factory's model has not
+been identified, so the workflow refuses an `openai` run without
+`openai_b0_model_factory`, and no factory is guessed. It also refuses an
+`openai` run when a factory is supplied, because OpenAI runs have no
+spend-limited model or provenance recorder yet.
+
+Repository settings you must create before the first run (not done by code):
+
+1. A GitHub environment named `c1-evaluation`, with required reviewers if
+   manual approval is wanted.
+2. An `ANTHROPIC_API_KEY` secret in that environment.
+
 B1 reference assembly rejects C1 evidence through its existing strict
 validation: a provenance file or any input carrying `b1_evidence` is not a B1
 assembly input, a C1 configuration is not B1/v1, a C1 ledger is not B1
