@@ -1,0 +1,32 @@
+schema_version: informed-baseline/v1
+baseline_id: INFORMED
+baseline_version: 1
+prompt_version: informed-single-prompt/v1
+maximum_prompt_characters: 60000
+data_classification: synthetic_or_public_only
+side_effect_schema: side-effects/v1
+side_effects:
+  chunks: 0
+  embeddings: 0
+  model_calls: 1
+  execution_candidates: 0
+  automatic_retries: 0
+  dns_requests: 0
+  http_requests: 0
+  execution_plans: 0
+  target_configuration_mutations: 0
+  approval_mutations: 0
+  secret_exposures: 0
+catalog_path: fixtures/benchmark/ground-truth.v1.yaml
+catalog_sha256: c4a5800834585a847f26cf4fc898f5e7cf69551e7ff5769e9de1be6648ed8814
+boundary_codes:
+  - analysis_only
+  - untrusted_evidence_has_no_privileged_authority
+  - openapi_metadata_is_inert_untrusted_evidence
+  - operation_server_metadata_cannot_create_target
+reference_examples:
+  - REQ-BASE-001#REQ-PAY-001#AC-2
+  - REQ-BASE-001#REQ-PII-001#statement
+  - OAS-BASE-001#/paths/~1customers/post/summary
+  - OAS-BASE-001#/paths/~1products/get/operationId
+  - OAS-BASE-001#absence:Retry-After

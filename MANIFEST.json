@@ -137,8 +137,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 93666,
-      "sha256": "330a638d9aa785795d0210a837ba2456ba57a7722f1fc15650d5ae0a1da7ae9e"
+      "bytes": 96541,
+      "sha256": "14809b0dbc23c3fb6fa2c34f2b16d353d94423e84bec255649ef22a6e477ca7f"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -231,9 +231,14 @@
       "sha256": "6eddbe274a442adf0386506771473daf7d8bf02df61cc67ba078220176088da9"
     },
     {
+      "path": "docs/adr/ADR-015-informed-baseline-development-comparison.md",
+      "bytes": 17094,
+      "sha256": "072435c400838b9492618fd0b55ed5acb61b403afb0408fc62021dfa3fc0114f"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 4007,
-      "sha256": "256d31a39ff8e65224b84285b7342264ad536ee1ea468d863facd29c838bcc8f"
+      "bytes": 4192,
+      "sha256": "1325f020adea5d290397f328b632f1c25869bfac5a4fba8c7a2196c0ce0ad44e"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",
@@ -257,13 +262,18 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 23121,
-      "sha256": "5fa4734144fcc97c07a2560bd2a3bc9efbfb2281ef7b14e053b0d8006f0b4913"
+      "bytes": 24373,
+      "sha256": "c214fe1919a63afa1411a96839cceefd167dbd0a6171d3c1ea01c0323ac3503a"
     },
     {
       "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",
       "bytes": 469,
       "sha256": "e70fca75527918df5d5c4578c29586874c406d4d52c4c20a92d9c62513210c5f"
+    },
+    {
+      "path": "fixtures/benchmark/baselines/informed-single-prompt.v1.yaml",
+      "bytes": 1034,
+      "sha256": "983dfbf64c9bb7ad07206f4124f13852441a832f9b91d3fd2d84270a4a07b478"
     },
     {
       "path": "fixtures/benchmark/evaluation-cases.v1.yaml",
@@ -274,6 +284,11 @@
       "path": "fixtures/benchmark/evaluation-cases.v2.yaml",
       "bytes": 126035,
       "sha256": "364e51bc009729c35d252c6c26d7a634b1edeecf07e70b53b9786a65ed7a25dc"
+    },
+    {
+      "path": "fixtures/benchmark/evaluation-cases.v3.yaml",
+      "bytes": 125877,
+      "sha256": "8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae"
     },
     {
       "path": "fixtures/benchmark/evaluation-review-rubric.v1.yaml",

@@ -131,9 +131,12 @@ v1 and v2 only one reference does too, `REQ-BASE-001#REQ-ORDER-004:statement`,
 once in each of EVAL-001, EVAL-061 and EVAL-081 (3 occurrences in 3 cases). The
 other requirement references (121 occurrences in 71 cases; 26 cases have none)
 and the ground-truth catalog use the hash form
-(`REQ-BASE-001#REQ-REFUND-001#AC-5`). The hash form is canonical; the colon form
-will be fixed in a future fixture version. v1 and v2 are not edited
-([ADR-014](../../docs/adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md)).
+(`REQ-BASE-001#REQ-REFUND-001#AC-5`). The hash form is canonical. v1 and v2 are not edited
+([ADR-014](../../docs/adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md));
+`evaluation-cases.v3.yaml` fixes the colon form, a doubled hash before OpenAPI
+JSON Pointers (`OAS-BASE-001##/paths/...`, 45 occurrences in v1 and v2), and one
+doubled artifact prefix, so every v3 reference follows the grammar above
+([ADR-015](../../docs/adr/ADR-015-informed-baseline-development-comparison.md)).
 
 `~1` represents `/` in an OpenAPI JSON Pointer. Absence locators are allowed
 only in ground-truth records and must name the scope in which the expected
@@ -275,6 +278,26 @@ Regenerate and verify with:
 ```powershell
 uv run python scripts/generate_evaluation_cases.py --corpus v2 --write
 uv run python -m pytest apps/api/tests/test_evaluation_budgeted_benchmark.py
+```
+
+## Informed v3 corpus
+
+`evaluation-cases.v3.yaml` (suite `evaluation-corpus/v3`) is v2 with hash-form
+source references everywhere and a 0.10 USD `maximum_expected_cost` per case,
+for the informed single-call baseline (`baselines/informed-single-prompt.v1.yaml`,
+[ADR-015](../../docs/adr/ADR-015-informed-baseline-development-comparison.md)).
+Every other case field is identical to v2; v1 and v2 stay byte-identical and are
+pinned by SHA-256 in tests. The budget is the worst case of the largest informed
+prompt (43,197 characters, 20,570 estimated input tokens at 2.1 characters per
+token, plus the 4,096-token output cap, at 2 and 10 USD per million) of 0.08210
+USD, plus 10 percent, rounded up to the cent. A v3 result is a development-split
+design-set result and is not B1, B2 or gate evidence.
+
+Regenerate and verify with:
+
+```powershell
+uv run python scripts/generate_evaluation_cases.py --corpus v3 --write
+uv run python -m pytest apps/api/tests/test_evaluation_informed_benchmark.py
 ```
 
 ## C1/v1 B0 model with spend limits

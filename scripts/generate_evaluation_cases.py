@@ -1,4 +1,4 @@
-"""Render a deterministic complete evaluation corpus (v1, or budgeted v2)."""
+"""Render a deterministic complete evaluation corpus (v1, budgeted v2, or informed v3)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,9 @@ from pathlib import Path
 
 from ai_qa_copilot_api.evaluation_budgeted_benchmark import (
     render_budgeted_evaluation_cases,
+)
+from ai_qa_copilot_api.evaluation_informed_benchmark import (
+    render_informed_evaluation_cases,
 )
 from ai_qa_copilot_api.evaluation_release_benchmark import (
     render_complete_evaluation_cases,
@@ -23,6 +26,10 @@ CORPUS_RENDERERS: dict[str, tuple[Callable[[Path], str], Path]] = {
     "v2": (
         render_budgeted_evaluation_cases,
         ROOT / "fixtures/benchmark/evaluation-cases.v2.yaml",
+    ),
+    "v3": (
+        render_informed_evaluation_cases,
+        ROOT / "fixtures/benchmark/evaluation-cases.v3.yaml",
     ),
 }
 
