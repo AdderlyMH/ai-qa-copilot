@@ -2,10 +2,10 @@
 
 ## C1/v1 provider-comparison evaluation tooling — 2026-10-04
 
-**Status:** Implemented on branch `feature/c1-eval-v2-fixture`, not yet merged
-to `main`. This is tooling acceptance, not evaluation evidence: no live
-Anthropic request has been made, and no quality, cost, or latency result is
-claimed. Decisions are recorded in
+**Status:** Merged to `main` (PR #149). This is tooling acceptance, not
+evaluation evidence. One live smoke run has been made (8 calls, all succeeded,
+0.162 USD charged, score 0 of 8; see the ADR-014 amendment); it is not a model
+comparison and no quality or latency result is claimed. Decisions are recorded in
 [ADR-014](adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md), building
 on ADR-013 (Claude as a second provider).
 
@@ -27,18 +27,20 @@ writes no report (all providers; C1 latches closed); spend limits are per
 invocation, so total spend is the sum of ledgers; the OpenAI comparison path is
 locked until an OpenAI spend-limited model and provenance support exist, and
 the external B0 factory's model is unidentified; the 2.1 characters-per-token
-estimate was measured on Markdown/text and is checked per call. The smoke
-score's overall `passed` is expected to be false, because B0 records one model
-call for every case while the smoke policy cases expect none (based on scoring
-one B0-style observation for EVAL-043 and the call accounting; unconfirmed
-until a live run), so the workflow reports it without gating. The existing
+estimate was measured on Markdown/text and is checked per call (the live run
+measured 65 to 77 percent of it). The B0 score's overall `passed` is false for
+every model: the B0 prompt supplies no boundary codes, ground-truth catalog, or
+locator suffix, and B0 fixes one model call while the policy cases expect none,
+so B0 scores are not a model comparison, development scope should not be run
+with B0, and the workflow reports the score without gating. A fixture locator
+inconsistency (colon vs hash form) is recorded in ADR-014 and to be fixed in a
+future fixture version. The existing
 `evaluation-smoke.yml` cannot pass its preflight with the zero-budget v1
 fixture (ADR-014).
 
-Next: the repository owner creates the `c1-evaluation` environment (with a
-required reviewer) and the `ANTHROPIC_API_KEY` secret, merges the branch, and
-runs the smoke scope once per the runbook. Development scope follows only after
-the smoke ledger is reviewed.
+Next: a workflow guard refusing a per-call limit above 0.09 USD (the first run
+mistakenly used 0.49). A meaningful provider comparison needs a candidate prompt
+beyond B0.
 
 ## EVAL-008 internal benchmark review implementation — 2026-10-02
 

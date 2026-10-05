@@ -99,15 +99,10 @@ be mistaken for B1 evidence.
   target field).
 - The budget and the calibration check rest on the 2.1 characters-per-token
   estimate (limitation d).
-- A B0 smoke score's overall `passed` is **expected** to be false; this is
-  unconfirmed until a live run. The basis: `NaiveBaselineExecutor` takes its
-  side effects from the B0 configuration, which must record one model call, for
-  every case; the smoke set's policy cases (EVAL-043, EVAL-049, EVAL-058) expect
-  zero model calls; and the overall result requires every case to pass. Scoring
-  one B0-style observation for EVAL-043 with the repository scorer failed the
-  side-effect check. Other checks, including the policy boundary, depend on the
-  model's output. The workflow therefore reports `passed` and does not gate on
-  it.
+- A B0 score's overall `passed` is **false for every model** (confirmed by the
+  first live smoke run, which scored 0 of 8; see the amendment below). The
+  workflow therefore reports `passed` and does not gate on it, and B0 scores
+  are not a model comparison.
 
 ### Existing smoke workflow (verified from the repository)
 
@@ -146,9 +141,59 @@ be mistaken for B1 evidence.
   B0 factory's model is unidentified, and no factory is guessed. OpenAI
   comparison runs are deferred.
 - **(d) Token estimate.** The 2.1 characters-per-token figure was measured on
-  Markdown and text inputs. The OpenAPI YAML artifacts have not been measured
-  separately. The calibration check compares every call's actual input tokens
-  with the estimate and stops the run when it is off by more than 15 percent.
+  Markdown and text inputs. The calibration check compares every call's actual
+  input tokens with the estimate and stops the run when it is more than 15
+  percent above it. The first live smoke run measured 65 to 77 percent of the
+  estimate on every call, so the estimate is conservative for these prompts.
+  The check does not detect an over-estimate.
+- **(e) B0 is not a measuring baseline for this corpus.** See the amendment
+  below.
+
+## Amendment — first live smoke run (2026-10-04)
+
+### Result
+
+The first live smoke run (Claude `claude-sonnet-5-5`, C1/v1, 8 cases) made 8
+calls, all succeeded, and was charged 162,444 micro-USD (0.162 USD). Actual
+input tokens were 65 to 77 percent of the estimate on every call, and output
+was 320 to 1,868 tokens per call. The score was 0 of 8.
+
+### Correction: B0 cannot be judged on ground truth or source references
+
+An earlier version of this ADR and of the runbook said to judge the five
+analysis cases on their ground-truth and source-reference checks. That is
+wrong. The B0 prompt (`naive_baseline.py`) gives the model no boundary codes,
+no ground-truth ID catalog (a test asserts `GT-FIND-001` is absent from the
+prompt), and no `#statement` or `#AC-n` locator suffix, so those checks fail
+for any model. The three policy cases (EVAL-043, EVAL-049, EVAL-058)
+additionally fail the side-effects check because B0 fixes `model_calls` at 1.
+This is consistent with B0's documented purpose in the
+[evaluation plan](../EVALUATION_PLAN.md#11-baselines-and-candidates): it shows
+why a naive prompt is insufficient. The smoke and development scores under B0
+are therefore **not a model comparison**, and `scope=development` should not be
+run with B0. A meaningful provider comparison needs a candidate prompt that
+supplies the boundary codes, ground-truth catalog, and locator syntax; that is
+outside this ADR.
+
+### Fixture locator inconsistency (recorded, not fixed)
+
+The fixtures README locator syntax and EVAL-001 (three occurrences in each of
+v1 and v2) use the colon form `REQ-ORDER-004:statement`, for example
+`REQ-BASE-001#REQ-ORDER-004:statement`. The ground-truth catalog, the case
+generator, and 97 of the 100 cases use the hash form (`REQ-ORDER-004#statement`,
+`REQ-REFUND-001#AC-2`). **Decision:** the hash form is canonical. The colon
+form is to be fixed in a future fixture version; v1 and v2 are not edited
+(v1 is hash-pinned and bound to B1 evidence, and a v2 edit would change a
+fixture a run may already reference).
+
+### Operator error: per-call limit
+
+The per-call limit entered for the first run was 0.49 USD, a mistake for the
+0.09 default (0.49 is the smoke run's arithmetic worst case). The workflow did
+not refuse it, because it only required the limit to be positive and not above
+the run limit. The run remained bounded by the 0.72 USD run limit. A follow-up
+change makes the workflow refuse a per-call limit above the v2 per-case budget
+of 0.09 USD.
 
 ## Security, cost, and operational impact
 
@@ -165,7 +210,7 @@ be mistaken for B1 evidence.
 - Declared budgets total 0.72 USD (smoke) and 5.40 USD (development). Actual
   spend is bounded by the per-call and run limits, with a hard 6.00 USD maximum
   in the workflow. Arithmetic worst case for the 8 smoke cases, from the
-  estimates, is 0.4919 USD.
+  estimates, is 0.4919 USD. The first live smoke run was charged 0.162 USD.
 - Costs assume standard global routing without `inference_geo`.
 - Pricing was verified on 2026-10-04 and must be re-verified and versioned
   before later runs; the runner never fetches prices.
@@ -189,8 +234,9 @@ be mistaken for B1 evidence.
 | Workflow contract tests | Triggers are exactly `workflow_dispatch`; read-only permissions; key only in the run step; `--max-concurrency 1`; 6.00 USD maximum; provider-prefixed artifacts; smoke and release workflows byte-for-byte unchanged. |
 | Repository CI | `python scripts/tasks.py ci` passes, including documentation validation. |
 
-No live Anthropic request is part of this validation, and no measured quality,
-cost, or latency result is claimed.
+The validation tests make no live Anthropic request. The one live smoke run is
+recorded in the amendment above; it is a pipeline and cost observation, not a
+quality result.
 
 ## Rollback criteria
 

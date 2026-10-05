@@ -125,6 +125,14 @@ marking them as expected failures.
 - Schema property: `OAS-BASE-001#/components/schemas/OrderCreate/required`
 - Explicit absence assertion: `OAS-BASE-001#absence:X-Correlation-ID`
 
+**Known inconsistency.** The requirement examples above use a colon between the
+requirement ID and the locator kind (`REQ-ORDER-004:statement`, `:AC-02`), and
+EVAL-001 (three occurrences each in v1 and v2) does too. The ground-truth
+catalog, the case generator, and 97 of the 100 cases use the hash form
+(`REQ-ORDER-004#statement`, `REQ-REFUND-001#AC-2`). The hash form is canonical;
+the colon form will be fixed in a future fixture version. v1 and v2 are not
+edited ([ADR-014](../../docs/adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md)).
+
 `~1` represents `/` in an OpenAPI JSON Pointer. Absence locators are allowed
 only in ground-truth records and must name the scope in which the expected
 item is absent.
@@ -237,7 +245,9 @@ against that same future fixture version before publishing quantitative claims.
 one approved nonzero USD budget per case. Every other case field is identical,
 and `evaluation-cases.v1.yaml` is unchanged, so B1/v1 evidence bound to v1 is
 unaffected. v2 exists for budgeted provider-comparison runs (C1/v1 first); a v2
-result is not B1 evidence.
+result is not B1 evidence. Under the B0 prompt, v2 scores are also not a model
+comparison: B0 supplies no boundary codes, ground-truth catalog, or locator
+suffix, and fixes `model_calls` at 1 (ADR-014 amendment).
 
 Each case has `maximum_expected_cost: 0.09` (USD), approved on 2026-10-04:
 
