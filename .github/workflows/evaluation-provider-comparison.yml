@@ -1,0 +1,255 @@
+name: Evaluation provider comparison
+
+# Manual, budgeted B0-prompt evaluation of one model provider on the v2 corpus.
+# Results are provider-comparison evidence only and are never B1 evidence.
+#
+# OpenAI is not runnable yet: the external B0 model factory's model is not
+# identified, and OpenAI runs have no spend-limited model or provenance
+# recorder. The OpenAI path refuses to run; no factory is guessed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_provider:
+        description: Model provider to evaluate.
+        required: true
+        type: choice
+        default: anthropic
+        options:
+          - anthropic
+          - openai
+      scope:
+        description: Case selection (validation and holdout are not available).
+        required: true
+        type: choice
+        default: smoke
+        options:
+          - smoke
+          - development
+      max_call_cost_usd:
+        description: Per-call worst-case limit in USD.
+        required: true
+        type: string
+        default: "0.09"
+      max_run_cost_usd:
+        description: Run spend limit in USD (hard maximum 6.00).
+        required: true
+        type: string
+        default: "0.72"
+      openai_b0_model_factory:
+        description: Required for openai. External B0 model factory (module:attribute).
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evaluation-provider-comparison
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    name: Run budgeted provider evaluation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment:
+      name: c1-evaluation
+
+    steps:
+      - name: Check out the selected commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version-file: .python-version
+
+      - name: Install locked Python tooling
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.11.16
+          uv sync --frozen
+          mkdir -p artifacts
+
+      - name: Validate inputs and spend limits
+        id: plan
+        env:
+          MODEL_PROVIDER: ${{ inputs.model_provider }}
+          SCOPE: ${{ inputs.scope }}
+          MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
+          MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
+          OPENAI_B0_MODEL_FACTORY: ${{ inputs.openai_b0_model_factory }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from decimal import Decimal
+
+          HARD_MAX_RUN_COST_USD = Decimal("6.00")
+          SCOPE_BUDGET_USD = {"smoke": Decimal("0.72"), "development": Decimal("5.40")}
+          ARTIFACT_PREFIX = {"anthropic": "c1", "openai": "b0-openai"}
+          USD_PATTERN = re.compile(r"^[0-9]+(\.[0-9]{1,6})?$")
+
+
+          def fail(message: str) -> None:
+              print(f"::error::{message}")
+              raise SystemExit(1)
+
+
+          provider = os.environ["MODEL_PROVIDER"]
+          scope = os.environ["SCOPE"]
+          if provider not in ARTIFACT_PREFIX:
+              fail("model_provider must be anthropic or openai.")
+          if scope not in SCOPE_BUDGET_USD:
+              fail("scope must be smoke or development.")
+
+          if provider == "openai":
+              if not os.environ["OPENAI_B0_MODEL_FACTORY"].strip():
+                  fail(
+                      "The external B0 model factory's model is not yet identified. "
+                      "Provide openai_b0_model_factory; no factory is guessed."
+                  )
+              fail(
+                  "OpenAI runs are not yet supported: they have no spend-limited "
+                  "model or provenance recorder."
+              )
+
+          limits = {}
+          for name in ("MAX_CALL_COST_USD", "MAX_RUN_COST_USD"):
+              text = os.environ[name].strip()
+              if not USD_PATTERN.fullmatch(text) or Decimal(text) <= 0:
+                  fail(f"{name.lower()} must be a positive USD amount.")
+              limits[name] = Decimal(text)
+
+          if limits["MAX_RUN_COST_USD"] > HARD_MAX_RUN_COST_USD:
+              fail(f"max_run_cost_usd exceeds the hard maximum {HARD_MAX_RUN_COST_USD}.")
+          if limits["MAX_CALL_COST_USD"] > limits["MAX_RUN_COST_USD"]:
+              fail("max_call_cost_usd cannot exceed max_run_cost_usd.")
+          if limits["MAX_RUN_COST_USD"] < SCOPE_BUDGET_USD[scope]:
+              fail(
+                  f"max_run_cost_usd must cover the {scope} budget "
+                  f"{SCOPE_BUDGET_USD[scope]} USD."
+              )
+
+          prefix = f"{ARTIFACT_PREFIX[provider]}-{scope}"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"prefix={prefix}\n")
+              output.write(f"scope_budget_usd={SCOPE_BUDGET_USD[scope]}\n")
+          PY
+
+      - name: Run evaluation
+        env:
+          ANTHROPIC_API_KEY: ${{ inputs.model_provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
+          AI_QA_COPILOT_B0_MODEL_FACTORY: ai_qa_copilot_api.c1_evaluation_model:create_c1_b0_model
+          AI_QA_COPILOT_C1_PRICING_PATH: fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml
+          AI_QA_COPILOT_C1_MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
+          AI_QA_COPILOT_C1_MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
+          AI_QA_COPILOT_C1_CALL_LEDGER_PATH: artifacts/${{ steps.plan.outputs.prefix }}-ledger.jsonl
+          SCOPE: ${{ inputs.scope }}
+          PREFIX: ${{ steps.plan.outputs.prefix }}
+          SCOPE_BUDGET_USD: ${{ steps.plan.outputs.scope_budget_usd }}
+        run: |
+          set -euo pipefail
+          [[ -n "${ANTHROPIC_API_KEY:-}" ]] || {
+            echo "::error::The ANTHROPIC_API_KEY secret is not configured in the c1-evaluation environment."
+            exit 1
+          }
+
+          if [[ "$SCOPE" == "smoke" ]]; then
+            selection=(
+              --split development
+              --case-id EVAL-001
+              --case-id EVAL-013
+              --case-id EVAL-025
+              --case-id EVAL-034
+              --case-id EVAL-043
+              --case-id EVAL-049
+              --case-id EVAL-055
+              --case-id EVAL-058
+            )
+          else
+            selection=(--split development)
+          fi
+
+          uv run python scripts/run_evaluation.py \
+            --fixture fixtures/benchmark/evaluation-cases.v2.yaml \
+            --repository-root . \
+            --executor ai_qa_copilot_api.naive_baseline:create_naive_baseline_executor \
+            --output "artifacts/${PREFIX}-run.json" \
+            "${selection[@]}" \
+            --max-expected-cost "$SCOPE_BUDGET_USD" \
+            --max-concurrency 1
+
+      - name: Score run report
+        env:
+          PREFIX: ${{ steps.plan.outputs.prefix }}
+        run: |
+          uv run python scripts/score_evaluation_run.py \
+            --fixture fixtures/benchmark/evaluation-cases.v2.yaml \
+            --ground-truth fixtures/benchmark/ground-truth.v1.yaml \
+            --run-report "artifacts/${PREFIX}-run.json" \
+            --output "artifacts/${PREFIX}-score.json"
+
+      - name: Record run provenance
+        env:
+          PREFIX: ${{ steps.plan.outputs.prefix }}
+          MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
+          MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
+        run: |
+          set -euo pipefail
+          ledger_arguments=()
+          for ledger in artifacts/"${PREFIX}"-ledger*.jsonl; do
+            ledger_arguments+=(--ledger "$ledger")
+          done
+          uv run python scripts/record_evaluation_provenance.py \
+            --run-report "artifacts/${PREFIX}-run.json" \
+            "${ledger_arguments[@]}" \
+            --pricing fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml \
+            --fixture fixtures/benchmark/evaluation-cases.v2.yaml \
+            --git-commit "$GITHUB_SHA" \
+            --max-call-cost-usd "$MAX_CALL_COST_USD" \
+            --max-run-cost-usd "$MAX_RUN_COST_USD" \
+            --output "artifacts/${PREFIX}-provenance.json"
+
+      - name: Report score result without gating
+        if: always()
+        env:
+          PREFIX: ${{ steps.plan.outputs.prefix }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          prefix = os.environ.get("PREFIX", "")
+          score_path = Path(f"artifacts/{prefix}-score.json")
+          provenance_path = Path(f"artifacts/{prefix}-provenance.json")
+          lines = [f"## Provider evaluation `{prefix or 'not started'}`", ""]
+          if score_path.is_file():
+              passed = json.loads(score_path.read_text(encoding="utf-8")).get("passed")
+              lines.append(f"- Score report passed: `{passed}` (reported, not gated)")
+          else:
+              lines.append("- Score report: not produced")
+          if provenance_path.is_file():
+              provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+              lines.append(f"- Calls: {provenance['ledger_call_count']}")
+              lines.append(
+                  f"- Charged: {provenance['ledger_charged_microusd'] / 1_000_000:.6f} USD"
+              )
+              lines.append(f"- B1 evidence: `{provenance['b1_evidence']}`")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n".join(lines) + "\n")
+          PY
+
+      - name: Upload evaluation artifacts
+        if: always()
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08
+        with:
+          name: ${{ steps.plan.outputs.prefix || 'provider-evaluation-rejected' }}-${{ github.sha }}
+          path: |
+            artifacts/${{ steps.plan.outputs.prefix }}-run.json
+            artifacts/${{ steps.plan.outputs.prefix }}-score.json
+            artifacts/${{ steps.plan.outputs.prefix }}-provenance.json
+            artifacts/${{ steps.plan.outputs.prefix }}-ledger*.jsonl
+          if-no-files-found: warn

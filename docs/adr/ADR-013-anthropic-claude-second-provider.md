@@ -130,5 +130,6 @@ No live Anthropic request is part of this validation.
 - [Architecture — model gateway](../ARCHITECTURE.md#81-model-gateway)
 - [Evaluation plan — baselines and candidates](../EVALUATION_PLAN.md#11-baselines-and-candidates)
 - [Threat model — data, reports, telemetry, and supply chain](../THREAT_MODEL.md#85-data-reports-telemetry-and-supply-chain)
+- [ADR-014 — Budgeted C1/v1 provider-comparison evaluation](ADR-014-c1-budgeted-provider-comparison-evaluation.md)
 - [Model gateway tests](../../apps/api/tests/test_model_gateway.py)
 - [Analysis-run tests](../../apps/api/tests/test_analysis_runs.py)

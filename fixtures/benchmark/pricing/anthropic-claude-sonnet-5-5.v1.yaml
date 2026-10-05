@@ -1,0 +1,9 @@
+schema_version: provider-pricing/v1
+provider: anthropic
+model_id: claude-sonnet-5-5
+pricing_version: anthropic-claude-sonnet-5-5/2026-10-04/standard-global-no-inference-geo
+source_reference: https://platform.claude.com/docs/en/about-claude/pricing
+verified_on: "2026-10-04"
+routing: standard_global_no_inference_geo
+input_microusd_per_million_tokens: 2000000
+output_microusd_per_million_tokens: 10000000

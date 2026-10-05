@@ -33,6 +33,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-011](ADR-011-structured-workflow-tracing.md)             | Safe correlated structured workflow tracing                                                              | Accepted |
 | [ADR-012](ADR-012-deterministic-provider-usage-accounting.md) | Deterministic provider-usage cost and reliability accounting                                             | Accepted |
 | [ADR-013](ADR-013-anthropic-claude-second-provider.md)        | Anthropic Claude as a second, operator-selected model provider                                           | Accepted |
+| [ADR-014](ADR-014-c1-budgeted-provider-comparison-evaluation.md) | Budgeted C1/v1 provider-comparison evaluation, separate from B1 evidence                              | Accepted |
 
 ## Required ADR structure
 

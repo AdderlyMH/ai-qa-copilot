@@ -231,6 +231,163 @@ A real B0-versus-grounded comparison requires a new immutable evaluation-case
 fixture version with approved nonzero USD budgets. Both workflows must run
 against that same future fixture version before publishing quantitative claims.
 
+## Budgeted v2 corpus for provider comparison
+
+`evaluation-cases.v2.yaml` (suite `evaluation-corpus/v2`) is the v1 corpus with
+one approved nonzero USD budget per case. Every other case field is identical,
+and `evaluation-cases.v1.yaml` is unchanged, so B1/v1 evidence bound to v1 is
+unaffected. v2 exists for budgeted provider-comparison runs (C1/v1 first); a v2
+result is not B1 evidence.
+
+Each case has `maximum_expected_cost: 0.09` (USD), approved on 2026-10-04:
+
+| Input | Value |
+|---|---|
+| Pricing | Claude Sonnet 5.5: 2 USD input, 10 USD output per million tokens ([source](https://platform.claude.com/docs/en/about-claude/pricing), verified 2026-10-04) |
+| Most expensive case | Largest B0 prompt, 38,713 characters at 2.1 characters per token = 18,435 input tokens |
+| Output bound | C1/v1 `max_tokens` 4,096 |
+| Worst case | 0.07783 USD |
+| Budget | Worst case + 10 percent, rounded up to the cent = 0.09 USD |
+
+The 10 percent margin is 0.007783 USD. Including the round-up to the cent,
+the total headroom above the worst case is 0.09 - 0.07783 = 0.01217 USD,
+about 6,000 input tokens at 2 USD per million.
+
+Selection totals: 8-case smoke 0.72 USD, development split 5.40 USD, all 100
+cases 9.00 USD. These are declared budgets checked by the runner before
+execution and by the scorer afterwards; they do not limit actual provider
+spend. The token estimate is an approximation, not a provider count.
+
+Regenerate and verify with:
+
+```powershell
+uv run python scripts/generate_evaluation_cases.py --corpus v2 --write
+uv run python -m pytest apps/api/tests/test_evaluation_budgeted_benchmark.py
+```
+
+## C1/v1 B0 model with spend limits
+
+`ai_qa_copilot_api.c1_evaluation_model:create_c1_b0_model` is a B0 model
+factory that sends the unchanged B0 prompt through the pinned C1/v1 Anthropic
+adapter. Select it with `AI_QA_COPILOT_B0_MODEL_FACTORY`. C1 results are not
+B1 evidence. Every setting below is required; nothing has a default.
+
+| Environment variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY` | Provider credential (server-side only, never logged) |
+| `AI_QA_COPILOT_C1_PRICING_PATH` | Explicit pricing input, e.g. `fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml` |
+| `AI_QA_COPILOT_C1_MAX_CALL_COST_USD` | Per-call worst-case limit; use the v2 case budget, `0.09` |
+| `AI_QA_COPILOT_C1_MAX_RUN_COST_USD` | Run limit, e.g. `0.72` for smoke or `5.40` for development |
+| `AI_QA_COPILOT_C1_CALL_LEDGER_PATH` | New JSON Lines ledger file; an existing file is refused |
+
+The pricing input (`pricing_version`
+`anthropic-claude-sonnet-5-5/2026-10-04/standard-global-no-inference-geo`)
+records 2 USD input and 10 USD output per million tokens from the
+[pricing page](https://platform.claude.com/docs/en/about-claude/pricing),
+verified 2026-10-04, at standard global routing. The adapter never sets
+`inference_geo`; other routing is priced differently and is refused. Cache
+pricing is out of scope because the adapter rejects cache usage.
+
+Spend controls, all fail closed:
+
+- Before each call, the worst case (estimated input tokens for the prompt, the
+  system field, and the output schema at 2.1 characters per token, plus the
+  4,096-token `max_tokens`) must fit the per-call limit and the remaining run
+  budget.
+- After each call, the actual cost is added to the running total, which must
+  not exceed the run limit.
+- Calibration: actual input tokens may exceed the estimate by at most 15
+  percent (`C1_INPUT_TOKEN_ESTIMATE_TOLERANCE`).
+- Run with `--max-concurrency 1`. The runner's setting is not visible to a model
+  factory, so an overlapping call is rejected before any request.
+- Any failure (provider error, refusal, truncation, invalid output, limit, or
+  calibration) closes the model. The runner still executes cases that were
+  already queued, so each later call is rejected without a request.
+- A failed provider call reports no usage, so it is charged at its worst case.
+- Limits apply per runner invocation. Resumed invocations start a new running
+  total and a new ledger.
+
+Each call attempt appends one content-free record (estimated and actual input
+tokens, output tokens, charged and running-total micro-USD, outcome, and
+provenance) to the ledger. No prompt, output, or credential is recorded.
+
+### Known limitations
+
+- The shared runner (`evaluation_runner.py`) submits every selected case before
+  any completes. When one case fails, it still executes the cases already
+  queued, then writes no run report. This applies to every provider and
+  executor. C1 mitigates it by latching closed after the first failure, so the
+  queued cases make no further provider requests; other model factories do not.
+- Spend limits apply per runner invocation. A resumed invocation starts a new
+  running total and a new ledger, so total spend across resumed runs is the sum
+  of their ledgers.
+
+### Run provenance
+
+`evaluation-run/v1` reports have a fixed field set, so each C1 run gets a
+separate provenance file, written next to its run report:
+
+```powershell
+uv run python scripts/record_evaluation_provenance.py `
+  --run-report artifacts/c1-smoke-run.json `
+  --ledger artifacts/c1-smoke-ledger.jsonl `
+  --pricing fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml `
+  --git-commit <40-character commit SHA> `
+  --max-call-cost-usd 0.09 `
+  --max-run-cost-usd 0.72 `
+  --output artifacts/c1-smoke-run.provenance.json
+```
+
+The `evaluation-run-provenance/v1` file records provider, model ID,
+configuration version `C1/v1`, prompt version `b0-single-prompt/v1`, the
+pricing version and pricing-file hash, the fixture, run-report, B0
+configuration, and ledger hashes, the git commit, the run limits, the ledger
+call count and charged total, and `b1_evidence: false`. It contains no prompt,
+model output, or credential. Pass `--ledger` once per resumed invocation.
+
+The recorder refuses a run that is not on `evaluation-corpus/v2`, was not run
+with `max_concurrency` 1, has no explicit `max_expected_cost`, or whose ledgers
+disagree with the declared limits or pricing. It writes only next to the run
+report, never under `evaluation/reviews/`, and never replaces an existing file.
+
+### Provider-comparison workflow
+
+`.github/workflows/evaluation-provider-comparison.yml` runs the B0 prompt for
+one provider on the v2 corpus. It is manual only (`workflow_dispatch`), has
+read-only repository permissions, and one run at a time.
+
+| Input | Values |
+|---|---|
+| `model_provider` | `anthropic` (default) or `openai` |
+| `scope` | `smoke` (default, 8 cases, 0.72 USD budget) or `development` (60 cases, 5.40 USD budget); validation and holdout are not available |
+| `max_call_cost_usd` | Default `0.09` |
+| `max_run_cost_usd` | Default `0.72`; must cover the scope budget; hard maximum 6.00 |
+| `openai_b0_model_factory` | Required for `openai` |
+
+The run uses `--max-concurrency 1`. The provider key is exposed only to the
+single run step. After the run, the workflow scores the report, records
+provenance with every ledger, reports the score's `passed` value in the job
+summary without failing on it, and uploads the run report, score report,
+provenance, and ledger as an artifact named `c1-<scope>-<commit>` (for
+Anthropic). Nothing is written under `evaluation/reviews/`.
+
+**OpenAI is not runnable yet.** The external B0 model factory's model has not
+been identified, so the workflow refuses an `openai` run without
+`openai_b0_model_factory`, and no factory is guessed. It also refuses an
+`openai` run when a factory is supplied, because OpenAI runs have no
+spend-limited model or provenance recorder yet.
+
+Repository settings you must create before the first run (not done by code):
+
+1. A GitHub environment named `c1-evaluation`, with required reviewers if
+   manual approval is wanted.
+2. An `ANTHROPIC_API_KEY` secret in that environment.
+
+B1 reference assembly rejects C1 evidence through its existing strict
+validation: a provenance file or any input carrying `b1_evidence` is not a B1
+assembly input, a C1 configuration is not B1/v1, a C1 ledger is not B1
+measurements, and a v2 run does not match the B1 corpus.
+
 
 ## EVAL-005 development benchmark expansion
 
