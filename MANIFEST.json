@@ -231,9 +231,14 @@
       "sha256": "6eddbe274a442adf0386506771473daf7d8bf02df61cc67ba078220176088da9"
     },
     {
+      "path": "docs/adr/ADR-015-informed-baseline-development-comparison.md",
+      "bytes": 16732,
+      "sha256": "d82c6f3f0ad715dea13b20afeb9e24e8bba98dc0aef63f17dcf6cf2bec4a6406"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 4007,
-      "sha256": "256d31a39ff8e65224b84285b7342264ad536ee1ea468d863facd29c838bcc8f"
+      "bytes": 4192,
+      "sha256": "1325f020adea5d290397f328b632f1c25869bfac5a4fba8c7a2196c0ce0ad44e"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",
