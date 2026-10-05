@@ -249,6 +249,10 @@ Each case has `maximum_expected_cost: 0.09` (USD), approved on 2026-10-04:
 | Worst case | 0.07783 USD |
 | Budget | Worst case + 10 percent, rounded up to the cent = 0.09 USD |
 
+The 10 percent margin is 0.007783 USD. Including the round-up to the cent,
+the total headroom above the worst case is 0.09 - 0.07783 = 0.01217 USD,
+about 6,000 input tokens at 2 USD per million.
+
 Selection totals: 8-case smoke 0.72 USD, development split 5.40 USD, all 100
 cases 9.00 USD. These are declared budgets checked by the runner before
 execution and by the scorer afterwards; they do not limit actual provider
@@ -260,6 +264,63 @@ Regenerate and verify with:
 uv run python scripts/generate_evaluation_cases.py --corpus v2 --write
 uv run python -m pytest apps/api/tests/test_evaluation_budgeted_benchmark.py
 ```
+
+## C1/v1 B0 model with spend limits
+
+`ai_qa_copilot_api.c1_evaluation_model:create_c1_b0_model` is a B0 model
+factory that sends the unchanged B0 prompt through the pinned C1/v1 Anthropic
+adapter. Select it with `AI_QA_COPILOT_B0_MODEL_FACTORY`. C1 results are not
+B1 evidence. Every setting below is required; nothing has a default.
+
+| Environment variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY` | Provider credential (server-side only, never logged) |
+| `AI_QA_COPILOT_C1_PRICING_PATH` | Explicit pricing input, e.g. `fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml` |
+| `AI_QA_COPILOT_C1_MAX_CALL_COST_USD` | Per-call worst-case limit; use the v2 case budget, `0.09` |
+| `AI_QA_COPILOT_C1_MAX_RUN_COST_USD` | Run limit, e.g. `0.72` for smoke or `5.40` for development |
+| `AI_QA_COPILOT_C1_CALL_LEDGER_PATH` | New JSON Lines ledger file; an existing file is refused |
+
+The pricing input (`pricing_version`
+`anthropic-claude-sonnet-5-5/2026-10-04/standard-global-no-inference-geo`)
+records 2 USD input and 10 USD output per million tokens from the
+[pricing page](https://platform.claude.com/docs/en/about-claude/pricing),
+verified 2026-10-04, at standard global routing. The adapter never sets
+`inference_geo`; other routing is priced differently and is refused. Cache
+pricing is out of scope because the adapter rejects cache usage.
+
+Spend controls, all fail closed:
+
+- Before each call, the worst case (estimated input tokens for the prompt, the
+  system field, and the output schema at 2.1 characters per token, plus the
+  4,096-token `max_tokens`) must fit the per-call limit and the remaining run
+  budget.
+- After each call, the actual cost is added to the running total, which must
+  not exceed the run limit.
+- Calibration: actual input tokens may exceed the estimate by at most 15
+  percent (`C1_INPUT_TOKEN_ESTIMATE_TOLERANCE`).
+- Run with `--max-concurrency 1`. The runner's setting is not visible to a model
+  factory, so an overlapping call is rejected before any request.
+- Any failure (provider error, refusal, truncation, invalid output, limit, or
+  calibration) closes the model. The runner still executes cases that were
+  already queued, so each later call is rejected without a request.
+- A failed provider call reports no usage, so it is charged at its worst case.
+- Limits apply per runner invocation. Resumed invocations start a new running
+  total and a new ledger.
+
+Each call attempt appends one content-free record (estimated and actual input
+tokens, output tokens, charged and running-total micro-USD, outcome, and
+provenance) to the ledger. No prompt, output, or credential is recorded.
+
+### Known limitations
+
+- The shared runner (`evaluation_runner.py`) submits every selected case before
+  any completes. When one case fails, it still executes the cases already
+  queued, then writes no run report. This applies to every provider and
+  executor. C1 mitigates it by latching closed after the first failure, so the
+  queued cases make no further provider requests; other model factories do not.
+- Spend limits apply per runner invocation. A resumed invocation starts a new
+  running total and a new ledger, so total spend across resumed runs is the sum
+  of their ledgers.
 
 
 ## EVAL-005 development benchmark expansion
