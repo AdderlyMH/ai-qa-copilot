@@ -101,14 +101,19 @@
       "sha256": "ca7a7035b16bcd913f3cd10737509d7332f4a8f1508c04d2ff6c1364eee31019"
     },
     {
+      "path": "docs/C1_EVALUATION_RUNBOOK.md",
+      "bytes": 5456,
+      "sha256": "a60865f4303c2a2da42aa6a2926d3f1ea5d789b17dac5dc6b8549573f4242221"
+    },
+    {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
       "bytes": 34869,
       "sha256": "eaaed78feefee9adadbb7301091192e2397e0f5f0dc77c72e16df2ff4eaf7744"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
-      "bytes": 52766,
-      "sha256": "783d485e03ad561a32f0b2fec08baaaf36d4bbf6b8c2a49c42a347810597fe7d"
+      "bytes": 54118,
+      "sha256": "16bfc72a96c359a5e4c8080d75460018064008d92ad2ab26d37151a2b406aec8"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -132,8 +137,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 91043,
-      "sha256": "d2a3fe97c4c0a29258bfa9372b9aaee547619b31f67119d1c2864fbcf6b4eada"
+      "bytes": 93501,
+      "sha256": "e6f38f32405f816a3b6f4413ca3c76d25b4ea79572b8356c570bb7cfa1aed1fc"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -217,13 +222,18 @@
     },
     {
       "path": "docs/adr/ADR-013-anthropic-claude-second-provider.md",
-      "bytes": 7332,
-      "sha256": "374aa6dc3d528b71a0d6c6834d946ca816d24b983a0629e34b16f72d930ea975"
+      "bytes": 7449,
+      "sha256": "ddf2f37d788a7ca088dcb4b5e16f58a6df62a9b2d02371e76c6a3e7d520a91d5"
+    },
+    {
+      "path": "docs/adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md",
+      "bytes": 13024,
+      "sha256": "1f23cd209baa8978fb41302b5a434e4249a8cdb1d60dffff9e792aa837051d83"
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 3823,
-      "sha256": "3d6d02c8b19d04c2038516a01c50313d0a1234405e6ed79079ac4cdcc2eccdb1"
+      "bytes": 4007,
+      "sha256": "256d31a39ff8e65224b84285b7342264ad536ee1ea468d863facd29c838bcc8f"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",

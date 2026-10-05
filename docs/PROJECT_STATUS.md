@@ -1,5 +1,45 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## C1/v1 provider-comparison evaluation tooling — 2026-10-04
+
+**Status:** Implemented on branch `feature/c1-eval-v2-fixture`, not yet merged
+to `main`. This is tooling acceptance, not evaluation evidence: no live
+Anthropic request has been made, and no quality, cost, or latency result is
+claimed. Decisions are recorded in
+[ADR-014](adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md), building
+on ADR-013 (Claude as a second provider).
+
+Delivered, in five commits: the budgeted `evaluation-corpus/v2` fixture (0.09
+USD per case; v1 unchanged and hash-pinned); a C1/v1 B0 model factory with an
+explicit versioned pricing input (Sonnet 5.5, 2 USD input and 10 USD output per
+million tokens, standard global routing, source
+<https://platform.claude.com/docs/en/about-claude/pricing>, verified
+2026-10-04), per-call and per-run spend limits, a 15 percent input-token
+calibration check, and a content-free call ledger; a per-run provenance file
+declaring `b1_evidence: false`; a `workflow_dispatch`-only comparison workflow
+(smoke or development scope, 6.00 USD hard maximum, `c1-evaluation`
+environment); and a first-run [runbook](C1_EVALUATION_RUNBOOK.md). B0, B1, the
+OpenAI adapter, the shared runner, and the existing smoke and release workflows
+are unchanged. Local `python scripts/tasks.py ci` passed at each stage.
+
+Known limitations: the shared runner continues queued cases after a failure and
+writes no report (all providers; C1 latches closed); spend limits are per
+invocation, so total spend is the sum of ledgers; the OpenAI comparison path is
+locked until an OpenAI spend-limited model and provenance support exist, and
+the external B0 factory's model is unidentified; the 2.1 characters-per-token
+estimate was measured on Markdown/text and is checked per call. The smoke
+score's overall `passed` is expected to be false, because B0 records one model
+call for every case while the smoke policy cases expect none (based on scoring
+one B0-style observation for EVAL-043 and the call accounting; unconfirmed
+until a live run), so the workflow reports it without gating. The existing
+`evaluation-smoke.yml` cannot pass its preflight with the zero-budget v1
+fixture (ADR-014).
+
+Next: the repository owner creates the `c1-evaluation` environment (with a
+required reviewer) and the `ANTHROPIC_API_KEY` secret, merges the branch, and
+runs the smoke scope once per the runbook. Development scope follows only after
+the smoke ledger is reviewed.
+
 ## EVAL-008 internal benchmark review implementation — 2026-10-02
 
 **Status:** Accepted on main through PR #143 (merge commit

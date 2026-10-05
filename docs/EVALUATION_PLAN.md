@@ -2,7 +2,7 @@
 
 **Document status:** Approved working baseline
 **Version:** 0.2
-**Last updated:** 2026-07-17
+**Last updated:** 2026-10-04
 **Evaluation owner:** Project owner
 
 ## 1. Purpose
@@ -734,6 +734,29 @@ The model identifier is deliberately `gpt-5.6-terra`, not the `gpt-5.6` alias.
 Every initial production task uses B1/v1. A configuration change requires a
 new version and comparison evidence; it cannot silently alter an existing B1
 result.
+
+### Provider comparison C1/v1 (not B1 evidence)
+
+[ADR-013](adr/ADR-013-anthropic-claude-second-provider.md) adds Claude as a
+second provider with configuration C1/v1 (`claude-sonnet-5-5`, `medium` effort,
+`max_tokens` 4096). [ADR-014](adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md)
+defines how it is measured:
+
+- The B0 prompt (`b0-single-prompt/v1`) is run unchanged on the budgeted
+  `evaluation-corpus/v2` fixture (0.09 USD per case; development split only:
+  8-case smoke, then the 60-case development split). Validation and holdout are
+  not run, so no holdout access is recorded or implied.
+- Spend is bounded by per-call and per-run limits (hard maximum 6.00 USD in the
+  workflow), a 15 percent input-token calibration check, and a call ledger.
+  Pricing is an explicit versioned input (Sonnet 5.5 at 2 USD input and 10 USD
+  output per million tokens, standard global routing, verified 2026-10-04).
+- Each run has a provenance file declaring `b1_evidence: false`. A C1 result
+  does not replace, extend, or relabel B1/v1, which stays the single OpenAI
+  production candidate, and it does not introduce B2 routing.
+- OpenAI comparison runs are deferred until an OpenAI spend-limited model and
+  provenance support exist and the external B0 factory's model is identified.
+
+See the [C1 evaluation runbook](C1_EVALUATION_RUNBOOK.md).
 
 ### Candidate B2 — Cost-optimized routing
 
