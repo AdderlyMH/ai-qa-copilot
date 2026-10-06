@@ -1,5 +1,39 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Objective-bearing fixture v4 decided (ADR-016) — 2026-10-05
+
+**Status:** Recorded on branch `docs/adr-016-fixture-v4`; documentation only.
+No code, fixture, workflow, pricing or test change, no provider call and no
+spend. Decisions are in
+[ADR-016](adr/ADR-016-objective-fixture-v4-provider-comparison.md); the owner
+procedure is in [EVALUATION_V4_LABEL_REVIEW.md](EVALUATION_V4_LABEL_REVIEW.md).
+
+Decided: `evaluation-corpus/v4`, generated from v3 development cases only (no
+validation or holdout content read; v4 has no release split), with a
+hand-written owner objective appended to `user_request` after `Objective:` and
+the scenario suffix dropped. The case model, loader, scorer, runner, informed
+executor, catalog, B1 code and `informed-single-prompt/v1` with its four pins
+are unchanged; a new case field was rejected because the case hash uses
+`asdict(case)`. No model writes or suggests objective text. Composition: 27
+(group, required-ID) pairs from six of the ten development groups, plus 4
+negative controls, 31 cases (group table in ADR-016); non-derivable anchors
+repaired in v4 references; the EVAL-055 pair dropped; two further reference
+items (C-3, C-4) corrected only if the owner review confirms them; finalized in
+the owner review record. Leakage rules (on objectives and any replaced request
+text) and the no-ambiguity property (on the full request plus artifacts and
+overlays) are enforced by tests in the fixture pull request. On negative
+controls, required IDs and references are reported as not applicable. Per-case budget uses the 2.50 USD per million OpenAI cache-write
+rate until a probe shows zero cache tokens (estimate about 0.11 USD, computed in
+the fixture pull request). Run order: OpenAI 2-call probe, one 8-case smoke run
+per provider, two full runs per provider, each separately authorized and under
+the 6.00 USD hard maximum. Results remain design-set, internally reviewed,
+`results_not_independently_validated`, and never B1, B2 or gate evidence.
+
+Unverified: whether v4 keeps v3 case IDs (decided in the fixture pull
+request). Next action: owner
+label review and objectives, then the v4 fixture pull request; the OpenAI path
+and workflow changes follow under their own review.
+
 ## Informed Claude smoke run and development-split finding — 2026-10-05
 
 **Status:** Recorded on branch `docs/informed-smoke-findings`; documentation only.
