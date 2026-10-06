@@ -289,6 +289,43 @@ and the executor-fixed side-effects check).
 State with every result: development split used to design the prompt; catalog
 selection task; not B1, B2 or gate evidence; `results_not_independently_validated`.
 
+### Recorded results
+
+First informed smoke run: commit `7f5c0946807d782bfae6652f57611c672df10aaa`,
+Claude (`claude-sonnet-5-5`, C1/v1), `informed-single-prompt/v1`, fixture
+`evaluation-corpus/v3` (SHA-256 `8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae`).
+Detail and interpretation are in the
+[ADR-015 amendment](adr/ADR-015-informed-baseline-development-comparison.md#amendment--informed-smoke-run-result-and-development-split-finding-2026-10-05).
+
+| Item | Result |
+|---|---|
+| Calls | 8, all succeeded |
+| Charged | 175,352 micro-USD (0.175352 USD), against the 0.5234 USD worst case and the 0.18 to 0.19 USD expectation |
+| Calibration ratios | 0.7015 to 0.8293 (limit 1.15); the 2.1 characters-per-token estimate overstates input |
+| Output tokens | 82 to 725 per call (cap 4,096) |
+| Provenance | `evaluation-run-provenance/v2`, `b1_evidence` false, the four pinned hashes matched |
+| Required IDs | 5 of 8 |
+| No unexpected IDs | 2 of 8 |
+| Expected source references | 6 of 8 |
+| Policy boundary | 6 of 8 |
+
+That is 19 of 32 discriminating check results. Only EVAL-013 passed overall; the
+three policy cases fail the side-effects check by construction. Over the 8 cases
+the model selected 26 IDs, 5 of them the expected IDs.
+
+> **Warning: development-split scores are not model accuracy.** 59 of the 60
+> development cases share their model-visible inputs (artifacts, overlays and the
+> user request without the "Development scenario NN" suffix) with another case
+> that expects a different answer. The model is not sent the case ID, category or
+> labels, so for the question "which single entry" its inputs do not identify the
+> expected answer, and a scenario-blind executor could match at most 16 of 60 on
+> the required-and-unexpected ID checks. A low score on required or unexpected IDs
+> can reflect an ambiguous request rather than a weak model. Do not use these
+> scores to compare providers or models. Reference grammar, boundary selection,
+> over- and under-selection counts, validity, cost and token use remain
+> informative. Do not run `scope=development` for a comparison on `v1`, `v2` or
+> `v3`; the OpenAI comparison work is paused (see ADR-015).
+
 ### Record after the run
 
 Add a short amendment to ADR-015 and an entry in `docs/PROJECT_STATUS.md` with:
