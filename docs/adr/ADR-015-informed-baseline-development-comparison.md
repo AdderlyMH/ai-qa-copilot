@@ -283,6 +283,55 @@ No live provider request is part of this validation.
 - Retries, repair loops, tools, streaming, caching, Batch, Flex, Fast and
   regional processing; LLM judges; latency comparison.
 
+## Amendment — Claude informed run support (2026-10-05)
+
+### Implemented
+
+No decision above changed. The Claude path for the informed baseline is now
+implemented, still without any provider call or spend:
+
+- A provider-neutral spend core (`evaluation_spend_control.py`) and a Claude
+  informed model factory on the unchanged C1/v1 adapter
+  (`informed_claude_evaluation_model.py`), with the ledger schema
+  `informed-call-ledger/v1` and a per-call `calibration_ratio`. Claude's
+  calibration stays 2.1 characters per token with a 15 percent tolerance until
+  the informed smoke run measures it.
+- `evaluation-run-provenance/v2` (`informed_run_provenance.py`, recorder
+  `scripts/record_informed_evaluation_provenance.py`), evidence class
+  `provider-comparison-informed-development`, which pins the developer-text,
+  prompt-config and schema hashes and refuses any failed or mismatched ledger.
+- A `baseline` input (`b0` or `informed`, default `b0`) on the
+  provider-comparison workflow. The per-call guard is a map by (baseline,
+  provider): b0/anthropic 0.09 USD (v2 budget) and informed/anthropic 0.10 USD
+  (v3 budget). Informed scope budgets are 0.80 USD (smoke) and 6.00 USD
+  (development). OpenAI stays refused for both baselines.
+- For the 8-case smoke set, 3 cases are policy cases and none has a
+  non-derivable anchor, so at most 5 of 8 can pass overall (28 of 60 for the
+  development split). The [runbook](../C1_EVALUATION_RUNBOOK.md#informed-baseline-smoke-run)
+  covers the first informed smoke run.
+
+### Known debt
+
+- **Duplicated spend machinery.** `c1_evaluation_model.py` keeps its own copy of
+  the limits, calibration check, ledger, single-flight and latch logic, now also
+  in `evaluation_spend_control.py`. The C1 module was left unchanged to keep the
+  recorded B0 run and its tests intact. A fix in one copy must be mirrored in the
+  other until C1 is moved onto the shared core in a separate, tested change.
+- **Pin bumps.** The v2 recorder pins the developer-text, prompt-config and
+  schema SHA-256 values. Any change to the prompt text, its configuration or the
+  shared schema, however small, makes the recorder refuse until the pins are
+  updated. Such a change is a new prompt version and must bump
+  `prompt_version`, the pins and the developer-text test pin together.
+- **b0 fallback in the workflow guard.** The validation script treats an
+  absent `BASELINE` variable as `b0` so that the existing contract-test helper,
+  which does not set it, keeps running unmodified. The workflow always sets it,
+  and an empty or unknown value is refused. Remove the fallback once the test
+  helper sets `BASELINE` explicitly.
+- **Stale OpenAI wording.** The workflow header comments and the OpenAI refusal
+  messages describe the OpenAI path in terms of the unidentified external B0
+  factory. They predate the decision to compare against `gpt-6.1-sol` and are
+  to be rewritten in the OpenAI pull request.
+
 ## Links
 
 - [ADR-013 — Anthropic Claude as a second provider](ADR-013-anthropic-claude-second-provider.md)
