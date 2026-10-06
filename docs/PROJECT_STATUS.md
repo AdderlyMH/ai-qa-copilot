@@ -1,9 +1,50 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Claude informed-run support — 2026-10-05
+
+**Status:** Implemented on branch `feature/informed-claude-run`, not yet merged.
+This is tooling acceptance, not evaluation evidence. No provider call has been
+made and no spend has been authorized; no quality, cost, or latency result is
+claimed. Decisions are recorded in the
+[ADR-015 amendment](adr/ADR-015-informed-baseline-development-comparison.md#amendment--claude-informed-run-support-2026-10-05).
+
+Delivered, in four commits: a provider-neutral spend core
+(`evaluation_spend_control.py`) and a Claude informed model factory on the
+unchanged C1/v1 adapter (ledger `informed-call-ledger/v1` with a per-call
+calibration ratio; Claude calibration 2.1 characters per token, 15 percent
+tolerance); `evaluation-run-provenance/v2` and its recorder, which pin the
+developer-text, prompt-config and schema hashes and refuse failed or
+mismatched ledgers (B1 assembly rejects v2); a `baseline` input (`b0` or
+`informed`, default `b0`) on the provider-comparison workflow with a per-call
+guard map (b0/anthropic 0.09 USD, informed/anthropic 0.10 USD) and informed
+scope budgets of 0.80 USD (smoke) and 6.00 USD (development), b0 passing the
+same run arguments as before and OpenAI refused for both baselines; and a
+[runbook section](C1_EVALUATION_RUNBOOK.md#informed-baseline-smoke-run) for the
+first informed smoke run (worst case 0.5234 USD, expected about 0.18 to 0.19
+USD). `c1_evaluation_model.py`, the v1 provenance recorder, `naive_baseline.py`,
+B1, `model_gateway.py`, the fixtures, the pricing file, and the smoke and release
+workflows are unchanged. Local `python scripts/tasks.py ci` and the CI Bandit
+command passed at each stage.
+
+Known limitations: at most 5 of the 8 smoke cases (3 are policy cases) and 28
+of the 60 development cases can pass overall, so results are reported by
+discriminating check. The workflow defaults are the b0 values, so an informed
+run must enter `baseline`, 0.10 and 0.80 explicitly (the guard refuses an
+informed smoke run with the b0 run limit). Two contract tests that pinned the
+old workflow source text (the input set and the single per-call constant) were
+updated; the behavioral b0 tests are unchanged. Known debt: the spend machinery
+is duplicated between `c1_evaluation_model.py` and `evaluation_spend_control.py`;
+any prompt, config or schema change needs a version and pin bump; the workflow
+guard falls back to `b0` when `BASELINE` is absent, to be removed once the test
+helper sets it; the workflow's OpenAI comments predate the `gpt-6.1-sol`
+decision and are to be rewritten in the OpenAI pull request. OpenAI cache
+handling, the 4,096-token cap and the effort mapping remain unverified. Next
+action: merge, then the informed smoke run per the runbook, and record its
+calibration ratios, total cost and output-token range.
+
 ## Informed-baseline prompt, executor, and fixture v3 — 2026-10-05
 
-**Status:** Implemented on branch `feature/informed-baseline-fixture-v3`, not yet
-merged. This is tooling and fixture work, not evaluation evidence. No provider
+**Status:** Merged to `main` (PR #151). This is tooling and fixture work, not evaluation evidence. No provider
 call has been made, no spend has been authorized, and no quality, cost, or
 latency result is claimed. Decisions are recorded in
 [ADR-015](adr/ADR-015-informed-baseline-development-comparison.md), building on

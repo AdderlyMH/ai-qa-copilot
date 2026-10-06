@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
-      "bytes": 8244,
-      "sha256": "c990df9a0ba97239572480b3501caf39da4f17725314a2be4246662cf4a60461"
+      "bytes": 15544,
+      "sha256": "7bd6d666c08245537af9c968316a66ee9592d4c6a18458b3f9c2417b980debc4"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -137,8 +137,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 96541,
-      "sha256": "14809b0dbc23c3fb6fa2c34f2b16d353d94423e84bec255649ef22a6e477ca7f"
+      "bytes": 99313,
+      "sha256": "48b015180756b045e28684bf923641f68487415b248862c6f6e3e53cae9effc2"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -232,8 +232,8 @@
     },
     {
       "path": "docs/adr/ADR-015-informed-baseline-development-comparison.md",
-      "bytes": 17094,
-      "sha256": "072435c400838b9492618fd0b55ed5acb61b403afb0408fc62021dfa3fc0114f"
+      "bytes": 20030,
+      "sha256": "2307b28e82ba1363cf675f81d587559f894ca083a40b04120e4d44eaaca14250"
     },
     {
       "path": "docs/adr/README.md",

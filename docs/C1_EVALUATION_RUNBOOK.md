@@ -1,10 +1,13 @@
-# C1/v1 evaluation runbook — first live run
+# C1/v1 evaluation runbook — first live runs
 
 This runbook covers the first paid run of the provider-comparison workflow
 (Claude, smoke scope), which has now been performed once (see
 [First smoke run result](#first-smoke-run-result)). The decision record is
 [ADR-014](adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md). C1
-results are never B1 evidence.
+results are never B1 evidence. The
+[informed baseline smoke run](#informed-baseline-smoke-run) section covers the
+informed single-call baseline
+([ADR-015](adr/ADR-015-informed-baseline-development-comparison.md)).
 
 ## First smoke run result
 
@@ -153,3 +156,152 @@ the sum of their ledgers.
 OpenAI comparison runs are not available: the workflow refuses `openai` until
 the external B0 factory's model is identified and an OpenAI spend-limited model
 and provenance support exist.
+
+## Informed baseline smoke run
+
+This section covers the first paid run of the informed single-call baseline
+(`informed-single-prompt/v1`, Claude, smoke scope). The decision record is
+[ADR-015](adr/ADR-015-informed-baseline-development-comparison.md). Informed
+results are a development-split, catalog-selection result and are never B1, B2
+or gate evidence.
+
+### Before the run
+
+1. **Merge to `main`.** The workflow runs the informed baseline only from a
+   commit that contains the informed executor, factory, v3 fixture and v2
+   provenance recorder.
+2. The `c1-evaluation` environment and its `ANTHROPIC_API_KEY` secret already
+   exist from the first C1 run. **Confirm the required reviewer is still set**
+   (Settings, Environments, `c1-evaluation`), so the run waits for approval.
+3. Re-verify the pricing at <https://platform.claude.com/docs/en/about-claude/pricing>
+   (Sonnet 5.5 at 2 USD input and 10 USD output per million tokens, standard
+   global routing). If it differs, stop: version the pricing and re-derive the
+   v3 budget first.
+
+### Run
+
+Dispatch `Evaluation provider comparison` with:
+
+| Input | Value |
+|---|---|
+| `model_provider` | `anthropic` |
+| `baseline` | `informed` |
+| `scope` | `smoke` |
+| `max_call_cost_usd` | `0.10` (the v3 per-case budget; the guard refuses more) |
+| `max_run_cost_usd` | `0.80` (8 cases x 0.10) |
+| `openai_b0_model_factory` | leave empty |
+
+**The workflow defaults are the b0 values** (`baseline` b0, 0.09 per call, 0.72
+per run). For an informed run, all of `baseline`, `max_call_cost_usd` and
+`max_run_cost_usd` must be entered explicitly. If `baseline` is set to
+`informed` but the run limit is left at 0.72, the guard refuses the run because
+0.72 does not cover the 0.80 smoke budget; nothing is spent (fails safe).
+
+Approve the pending deployment to `c1-evaluation` when prompted.
+
+**Expected cost.**
+
+- Worst case (ADR-015, from the real prompt sizes): **0.5234 USD** for the 8
+  smoke calls at the 4,096-token output cap, or 0.5528 USD if input runs 15
+  percent over the estimate. Spend cannot exceed the 0.80 USD run limit.
+- Expected: about **0.18 to 0.19 USD**. This scales the first B0 smoke run
+  (0.162 USD) by the extra informed input (the developer text and schema add
+  about 15,700 estimated input tokens across the 8 calls, at the measured 65 to
+  77 percent of the estimate). It assumes output volume similar to the B0 run,
+  which is not verified.
+
+### Healthy ledger
+
+The artifact is `informed-anthropic-smoke-<commit SHA>`; the ledger is
+`informed-anthropic-smoke-ledger.jsonl`. A healthy ledger has:
+
+- `schema_version` `informed-call-ledger/v1` on every line, with `provider`
+  `anthropic`, `model_id` `claude-sonnet-5-5`, `configuration_version` `C1/v1`
+  and `prompt_version` `informed-single-prompt/v1`.
+- Exactly **8 lines**, `call_index` 1 to 8, every one `outcome: "succeeded"` with
+  `failure: null`.
+- `calibration_ratio` at most **1.15** on every line (the check latches above
+  it), with `characters_per_token` `"2.1"` and `tolerance` `"0.15"`.
+- `output_tokens` below **4,096** on every line (a truncated call fails closed).
+- No cache tokens: the adapter rejects nonzero cache usage, so a cache read or
+  write appears only as a failed call.
+- `max_call_microusd` 100,000 and `max_run_microusd` 800,000 on every line, and
+  `running_total_microusd` rising to a final value at or below 552,751 (the
+  worst case with input 15 percent over the estimate; 523,394 at the estimate),
+  and in practice far lower.
+- No prompt text, model output or key.
+
+A `failed` line means the run stopped. Read its `failure` (for example
+`input_token_estimate_exceeded`, `invalid_output` or
+`provider_call_failed:ModelGatewayRefusal`). No run report or provenance is
+produced, earlier calls were still billed, and the provenance recorder refuses
+any ledger with a failed call. Do not raise limits after a calibration failure;
+re-derive the estimate first.
+
+### Healthy provenance
+
+`informed-anthropic-smoke-provenance.json` (`evaluation-run-provenance/v2`)
+shows:
+
+- `evidence_class: "provider-comparison-informed-development"` and
+  `b1_evidence: false`.
+- `provider` `anthropic`, `model_id` `claude-sonnet-5-5`, `configuration_version`
+  `C1/v1`, `baseline_id` `INFORMED`, `prompt_version` `informed-single-prompt/v1`.
+- `suite_id` `evaluation-corpus/v3`, `max_concurrency` 1, `ledger_call_count` 8,
+  and `ledger_charged_microusd` equal to the sum of the ledger's
+  `charged_microusd`.
+- `git_commit` equal to the dispatched commit, `max_call_cost_microusd` 100000
+  and `max_run_cost_microusd` 800000.
+- The pinned hashes:
+
+  | Field | Value |
+  |---|---|
+  | `developer_text_sha256` | `f024095091f73da5c1762387164754b7b5ff92f3bdd482070fc8313354a378ee` |
+  | `prompt_config_sha256` | `983dfbf64c9bb7ad07206f4124f13852441a832f9b91d3fd2d84270a4a07b478` |
+  | `schema_sha256` | `9f06849a25161f346f9036b7158cf83a746121637363d8f6414c2f4be68e1067` |
+  | `catalog_sha256` | `c4a5800834585a847f26cf4fc898f5e7cf69551e7ff5769e9de1be6648ed8814` |
+
+- `characters_per_token` `"2.1"`, `calibration_tolerance` `"0.15"` and a
+  `max_calibration_ratio` at most 1.15.
+- `run_report_sha256`, `ledger_sha256`, `pricing_sha256` and `fixture_sha256`
+  matching the files (check with `sha256sum`).
+
+### Reading the score
+
+Report only the **discriminating checks**: `required_ground_truth_ids`,
+`unexpected_ground_truth_ids`, `expected_source_references` and
+`policy_boundary`, each with numerator and denominator. The other checks pass
+or fail regardless of the model (fixture-only checks, schema-guaranteed checks,
+and the executor-fixed side-effects check).
+
+**Never present overall "cases passed" as the headline.** For the 8 smoke cases
+(aggregate counts only):
+
+- 3 are policy cases (EVAL-043, EVAL-049, EVAL-058). They expect
+  `model_calls: 0`, but the executor makes one call, so their side-effects check
+  fails for any model.
+- 0 expect anchors that cannot be derived from the documents (the
+  `section-13#open-question-*` and `REQ-ERR-001#response-shape` cases are not
+  in the smoke set).
+- So **at most 5 of 8 smoke cases can pass overall**. Over the 60-case
+  development split the bound is 28 of 60 (ADR-015).
+
+State with every result: development split used to design the prompt; catalog
+selection task; not B1, B2 or gate evidence; `results_not_independently_validated`.
+
+### Record after the run
+
+Add a short amendment to ADR-015 and an entry in `docs/PROJECT_STATUS.md` with:
+
+- The calibration ratio of every call (the 8 `calibration_ratio` values), their
+  minimum and maximum, and whether the 2.1 characters-per-token estimate should
+  stay for Claude on informed prompts.
+- The total charged (`ledger_charged_microusd`) against the 0.5234 USD worst
+  case and the 0.18 to 0.19 USD expectation.
+- The `output_tokens` range across the 8 calls.
+- The per-check counts for the four discriminating checks, not the overall
+  `passed` value.
+
+Do not run `scope=development` until the smoke run is healthy and these numbers
+are recorded. OpenAI informed runs remain unavailable until an OpenAI
+spend-limited factory and provenance support exist.

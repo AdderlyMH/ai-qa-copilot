@@ -1,11 +1,14 @@
 name: Evaluation provider comparison
 
-# Manual, budgeted B0-prompt evaluation of one model provider on the v2 corpus.
-# Results are provider-comparison evidence only and are never B1 evidence.
+# Manual, budgeted evaluation of one model provider with one prompt baseline:
+# b0 (the B0 prompt on the v2 corpus, ADR-014) or informed (the informed
+# single-call prompt on the v3 corpus, ADR-015). Results are provider-comparison
+# evidence only and are never B1 evidence.
 #
-# OpenAI is not runnable yet: the external B0 model factory's model is not
-# identified, and OpenAI runs have no spend-limited model or provenance
-# recorder. The OpenAI path refuses to run; no factory is guessed.
+# OpenAI is not runnable yet for either baseline: OpenAI runs have no
+# spend-limited model or provenance recorder, and the external B0 model
+# factory's model is not identified. The OpenAI path refuses to run; no factory
+# is guessed.
 
 on:
   workflow_dispatch:
@@ -18,6 +21,14 @@ on:
         options:
           - anthropic
           - openai
+      baseline:
+        description: Prompt baseline (b0 uses fixture v2; informed uses fixture v3).
+        required: true
+        type: choice
+        default: b0
+        options:
+          - b0
+          - informed
       scope:
         description: Case selection (validation and holdout are not available).
         required: true
@@ -27,7 +38,7 @@ on:
           - smoke
           - development
       max_call_cost_usd:
-        description: Per-call worst-case limit in USD.
+        description: Per-call worst-case limit in USD (at most 0.09 for b0, 0.10 for informed).
         required: true
         type: string
         default: "0.09"
@@ -76,6 +87,7 @@ jobs:
         id: plan
         env:
           MODEL_PROVIDER: ${{ inputs.model_provider }}
+          BASELINE: ${{ inputs.baseline }}
           SCOPE: ${{ inputs.scope }}
           MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
           MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
@@ -87,12 +99,22 @@ jobs:
           from decimal import Decimal
 
           HARD_MAX_RUN_COST_USD = Decimal("6.00")
-          # The v2 per-case budget (maximum_expected_cost in
-          # fixtures/benchmark/evaluation-cases.v2.yaml). A test pins this value
-          # to the fixture; update both together.
-          MAX_CALL_COST_USD_LIMIT = Decimal("0.09")
-          SCOPE_BUDGET_USD = {"smoke": Decimal("0.72"), "development": Decimal("5.40")}
+          # Per-call limit by (baseline, provider): the per-case budget
+          # (maximum_expected_cost) of that baseline's fixture. The validation
+          # script runs without the fixture's YAML dependency, so the values are
+          # held here; a test pins each one to its fixture. Update both together.
+          PER_CALL_LIMIT_USD = {
+              ("b0", "anthropic"): Decimal("0.09"),  # evaluation-cases.v2.yaml
+              ("informed", "anthropic"): Decimal("0.10"),  # evaluation-cases.v3.yaml
+          }
+          # Declared budget per scope: selected cases x per-case budget (8 smoke,
+          # 60 development). A test pins each value to its fixture.
+          SCOPE_BUDGET_USD = {
+              "b0": {"smoke": Decimal("0.72"), "development": Decimal("5.40")},
+              "informed": {"smoke": Decimal("0.80"), "development": Decimal("6.00")},
+          }
           ARTIFACT_PREFIX = {"anthropic": "c1", "openai": "b0-openai"}
+          INFORMED_ARTIFACT_PREFIX = {"anthropic": "informed-anthropic"}
           USD_PATTERN = re.compile(r"^[0-9]+(\.[0-9]{1,6})?$")
 
 
@@ -102,13 +124,24 @@ jobs:
 
 
           provider = os.environ["MODEL_PROVIDER"]
+          # The workflow always sets BASELINE from its input; only an absent
+          # variable falls back to the input default. Empty or unknown is refused.
+          baseline = os.environ.get("BASELINE", "b0")
           scope = os.environ["SCOPE"]
+          if baseline not in SCOPE_BUDGET_USD:
+              fail("baseline must be b0 or informed.")
           if provider not in ARTIFACT_PREFIX:
               fail("model_provider must be anthropic or openai.")
-          if scope not in SCOPE_BUDGET_USD:
+          if scope not in SCOPE_BUDGET_USD[baseline]:
               fail("scope must be smoke or development.")
 
           if provider == "openai":
+              if baseline == "informed":
+                  fail(
+                      "OpenAI runs are not yet supported for the informed baseline: "
+                      "there is no OpenAI spend-limited model or provenance recorder. "
+                      "Use model_provider anthropic."
+                  )
               if not os.environ["OPENAI_B0_MODEL_FACTORY"].strip():
                   fail(
                       "The external B0 model factory's model is not yet identified. "
@@ -130,31 +163,42 @@ jobs:
               fail(f"max_run_cost_usd exceeds the hard maximum {HARD_MAX_RUN_COST_USD}.")
           if limits["MAX_CALL_COST_USD"] > limits["MAX_RUN_COST_USD"]:
               fail("max_call_cost_usd cannot exceed max_run_cost_usd.")
-          if limits["MAX_CALL_COST_USD"] > MAX_CALL_COST_USD_LIMIT:
+          call_limit = PER_CALL_LIMIT_USD[(baseline, provider)]
+          if limits["MAX_CALL_COST_USD"] > call_limit:
               fail(
-                  "max_call_cost_usd exceeds the v2 per-case budget "
-                  f"{MAX_CALL_COST_USD_LIMIT} USD."
+                  f"max_call_cost_usd exceeds the {baseline} per-case budget "
+                  f"{call_limit} USD."
               )
-          if limits["MAX_RUN_COST_USD"] < SCOPE_BUDGET_USD[scope]:
+          scope_budget = SCOPE_BUDGET_USD[baseline][scope]
+          if limits["MAX_RUN_COST_USD"] < scope_budget:
               fail(
                   f"max_run_cost_usd must cover the {scope} budget "
-                  f"{SCOPE_BUDGET_USD[scope]} USD."
+                  f"{scope_budget} USD."
               )
 
-          prefix = f"{ARTIFACT_PREFIX[provider]}-{scope}"
+          prefixes = ARTIFACT_PREFIX if baseline == "b0" else INFORMED_ARTIFACT_PREFIX
+          prefix = f"{prefixes[provider]}-{scope}"
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"prefix={prefix}\n")
-              output.write(f"scope_budget_usd={SCOPE_BUDGET_USD[scope]}\n")
+              output.write(f"scope_budget_usd={scope_budget}\n")
           PY
 
       - name: Run evaluation
         env:
           ANTHROPIC_API_KEY: ${{ inputs.model_provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
+          BASELINE: ${{ inputs.baseline }}
           AI_QA_COPILOT_B0_MODEL_FACTORY: ai_qa_copilot_api.c1_evaluation_model:create_c1_b0_model
           AI_QA_COPILOT_C1_PRICING_PATH: fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml
           AI_QA_COPILOT_C1_MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
           AI_QA_COPILOT_C1_MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
           AI_QA_COPILOT_C1_CALL_LEDGER_PATH: artifacts/${{ steps.plan.outputs.prefix }}-ledger.jsonl
+          AI_QA_COPILOT_INFORMED_MODEL_FACTORY: ai_qa_copilot_api.informed_claude_evaluation_model:create_informed_claude_model
+          AI_QA_COPILOT_INFORMED_PRICING_PATH: fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml
+          AI_QA_COPILOT_INFORMED_MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
+          AI_QA_COPILOT_INFORMED_MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
+          AI_QA_COPILOT_INFORMED_CALL_LEDGER_PATH: artifacts/${{ steps.plan.outputs.prefix }}-ledger.jsonl
+          AI_QA_COPILOT_INFORMED_CONFIG_PATH: fixtures/benchmark/baselines/informed-single-prompt.v1.yaml
+          AI_QA_COPILOT_INFORMED_REPOSITORY_ROOT: .
           SCOPE: ${{ inputs.scope }}
           PREFIX: ${{ steps.plan.outputs.prefix }}
           SCOPE_BUDGET_USD: ${{ steps.plan.outputs.scope_budget_usd }}
@@ -164,6 +208,25 @@ jobs:
             echo "::error::The ANTHROPIC_API_KEY secret is not configured in the c1-evaluation environment."
             exit 1
           }
+
+          case "$BASELINE" in
+            b0)
+              run_arguments=(
+                --fixture fixtures/benchmark/evaluation-cases.v2.yaml
+                --executor ai_qa_copilot_api.naive_baseline:create_naive_baseline_executor
+              )
+              ;;
+            informed)
+              run_arguments=(
+                --fixture fixtures/benchmark/evaluation-cases.v3.yaml
+                --executor ai_qa_copilot_api.informed_baseline:create_informed_baseline_executor
+              )
+              ;;
+            *)
+              echo "::error::baseline must be b0 or informed."
+              exit 1
+              ;;
+          esac
 
           if [[ "$SCOPE" == "smoke" ]]; then
             selection=(
@@ -182,9 +245,8 @@ jobs:
           fi
 
           uv run python scripts/run_evaluation.py \
-            --fixture fixtures/benchmark/evaluation-cases.v2.yaml \
+            "${run_arguments[@]}" \
             --repository-root . \
-            --executor ai_qa_copilot_api.naive_baseline:create_naive_baseline_executor \
             --output "artifacts/${PREFIX}-run.json" \
             "${selection[@]}" \
             --max-expected-cost "$SCOPE_BUDGET_USD" \
@@ -192,16 +254,27 @@ jobs:
 
       - name: Score run report
         env:
+          BASELINE: ${{ inputs.baseline }}
           PREFIX: ${{ steps.plan.outputs.prefix }}
         run: |
+          set -euo pipefail
+          case "$BASELINE" in
+            b0) fixture=fixtures/benchmark/evaluation-cases.v2.yaml ;;
+            informed) fixture=fixtures/benchmark/evaluation-cases.v3.yaml ;;
+            *)
+              echo "::error::baseline must be b0 or informed."
+              exit 1
+              ;;
+          esac
           uv run python scripts/score_evaluation_run.py \
-            --fixture fixtures/benchmark/evaluation-cases.v2.yaml \
+            --fixture "$fixture" \
             --ground-truth fixtures/benchmark/ground-truth.v1.yaml \
             --run-report "artifacts/${PREFIX}-run.json" \
             --output "artifacts/${PREFIX}-score.json"
 
       - name: Record run provenance
         env:
+          BASELINE: ${{ inputs.baseline }}
           PREFIX: ${{ steps.plan.outputs.prefix }}
           MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
           MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
@@ -211,15 +284,35 @@ jobs:
           for ledger in artifacts/"${PREFIX}"-ledger*.jsonl; do
             ledger_arguments+=(--ledger "$ledger")
           done
-          uv run python scripts/record_evaluation_provenance.py \
-            --run-report "artifacts/${PREFIX}-run.json" \
-            "${ledger_arguments[@]}" \
-            --pricing fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml \
-            --fixture fixtures/benchmark/evaluation-cases.v2.yaml \
-            --git-commit "$GITHUB_SHA" \
-            --max-call-cost-usd "$MAX_CALL_COST_USD" \
-            --max-run-cost-usd "$MAX_RUN_COST_USD" \
-            --output "artifacts/${PREFIX}-provenance.json"
+          case "$BASELINE" in
+            b0)
+              uv run python scripts/record_evaluation_provenance.py \
+                --run-report "artifacts/${PREFIX}-run.json" \
+                "${ledger_arguments[@]}" \
+                --pricing fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml \
+                --fixture fixtures/benchmark/evaluation-cases.v2.yaml \
+                --git-commit "$GITHUB_SHA" \
+                --max-call-cost-usd "$MAX_CALL_COST_USD" \
+                --max-run-cost-usd "$MAX_RUN_COST_USD" \
+                --output "artifacts/${PREFIX}-provenance.json"
+              ;;
+            informed)
+              uv run python scripts/record_informed_evaluation_provenance.py \
+                --run-report "artifacts/${PREFIX}-run.json" \
+                "${ledger_arguments[@]}" \
+                --pricing fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml \
+                --fixture fixtures/benchmark/evaluation-cases.v3.yaml \
+                --informed-configuration fixtures/benchmark/baselines/informed-single-prompt.v1.yaml \
+                --git-commit "$GITHUB_SHA" \
+                --max-call-cost-usd "$MAX_CALL_COST_USD" \
+                --max-run-cost-usd "$MAX_RUN_COST_USD" \
+                --output "artifacts/${PREFIX}-provenance.json"
+              ;;
+            *)
+              echo "::error::baseline must be b0 or informed."
+              exit 1
+              ;;
+          esac
 
       - name: Report score result without gating
         if: always()
@@ -246,6 +339,10 @@ jobs:
               lines.append(
                   f"- Charged: {provenance['ledger_charged_microusd'] / 1_000_000:.6f} USD"
               )
+              if "max_calibration_ratio" in provenance:
+                  lines.append(
+                      f"- Max calibration ratio: {provenance['max_calibration_ratio']}"
+                  )
               lines.append(f"- B1 evidence: `{provenance['b1_evidence']}`")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
               summary.write("\n".join(lines) + "\n")
