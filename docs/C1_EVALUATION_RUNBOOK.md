@@ -143,15 +143,18 @@ reports the overall value in the summary and does not fail on it. The overall
 
 ## After a healthy smoke run
 
-Do **not** run `scope=development` with B0. B0 cannot produce a meaningful
-comparison (see [First smoke run result](#first-smoke-run-result)), so the
-development scope would spend up to 5.40 USD to produce scores that fail for
-the same structural reasons. A meaningful comparison needs a candidate whose
-prompt supplies the boundary codes, the ground-truth catalog, and the locator
-syntax. The scope remains available (it needs `max_run_cost_usd` of at least
-5.40, up to the 6.00 maximum) for such a candidate. Validation and holdout are
-not available in this workflow. Total spend across resumed or repeated runs is
-the sum of their ledgers.
+Do **not** run `scope=development` with B0, and do not run it with the informed
+baseline either. Development-split scores from **either** baseline must not be
+read as model accuracy: 59 of the 60 development cases share their model-visible
+inputs with a case that expects a different answer (see the
+[ADR-015 amendment](adr/ADR-015-informed-baseline-development-comparison.md#amendment--informed-smoke-run-result-and-development-split-finding-2026-10-05)
+and the [recorded results](#recorded-results)). B0 additionally fails the
+ground-truth-ID and reference checks for structural reasons (see
+[First smoke run result](#first-smoke-run-result)). **No development run is
+planned.** The scope remains technically available (it needs `max_run_cost_usd`
+of at least 5.40 for B0, up to the 6.00 maximum) but its output is not a model
+comparison. Validation and holdout are not available in this workflow. Total
+spend across resumed or repeated runs is the sum of their ledgers.
 
 OpenAI comparison runs are not available: the workflow refuses `openai` until
 the external B0 factory's model is identified and an OpenAI spend-limited model
@@ -301,8 +304,9 @@ Detail and interpretation are in the
 |---|---|
 | Calls | 8, all succeeded |
 | Charged | 175,352 micro-USD (0.175352 USD), against the 0.5234 USD worst case and the 0.18 to 0.19 USD expectation |
-| Calibration ratios | 0.7015 to 0.8293 (limit 1.15); the 2.1 characters-per-token estimate overstates input |
-| Output tokens | 82 to 725 per call (cap 4,096) |
+| Calibration ratios, calls 1 to 8 | 0.8293, 0.8280, 0.7133, 0.8277, 0.7015, 0.7015, 0.8283, 0.7019 (limit 1.15); the 2.1 characters-per-token estimate overstates input |
+| Input tokens, calls 1 to 8 | 6951, 6973, 14663, 6967, 10209, 10203, 6976, 10219 |
+| Output tokens, calls 1 to 8 | 231, 91, 532, 725, 82, 423, 683, 136 (range 82 to 725; cap 4,096) |
 | Provenance | `evaluation-run-provenance/v2`, `b1_evidence` false, the four pinned hashes matched |
 | Required IDs | 5 of 8 |
 | No unexpected IDs | 2 of 8 |
