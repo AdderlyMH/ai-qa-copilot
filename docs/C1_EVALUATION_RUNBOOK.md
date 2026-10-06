@@ -143,15 +143,18 @@ reports the overall value in the summary and does not fail on it. The overall
 
 ## After a healthy smoke run
 
-Do **not** run `scope=development` with B0. B0 cannot produce a meaningful
-comparison (see [First smoke run result](#first-smoke-run-result)), so the
-development scope would spend up to 5.40 USD to produce scores that fail for
-the same structural reasons. A meaningful comparison needs a candidate whose
-prompt supplies the boundary codes, the ground-truth catalog, and the locator
-syntax. The scope remains available (it needs `max_run_cost_usd` of at least
-5.40, up to the 6.00 maximum) for such a candidate. Validation and holdout are
-not available in this workflow. Total spend across resumed or repeated runs is
-the sum of their ledgers.
+Do **not** run `scope=development` with B0, and do not run it with the informed
+baseline either. Development-split scores from **either** baseline must not be
+read as model accuracy: 59 of the 60 development cases share their model-visible
+inputs with a case that expects a different answer (see the
+[ADR-015 amendment](adr/ADR-015-informed-baseline-development-comparison.md#amendment--informed-smoke-run-result-and-development-split-finding-2026-10-05)
+and the [recorded results](#recorded-results)). B0 additionally fails the
+ground-truth-ID and reference checks for structural reasons (see
+[First smoke run result](#first-smoke-run-result)). **No development run is
+planned.** The scope remains technically available (it needs `max_run_cost_usd`
+of at least 5.40 for B0, up to the 6.00 maximum) but its output is not a model
+comparison. Validation and holdout are not available in this workflow. Total
+spend across resumed or repeated runs is the sum of their ledgers.
 
 OpenAI comparison runs are not available: the workflow refuses `openai` until
 the external B0 factory's model is identified and an OpenAI spend-limited model
@@ -288,6 +291,44 @@ and the executor-fixed side-effects check).
 
 State with every result: development split used to design the prompt; catalog
 selection task; not B1, B2 or gate evidence; `results_not_independently_validated`.
+
+### Recorded results
+
+First informed smoke run: commit `7f5c0946807d782bfae6652f57611c672df10aaa`,
+Claude (`claude-sonnet-5-5`, C1/v1), `informed-single-prompt/v1`, fixture
+`evaluation-corpus/v3` (SHA-256 `8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae`).
+Detail and interpretation are in the
+[ADR-015 amendment](adr/ADR-015-informed-baseline-development-comparison.md#amendment--informed-smoke-run-result-and-development-split-finding-2026-10-05).
+
+| Item | Result |
+|---|---|
+| Calls | 8, all succeeded |
+| Charged | 175,352 micro-USD (0.175352 USD), against the 0.5234 USD worst case and the 0.18 to 0.19 USD expectation |
+| Calibration ratios, calls 1 to 8 | 0.8293, 0.8280, 0.7133, 0.8277, 0.7015, 0.7015, 0.8283, 0.7019 (limit 1.15); the 2.1 characters-per-token estimate overstates input |
+| Input tokens, calls 1 to 8 | 6951, 6973, 14663, 6967, 10209, 10203, 6976, 10219 |
+| Output tokens, calls 1 to 8 | 231, 91, 532, 725, 82, 423, 683, 136 (range 82 to 725; cap 4,096) |
+| Provenance | `evaluation-run-provenance/v2`, `b1_evidence` false, the four pinned hashes matched |
+| Required IDs | 5 of 8 |
+| No unexpected IDs | 2 of 8 |
+| Expected source references | 6 of 8 |
+| Policy boundary | 6 of 8 |
+
+That is 19 of 32 discriminating check results. Only EVAL-013 passed overall; the
+three policy cases fail the side-effects check by construction. Over the 8 cases
+the model selected 26 IDs, 5 of them the expected IDs.
+
+> **Warning: development-split scores are not model accuracy.** 59 of the 60
+> development cases share their model-visible inputs (artifacts, overlays and the
+> user request without the "Development scenario NN" suffix) with another case
+> that expects a different answer. The model is not sent the case ID, category or
+> labels, so for the question "which single entry" its inputs do not identify the
+> expected answer, and a scenario-blind executor could match at most 16 of 60 on
+> the required-and-unexpected ID checks. A low score on required or unexpected IDs
+> can reflect an ambiguous request rather than a weak model. Do not use these
+> scores to compare providers or models. Reference grammar, boundary selection,
+> over- and under-selection counts, validity, cost and token use remain
+> informative. Do not run `scope=development` for a comparison on `v1`, `v2` or
+> `v3`; the OpenAI comparison work is paused (see ADR-015).
 
 ### Record after the run
 

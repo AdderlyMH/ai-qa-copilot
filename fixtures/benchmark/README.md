@@ -293,6 +293,24 @@ token, plus the 4,096-token output cap, at 2 and 10 USD per million) of 0.08210
 USD, plus 10 percent, rounded up to the cent. A v3 result is a development-split
 design-set result and is not B1, B2 or gate evidence.
 
+### Known limitation: model-visible inputs do not identify the answer
+
+In the 60 development cases of `v1`, `v2` and `v3`, 59 share their model-visible
+inputs with another case that expects a different answer. Grouping the cases by
+artifacts, overlays and `user_request` (with the "Development scenario NN" suffix
+removed) gives 10 groups of 1, 3, 3, 3, 6, 6, 6, 9, 11 and 12 cases, and the only
+model-visible difference inside a group is the scenario number. An executor is
+sent the request and the documents, not the case ID, category or labels. For the
+question "which single entry", its inputs therefore do not identify the expected
+answer for 59 of 60 cases, and a scenario-blind executor can match at most 16 of
+60 on the required-and-unexpected ID checks (not the same quantity as the
+28-of-60 overall-pass bound in ADR-015). Development-split accuracy is not a
+model comparison. Reference grammar, boundary selection by category,
+over- and under-selection counts, validity, cost and token use still carry
+signal. The evaluation plan's per-case `objective` has no counterpart in the
+loader or fixtures; whether that was deliberate is not recorded. Details:
+[ADR-015 amendment](../../docs/adr/ADR-015-informed-baseline-development-comparison.md#amendment--informed-smoke-run-result-and-development-split-finding-2026-10-05).
+
 Regenerate and verify with:
 
 ```powershell

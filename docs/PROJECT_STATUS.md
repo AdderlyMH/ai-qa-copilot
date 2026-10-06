@@ -1,5 +1,43 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Informed Claude smoke run and development-split finding — 2026-10-05
+
+**Status:** Recorded on branch `docs/informed-smoke-findings`; documentation only.
+No code, workflow, fixture, pricing or configuration change and no provider call
+in this change. The run is a development-split, catalog-selection result and is
+not B1, B2 or gate evidence. Decisions are in the
+[ADR-015 amendment](adr/ADR-015-informed-baseline-development-comparison.md#amendment--informed-smoke-run-result-and-development-split-finding-2026-10-05).
+
+Run (commit `7f5c0946807d782bfae6652f57611c672df10aaa`, fixture v3 SHA-256
+`8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae`): 8 calls, all
+succeeded; 175,352 micro-USD (0.175352 USD); calibration ratios 0.7015 to 0.8293;
+output 82 to 725 tokens; provenance v2 with `b1_evidence` false and the four
+pinned hashes matching. Discriminating checks: required IDs 5 of 8, no
+unexpected IDs 2 of 8, source references 6 of 8, boundary 6 of 8 (19 of 32); only
+EVAL-013 passed overall, and the three policy cases fail side effects by
+construction.
+
+Finding: 59 of the 60 development cases share their model-visible inputs with
+another case that expects a different answer (10 groups on v1, v2 and v3; the
+only visible difference is the scenario number). A scenario-blind executor can
+match at most 16 of 60 on the required-and-unexpected ID checks, so accuracy from
+this split is not a model comparison. Reference grammar, boundary selection,
+over- and under-selection, validity, cost and token use still carry signal. The
+26 IDs selected (5 expected) across the smoke cases fit unscoped requests; the
+policy cases 043 and 058 are defensible readings; EVAL-055's label is a probable
+fixture defect. Root-cause lead: the plan's per-case `objective` is absent from
+the loader and fixtures; whether deliberate is not recorded. Not verified: B1
+behavior and release-split behavior.
+
+Decisions: no development-split model comparison on v1, v2 or v3; no
+`informed-single-prompt/v2`. **OpenAI informed work is paused** because the
+development split cannot support a model comparison, so a paid `gpt-6.1-sol` run
+would produce scores that cannot be interpreted as accuracy. A fixture version
+whose requests identify the issue (for example a human-written per-case
+objective, with reviewed labels and a new budget derivation) is an open
+decision, not planned work. The runbook and the benchmark README now carry the
+warning.
+
 ## Claude informed-run support — 2026-10-05
 
 **Status:** Implemented on branch `feature/informed-claude-run`, not yet merged.

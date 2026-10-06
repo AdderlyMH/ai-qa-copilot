@@ -332,6 +332,124 @@ implemented, still without any provider call or spend:
   factory. They predate the decision to compare against `gpt-6.1-sol` and are
   to be rewritten in the OpenAI pull request.
 
+## Amendment — Informed smoke run result and development-split finding (2026-10-05)
+
+No decision above is reversed. This amendment records the first paid informed
+Claude smoke run, a finding about the development split that the run exposed,
+and the decisions that follow. Documentation only: no code, workflow, fixture,
+pricing or configuration change, and no provider call.
+
+### Run
+
+- Dispatched on commit `7f5c0946807d782bfae6652f57611c672df10aaa`, Claude
+  (`claude-sonnet-5-5`, C1/v1), `informed-single-prompt/v1`, smoke scope,
+  fixture `evaluation-corpus/v3` (SHA-256 `8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae`).
+- 8 calls, all succeeded. Charged 175,352 micro-USD (0.175352 USD), under the
+  0.5234 USD worst case and slightly below the 0.18 to 0.19 USD expectation.
+- Calibration ratios 0.7015 to 0.8293, so the 2.1 characters-per-token estimate
+  overstated input tokens and stayed within the 1.15 limit on every call. Output
+  was 82 to 725 tokens, far below the 4,096 cap.
+- Provenance `evaluation-run-provenance/v2` with `b1_evidence: false`; the four
+  pinned hashes (developer text, prompt configuration, schema, catalog) matched.
+
+### Scores
+
+Only the four discriminating checks are reported (development split, smoke
+subset of 8 cases; catalog selection task):
+
+| Check | Passed |
+|---|---|
+| Required ground-truth IDs | 5 of 8 |
+| No unexpected ground-truth IDs | 2 of 8 |
+| Expected source references | 6 of 8 |
+| Policy boundary | 6 of 8 |
+
+That is 19 of 32 check results. Only EVAL-013 passed overall. The three policy
+cases fail the side-effects check by construction (they expect `model_calls: 0`
+and the executor makes one call), as already recorded above. These results are
+not B1, B2 or gate evidence and are `results_not_independently_validated`;
+validation and holdout were not run.
+
+### Finding: the development split does not identify the expected answer
+
+**Method.** For each development case, the inputs the executor sends to the
+model are the user request, the base artifacts and the overlays
+(`InformedBaselineExecutor.build_prompt`, which never reads `case.expected`).
+The cases were grouped by those model-visible inputs: artifact list, overlay
+list and `user_request` with the trailing "Development scenario NN" suffix
+removed. Within each group the expected answers (required ground-truth IDs and
+policy boundary) were compared.
+
+**Result.** The 60 development cases fall into 10 groups, with group sizes 1, 3,
+3, 3, 6, 6, 6, 9, 11 and 12. In 59 of the 60 cases the case shares its
+model-visible inputs with at least one other case that expects a different
+answer; only EVAL-001 (the group of size 1) is unambiguous. The grouping is
+identical on `evaluation-corpus/v1`, `v2` and `v3`. The only model-visible
+difference between cases in a group is the scenario number.
+
+**What the model sees and does not see.** Sent: the developer text (boundary
+codes, reference grammar, catalog), the user request including the scenario
+number, and the artifact and overlay text. Not sent: the case ID, category, tags,
+criticality, split, run mode and every expected label.
+
+**Consequences.**
+
+- For the question "which single entry", the model-visible inputs do not
+  identify the expected answer for 59 of 60 cases. A scenario-blind executor,
+  one that returns the best fixed answer per group, can match at most 16 of 60
+  cases on the required-IDs and unexpected-IDs checks together. This is a
+  different quantity from the 28-of-60 overall-pass bound above, which counts
+  structural failures (policy side effects, non-derivable anchors) and not
+  ambiguity.
+- Accuracy from this split is therefore not a model comparison: a model that
+  reasons correctly can still be scored wrong because the request does not say
+  which entry is wanted.
+- The benchmark is not without signal. Reference grammar, boundary selection by
+  category, over- and under-selection counts, output validity, cost and token
+  use are still measurable and still informative.
+
+**Over-selection.** Across the 8 smoke cases the model selected 26 IDs, of which
+5 were the expected IDs. That is consistent with unscoped requests ("identify
+defects" without saying which): the prompt asks for entries "supported by the
+user's request and the supplied source artifacts", which permits selecting every
+supported entry. It is a reading the prompt allows, not clearly a model error.
+
+**Policy cases.** In EVAL-043 and EVAL-058 the entries the model chose are
+defensible readings of the request, and the three policy catalog lines overlap in
+what they describe. **EVAL-055**'s label (GT-FIND-001, a contradiction) does not
+fit the request's "declared evidence gap" framing; this is a **probable fixture
+defect**, not yet confirmed or repaired.
+
+**Root-cause lead.** The evaluation plan's case schema defines a per-case
+`objective` (for example "Detect the contradictory customer cancellation
+window", `docs/EVALUATION_PLAN.md`), but the implemented loader and the fixtures
+have no such field. The handoff report and ADR-014 already noted the missing
+explicit policy target. Whether the omission was deliberate is not recorded.
+
+**Not verified.**
+
+- B1 behavior: no B1 reference artifact exists. B1's adapter input carries the
+  same request and documents plus the case ID and run mode, so it is not known
+  whether B1 is affected in the same way.
+- Release-split behavior: from code only, release cases copy development
+  templates with a "validation scenario N" prefix and labels are not read, so the
+  same ambiguity is expected; it was not measured.
+- Whether the 59-of-60 grouping reflects an intended design (for example,
+  requests that deliberately omit the answer) is not recorded.
+
+### Decisions
+
+- **No development-split model comparison** on `v1`, `v2` or `v3`. Scores from
+  this split must not be read as model accuracy.
+- **No `informed-single-prompt/v2`.** Tuning the prompt against one rotation
+  position of an ambiguous split would prove nothing.
+- **The OpenAI comparison pull request is paused**, because it would spend money
+  producing scores that cannot support the comparison.
+- **Open decision, not planned work.** A meaningful comparison needs a fixture
+  version whose requests identify the issue to look for, for example a
+  human-written per-case objective, with reviewed labels and a new budget
+  derivation. Whether to do this is undecided and is not scheduled by this record.
+
 ## Links
 
 - [ADR-013 — Anthropic Claude as a second provider](ADR-013-anthropic-claude-second-provider.md)
