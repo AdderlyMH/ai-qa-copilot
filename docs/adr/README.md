@@ -35,6 +35,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-013](ADR-013-anthropic-claude-second-provider.md)        | Anthropic Claude as a second, operator-selected model provider                                           | Accepted |
 | [ADR-014](ADR-014-c1-budgeted-provider-comparison-evaluation.md) | Budgeted C1/v1 provider-comparison evaluation, separate from B1 evidence                              | Accepted |
 | [ADR-015](ADR-015-informed-baseline-development-comparison.md) | Informed single-call baseline for a development-split provider comparison                                | Accepted |
+| [ADR-016](ADR-016-objective-fixture-v4-provider-comparison.md) | Objective-bearing fixture v4 for the informed provider comparison                                        | Accepted |
 
 ## Required ADR structure
 

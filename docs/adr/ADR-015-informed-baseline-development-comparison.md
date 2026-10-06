@@ -11,6 +11,9 @@
   covers the prompt, executor and fixture work only. OpenAI spend-limited
   execution, provenance changes and workflow changes are separate later
   decisions and are not made here.
+- **Follow-up:** [ADR-016](ADR-016-objective-fixture-v4-provider-comparison.md)
+  records the objective-bearing fixture v4 that answers this record's open
+  decision on the development split.
 
 ## Context
 
@@ -454,6 +457,7 @@ explicit policy target. Whether the omission was deliberate is not recorded.
 
 - [ADR-013 — Anthropic Claude as a second provider](ADR-013-anthropic-claude-second-provider.md)
 - [ADR-014 — Budgeted C1/v1 provider-comparison evaluation](ADR-014-c1-budgeted-provider-comparison-evaluation.md)
+- [ADR-016 — Objective-bearing fixture v4 (follow-up)](ADR-016-objective-fixture-v4-provider-comparison.md)
 - [Evaluation plan — baselines and candidates](../EVALUATION_PLAN.md#11-baselines-and-candidates)
 - [Benchmark fixtures README](../../fixtures/benchmark/README.md)
 - [C1 evaluation runbook](../C1_EVALUATION_RUNBOOK.md)
