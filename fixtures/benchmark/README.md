@@ -460,7 +460,11 @@ read-only repository permissions, and one run at a time.
 | `scope` | `smoke` (default, 8 cases, 0.72 USD budget) or `development` (60 cases, 5.40 USD budget); validation and holdout are not available |
 | `max_call_cost_usd` | Default `0.09`; refused above 0.09 (the v2 per-case budget) |
 | `max_run_cost_usd` | Default `0.72`; must cover the scope budget; hard maximum 6.00. The per-call limit may not exceed it. |
-| `openai_b0_model_factory` | Required for `openai` |
+
+The workflow also runs the informed baseline on v3 (`baseline: informed`) and
+on v4 (`baseline: informed-v4`, both providers, including a `probe` scope for
+OpenAI); see the
+[C1 evaluation runbook](../../docs/C1_EVALUATION_RUNBOOK.md#informed-v4-runs).
 
 The run uses `--max-concurrency 1`. The provider key is exposed only to the
 single run step. After the run, the workflow scores the report, records
@@ -469,17 +473,16 @@ summary without failing on it, and uploads the run report, score report,
 provenance, and ledger as an artifact named `c1-<scope>-<commit>` (for
 Anthropic). Nothing is written under `evaluation/reviews/`.
 
-**OpenAI is not runnable yet.** The external B0 model factory's model has not
-been identified, so the workflow refuses an `openai` run without
-`openai_b0_model_factory`, and no factory is guessed. It also refuses an
-`openai` run when a factory is supplied, because OpenAI runs have no
-spend-limited model or provenance recorder yet.
+**OpenAI runs only `informed-v4`.** The only OpenAI path is `gpt-6.1-sol`
+(O1/v1) on the v4 corpus (ADR-016). The workflow refuses `openai` for `b0`
+and `informed`; there is no OpenAI B0 path.
 
 Repository settings you must create before the first run (not done by code):
 
 1. A GitHub environment named `c1-evaluation`, with required reviewers if
-   manual approval is wanted.
-2. An `ANTHROPIC_API_KEY` secret in that environment.
+   manual approval is wanted, holding an `ANTHROPIC_API_KEY` secret.
+2. For OpenAI, a GitHub environment named `openai-evaluation`, with required
+   reviewers if wanted, holding an `OPENAI_API_KEY` secret.
 
 B1 reference assembly rejects C1 evidence through its existing strict
 validation: a provenance file or any input carrying `b1_evidence` is not a B1

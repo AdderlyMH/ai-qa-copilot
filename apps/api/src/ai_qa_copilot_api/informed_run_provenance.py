@@ -5,6 +5,15 @@ provenance in ``evaluation_run_provenance.py`` (unchanged). It records identifie
 hashes, limits, calibration constants and totals only: no prompt text, model
 output, or credential. The prompt, config, schema and catalog hashes are pinned
 here, so a recorded run proves which exact prompt produced it (ADR-015).
+
+Accepted combinations (ADR-016): Claude C1/v1 on ``evaluation-corpus/v3`` or
+``evaluation-corpus/v4``, and OpenAI O1/v1 (``gpt-6.1-sol``) on
+``evaluation-corpus/v4`` only. Provider, model, configuration, calibration,
+pricing loader and ledger fields come from one provider profile, so an OpenAI
+ledger with Claude pricing, or the reverse, is refused. The OpenAI pricing file
+and the v4 fixture are pinned by SHA-256. Ledger records must carry exactly the
+fields the provider's factory writes. The provenance format is unchanged, so a
+v3 Claude provenance file is byte-identical to the one recorded before.
 """
 
 from __future__ import annotations
@@ -12,7 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from decimal import Decimal
 from pathlib import Path
@@ -22,6 +31,9 @@ from ai_qa_copilot_api.c1_evaluation_model import load_c1_pricing
 from ai_qa_copilot_api.evaluation_cases import load_evaluation_case_suite
 from ai_qa_copilot_api.evaluation_informed_benchmark import (
     INFORMED_EVALUATION_CORPUS_SUITE_ID,
+)
+from ai_qa_copilot_api.evaluation_objective_benchmark import (
+    OBJECTIVE_EVALUATION_CORPUS_SUITE_ID,
 )
 from ai_qa_copilot_api.evaluation_run_provenance import (
     REVIEW_EVIDENCE_DIRECTORY,
@@ -37,20 +49,71 @@ from ai_qa_copilot_api.informed_baseline import (
     load_informed_baseline_config,
     load_informed_catalog,
 )
+from ai_qa_copilot_api.evaluation_spend_control import Calibration
 from ai_qa_copilot_api.informed_claude_evaluation_model import (
     CLAUDE_INFORMED_CALIBRATION,
     INFORMED_CALL_LEDGER_SCHEMA_VERSION,
 )
+from ai_qa_copilot_api.informed_openai_evaluation_model import (
+    OPENAI_INFORMED_CALIBRATION,
+    OPENAI_REASONING_LEDGER_FIELD,
+    OpenAIInformedEvaluationRejected,
+    load_openai_informed_pricing,
+)
+from ai_qa_copilot_api.metrics import ProviderPricing
 from ai_qa_copilot_api.model_gateway import (
     C1_CONFIGURATION_VERSION,
     C1_MODEL_ID,
     MODEL_PROVIDER_ANTHROPIC,
+    MODEL_PROVIDER_OPENAI,
+)
+from ai_qa_copilot_api.openai_informed_evaluation_adapter import (
+    OPENAI_INFORMED_CONFIGURATION_VERSION,
+    OPENAI_INFORMED_MODEL_ID,
 )
 
 
 INFORMED_PROVENANCE_SCHEMA_VERSION: Final = "evaluation-run-provenance/v2"
 INFORMED_EVIDENCE_CLASS: Final = "provider-comparison-informed-development"
 V3_FIXTURE_RELATIVE_PATH: Final = Path("fixtures/benchmark/evaluation-cases.v3.yaml")
+V4_FIXTURE_RELATIVE_PATH: Final = Path("fixtures/benchmark/evaluation-cases.v4.yaml")
+V4_FIXTURE_SHA256: Final = (
+    "e79a1a5f771456680a0093d10f8b6f300616dd4f254cc445b86c3769a5daad8d"
+)
+OPENAI_PRICING_RELATIVE_PATH: Final = Path(
+    "fixtures/benchmark/pricing/openai-gpt-6-1-sol.v1.yaml"
+)
+OPENAI_PRICING_SHA256: Final = (
+    "9c9805755033b12ef01fb37f6726d1452091d23c503903f16db64c8ce19a8046"
+)
+
+# Every field the spend core writes on an informed ledger record. A provider
+# profile may add named extra fields; any other field is refused.
+INFORMED_LEDGER_FIELDS: Final = frozenset(
+    {
+        "schema_version",
+        "provider",
+        "model_id",
+        "configuration_version",
+        "prompt_version",
+        "pricing_version",
+        "call_index",
+        "outcome",
+        "failure",
+        "estimated_input_tokens",
+        "actual_input_tokens",
+        "output_tokens",
+        "calibration_ratio",
+        "response_id",
+        "worst_case_microusd",
+        "charged_microusd",
+        "running_total_microusd",
+        "max_call_microusd",
+        "max_run_microusd",
+        "characters_per_token",
+        "tolerance",
+    }
+)
 
 # Pinned as they exist on main for informed-single-prompt/v1. Changing the
 # prompt, its config, or the shared schema is a new prompt version: bump the
@@ -66,6 +129,10 @@ INFORMED_SCHEMA_SHA256: Final = (
 )
 
 _COMMIT_PATTERN: Final = re.compile(r"^[0-9a-f]{40}$")
+_SUITE_LABELS: Final = {
+    INFORMED_EVALUATION_CORPUS_SUITE_ID: "v3",
+    OBJECTIVE_EVALUATION_CORPUS_SUITE_ID: "v4",
+}
 _MICROUSD_PER_USD: Final = Decimal(1_000_000)
 
 
@@ -115,8 +182,13 @@ def build_informed_run_provenance(
     git_commit: str,
     max_call_cost_microusd: int,
     max_run_cost_microusd: int,
+    provider: str = MODEL_PROVIDER_ANTHROPIC,
 ) -> InformedRunProvenance:
     """Validate an informed run's artifacts and record their content-free provenance."""
+
+    profile = _PROVIDER_PROFILES.get(provider)
+    if profile is None:
+        raise EvaluationRunProvenanceRejected("provider must be anthropic or openai")
 
     if not _COMMIT_PATTERN.fullmatch(git_commit):
         raise EvaluationRunProvenanceRejected(
@@ -131,22 +203,24 @@ def build_informed_run_provenance(
 
     fixture_sha256 = _sha256_file(fixture_path, "Fixture")
     suite = load_evaluation_case_suite(fixture_path)
-    if suite.suite_id != INFORMED_EVALUATION_CORPUS_SUITE_ID:
+    if suite.suite_id not in _SUITE_LABELS:
         raise EvaluationRunProvenanceRejected(
-            f"Informed runs must use the {INFORMED_EVALUATION_CORPUS_SUITE_ID} corpus"
+            f"Informed runs must use the {INFORMED_EVALUATION_CORPUS_SUITE_ID} or "
+            f"{OBJECTIVE_EVALUATION_CORPUS_SUITE_ID} corpus"
         )
-    committed = repository_root / V3_FIXTURE_RELATIVE_PATH
-    if fixture_sha256 != _sha256_file(committed, "Committed v3 fixture"):
+    if suite.suite_id not in profile.suite_ids:
         raise EvaluationRunProvenanceRejected(
-            "Fixture does not match the committed evaluation-corpus/v3 fixture"
+            f"Provider {provider} runs are not accepted on {suite.suite_id}"
         )
+    _require_committed_fixture(suite.suite_id, fixture_sha256, repository_root)
+    suite_label = _SUITE_LABELS[suite.suite_id]
     case_budget_microusd = int(
         max(Decimal(str(case.expected.maximum_expected_cost)) for case in suite.cases)
         * _MICROUSD_PER_USD
     )
     if max_call_cost_microusd > case_budget_microusd:
         raise EvaluationRunProvenanceRejected(
-            "The per-call limit exceeds the v3 per-case budget"
+            f"The per-call limit exceeds the {suite_label} per-case budget"
         )
     if max_call_cost_microusd > max_run_cost_microusd:
         raise EvaluationRunProvenanceRejected(
@@ -154,9 +228,9 @@ def build_informed_run_provenance(
         )
 
     run = evaluation_run_from_json(_read(run_report_path, "Run report"))
-    if run.suite_id != INFORMED_EVALUATION_CORPUS_SUITE_ID:
+    if run.suite_id != suite.suite_id:
         raise EvaluationRunProvenanceRejected(
-            f"Informed runs must use the {INFORMED_EVALUATION_CORPUS_SUITE_ID} corpus"
+            f"Run report suite does not match the {suite.suite_id} fixture"
         )
     if run.fixture_sha256 != fixture_sha256:
         raise EvaluationRunProvenanceRejected(
@@ -170,13 +244,14 @@ def build_informed_run_provenance(
         )
 
     hashes = _prompt_hashes(configuration_path, repository_root)
-    pricing = load_c1_pricing(pricing_path)
+    pricing = profile.load_pricing(pricing_path)
     if not ledger_paths:
         raise EvaluationRunProvenanceRejected(
             "At least one informed call ledger is required"
         )
 
-    calibration = CLAUDE_INFORMED_CALIBRATION
+    calibration = profile.calibration
+    allowed_fields = INFORMED_LEDGER_FIELDS | profile.extra_ledger_fields
     call_count = 0
     charged_microusd = 0
     max_ratio = 0.0
@@ -184,9 +259,9 @@ def build_informed_run_provenance(
         for record in _ledger_records(ledger_path):
             if (
                 record.get("schema_version") != INFORMED_CALL_LEDGER_SCHEMA_VERSION
-                or record.get("provider") != MODEL_PROVIDER_ANTHROPIC
-                or record.get("model_id") != C1_MODEL_ID
-                or record.get("configuration_version") != C1_CONFIGURATION_VERSION
+                or record.get("provider") != profile.provider
+                or record.get("model_id") != profile.model_id
+                or record.get("configuration_version") != profile.configuration_version
                 or record.get("prompt_version") != hashes.prompt_version
                 or record.get("pricing_version") != pricing.pricing_version
                 or record.get("characters_per_token")
@@ -196,6 +271,19 @@ def build_informed_run_provenance(
                 raise EvaluationRunProvenanceRejected(
                     f"Ledger {ledger_path.name} does not match informed provenance"
                 )
+            if set(record) != allowed_fields:
+                raise EvaluationRunProvenanceRejected(
+                    f"Ledger {ledger_path.name} does not match informed provenance: "
+                    "its fields differ from the provider's ledger fields"
+                )
+            for name in profile.extra_ledger_fields:
+                extra = record[name]
+                if extra is not None and (
+                    isinstance(extra, bool) or not isinstance(extra, int) or extra < 0
+                ):
+                    raise EvaluationRunProvenanceRejected(
+                        f"Ledger {ledger_path.name} has an invalid {name} value"
+                    )
             if (
                 record.get("outcome") != "succeeded"
                 or record.get("failure") is not None
@@ -236,9 +324,9 @@ def build_informed_run_provenance(
         schema_version=INFORMED_PROVENANCE_SCHEMA_VERSION,
         evidence_class=INFORMED_EVIDENCE_CLASS,
         b1_evidence=False,
-        provider=MODEL_PROVIDER_ANTHROPIC,
-        model_id=C1_MODEL_ID,
-        configuration_version=C1_CONFIGURATION_VERSION,
+        provider=profile.provider,
+        model_id=profile.model_id,
+        configuration_version=profile.configuration_version,
         baseline_id=hashes.baseline_id,
         prompt_version=hashes.prompt_version,
         developer_text_sha256=hashes.developer_text,
@@ -290,6 +378,72 @@ def write_informed_run_provenance(
         raise EvaluationRunProvenanceRejected(
             "Provenance output already exists; evidence is never replaced"
         ) from error
+
+
+@dataclass(frozen=True)
+class _ProviderProfile:
+    provider: str
+    model_id: str
+    configuration_version: str
+    calibration: Calibration
+    load_pricing: Callable[[Path], ProviderPricing]
+    extra_ledger_fields: frozenset[str]
+    suite_ids: frozenset[str]
+
+
+def _load_openai_pricing(path: Path) -> ProviderPricing:
+    if _sha256_file(path, "Pricing input") != OPENAI_PRICING_SHA256:
+        raise EvaluationRunProvenanceRejected(
+            "OpenAI pricing input does not match the pinned "
+            f"{OPENAI_PRICING_RELATIVE_PATH.as_posix()}"
+        )
+    try:
+        return load_openai_informed_pricing(path).pricing
+    except OpenAIInformedEvaluationRejected as error:
+        raise EvaluationRunProvenanceRejected(str(error)) from error
+
+
+_PROVIDER_PROFILES: Final = {
+    MODEL_PROVIDER_ANTHROPIC: _ProviderProfile(
+        provider=MODEL_PROVIDER_ANTHROPIC,
+        model_id=C1_MODEL_ID,
+        configuration_version=C1_CONFIGURATION_VERSION,
+        calibration=CLAUDE_INFORMED_CALIBRATION,
+        load_pricing=load_c1_pricing,
+        extra_ledger_fields=frozenset(),
+        suite_ids=frozenset(
+            {INFORMED_EVALUATION_CORPUS_SUITE_ID, OBJECTIVE_EVALUATION_CORPUS_SUITE_ID}
+        ),
+    ),
+    MODEL_PROVIDER_OPENAI: _ProviderProfile(
+        provider=MODEL_PROVIDER_OPENAI,
+        model_id=OPENAI_INFORMED_MODEL_ID,
+        configuration_version=OPENAI_INFORMED_CONFIGURATION_VERSION,
+        calibration=OPENAI_INFORMED_CALIBRATION,
+        load_pricing=_load_openai_pricing,
+        extra_ledger_fields=frozenset({OPENAI_REASONING_LEDGER_FIELD}),
+        suite_ids=frozenset({OBJECTIVE_EVALUATION_CORPUS_SUITE_ID}),
+    ),
+}
+
+
+def _require_committed_fixture(
+    suite_id: str, fixture_sha256: str, repository_root: Path
+) -> None:
+    if suite_id == INFORMED_EVALUATION_CORPUS_SUITE_ID:
+        committed = repository_root / V3_FIXTURE_RELATIVE_PATH
+        if fixture_sha256 != _sha256_file(committed, "Committed v3 fixture"):
+            raise EvaluationRunProvenanceRejected(
+                "Fixture does not match the committed evaluation-corpus/v3 fixture"
+            )
+        return
+    committed = repository_root / V4_FIXTURE_RELATIVE_PATH
+    if fixture_sha256 != V4_FIXTURE_SHA256 or fixture_sha256 != _sha256_file(
+        committed, "Committed v4 fixture"
+    ):
+        raise EvaluationRunProvenanceRejected(
+            "Fixture does not match the committed, pinned evaluation-corpus/v4 fixture"
+        )
 
 
 @dataclass(frozen=True)

@@ -87,14 +87,13 @@ def test_inputs_are_bounded_to_the_approved_choices_and_defaults() -> None:
         "scope",
         "max_call_cost_usd",
         "max_run_cost_usd",
-        "openai_b0_model_factory",
     }
     assert inputs["model_provider"]["options"] == ["anthropic", "openai"]
     assert inputs["model_provider"]["default"] == "anthropic"
-    assert inputs["baseline"]["options"] == ["b0", "informed"]
+    assert inputs["baseline"]["options"] == ["b0", "informed", "informed-v4"]
     assert inputs["baseline"]["default"] == "b0"
     assert inputs["baseline"]["required"] is True
-    assert inputs["scope"]["options"] == ["smoke", "development"]
+    assert inputs["scope"]["options"] == ["smoke", "development", "probe"]
     assert inputs["scope"]["default"] == "smoke"
     assert inputs["max_call_cost_usd"]["required"] is True
     assert inputs["max_call_cost_usd"]["default"] == "0.09"
@@ -108,7 +107,12 @@ def test_permissions_are_read_only_with_environment_and_timeout() -> None:
     assert workflow()["permissions"] == {"contents": "read"}
     evaluate = job()
     assert "permissions" not in evaluate
-    assert evaluate["environment"] == {"name": "c1-evaluation"}
+    assert evaluate["environment"] == {
+        "name": (
+            "${{ inputs.model_provider == 'openai' && 'openai-evaluation' "
+            "|| 'c1-evaluation' }}"
+        )
+    }
     timeout = evaluate["timeout-minutes"]
     assert isinstance(timeout, int)
     assert 0 < timeout <= 120
@@ -134,22 +138,27 @@ def test_provider_key_is_exposed_only_to_the_run_step() -> None:
         if key != "steps":
             assert "secrets." not in json.dumps(value, default=str)
 
-    run_step = step("Run evaluation")
-    for item in steps():
-        if item.get("name") != "Run evaluation":
-            assert "secrets." not in json.dumps(item)
-    assert "secrets." not in cast(str, run_step["run"])
-
-    environment = cast(dict[str, str], run_step["env"])
-    secret_variables = {
-        name for name, value in environment.items() if "secrets." in str(value)
+    run_steps = {
+        "Run evaluation": ("ANTHROPIC_API_KEY", "anthropic"),
+        "Run evaluation (OpenAI)": ("OPENAI_API_KEY", "openai"),
     }
-    assert secret_variables == {"ANTHROPIC_API_KEY"}
-    assert environment["ANTHROPIC_API_KEY"] == (
-        "${{ inputs.model_provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}"
-    )
-    assert workflow_text().count("secrets.") == 1
-    assert "OPENAI_API_KEY" not in workflow_text()
+    for item in steps():
+        if item.get("name") not in run_steps:
+            assert "secrets." not in json.dumps(item)
+    for name, (key, provider) in run_steps.items():
+        run_step = step(name)
+        assert "secrets." not in cast(str, run_step["run"])
+        environment = cast(dict[str, str], run_step["env"])
+        secret_variables = {
+            variable
+            for variable, value in environment.items()
+            if "secrets." in str(value)
+        }
+        assert secret_variables == {key}
+        assert environment[key] == (
+            f"${{{{ inputs.model_provider == '{provider}' && secrets.{key} || '' }}}}"
+        )
+    assert workflow_text().count("secrets.") == 2
 
 
 def test_the_key_is_never_echoed_or_traced() -> None:
@@ -310,8 +319,8 @@ def test_per_call_limit_map_matches_each_fixture_budget(
     assert entry in validation
     assert "call_limit = PER_CALL_LIMIT_USD[(baseline, provider)]" in validation
     assert 'if limits["MAX_CALL_COST_USD"] > call_limit:' in validation
-    # Only the two approved entries exist; OpenAI has no per-call limit.
-    assert validation.count('"anthropic"): Decimal(') == 2
+    # Only the approved entries exist; OpenAI has a per-call limit for informed-v4 only.
+    assert validation.count('"anthropic"): Decimal(') == 3
     assert '("b0", "openai")' not in validation
     assert '("informed", "openai")' not in validation
 
@@ -432,13 +441,13 @@ def test_validation_accepts_approved_limits(
         ),
         ({"SCOPE": "development", "MAX_RUN_COST_USD": "0.72"}, "must cover"),
         ({"SCOPE": "holdout"}, "scope must be"),
-        ({"MODEL_PROVIDER": "openai"}, "not yet identified"),
+        ({"MODEL_PROVIDER": "openai"}, "not available for the b0 baseline"),
         (
             {
                 "MODEL_PROVIDER": "openai",
                 "OPENAI_B0_MODEL_FACTORY": "external_module:create_model",
             },
-            "not yet supported",
+            "not available for the b0 baseline",
         ),
     ],
 )
@@ -529,9 +538,8 @@ def test_both_baselines_refuse_openai(
     )
 
     assert result.returncode != 0
-    assert "not yet" in result.stdout
-    if baseline == "informed":
-        assert "not yet supported for the informed baseline" in result.stdout
+    assert f"not available for the {baseline} baseline" in result.stdout
+    assert "informed-v4" in result.stdout
     assert outputs == {}
 
 
@@ -570,7 +578,9 @@ def test_baseline_branches_are_strict_in_every_shell_step() -> None:
         assert "b0)" in script
         assert "informed)" in script
         assert "*)" in script
-        assert 'echo "::error::baseline must be b0 or informed."' in script
+        assert (
+            'echo "::error::baseline must be b0 or informed or informed-v4."' in script
+        )
 
 
 def test_informed_run_uses_v3_the_informed_executor_and_its_factory() -> None:
