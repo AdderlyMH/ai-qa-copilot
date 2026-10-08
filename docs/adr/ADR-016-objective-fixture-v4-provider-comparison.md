@@ -337,6 +337,88 @@ Recorded per case in `evaluation-v4-review.v1.yaml`:
   to the label-review procedure's Step 5 ("Cover each kept category at least
   once"). Smoke is a pipeline check and the full run covers that category.
 
+## Amendment — OpenAI adapter (PR 3, 2026-10-08)
+
+No decision above changed. The OpenAI `gpt-6.1-sol` path for the informed
+baseline is implemented, with no provider call or spend: pricing input
+`fixtures/benchmark/pricing/openai-gpt-6-1-sol.v1.yaml` and its strict loader,
+`openai_informed_evaluation_adapter.py` (configuration `O1/v1`), and
+`informed_openai_evaluation_model.py`. Tests use fake transports only.
+
+### Verified from official documentation (2026-10-08)
+
+| Fact | Value | Source |
+|---|---|---|
+| Model and snapshots | `gpt-6.1-sol`; no dated snapshot listed | [model page](https://developers.openai.com/api/docs/models/gpt-6.1-sol) |
+| Standard prices per million tokens | input 2, cached input 0.10, cache writes 2.50, output 10 USD | model page |
+| Long context | above 272,000 input tokens: 2x input and cache rates, 1.5x output, for the whole request | model page |
+| Reasoning effort | `low`, `medium` (default), `high`, `xhigh`, `max`; not `none` or `minimal` | model page; [reasoning guide](https://developers.openai.com/api/docs/guides/reasoning) |
+| `max_output_tokens` | covers visible output and reasoning tokens | [Responses create](https://developers.openai.com/api/reference/resources/responses/methods/create) |
+| Reasoning billing | reasoning tokens "are billed as output tokens"; OpenAI recommends reserving at least 25,000 tokens for reasoning and output | reasoning guide |
+| `store` | defaults to `true`; the adapter sends `false` | Responses create |
+| `service_tier` | defaults to `auto` (the project's configured tier); the adapter sends `default` and requires the response to report `default` | Responses create |
+| Caching | on by default above 1,024 tokens; `prompt_cache_options.mode: "explicit"` with no breakpoints means "the request does not use prompt caching or create cache writes"; cache writes cost 1.25x input | [prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching), Responses create |
+| Usage fields | `input_tokens`, `input_tokens_details.cached_tokens`, `input_tokens_details.cache_write_tokens`, `output_tokens`, `output_tokens_details.reasoning_tokens`, `total_tokens` | Responses create |
+| Status and refusal | status `completed`, `failed`, `in_progress`, `cancelled`, `queued` or `incomplete`; `incomplete_details.reason` includes `max_output_tokens` and `content_filter`; a refusal is a content part of type `refusal` | Responses create; [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs) |
+| Strict schema subset | root object, every field required, `additionalProperties: false`, `enum`, `pattern` and array `items` supported; an unsupported keyword is an error. The pinned informed schema uses only these, so it is sent unchanged | structured outputs |
+
+### Implementation
+
+- **Request:** the same developer text, user text and byte-identical schema as
+  the Claude path, as a developer message and a user message; `reasoning.effort`
+  `medium`, `max_output_tokens` 4096, strict `json_schema`, `store: false`,
+  `service_tier: "default"`, `prompt_cache_options: {"mode": "explicit"}`; no
+  `temperature`, `top_p`, tools or streaming; 60-second timeout, as in
+  `AnthropicMessagesAdapter`.
+- **Fail closed** on: missing provenance; a model string other than the
+  documented `gpt-6.1-sol` (no dated snapshot is documented, so none is
+  accepted); invalid or missing usage, including a missing `cached_tokens` or
+  `cache_write_tokens` count; any nonzero cached or cache-write tokens;
+  reasoning tokens above output tokens; a reported tier other than `default`;
+  an error object; `incomplete` (truncation or content filter) or any status
+  other than `completed`; a refusal; unexpected output items or parts; and
+  output that is not a JSON object with exactly the schema's fields.
+- **Spend:** the pre-call worst case and any failed call are priced at the 2.50
+  USD cache-write rate; a successful call is charged `input_tokens` at 2 USD and
+  `output_tokens` (which include reasoning) at 10 USD per million. EVAL-111's
+  worst case is 92,453 micro-USD (0.0924525 USD), matching the budget rule
+  above. A call within the calibration tolerance can never cost more than its
+  worst case, so the after-call run-limit check cannot trip. Requests that could
+  exceed 272,000 input tokens are refused before any call.
+- **Ledger:** `informed-call-ledger/v1` rows with provider `openai`,
+  configuration `O1/v1` and an extra content-free `reasoning_tokens` field.
+
+### Additive change to the spend core
+
+`evaluation_spend_control.py` gained two optional settings, both off by default:
+a worst-case input rate used only for the pre-call check and failed-call charge,
+and named extra ledger fields filled by a usage callback that fails closed on a
+bad value. **Why:** the core used one input rate for the worst case, failed
+calls and actual charges, so it could not price the worst case at the
+cache-write rate while charging successful calls at the input rate, and its
+ledger fields were fixed. Defaults keep behaviour unchanged: the Claude factory
+and provenance tests pass unmodified, and a test pins ledger bytes produced by
+the pre-change core for a fixed scenario.
+
+### Still unverified (settled by the PR 5 probe)
+
+- That `gpt-6.1-sol` accepts explicit cache mode with no breakpoints and reports
+  zero cached and cache-write tokens.
+- Whether 4,096 output tokens suffice at `medium` effort; OpenAI recommends
+  reserving at least 25,000. A truncated call fails closed and is charged its
+  worst case.
+- OpenAI's characters-per-token ratio against the 2.1 estimate (calibration is
+  marked unverified for OpenAI).
+- Whether `reasoning_tokens` is always reported, and that `output_tokens` always
+  includes it (the adapter fails closed if reasoning exceeds output).
+- The exact `model` string responses report.
+
+### Not yet usable for runs
+
+The comparison workflow and `informed_run_provenance.py` still accept only
+Anthropic and the v3 fixture (provenance requires provider `anthropic`). These
+change in the provenance and workflow pull request.
+
 ## Links
 
 - [ADR-014 — Budgeted C1/v1 provider-comparison evaluation](ADR-014-c1-budgeted-provider-comparison-evaluation.md)
