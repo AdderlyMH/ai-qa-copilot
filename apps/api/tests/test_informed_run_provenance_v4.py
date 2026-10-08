@@ -78,11 +78,58 @@ CASE_IDS = ("EVAL-101", "EVAL-111")
 MAX_CALL = 110_000
 MAX_RUN = 220_000
 
-# SHA-256 of the provenance JSON that main (before this change) recorded for the
-# deterministic v3 Claude run in test_informed_run_provenance.informed_run.
-V3_CLAUDE_PROVENANCE_SHA256 = (
-    "6617b39d0c9d79c2686c0861f2836f3431e59bc7c97e2794e1b409d76305d799"
+# Provenance JSON produced by main's informed_run_provenance.py (commit 7bdc485,
+# before v4/OpenAI support) for the deterministic v3 Claude run in
+# test_informed_run_provenance.informed_run, with the run report rewritten as LF
+# bytes (see the test). Produced by loading main's module from `git show` and
+# calling build_informed_run_provenance on exactly these inputs; the new module
+# returned identical bytes. Every input is platform-independent: the fixture,
+# pricing, prompt configuration and catalog are eol=lf in .gitattributes, the
+# ledger is written by the spend core with newline="\n", the run report is
+# written LF by the test, and the git commit is a fixed value.
+MAIN_V3_CLAUDE_PROVENANCE = """\
+{
+  "b1_evidence": false,
+  "baseline_id": "INFORMED",
+  "calibration_tolerance": "0.15",
+  "catalog_sha256": "c4a5800834585a847f26cf4fc898f5e7cf69551e7ff5769e9de1be6648ed8814",
+  "characters_per_token": "2.1",
+  "configuration_version": "C1/v1",
+  "developer_text_sha256": "f024095091f73da5c1762387164754b7b5ff92f3bdd482070fc8313354a378ee",
+  "evidence_class": "provider-comparison-informed-development",
+  "fixture_sha256": "8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae",
+  "git_commit": "0000000000000000000000000000000000000002",
+  "ledger_call_count": 2,
+  "ledger_charged_microusd": 46518,
+  "ledger_sha256": [
+    "d8210babf4b4cb81106755823aeb56e8bcfcacb5256d285d8ec0b3ce58a6dfaf"
+  ],
+  "max_calibration_ratio": 0.7001,
+  "max_call_cost_microusd": 100000,
+  "max_concurrency": 1,
+  "max_expected_cost_usd": 0.2,
+  "max_run_cost_microusd": 200000,
+  "model_id": "claude-sonnet-5-5",
+  "pricing_sha256": "7dc30f348c3ac448446beca79bdd8a7f771be67eb224c377bbb23b323f5e2d17",
+  "pricing_version": "anthropic-claude-sonnet-5-5/2026-10-04/standard-global-no-inference-geo",
+  "prompt_config_sha256": "983dfbf64c9bb7ad07206f4124f13852441a832f9b91d3fd2d84270a4a07b478",
+  "prompt_version": "informed-single-prompt/v1",
+  "provider": "anthropic",
+  "run_report_sha256": "fd14e8eb8fa4ec5928957445727d6fb4e2e0681f44a96793a22ed0821fedf9a1",
+  "schema_sha256": "9f06849a25161f346f9036b7158cf83a746121637363d8f6414c2f4be68e1067",
+  "schema_version": "evaluation-run-provenance/v2",
+  "suite_id": "evaluation-corpus/v3"
+}
+"""
+MAIN_V3_CLAUDE_PROVENANCE_SHA256 = (
+    "37631ab157f2490a468323bcb561b7d3c7b26cebc37db90dc629a2a10d68b14c"
 )
+
+
+def write_lf(path: Path, text: str) -> None:
+    """Write text with LF bytes on every platform, so hashes are portable."""
+
+    path.write_text(text, encoding="utf-8", newline="\n")
 
 
 def v4_run(artifacts: Path, provider: str) -> tuple[Path, Path]:
@@ -125,7 +172,7 @@ def v4_run(artifacts: Path, provider: str) -> tuple[Path, Path]:
         max_concurrency=1,
     )
     run_path = artifacts / f"{provider}-run.json"
-    run_path.write_text(report.as_json(), encoding="utf-8")
+    write_lf(run_path, report.as_json())
     return run_path, ledger_path
 
 
@@ -161,7 +208,7 @@ def rewritten_ledger(ledger_path: Path, change: dict[str, object]) -> Path:
         else:
             records[0][key] = value
     path = ledger_path.with_name("changed-ledger.jsonl")
-    path.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
+    write_lf(path, "".join(json.dumps(r) + "\n" for r in records))
     return path
 
 
@@ -170,11 +217,22 @@ def rewritten_ledger(ledger_path: Path, change: dict[str, object]) -> Path:
 
 def test_v3_claude_provenance_is_byte_identical_to_main(tmp_path: Path) -> None:
     run_path, ledger_path = informed_v3_run(tmp_path / "artifacts")
+    # The shared helper writes the run report with the platform newline (CRLF on
+    # Windows). Rewrite it as LF so the run-report hash, and with it the whole
+    # provenance, is the same on every platform.
+    write_lf(run_path, run_path.read_text(encoding="utf-8"))
+    assert b"\r" not in run_path.read_bytes()
+    assert b"\r" not in ledger_path.read_bytes()
 
     text = build_v3(run_path, (ledger_path,)).as_json()
 
+    assert text == MAIN_V3_CLAUDE_PROVENANCE
     assert hashlib.sha256(text.encode("utf-8")).hexdigest() == (
-        V3_CLAUDE_PROVENANCE_SHA256
+        MAIN_V3_CLAUDE_PROVENANCE_SHA256
+    )
+    assert (
+        hashlib.sha256(MAIN_V3_CLAUDE_PROVENANCE.encode("utf-8")).hexdigest()
+        == MAIN_V3_CLAUDE_PROVENANCE_SHA256
     )
 
 
