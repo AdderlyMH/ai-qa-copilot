@@ -1,20 +1,22 @@
 name: Evaluation provider comparison
 
 # Manual, budgeted evaluation of one model provider with one prompt baseline:
-# b0 (the B0 prompt on the v2 corpus, ADR-014) or informed (the informed
-# single-call prompt on the v3 corpus, ADR-015). Results are provider-comparison
-# evidence only and are never B1 evidence.
+# b0 (the B0 prompt on the v2 corpus, ADR-014), informed (the informed
+# single-call prompt on the v3 corpus, ADR-015) or informed-v4 (the same prompt
+# on the objective-bearing v4 corpus, ADR-016). Results are provider-comparison
+# evidence only and are never B1, B2 or gate evidence.
 #
-# OpenAI is not runnable yet for either baseline: OpenAI runs have no
-# spend-limited model or provenance recorder, and the external B0 model
-# factory's model is not identified. The OpenAI path refuses to run; no factory
-# is guessed.
+# Providers: anthropic (Claude C1/v1) runs every baseline. openai (gpt-6.1-sol,
+# O1/v1) runs informed-v4 only: it has a spend-limited informed model and
+# provenance support for that baseline alone. b0 and informed refuse openai.
+# Each provider uses its own environment (c1-evaluation or openai-evaluation)
+# and its own run step, and only that step receives that provider's key.
 
 on:
   workflow_dispatch:
     inputs:
       model_provider:
-        description: Model provider to evaluate.
+        description: Model provider to evaluate (openai is accepted only with informed-v4).
         required: true
         type: choice
         default: anthropic
@@ -22,23 +24,25 @@ on:
           - anthropic
           - openai
       baseline:
-        description: Prompt baseline (b0 uses fixture v2; informed uses fixture v3).
+        description: Prompt baseline (b0 uses fixture v2; informed uses v3; informed-v4 uses v4).
         required: true
         type: choice
         default: b0
         options:
           - b0
           - informed
+          - informed-v4
       scope:
-        description: Case selection (validation and holdout are not available).
+        description: Case selection (validation and holdout are not available; probe is informed-v4 with openai only).
         required: true
         type: choice
         default: smoke
         options:
           - smoke
           - development
+          - probe
       max_call_cost_usd:
-        description: Per-call worst-case limit in USD (at most 0.09 for b0, 0.10 for informed).
+        description: Per-call worst-case limit in USD (at most 0.09 for b0, 0.10 for informed, 0.11 for informed-v4).
         required: true
         type: string
         default: "0.09"
@@ -47,11 +51,6 @@ on:
         required: true
         type: string
         default: "0.72"
-      openai_b0_model_factory:
-        description: Required for openai. External B0 model factory (module:attribute).
-        required: false
-        type: string
-        default: ""
 
 permissions:
   contents: read
@@ -66,7 +65,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     environment:
-      name: c1-evaluation
+      name: ${{ inputs.model_provider == 'openai' && 'openai-evaluation' || 'c1-evaluation' }}
 
     steps:
       - name: Check out the selected commit
@@ -91,7 +90,6 @@ jobs:
           SCOPE: ${{ inputs.scope }}
           MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
           MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
-          OPENAI_B0_MODEL_FACTORY: ${{ inputs.openai_b0_model_factory }}
         run: |
           python - <<'PY'
           import os
@@ -106,15 +104,50 @@ jobs:
           PER_CALL_LIMIT_USD = {
               ("b0", "anthropic"): Decimal("0.09"),  # evaluation-cases.v2.yaml
               ("informed", "anthropic"): Decimal("0.10"),  # evaluation-cases.v3.yaml
+              ("informed-v4", "anthropic"): Decimal("0.11"),  # evaluation-cases.v4.yaml
+              ("informed-v4", "openai"): Decimal("0.11"),  # evaluation-cases.v4.yaml
           }
           # Declared budget per scope: selected cases x per-case budget (8 smoke,
-          # 60 development). A test pins each value to its fixture.
+          # 60 development; v4: 8 smoke, 31 development, 1 probe). A test pins
+          # each value to its fixture.
           SCOPE_BUDGET_USD = {
               "b0": {"smoke": Decimal("0.72"), "development": Decimal("5.40")},
               "informed": {"smoke": Decimal("0.80"), "development": Decimal("6.00")},
+              "informed-v4": {
+                  "smoke": Decimal("0.88"),
+                  "development": Decimal("3.41"),
+                  "probe": Decimal("0.11"),
+              },
+          }
+          # informed-v4 run limits may not exceed these (ADR-016). A probe runs
+          # EVAL-111 once per dispatch; the two-call probe is two dispatches.
+          INFORMED_V4_MAX_RUN_COST_USD = {
+              "smoke": Decimal("0.88"),
+              "development": Decimal("3.41"),
+              "probe": Decimal("0.22"),
+          }
+          # The 8 smoke cases recorded in evaluation-v4-review.v1.yaml, and the
+          # largest v4 prompt for the probe. A test pins both to the files.
+          INFORMED_V4_CASE_IDS = {
+              "smoke": (
+                  "EVAL-105",
+                  "EVAL-101",
+                  "EVAL-106",
+                  "EVAL-111",
+                  "EVAL-112",
+                  "EVAL-126",
+                  "EVAL-120",
+                  "EVAL-131",
+              ),
+              "development": (),
+              "probe": ("EVAL-111",),
           }
           ARTIFACT_PREFIX = {"anthropic": "c1", "openai": "b0-openai"}
           INFORMED_ARTIFACT_PREFIX = {"anthropic": "informed-anthropic"}
+          INFORMED_V4_ARTIFACT_PREFIX = {
+              "anthropic": "informed-v4-anthropic",
+              "openai": "informed-v4-openai",
+          }
           USD_PATTERN = re.compile(r"^[0-9]+(\.[0-9]{1,6})?$")
 
 
@@ -129,28 +162,19 @@ jobs:
           baseline = os.environ.get("BASELINE", "b0")
           scope = os.environ["SCOPE"]
           if baseline not in SCOPE_BUDGET_USD:
-              fail("baseline must be b0 or informed.")
+              fail("baseline must be b0 or informed or informed-v4.")
           if provider not in ARTIFACT_PREFIX:
               fail("model_provider must be anthropic or openai.")
-          if scope not in SCOPE_BUDGET_USD[baseline]:
-              fail("scope must be smoke or development.")
-
-          if provider == "openai":
-              if baseline == "informed":
-                  fail(
-                      "OpenAI runs are not yet supported for the informed baseline: "
-                      "there is no OpenAI spend-limited model or provenance recorder. "
-                      "Use model_provider anthropic."
-                  )
-              if not os.environ["OPENAI_B0_MODEL_FACTORY"].strip():
-                  fail(
-                      "The external B0 model factory's model is not yet identified. "
-                      "Provide openai_b0_model_factory; no factory is guessed."
-                  )
+          if provider == "openai" and baseline != "informed-v4":
               fail(
-                  "OpenAI runs are not yet supported: they have no spend-limited "
-                  "model or provenance recorder."
+                  f"OpenAI is not available for the {baseline} baseline: the only "
+                  "OpenAI path is gpt-6.1-sol (O1/v1) on informed-v4 (ADR-016). "
+                  "Use baseline informed-v4, or model_provider anthropic."
               )
+          if scope not in SCOPE_BUDGET_USD[baseline]:
+              fail("scope must be smoke or development (probe: informed-v4 with openai).")
+          if scope == "probe" and provider != "openai":
+              fail("scope probe is only available for informed-v4 with openai.")
 
           limits = {}
           for name in ("MAX_CALL_COST_USD", "MAX_RUN_COST_USD"):
@@ -175,15 +199,29 @@ jobs:
                   f"max_run_cost_usd must cover the {scope} budget "
                   f"{scope_budget} USD."
               )
+          if baseline == "informed-v4":
+              run_cap = INFORMED_V4_MAX_RUN_COST_USD[scope]
+              if limits["MAX_RUN_COST_USD"] > run_cap:
+                  fail(
+                      f"max_run_cost_usd exceeds the informed-v4 {scope} run limit "
+                      f"{run_cap} USD."
+                  )
 
-          prefixes = ARTIFACT_PREFIX if baseline == "b0" else INFORMED_ARTIFACT_PREFIX
-          prefix = f"{prefixes[provider]}-{scope}"
+          if baseline == "informed-v4":
+              prefix = f"{INFORMED_V4_ARTIFACT_PREFIX[provider]}-{scope}"
+          else:
+              prefixes = ARTIFACT_PREFIX if baseline == "b0" else INFORMED_ARTIFACT_PREFIX
+              prefix = f"{prefixes[provider]}-{scope}"
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"prefix={prefix}\n")
               output.write(f"scope_budget_usd={scope_budget}\n")
+              if baseline == "informed-v4":
+                  case_ids = " ".join(INFORMED_V4_CASE_IDS[scope])
+                  output.write(f"case_ids={case_ids}\n")
           PY
 
       - name: Run evaluation
+        if: inputs.model_provider == 'anthropic'
         env:
           ANTHROPIC_API_KEY: ${{ inputs.model_provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
           BASELINE: ${{ inputs.baseline }}
@@ -202,6 +240,7 @@ jobs:
           SCOPE: ${{ inputs.scope }}
           PREFIX: ${{ steps.plan.outputs.prefix }}
           SCOPE_BUDGET_USD: ${{ steps.plan.outputs.scope_budget_usd }}
+          CASE_IDS: ${{ steps.plan.outputs.case_ids }}
         run: |
           set -euo pipefail
           [[ -n "${ANTHROPIC_API_KEY:-}" ]] || {
@@ -222,13 +261,25 @@ jobs:
                 --executor ai_qa_copilot_api.informed_baseline:create_informed_baseline_executor
               )
               ;;
+            informed-v4)
+              run_arguments=(
+                --fixture fixtures/benchmark/evaluation-cases.v4.yaml
+                --executor ai_qa_copilot_api.informed_baseline:create_informed_baseline_executor
+              )
+              ;;
             *)
-              echo "::error::baseline must be b0 or informed."
+              echo "::error::baseline must be b0 or informed or informed-v4."
               exit 1
               ;;
           esac
 
-          if [[ "$SCOPE" == "smoke" ]]; then
+          if [[ "$BASELINE" == "informed-v4" ]]; then
+            # Case IDs come from the validated plan; empty selects all 31 v4 cases.
+            selection=(--split development)
+            for case_id in $CASE_IDS; do
+              selection+=(--case-id "$case_id")
+            done
+          elif [[ "$SCOPE" == "smoke" ]]; then
             selection=(
               --split development
               --case-id EVAL-001
@@ -252,20 +303,68 @@ jobs:
             --max-expected-cost "$SCOPE_BUDGET_USD" \
             --max-concurrency 1
 
+      - name: Run evaluation (OpenAI)
+        if: inputs.model_provider == 'openai'
+        env:
+          OPENAI_API_KEY: ${{ inputs.model_provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
+          BASELINE: ${{ inputs.baseline }}
+          AI_QA_COPILOT_INFORMED_MODEL_FACTORY: ai_qa_copilot_api.informed_openai_evaluation_model:create_informed_openai_model
+          AI_QA_COPILOT_INFORMED_PRICING_PATH: fixtures/benchmark/pricing/openai-gpt-6-1-sol.v1.yaml
+          AI_QA_COPILOT_INFORMED_MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
+          AI_QA_COPILOT_INFORMED_MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
+          AI_QA_COPILOT_INFORMED_CALL_LEDGER_PATH: artifacts/${{ steps.plan.outputs.prefix }}-ledger.jsonl
+          AI_QA_COPILOT_INFORMED_CONFIG_PATH: fixtures/benchmark/baselines/informed-single-prompt.v1.yaml
+          AI_QA_COPILOT_INFORMED_REPOSITORY_ROOT: .
+          SCOPE: ${{ inputs.scope }}
+          PREFIX: ${{ steps.plan.outputs.prefix }}
+          SCOPE_BUDGET_USD: ${{ steps.plan.outputs.scope_budget_usd }}
+          CASE_IDS: ${{ steps.plan.outputs.case_ids }}
+        run: |
+          set -euo pipefail
+          [[ -n "${OPENAI_API_KEY:-}" ]] || {
+            echo "::error::The OPENAI_API_KEY secret is not configured in the openai-evaluation environment."
+            exit 1
+          }
+          if [[ "$BASELINE" != "informed-v4" ]]; then
+            echo "::error::OpenAI runs are only available for baseline informed-v4."
+            exit 1
+          fi
+
+          # Case IDs come from the validated plan; empty selects all 31 v4 cases.
+          selection=(--split development)
+          for case_id in $CASE_IDS; do
+            selection+=(--case-id "$case_id")
+          done
+
+          uv run python scripts/run_evaluation.py \
+            --fixture fixtures/benchmark/evaluation-cases.v4.yaml \
+            --executor ai_qa_copilot_api.informed_baseline:create_informed_baseline_executor \
+            --repository-root . \
+            --output "artifacts/${PREFIX}-run.json" \
+            "${selection[@]}" \
+            --max-expected-cost "$SCOPE_BUDGET_USD" \
+            --max-concurrency 1
+
       - name: Score run report
         env:
           BASELINE: ${{ inputs.baseline }}
+          SCOPE: ${{ inputs.scope }}
           PREFIX: ${{ steps.plan.outputs.prefix }}
         run: |
           set -euo pipefail
           case "$BASELINE" in
             b0) fixture=fixtures/benchmark/evaluation-cases.v2.yaml ;;
             informed) fixture=fixtures/benchmark/evaluation-cases.v3.yaml ;;
+            informed-v4) fixture=fixtures/benchmark/evaluation-cases.v4.yaml ;;
             *)
-              echo "::error::baseline must be b0 or informed."
+              echo "::error::baseline must be b0 or informed or informed-v4."
               exit 1
               ;;
           esac
+          if [[ "$SCOPE" == "probe" ]]; then
+            echo "Probe runs check the pipeline and cost only; they are not scored."
+            exit 0
+          fi
           uv run python scripts/score_evaluation_run.py \
             --fixture "$fixture" \
             --ground-truth fixtures/benchmark/ground-truth.v1.yaml \
@@ -275,6 +374,7 @@ jobs:
       - name: Record run provenance
         env:
           BASELINE: ${{ inputs.baseline }}
+          MODEL_PROVIDER: ${{ inputs.model_provider }}
           PREFIX: ${{ steps.plan.outputs.prefix }}
           MAX_CALL_COST_USD: ${{ inputs.max_call_cost_usd }}
           MAX_RUN_COST_USD: ${{ inputs.max_run_cost_usd }}
@@ -308,8 +408,29 @@ jobs:
                 --max-run-cost-usd "$MAX_RUN_COST_USD" \
                 --output "artifacts/${PREFIX}-provenance.json"
               ;;
+            informed-v4)
+              case "$MODEL_PROVIDER" in
+                anthropic) pricing=fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml ;;
+                openai) pricing=fixtures/benchmark/pricing/openai-gpt-6-1-sol.v1.yaml ;;
+                *)
+                  echo "::error::model_provider must be anthropic or openai."
+                  exit 1
+                  ;;
+              esac
+              uv run python scripts/record_informed_evaluation_provenance.py \
+                --run-report "artifacts/${PREFIX}-run.json" \
+                "${ledger_arguments[@]}" \
+                --pricing "$pricing" \
+                --fixture fixtures/benchmark/evaluation-cases.v4.yaml \
+                --informed-configuration fixtures/benchmark/baselines/informed-single-prompt.v1.yaml \
+                --provider "$MODEL_PROVIDER" \
+                --git-commit "$GITHUB_SHA" \
+                --max-call-cost-usd "$MAX_CALL_COST_USD" \
+                --max-run-cost-usd "$MAX_RUN_COST_USD" \
+                --output "artifacts/${PREFIX}-provenance.json"
+              ;;
             *)
-              echo "::error::baseline must be b0 or informed."
+              echo "::error::baseline must be b0 or informed or informed-v4."
               exit 1
               ;;
           esac
@@ -317,6 +438,8 @@ jobs:
       - name: Report score result without gating
         if: always()
         env:
+          BASELINE: ${{ inputs.baseline }}
+          SCOPE: ${{ inputs.scope }}
           PREFIX: ${{ steps.plan.outputs.prefix }}
         run: |
           python - <<'PY'
@@ -324,11 +447,49 @@ jobs:
           import os
           from pathlib import Path
 
+          # informed-v4 reports only the four discriminating checks (ADR-016),
+          # each as passed of applicable. On the negative controls the expected
+          # IDs and references are empty, so those two checks do not apply.
+          DISCRIMINATING_CHECKS = (
+              ("required_ground_truth_ids", "Required IDs"),
+              ("unexpected_ground_truth_ids", "No unexpected IDs"),
+              ("expected_source_references", "Source references"),
+              ("policy_boundary", "Boundary"),
+          )
+          NOT_APPLICABLE_ON_CONTROLS = {
+              "required_ground_truth_ids",
+              "expected_source_references",
+          }
+          INFORMED_V4_NEGATIVE_CONTROLS = {"EVAL-128", "EVAL-129", "EVAL-130", "EVAL-131"}
+
+          baseline = os.environ.get("BASELINE", "")
+          scope = os.environ.get("SCOPE", "")
           prefix = os.environ.get("PREFIX", "")
           score_path = Path(f"artifacts/{prefix}-score.json")
           provenance_path = Path(f"artifacts/{prefix}-provenance.json")
           lines = [f"## Provider evaluation `{prefix or 'not started'}`", ""]
-          if score_path.is_file():
+          if baseline == "informed-v4" and scope == "probe":
+              lines.append("- Probe run: pipeline and cost check only; no score is reported")
+          elif baseline == "informed-v4" and score_path.is_file():
+              scores = json.loads(score_path.read_text(encoding="utf-8"))["scores"]
+              lines.append("- Discriminating checks (passed of applicable; reported, not gated):")
+              for code, label in DISCRIMINATING_CHECKS:
+                  applicable = [
+                      check["passed"]
+                      for score in scores
+                      for check in score["checks"]
+                      if check["code"] == code
+                      and not (
+                          code in NOT_APPLICABLE_ON_CONTROLS
+                          and score["case_id"] in INFORMED_V4_NEGATIVE_CONTROLS
+                      )
+                  ]
+                  lines.append(f"  - {label}: {sum(applicable)} of {len(applicable)}")
+              lines.append(
+                  "- Development split, design-set results, "
+                  "results_not_independently_validated; not B1, B2 or gate evidence"
+              )
+          elif score_path.is_file():
               passed = json.loads(score_path.read_text(encoding="utf-8")).get("passed")
               lines.append(f"- Score report passed: `{passed}` (reported, not gated)")
           else:
