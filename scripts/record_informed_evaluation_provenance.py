@@ -34,6 +34,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-run-cost-usd", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repository-root", type=Path, default=ROOT)
+    parser.add_argument(
+        "--provider", choices=("anthropic", "openai"), default="anthropic"
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -47,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
             git_commit=args.git_commit,
             max_call_cost_microusd=_microusd(args.max_call_cost_usd),
             max_run_cost_microusd=_microusd(args.max_run_cost_usd),
+            provider=args.provider,
         )
         write_informed_run_provenance(
             provenance,
