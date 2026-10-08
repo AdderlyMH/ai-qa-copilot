@@ -1,0 +1,303 @@
+# Internal owner review record for evaluation-corpus/v4 (ADR-016).
+# Internal evidence only; not independent review.
+schema_version: evaluation-v4-review/v1
+review_date: '2026-10-08'
+reviewer_role: project owner
+review_mode: internal
+suite_id: evaluation-corpus/v4
+objectives_file: fixtures/benchmark/evaluation-objectives.v4.yaml
+source_fixture: fixtures/benchmark/evaluation-cases.v3.yaml
+source_fixture_sha256: 8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae
+statements:
+- objectives written by the owner by hand, no model drafting (owner confirmed 2026-10-08)
+- internal review; owner has seen labels; not independent
+- 'echoed catalog wording accepted: objectives describe the artifact content, so the boundary
+  check is close to description-to-label matching'
+- clearer/clarified retained, not on the deny-list
+reference_items:
+  C-3: 'confirmed: REQ-BASE-001#REQ-ORDER-009#statement removed from the GT-FIND-003 cases
+    EVAL-102 and EVAL-108'
+  C-4: 'not applicable: G0 (EVAL-001) is dropped and not used as a source case'
+  GT-FIND-013: REQ-BASE-001#REQ-ERR-001#response-shape replaced by REQ-BASE-001#REQ-ERR-001#statement
+    (EVAL-118)
+  section-13: every section-13#open-question-* reference removed
+cases:
+- id: EVAL-101
+  source_case_id: EVAL-002
+  pair: G1 / GT-FIND-002
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 7740d91179494336e450d4b6b33967bcc8bebc367228d0cf024dc6f960acbc11
+  owner_notes: ''
+- id: EVAL-102
+  source_case_id: EVAL-003
+  pair: G1 / GT-FIND-003
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#REQ-ORDER-009#statement
+  - REQ-BASE-001#section-13#open-question-active-support-case
+  added_references: []
+  objective_sha256: 5229f7b4d7cc306e4b7d2ffd7e9d38fd1de8445896255ffcebfb8398edf8954d
+  owner_notes: Removed the section-13 item and `REQ-ORDER-009#statement` per C-3.
+- id: EVAL-103
+  source_case_id: EVAL-004
+  pair: G1 / GT-FIND-004
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#section-13#open-question-processing-begins
+  added_references: []
+  objective_sha256: e919f7cb5314428f0816eaa465b664162d8c30bab67348a02cf54a11a62bcf84
+  owner_notes: Removed the section-13 item.
+- id: EVAL-104
+  source_case_id: EVAL-005
+  pair: G1 / GT-FIND-005
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#section-13#open-question-inventory-expiry
+  added_references: []
+  objective_sha256: 03a593ff6b4b13f963872766d1fb512c4a8e927498d17bd27c3a63c89a50dbd6
+  owner_notes: Removed the section-13 item.
+- id: EVAL-105
+  source_case_id: EVAL-006
+  pair: G1 / GT-FIND-001
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 2a790f29a3d15004922cb701a0ffe9f772afbe46e0f980ee22ded425ba1bc5d0
+  owner_notes: C-4 is not relevant unless EVAL-001 is used.
+- id: EVAL-106
+  source_case_id: EVAL-013
+  pair: G2 / GT-FIND-001
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 7b90098eac30d6cc284f0d20fd8fa98a2b84b891e40915422fe00b04a6b907e6
+  owner_notes: No flags.
+- id: EVAL-107
+  source_case_id: EVAL-014
+  pair: G2 / GT-FIND-002
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: e4807bf81947c52b2e4d15d9e503b42cf16329bdbc576b7ddfae116dacb3097d
+  owner_notes: No flags.
+- id: EVAL-108
+  source_case_id: EVAL-015
+  pair: G2 / GT-FIND-003
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#REQ-ORDER-009#statement
+  - REQ-BASE-001#section-13#open-question-active-support-case
+  added_references: []
+  objective_sha256: 4e12df4226f435981e0beea94032e27ab787a7ddb7bef7c20bb67f021bb8d779
+  owner_notes: Same repair as Pair 2.
+- id: EVAL-109
+  source_case_id: EVAL-016
+  pair: G2 / GT-FIND-004
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#section-13#open-question-processing-begins
+  added_references: []
+  objective_sha256: dfa0604034106e5be4d66d680b2982e47e6172bd779eb6b23fe486f6f49b76be
+  owner_notes: Same repair as Pair 3.
+- id: EVAL-110
+  source_case_id: EVAL-017
+  pair: G2 / GT-FIND-005
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#section-13#open-question-inventory-expiry
+  added_references: []
+  objective_sha256: e6ac42e45315c2d396be352a9c928ed93c4231c3f85cb4230ba7f3b9c8be2b89
+  owner_notes: Same repair as Pair 4.
+- id: EVAL-111
+  source_case_id: EVAL-025
+  pair: G3 / GT-FIND-006
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: b726724f7fabaaa86316c2fc4c36b5c473b12abb523fc186d6696be8b5b76382
+  owner_notes: No flags.
+- id: EVAL-112
+  source_case_id: EVAL-026
+  pair: G3 / GT-FIND-007
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 6278ab6fc843f6447a396b1592e5cb04593203ed4d11986c12112b4a6bbfbdc3
+  owner_notes: No flags.
+- id: EVAL-113
+  source_case_id: EVAL-027
+  pair: G3 / GT-FIND-008
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: b2850c04f260921814629aba54c2e13a927b1e2d1cec5e6fba40ce9989659e58
+  owner_notes: No flags.
+- id: EVAL-114
+  source_case_id: EVAL-028
+  pair: G3 / GT-FIND-009
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 8aa369fef08a58c102b79b5b0178095e01f707882722c958c557ef7b6e5d2d41
+  owner_notes: No flags.
+- id: EVAL-115
+  source_case_id: EVAL-029
+  pair: G3 / GT-FIND-010
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: eca8e63246fec701f40ee59f959b77ee37481715fb8c56d67033728896de2c03
+  owner_notes: No flags.
+- id: EVAL-116
+  source_case_id: EVAL-030
+  pair: G3 / GT-FIND-011
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 28e6ace4fa704db8e122e00a786fe8a3904ce4fda5c47b5f90e2dcb87268f465
+  owner_notes: No flags.
+- id: EVAL-117
+  source_case_id: EVAL-031
+  pair: G3 / GT-FIND-012
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 9b32108fec888fbcfa67c1a40a3c4f805124e9c40d45d8674dd07b1911730757
+  owner_notes: No flags.
+- id: EVAL-118
+  source_case_id: EVAL-032
+  pair: G3 / GT-FIND-013
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#REQ-ERR-001#response-shape
+  added_references:
+  - REQ-BASE-001#REQ-ERR-001#statement
+  objective_sha256: e3e9326b806086f02f574c6110a3183ce95a28405f8fc91f43054b3641e75df1
+  owner_notes: Replaced non-derivable `response-shape` with `statement`.
+- id: EVAL-119
+  source_case_id: EVAL-033
+  pair: G3 / GT-FIND-014
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: d4eb745ecba473b990280b3aaa97f190dd1d3796f313a3791162f2008e73f8d0
+  owner_notes: No flags.
+- id: EVAL-120
+  source_case_id: EVAL-043
+  pair: G6 / GT-POL-001
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: a4660a09847ac40dc6df24317de8e5d1924b4f34cdf3a064eede55163a45e2e3
+  owner_notes: Structural policy case.
+- id: EVAL-121
+  source_case_id: EVAL-044
+  pair: G6 / GT-POL-002
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 2c7abd8b529b040fbcd49c5e0cb170d3641d13e0f12b4616c284f957d98ad660
+  owner_notes: Structural policy case.
+- id: EVAL-122
+  source_case_id: EVAL-045
+  pair: G6 / GT-POL-003
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 5f2f6352bc2eb9aa2f168b7541f2ec49aa93b4b4b04510527ffcb60c60918cd2
+  owner_notes: Structural policy case.
+- id: EVAL-123
+  source_case_id: EVAL-049
+  pair: G7 / GT-POL-001
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: fc92fa56a02591006166cc371dc2dfc3d38942961dc88225fab9b583a5803419
+  owner_notes: Structural policy case.
+- id: EVAL-124
+  source_case_id: EVAL-050
+  pair: G7 / GT-POL-002
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: d2bda79bf71b58ba50d0615cc2956c6fce9eac6e076db9169c1f4624a45f4e03
+  owner_notes: Structural policy case.
+- id: EVAL-125
+  source_case_id: EVAL-051
+  pair: G7 / GT-POL-003
+  decision: keep
+  removed_references: []
+  added_references: []
+  objective_sha256: 0fe41e45afb3cecb8d804756be8958aa65e01a00ea3583efa76b79d540e84939
+  owner_notes: Structural policy case.
+- id: EVAL-126
+  source_case_id: EVAL-056
+  pair: G8 / GT-FIND-004
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#section-13#open-question-processing-begins
+  added_references: []
+  objective_sha256: 44990efed53f55f1fb8de1d59fda2364e3a1c5464be10db536b471984b885d41
+  owner_notes: Same repair as Pair 3.
+- id: EVAL-127
+  source_case_id: EVAL-057
+  pair: G8 / GT-FIND-005
+  decision: repair
+  removed_references:
+  - REQ-BASE-001#section-13#open-question-inventory-expiry
+  added_references: []
+  objective_sha256: f4cef040a8d72a81c51399781c02efc41e9334b44859d6ed2f2eed4d04e355a5
+  owner_notes: Same repair as Pair 4.
+- id: EVAL-128
+  source_case_id: NC-1
+  decision: negative_control
+  objective_sha256: 9892d0a825b03d4e3d63670c8ec350b7af2a4ef99011b3426444eab0258eef23
+  no_catalog_entry_applies: No catalog entry applies; no requirement-quality finding covers
+    the order lifecycle state list.
+  owner_notes: Rewritten to match the G1 objective form. Still suitable for smoke slot as
+    EVAL-128 / NC-1.
+- id: EVAL-129
+  source_case_id: NC-2
+  decision: negative_control
+  objective_sha256: b878edefcfb486102ba49514316180ea61bb346f081bdca657c26a12ff618ff1
+  no_catalog_entry_applies: No catalog entry applies; no policy entry covers standard response
+    schemas.
+  owner_notes: Unchanged.
+- id: EVAL-130
+  source_case_id: NC-3
+  decision: negative_control
+  objective_sha256: ae4971ef45ae806917f956ef43fdc4cf67f17689ea7a7f0d7df332fa69bd8027
+  no_catalog_entry_applies: No catalog entry applies; no requirement-quality finding covers
+    the customer profile field list.
+  owner_notes: Replaced the prior product-retrieval-by-identifier control. That control used
+    `REQ-BASE-001` plus `OAS-BASE-001`, which risks GT-FIND-015/GT-FIND-016 over-selection
+    because those entries are supported by any requirement-plus-OAS input.
+- id: EVAL-131
+  source_case_id: NC-4
+  decision: negative_control
+  objective_sha256: 0b0876e5f7e234260a07ef4fa2f489655b3b660a4add8c67ed7f4d4f19f911f5
+  no_catalog_entry_applies: No catalog entry applies; no failure-analysis finding covers the
+    product search limit condition.
+  owner_notes: Replaced the cancellation-after-shipment control. The old wording overlapped
+    with GT-FIND-001 evidence and could make a defensible positive answer look wrong.
+smoke_cases:
+- id: EVAL-105
+  source_case_id: EVAL-006
+- id: EVAL-101
+  source_case_id: EVAL-002
+- id: EVAL-106
+  source_case_id: EVAL-013
+- id: EVAL-111
+  source_case_id: EVAL-025
+- id: EVAL-112
+  source_case_id: EVAL-026
+- id: EVAL-126
+  source_case_id: EVAL-056
+- id: EVAL-120
+  source_case_id: EVAL-043
+- id: EVAL-131
+  source_case_id: NC-4
+smoke_note: NC-1 (EVAL-128) was replaced in the smoke set by NC-4 (EVAL-131) because its order-lifecycle
+  area is close to GT-FIND-004.

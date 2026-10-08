@@ -301,9 +301,19 @@
       "sha256": "8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae"
     },
     {
+      "path": "fixtures/benchmark/evaluation-objectives.v4.yaml",
+      "bytes": 6971,
+      "sha256": "2c7c7b07e6031b40d65115aa5f66604490c9408fb266aedd2a5dea59c03ff7ca"
+    },
+    {
       "path": "fixtures/benchmark/evaluation-review-rubric.v1.yaml",
       "bytes": 1277,
       "sha256": "1cc28a80fc143bdc4e2e19b8a4f21b6577ccab14f8efe0634b3c87c9fca02d32"
+    },
+    {
+      "path": "fixtures/benchmark/evaluation-v4-review.v1.yaml",
+      "bytes": 10879,
+      "sha256": "75937d0469842fff41b2cc66664d0325919c1c8b6adeb2418f7dbf8f1d52e410"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
