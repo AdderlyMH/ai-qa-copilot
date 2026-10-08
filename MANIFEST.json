@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
-      "bytes": 18256,
-      "sha256": "7d4110c3e21c911d19001766ee27d2d260d24b1966130f8092dedf1bc90dc61f"
+      "bytes": 24814,
+      "sha256": "df78789337f102aff9fe12649bf53be089b2b18c4677b4d88ed3ddd9538452c6"
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
@@ -142,8 +142,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 107792,
-      "sha256": "44b4028cf2358fdb68a1238f8a71a80b31bb3ba3ea40379a16bf7699a57d8990"
+      "bytes": 109233,
+      "sha256": "09ddbc371441537097f3b28ffa22f1bd76f4e633cb4cd073eb97525836f7406a"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +242,8 @@
     },
     {
       "path": "docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md",
-      "bytes": 24897,
-      "sha256": "1652d570913f4c57ea6f7a2e73d77c2113720fe9476cc728a49b8a96d742f8d7"
+      "bytes": 28234,
+      "sha256": "ce9127f1f9adf899daeca620a1851890c5e78971a5be67d936c029bb60e4467f"
     },
     {
       "path": "docs/adr/README.md",
@@ -272,8 +272,8 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 28206,
-      "sha256": "053210c325fa14712c7ae66fa60e2877c350a465be14924ac00ed5d5e7d00207"
+      "bytes": 28387,
+      "sha256": "37fb5dc5f6eb3df01713e1d826729075779fe1ed6c422e468460fe1313c2da05"
     },
     {
       "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",

@@ -419,6 +419,73 @@ The comparison workflow and `informed_run_provenance.py` still accept only
 Anthropic and the v3 fixture (provenance requires provider `anthropic`). These
 change in the provenance and workflow pull request.
 
+## Amendment — Provenance and workflow (PR 4, 2026-10-08)
+
+No decision above changed. No provider call or spend.
+
+### Provenance
+
+`informed_run_provenance.py` accepts Claude C1/v1 on v3 or v4 and OpenAI O1/v1
+on v4 only, through one provider profile each (model, configuration,
+calibration, pricing loader, extra ledger fields). The v4 fixture (SHA-256
+`e79a1a5f…daad8d`) and the OpenAI pricing file (SHA-256
+`9c980575…19a8046`) are pinned. Ledger records must have exactly the core
+fields plus the provider's extras (`reasoning_tokens` for OpenAI); a ledger,
+pricing file or provider flag from the other provider is refused. The recorder
+gains `--provider` (default `anthropic`). The provenance format is unchanged; a
+test pins the v3 Claude output to the bytes recorded before this change.
+
+### Workflow
+
+- New baseline `informed-v4` (fixture v4) for both providers; `b0` and
+  `informed` are unchanged. OpenAI is refused for `b0` and `informed`; the stale
+  external-B0-factory input and wording are removed.
+- Guards, with the 6.00 USD hard maximum unchanged:
+
+  | Baseline | Provider | Scope | Per call | Run limit |
+  |---|---|---|---|---|
+  | informed-v4 | anthropic, openai | smoke (8 review-record cases) | 0.11 | 0.88 |
+  | informed-v4 | anthropic, openai | development (31 cases) | 0.11 | 3.41 |
+  | informed-v4 | openai only | probe (EVAL-111) | 0.11 | 0.11 to 0.22 |
+
+  For informed-v4 the run limit may not exceed these values.
+- **Probe.** The runner collapses case IDs to a set and has no repeat option, so
+  one invocation cannot call the same case twice without changing the protected
+  runner. The two-call probe is therefore two dispatches of `scope: probe`, each
+  one call on EVAL-111 with its own ledger and provenance. A probe is never
+  scored.
+- **Secrets.** The job environment is `openai-evaluation` for `openai` and
+  `c1-evaluation` otherwise. Each provider has its own run step, guarded by
+  `if` on the provider, and only that step receives its key (`OPENAI_API_KEY`
+  or `ANTHROPIC_API_KEY`, each expression-guarded by provider). The key is never
+  echoed. The OpenAI step selects the OpenAI factory and pricing through the
+  same `AI_QA_COPILOT_INFORMED_*` variables as the Claude path.
+- **Reporting.** For informed-v4 the job summary shows only the four
+  discriminating checks as passed of applicable (required IDs and references
+  not applicable on the negative controls) and never an overall pass line.
+- The b0 fallback for an absent `BASELINE` stays: removing it requires changing
+  the existing test helper, which is not a source-text pin.
+
+### Dispatch inputs
+
+All runs: `baseline` `informed-v4`, `max_call_cost_usd` `0.11`.
+
+| Run | `model_provider` | `scope` | `max_run_cost_usd` | Dispatches |
+|---|---|---|---|---|
+| Probe | openai | probe | 0.11 | 2 |
+| Smoke | anthropic; openai | smoke | 0.88 | 1 per provider |
+| Full | anthropic; openai | development | 3.41 | 2 per provider |
+
+Steps are in this order and each is authorized separately. Details are in the
+[runbook](../C1_EVALUATION_RUNBOOK.md#informed-v4-runs).
+
+### Still unverified
+
+- That GitHub resolves an `inputs` expression in the job `environment` name as
+  intended (from GitHub's documented context availability; first dispatch
+  confirms it).
+- Everything listed for the probe in the OpenAI adapter amendment above.
+
 ## Links
 
 - [ADR-014 — Budgeted C1/v1 provider-comparison evaluation](ADR-014-c1-budgeted-provider-comparison-evaluation.md)

@@ -1,5 +1,29 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## v4 and OpenAI provenance and workflow support — 2026-10-08
+
+**Status:** Implemented on branch `feat/v4-openai-workflow`, not yet merged.
+Tooling only: no provider call, no spend, no quality, cost or latency result.
+Details are in the
+[ADR-016 amendment](adr/ADR-016-objective-fixture-v4-provider-comparison.md#amendment--provenance-and-workflow-pr-4-2026-10-08)
+and the [runbook](C1_EVALUATION_RUNBOOK.md#informed-v4-runs).
+
+Delivered: informed provenance accepts Claude on v3 or v4 and OpenAI O1/v1 on
+v4 only, with the v4 fixture and OpenAI pricing pinned, exact per-provider
+ledger fields and cross-provider refusals (v3 Claude output byte-identical to
+before); the provider-comparison workflow gains `informed-v4` for both providers
+(per call 0.11 USD; smoke 0.88 and development 3.41 USD, each also a cap) and a
+`probe` scope for OpenAI only (EVAL-111, one call per dispatch, 0.11 to 0.22
+USD), with OpenAI refused for `b0` and `informed`, its own `openai-evaluation`
+environment and run step, and a job summary showing only the four
+discriminating checks. Seven existing workflow tests had source-text pins
+updated; existing provenance tests pass unmodified.
+
+Not verified: GitHub's resolution of the provider expression in the job
+environment name until the first dispatch. Next action: create the
+`openai-evaluation` environment and `OPENAI_API_KEY` secret, merge, then the
+separately authorized OpenAI probe (two dispatches).
+
 ## OpenAI informed adapter and factory (O1/v1) — 2026-10-08
 
 **Status:** Implemented on branch `feat/openai-informed-factory`, not yet merged.

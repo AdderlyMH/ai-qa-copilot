@@ -67,7 +67,6 @@ Dispatch the workflow with:
 | `scope` | `smoke` |
 | `max_call_cost_usd` | `0.09` (default). The workflow refuses a value above 0.09 USD, the v2 per-case budget. Enter the per-call limit here, not the run's worst case. |
 | `max_run_cost_usd` | `0.72` (default) |
-| `openai_b0_model_factory` | leave empty |
 
 Approve the pending deployment to `c1-evaluation` when prompted.
 
@@ -192,7 +191,6 @@ Dispatch `Evaluation provider comparison` with:
 | `scope` | `smoke` |
 | `max_call_cost_usd` | `0.10` (the v3 per-case budget; the guard refuses more) |
 | `max_run_cost_usd` | `0.80` (8 cases x 0.10) |
-| `openai_b0_model_factory` | leave empty |
 
 **The workflow defaults are the b0 values** (`baseline` b0, 0.09 per call, 0.72
 per run). For an informed run, all of `baseline`, `max_call_cost_usd` and
@@ -344,5 +342,148 @@ Add a short amendment to ADR-015 and an entry in `docs/PROJECT_STATUS.md` with:
   `passed` value.
 
 Do not run `scope=development` until the smoke run is healthy and these numbers
-are recorded. OpenAI informed runs remain unavailable until an OpenAI
-spend-limited factory and provenance support exist.
+are recorded. OpenAI runs are available only for `informed-v4`; see
+[informed-v4 runs](#informed-v4-runs).
+
+## Informed-v4 runs
+
+This section covers `baseline: informed-v4`: the unchanged
+`informed-single-prompt/v1` prompt on the objective-bearing
+`evaluation-corpus/v4` fixture (31 development cases), for Claude (C1/v1) and
+OpenAI `gpt-6.1-sol` (O1/v1). Decisions are in
+[ADR-016](adr/ADR-016-objective-fixture-v4-provider-comparison.md). The order is
+fixed: the OpenAI probe, then one smoke run per provider, then two full runs per
+provider. **Each dispatch is separately authorized spend.** Limits apply per
+dispatch, so total spend is the sum of the ledgers.
+
+### Prerequisites
+
+1. **Merge to `main`** the v4 fixture, the OpenAI adapter and factory, and the
+   v4 provenance and workflow support. The workflow runs only from `main`.
+2. **Environments and keys** (repository settings, not created by code):
+   - `c1-evaluation` with an `ANTHROPIC_API_KEY` secret (exists from earlier runs);
+   - `openai-evaluation` with an `OPENAI_API_KEY` secret (new).
+   Set a required reviewer on both, so each run waits for approval. The job uses
+   `openai-evaluation` only when `model_provider` is `openai`; each key reaches
+   only its own provider's run step.
+3. **Pricing.** Re-check Claude at
+   <https://platform.claude.com/docs/en/about-claude/pricing> (2 and 10 USD per
+   million) and OpenAI at
+   <https://developers.openai.com/api/docs/models/gpt-6.1-sol> (input 2, cached
+   0.10, cache writes 2.50, output 10). If either differs, stop: version the
+   pricing file and re-derive the 0.11 USD budget first.
+4. **Spend limits** (enforced by the workflow guard):
+
+   | Scope | Per call | Run limit (minimum = maximum unless stated) | Cases |
+   |---|---|---|---|
+   | `probe` (OpenAI only) | 0.11 | 0.11 to 0.22 | EVAL-111, once per dispatch |
+   | `smoke` | 0.11 | 0.88 | 8 (review record) |
+   | `development` | 0.11 | 3.41 | 31 (all of v4) |
+
+   The 6.00 USD hard maximum still applies. Workflow defaults are the b0 values,
+   so enter every input below explicitly.
+
+### Dispatch inputs
+
+**1. OpenAI probe** (two calls on EVAL-111, the largest v4 prompt). The runner
+runs each selected case once, so the probe is **two dispatches** with the same
+inputs:
+
+| Input | Value |
+|---|---|
+| `model_provider` | `openai` |
+| `baseline` | `informed-v4` |
+| `scope` | `probe` |
+| `max_call_cost_usd` | `0.11` |
+| `max_run_cost_usd` | `0.11` |
+
+Worst case 0.0924525 USD per dispatch (20,597 estimated input tokens at the
+2.50 USD cache-write rate plus 4,096 output tokens), 0.185 USD for both. A probe
+is not scored; it checks the request is accepted, zero cache tokens, the
+reported model string, output length against the 4,096 cap, reasoning-token
+reporting and OpenAI's calibration ratio. Do not continue to smoke until both
+probe ledgers are healthy and these facts are recorded.
+
+**2. Smoke** (one per provider):
+
+| Input | Claude | OpenAI |
+|---|---|---|
+| `model_provider` | `anthropic` | `openai` |
+| `baseline` | `informed-v4` | `informed-v4` |
+| `scope` | `smoke` | `smoke` |
+| `max_call_cost_usd` | `0.11` | `0.11` |
+| `max_run_cost_usd` | `0.88` | `0.88` |
+
+Worst case 0.5237 USD (Claude) and 0.5727 USD (OpenAI). Cases: EVAL-105, 101,
+106, 111, 112, 126, 120, 131.
+
+**3. Full** (two per provider, after both smoke runs are healthy):
+
+| Input | Claude | OpenAI |
+|---|---|---|
+| `model_provider` | `anthropic` | `openai` |
+| `baseline` | `informed-v4` | `informed-v4` |
+| `scope` | `development` | `development` |
+| `max_call_cost_usd` | `0.11` | `0.11` |
+| `max_run_cost_usd` | `3.41` | `3.41` |
+
+Worst case 2.0979 USD (Claude) and 2.3049 USD (OpenAI) per run.
+
+Artifacts are named `informed-v4-<provider>-<scope>-<commit SHA>`, so they never
+collide with v3 (`informed-anthropic-…`) or b0 (`c1-…`) artifacts.
+
+### Healthy ledger
+
+`informed-v4-<provider>-<scope>-ledger.jsonl`:
+
+- `schema_version` `informed-call-ledger/v1` on every line, `prompt_version`
+  `informed-single-prompt/v1`, and:
+  - Claude: `provider` `anthropic`, `model_id` `claude-sonnet-5-5`,
+    `configuration_version` `C1/v1`, no other fields;
+  - OpenAI: `provider` `openai`, `model_id` `gpt-6.1-sol`,
+    `configuration_version` `O1/v1`, `pricing_version`
+    `openai-gpt-6.1-sol/2026-10-08/standard-short-context-cache-disabled`, and
+    a `reasoning_tokens` field (an integer, or null if not reported).
+- One line per selected case (1, 8 or 31), every one `outcome: "succeeded"` and
+  `failure: null`.
+- `calibration_ratio` at most 1.15 (OpenAI's ratio is unverified until the probe).
+- `output_tokens` below 4,096 (a truncated call fails closed and is charged its
+  worst case).
+- `max_call_microusd` 110000 and the dispatched run limit on every line.
+- For OpenAI, `worst_case_microusd` priced at 2.50 USD input and
+  `charged_microusd` at 2.00 USD input; the charge is always below the worst case.
+- No prompt text, model output or key.
+
+Any `failed` line means the run stopped; read `failure` (for example
+`provider_call_failed:ModelGatewayProtocolError` for cache usage, a
+non-default processing tier or an unexpected model string). The provenance
+recorder refuses a ledger with a failed call.
+
+### Healthy provenance
+
+`informed-v4-<provider>-<scope>-provenance.json` shows `schema_version`
+`evaluation-run-provenance/v2`, `evidence_class`
+`provider-comparison-informed-development`, `b1_evidence: false`, `suite_id`
+`evaluation-corpus/v4`, `fixture_sha256`
+`e79a1a5f771456680a0093d10f8b6f300616dd4f254cc445b86c3769a5daad8d`, the four
+prompt pins listed above for the informed smoke run, `max_concurrency` 1,
+`ledger_call_count` equal to the selected cases, `ledger_charged_microusd`
+equal to the ledger sum, `git_commit` equal to the dispatched commit, and the
+provider's identity (`anthropic`/`claude-sonnet-5-5`/`C1/v1`, or
+`openai`/`gpt-6.1-sol`/`O1/v1` with `pricing_sha256`
+`9c9805755033b12ef01fb37f6726d1452091d23c503903f16db64c8ce19a8046`).
+
+### Reporting rules (ADR-016)
+
+- Report only the four discriminating checks: required IDs, no unexpected IDs,
+  source references and boundary, each as numerator and denominator, per
+  category and per run. The job summary shows them for the run.
+- On the negative controls (EVAL-128 to 131), required IDs and source references
+  are **not applicable** (their expected sets are empty, so any output passes);
+  unexpected IDs and boundary still count.
+- **Never** use "cases passed" as a headline; policy cases fail the side-effects
+  check by construction.
+- Every result states: development split, design-set result,
+  `results_not_independently_validated`, internally reviewed, catalog-selection
+  task, and **never B1, B2 or gate evidence**. No significance claim.
+- Cost and token use come from provenance and the ledger.
