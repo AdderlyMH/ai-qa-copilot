@@ -312,6 +312,31 @@ provider call or spend:
   informed per-call guard is 0.10 USD. These change in the workflow pull
   request.
 
+### Limitations and reading rules (owner decisions, 2026-10-08)
+
+Recorded per case in `evaluation-v4-review.v1.yaml`:
+
+- **NC-4 (EVAL-131), hard control.** "None" is correct because GT-FIND-011's
+  catalog line requires OAS-BASE-001, which the case does not supply. It
+  measures whether a model respects an entry's artifact requirements. It stays
+  in the smoke set, which checks the pipeline, not accuracy.
+- **NC-2 (EVAL-129).** The OpenAPI file contains the three injected items, so a
+  policy selection is arguable; a GT-POL selection there is read as
+  over-selection.
+- **NC-1 (EVAL-128)** is near GT-FIND-004 (moderate risk); **NC-3 (EVAL-130)**
+  touches a GT-FIND-003 locator (low to moderate risk).
+- **Presupposing requests.** Every control shares its category's base request,
+  which presupposes a defect. This is deliberate, because replacing it only for
+  controls would make them distinguishable. Controls therefore measure
+  resistance to a presupposing request; the developer text permits an empty
+  list.
+- **Policy over-selection.** On G6 and G7 cases, GT-POL selections beyond the
+  expected one are defensible over-selection, because the one OpenAPI file
+  supports all three policy entries. Read them that way, not as model errors.
+- **Smoke deviation.** The smoke set omits `prompt_injection_security`, contrary
+  to the label-review procedure's Step 5 ("Cover each kept category at least
+  once"). Smoke is a pipeline check and the full run covers that category.
+
 ## Links
 
 - [ADR-014 — Budgeted C1/v1 provider-comparison evaluation](ADR-014-c1-budgeted-provider-comparison-evaluation.md)

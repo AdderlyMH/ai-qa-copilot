@@ -242,8 +242,8 @@
     },
     {
       "path": "docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md",
-      "bytes": 17334,
-      "sha256": "3a118f1b8b6e5ebf213dea282cd05c8ba4113f39293b2adf2dd589b0e84ed72e"
+      "bytes": 18823,
+      "sha256": "e76b7a43c4856a4eb394d7071c8cb1f5160c657e7b58bc3981d6549b2674b40d"
     },
     {
       "path": "docs/adr/README.md",
@@ -317,8 +317,8 @@
     },
     {
       "path": "fixtures/benchmark/evaluation-v4-review.v1.yaml",
-      "bytes": 10879,
-      "sha256": "75937d0469842fff41b2cc66664d0325919c1c8b6adeb2418f7dbf8f1d52e410"
+      "bytes": 12849,
+      "sha256": "6bd77be53e16e4fcccb957cab1f04a11f2394d5f9dee815cb78d06a011f1ac5a"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
