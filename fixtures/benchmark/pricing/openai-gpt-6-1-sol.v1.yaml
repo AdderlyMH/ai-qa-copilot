@@ -1,0 +1,26 @@
+# OpenAI gpt-6.1-sol pricing for the informed baseline (ADR-016, PR 3).
+# Verified 2026-10-08 from https://developers.openai.com/api/docs/models/gpt-6.1-sol
+# ("Standard" text token prices per 1M tokens: input $2, cached input $0.1,
+# cache writes $2.5, output $10; "Prompts with more than 272K input tokens are
+# priced at 2x input and cache rates and 1.5x output for the full request").
+# The adapter sends service_tier "default" (standard processing) and
+# prompt_cache_options mode "explicit" with no breakpoints, which the caching
+# guide documents as "the request does not use prompt caching or create cache
+# writes"; it fails closed on any nonzero cached or cache-write tokens and on any
+# request whose estimated input could exceed the short-context threshold.
+# The cache-write rate is the per-call worst-case input rate until a live probe
+# shows zero cache tokens. Read only by informed_openai_evaluation_model.py.
+schema_version: openai-provider-pricing/v1
+provider: openai
+model_id: gpt-6.1-sol
+pricing_version: openai-gpt-6.1-sol/2026-10-08/standard-short-context-cache-disabled
+source_reference: https://developers.openai.com/api/docs/models/gpt-6.1-sol
+verified_on: "2026-10-08"
+processing_tier: standard
+short_context_max_input_tokens: 272000
+input_microusd_per_million_tokens: 2000000
+cached_input_microusd_per_million_tokens: 100000
+cache_write_microusd_per_million_tokens: 2500000
+output_microusd_per_million_tokens: 10000000
+long_context_input_and_cache_multiplier: "2"
+long_context_output_multiplier: "1.5"

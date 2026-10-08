@@ -142,8 +142,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 105910,
-      "sha256": "283f9876864e4701ad0f382c73353b2b9c7c5a5f292fb623ee60b1c6c91b0b4b"
+      "bytes": 107792,
+      "sha256": "44b4028cf2358fdb68a1238f8a71a80b31bb3ba3ea40379a16bf7699a57d8990"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +242,8 @@
     },
     {
       "path": "docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md",
-      "bytes": 18823,
-      "sha256": "e76b7a43c4856a4eb394d7071c8cb1f5160c657e7b58bc3981d6549b2674b40d"
+      "bytes": 24897,
+      "sha256": "1652d570913f4c57ea6f7a2e73d77c2113720fe9476cc728a49b8a96d742f8d7"
     },
     {
       "path": "docs/adr/README.md",
@@ -334,6 +334,11 @@
       "path": "fixtures/benchmark/pricing/anthropic-claude-sonnet-5-5.v1.yaml",
       "bytes": 404,
       "sha256": "7dc30f348c3ac448446beca79bdd8a7f771be67eb224c377bbb23b323f5e2d17"
+    },
+    {
+      "path": "fixtures/benchmark/pricing/openai-gpt-6-1-sol.v1.yaml",
+      "bytes": 1530,
+      "sha256": "9c9805755033b12ef01fb37f6726d1452091d23c503903f16db64c8ce19a8046"
     },
     {
       "path": "fixtures/benchmark/release-review-selection.v1.yaml",

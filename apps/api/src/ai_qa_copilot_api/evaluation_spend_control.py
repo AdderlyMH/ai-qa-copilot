@@ -19,13 +19,24 @@ Controls, all fail closed:
 
 Every call attempt appends one content-free JSON Lines record to the ledger: no
 prompt, model output, or credential.
+
+Two optional settings exist for providers that need them (ADR-016); both default
+to off, which keeps the original behaviour and ledger records byte-identical:
+
+- ``worst_case_input_microusd_per_million_tokens``: a higher input rate used
+  only for the pre-call worst case and for the charge of a failed call (for
+  example a cache-write rate that a request might incur). A successful call is
+  still charged at ``pricing``.
+- ``extra_ledger_fields`` with ``usage_details``: named, non-negative integer
+  usage counts (for example reasoning tokens) added to every ledger record,
+  ``null`` when no response was received.
 """
 
 from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import ROUND_CEILING, Decimal, InvalidOperation
 from pathlib import Path
 from threading import Lock
@@ -38,6 +49,31 @@ from ai_qa_copilot_api.model_gateway import StructuredModelResponse
 
 MICROUSD_PER_USD: Final = 1_000_000
 _TOKENS_PER_MILLION: Final = 1_000_000
+_BASE_LEDGER_FIELDS: Final = frozenset(
+    {
+        "schema_version",
+        "provider",
+        "model_id",
+        "configuration_version",
+        "prompt_version",
+        "pricing_version",
+        "call_index",
+        "outcome",
+        "failure",
+        "estimated_input_tokens",
+        "actual_input_tokens",
+        "output_tokens",
+        "calibration_ratio",
+        "response_id",
+        "worst_case_microusd",
+        "charged_microusd",
+        "running_total_microusd",
+        "max_call_microusd",
+        "max_run_microusd",
+        "characters_per_token",
+        "tolerance",
+    }
+)
 
 
 class SpendControlRejected(EvaluationRunRejected):
@@ -122,9 +158,44 @@ class SpendControlledCalls:
         calibration: Calibration,
         output_token_cap: int,
         ledger_path: Path,
+        worst_case_input_microusd_per_million_tokens: int | None = None,
+        extra_ledger_fields: tuple[str, ...] = (),
+        usage_details: Callable[[StructuredModelResponse], Mapping[str, int | None]]
+        | None = None,
     ) -> None:
         if output_token_cap <= 0:
             raise SpendControlRejected("output_token_cap must be positive")
+        if worst_case_input_microusd_per_million_tokens is not None and (
+            isinstance(worst_case_input_microusd_per_million_tokens, bool)
+            or not isinstance(worst_case_input_microusd_per_million_tokens, int)
+            or worst_case_input_microusd_per_million_tokens
+            < pricing.input_microusd_per_million_tokens
+        ):
+            raise SpendControlRejected(
+                "The worst-case input rate must be an integer not below the input rate"
+            )
+        if (usage_details is None) != (not extra_ledger_fields):
+            raise SpendControlRejected(
+                "extra_ledger_fields and usage_details must be set together"
+            )
+        if len(set(extra_ledger_fields)) != len(extra_ledger_fields) or (
+            set(extra_ledger_fields) & _BASE_LEDGER_FIELDS
+        ):
+            raise SpendControlRejected(
+                "extra_ledger_fields must be unique and must not replace ledger fields"
+            )
+        self._worst_case_pricing = (
+            pricing
+            if worst_case_input_microusd_per_million_tokens is None
+            else replace(
+                pricing,
+                input_microusd_per_million_tokens=(
+                    worst_case_input_microusd_per_million_tokens
+                ),
+            )
+        )
+        self._extra_ledger_fields = extra_ledger_fields
+        self._usage_details = usage_details
         self._identity = identity
         self._pricing = pricing
         self._limits = limits
@@ -187,7 +258,7 @@ class SpendControlledCalls:
             estimated_characters, self._calibration
         )
         worst_case_microusd = cost_microusd(
-            self._pricing,
+            self._worst_case_pricing,
             input_tokens=estimated_input_tokens,
             output_tokens=self._output_token_cap,
         )
@@ -229,6 +300,18 @@ class SpendControlledCalls:
             ),
             response_id=response.response_id,
         )
+        if self._usage_details is not None:
+            try:
+                details = dict(self._usage_details(response))
+            except Exception as error:
+                self._fail(entry, "invalid_usage_details", charged=charged, cause=error)
+            if set(details) != set(self._extra_ledger_fields) or any(
+                value is not None
+                and (isinstance(value, bool) or not isinstance(value, int) or value < 0)
+                for value in details.values()
+            ):
+                self._fail(entry, "invalid_usage_details", charged=charged)
+            entry.update(details)
 
         if self._running_total_microusd + charged > self._limits.max_run_microusd:
             self._fail(entry, "run_limit_exceeded_after_call", charged=charged)
@@ -294,6 +377,8 @@ class SpendControlledCalls:
             "characters_per_token": str(self._calibration.characters_per_token),
             "tolerance": str(self._calibration.tolerance),
         }
+        for name in self._extra_ledger_fields:
+            record[name] = entry.get(name)
         with self._ledger_path.open("a", encoding="utf-8", newline="\n") as ledger:
             ledger.write(json.dumps(record, sort_keys=True) + "\n")
 

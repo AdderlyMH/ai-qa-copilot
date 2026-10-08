@@ -1,5 +1,34 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## OpenAI informed adapter and factory (O1/v1) — 2026-10-08
+
+**Status:** Implemented on branch `feat/openai-informed-factory`, not yet merged.
+Tooling only: no provider call, no spend, no quality, cost or latency result.
+Details and the verified documentation facts (with URLs) are in the
+[ADR-016 amendment](adr/ADR-016-objective-fixture-v4-provider-comparison.md#amendment--openai-adapter-pr-3-2026-10-08).
+
+Delivered: the verified `gpt-6.1-sol` pricing input (input 2, cached 0.10,
+cache writes 2.50, output 10 USD per million; 272,000-token short-context
+threshold) and a strict loader; the pinned Responses adapter
+(`openai_informed_evaluation_adapter.py`: same developer text, user text and
+schema bytes as the Claude path, effort `medium`, 4,096 output tokens,
+`store: false`, `service_tier: "default"`, explicit caching with no
+breakpoints, fail-closed on cache usage, tier, model, status, refusal and
+output shape); the spend-controlled factory (worst case and failed calls at the
+2.50 USD cache-write rate, successful calls at 2 and 10 USD, ledger provider
+`openai` with `reasoning_tokens`); and an additive, default-off change to
+`evaluation_spend_control.py` (optional worst-case rate and extra ledger fields).
+The Claude factory, `informed_baseline.py` and its four pins, `model_gateway.py`,
+`c1_evaluation_model.py` and all fixtures are unchanged; the existing Claude
+tests pass unmodified, and a test pins the pre-change ledger bytes.
+
+Still unverified until the probe: explicit cache mode acceptance and zero cache
+tokens, whether 4,096 output tokens suffice at `medium` (OpenAI recommends
+reserving 25,000), OpenAI's characters-per-token ratio, reasoning-token
+reporting and the reported model string. Provenance and the workflow still
+accept only Anthropic and v3. Next action: provenance and workflow pull request,
+then the separately authorized OpenAI probe.
+
 ## Fixture evaluation-corpus/v4 built — 2026-10-08
 
 **Status:** Implemented on branch `feat/fixture-v4`, not yet merged. Fixture and
