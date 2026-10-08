@@ -348,7 +348,7 @@
     {
       "path": "package-lock.json",
       "bytes": 214687,
-      "sha256": "7e49f196e3d8301fe25daeba098841293b895d46ce719f0ed5d5fc838e6517b4"
+      "sha256": "7442a5a791e227ac58aae87ef134fca1360eb29fb2089c420e2f3c5b741b6d6d"
     },
     {
       "path": "pyproject.toml",
