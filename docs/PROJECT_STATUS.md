@@ -1,5 +1,36 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Fixture evaluation-corpus/v4 built — 2026-10-08
+
+**Status:** Implemented on branch `feat/fixture-v4`, not yet merged. Fixture and
+tooling work only: no provider call, no spend, no quality, cost or latency
+result. Details are in the
+[ADR-016 amendment](adr/ADR-016-objective-fixture-v4-provider-comparison.md#amendment--fixture-v4-built-2026-10-08).
+
+Delivered, in four commits: the owner's objectives file
+(`evaluation-objectives.v4.yaml`, objective text verbatim from the owner, no
+model drafting) and internal review record (`evaluation-v4-review.v1.yaml`,
+objective SHA-256 values, 18 keep and 9 repair decisions, C-3 confirmed, C-4 not
+applicable, negative-control confirmations, smoke list); the generator
+`evaluation_objective_benchmark.py` and `evaluation-cases.v4.yaml` (SHA-256
+`e79a1a5f771456680a0093d10f8b6f300616dd4f254cc445b86c3769a5daad8d`; 31
+development cases, EVAL-101 to 127 plus negative controls EVAL-128 to 131; 0.11
+USD per case from the largest prompt, EVAL-111, 43,253 characters, at the 2.50
+USD input rate); new tests for pins, composition, every leakage rule, the
+no-ambiguity property, reference derivability, review-record hashes, budget and
+sentinel prompts; and the fixtures README section. The case model, loader,
+scorer, runner, informed prompt and its pins, catalog, B1 code, workflows, v1 to
+v3 and the pricing files are unchanged.
+
+Known limitations: results remain design-set, internally reviewed,
+`results_not_independently_validated`, and never B1, B2 or gate evidence; policy
+cases fail the side-effects check by construction; negative controls carry
+evidence only through the unexpected-ID and boundary checks. The workflow and
+`informed_run_provenance.py` accept only v3, and the informed per-call guard is
+0.10 USD, so v4 cannot be run yet. Next action: the OpenAI path and workflow
+changes under their own review, then the probe and smoke runs, each separately
+authorized.
+
 ## Objective-bearing fixture v4 decided (ADR-016) — 2026-10-05
 
 **Status:** Recorded on branch `docs/adr-016-fixture-v4`; documentation only.

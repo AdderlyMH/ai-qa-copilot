@@ -280,6 +280,38 @@ No live provider request is part of this validation.
 - Validation and holdout runs; B1, B2 or gate evidence.
 - Any provider call or spend in this change.
 
+## Amendment — Fixture v4 built (2026-10-08)
+
+No decision above changed. `evaluation-corpus/v4` is implemented, with no
+provider call or spend:
+
+- **Fixture:** `fixtures/benchmark/evaluation-cases.v4.yaml`, SHA-256
+  `e79a1a5f771456680a0093d10f8b6f300616dd4f254cc445b86c3769a5daad8d`, built by
+  `evaluation_objective_benchmark.py` from the v3 fixture (SHA-256 pinned) and
+  the owner's objectives file. 31 development cases: EVAL-101 to EVAL-127 for
+  the 27 kept pairs in group order, and negative controls EVAL-128 to EVAL-131.
+  v4 does not keep v3 case IDs; each objective record names its v3 source case.
+- **Request format:** v3 base request without the scenario suffix, then
+  `" Objective: "` and the objective verbatim. No base request was replaced.
+- **Negative controls:** base request from the lowest-numbered kept source case
+  of the control's category (EVAL-001 is excluded because G0 is dropped), run mode
+  `analysis`, side effects with `model_calls: 1` and every other field 0.
+- **Owner review:** keep for 18 pairs and repair for 9 (`section-13` anchors
+  removed; C-3 confirmed, so `REQ-ORDER-009#statement` is removed from EVAL-102
+  and EVAL-108; `REQ-ERR-001#statement` replaces `response-shape` in EVAL-118);
+  C-4 not applicable. All 31 objectives pass the leakage rules as written.
+- **Budget:** 0.11 USD per case. Largest prompt EVAL-111, 43,253 characters,
+  20,597 estimated input tokens; worst case 0.0924525 USD at 2.50 USD input.
+  Declared totals 0.88 USD (smoke) and 3.41 USD (all 31). At the 2 USD input
+  rate the figure would be 0.10 USD.
+- **Smoke list:** EVAL-105, 101, 106, 111, 112, 126, 120 and 131. NC-1
+  (EVAL-128) was replaced by NC-4 (EVAL-131) because its order-lifecycle area is
+  close to GT-FIND-004.
+- **Not yet usable for runs:** the comparison workflow and
+  `informed_run_provenance.py` still accept only the v3 fixture, and the
+  informed per-call guard is 0.10 USD. These change in the workflow pull
+  request.
+
 ## Links
 
 - [ADR-014 — Budgeted C1/v1 provider-comparison evaluation](ADR-014-c1-budgeted-provider-comparison-evaluation.md)

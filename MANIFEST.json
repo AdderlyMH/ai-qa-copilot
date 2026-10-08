@@ -142,8 +142,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 103987,
-      "sha256": "21b139296e29a9cfcf04e54041bf7c1fce04dd41703a3d394ec9ef6ba6dd8b93"
+      "bytes": 105910,
+      "sha256": "283f9876864e4701ad0f382c73353b2b9c7c5a5f292fb623ee60b1c6c91b0b4b"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +242,8 @@
     },
     {
       "path": "docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md",
-      "bytes": 15362,
-      "sha256": "bd41b6a3d36d644931c4464cd7fd146cd68aec8cf2d26f8f6c0239337b359bb6"
+      "bytes": 17334,
+      "sha256": "3a118f1b8b6e5ebf213dea282cd05c8ba4113f39293b2adf2dd589b0e84ed72e"
     },
     {
       "path": "docs/adr/README.md",
@@ -272,8 +272,8 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 25705,
-      "sha256": "0ad9ed5db10719be3498290234d398ffb30f22c0160b754c1a21f796267ff3bf"
+      "bytes": 28206,
+      "sha256": "053210c325fa14712c7ae66fa60e2877c350a465be14924ac00ed5d5e7d00207"
     },
     {
       "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",

@@ -318,6 +318,51 @@ uv run python scripts/generate_evaluation_cases.py --corpus v3 --write
 uv run python -m pytest apps/api/tests/test_evaluation_informed_benchmark.py
 ```
 
+## Objective-bearing v4 corpus
+
+`evaluation-cases.v4.yaml` (suite `evaluation-corpus/v4`,
+[ADR-016](../../docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md))
+fixes the limitation above by giving every case a request that says which area to
+examine. It holds 31 development-split cases and no validation or holdout cases:
+
+- **EVAL-101 to EVAL-127:** one case per kept (group, required-ID) pair, built
+  from a v3 development source case. Everything is copied from the source case
+  except the ID, the request, the owner's repaired references and the budget.
+- **EVAL-128 to EVAL-131:** negative controls (tag `negative_control`): no
+  expected ground-truth ID or reference, boundary `analysis_only`, run mode
+  `analysis`, and the one-model-call side-effect vector of v3 analysis cases.
+
+Each request is the v3 base request without the "Development scenario NN."
+suffix, then ` Objective: ` and the owner's objective, verbatim. Objectives come
+from `evaluation-objectives.v4.yaml`, written by the project owner by hand with no
+model drafting. `evaluation-v4-review.v1.yaml` is the internal review record:
+each objective's SHA-256, the keep or repair decision per pair, removed
+references (every `section-13#…` anchor, and `REQ-ORDER-009#statement` from the
+GT-FIND-003 cases), `REQ-ERR-001#statement` in place of
+`REQ-ERR-001#response-shape`, the negative-control confirmations and the
+8-case smoke list. The review is internal, not independent: the owner has seen
+the labels.
+
+The per-case budget is 0.11 USD: the largest v4 prompt (EVAL-111, 43,253
+characters, 20,597 estimated input tokens at 2.1 characters per token) at 2.50
+USD per million input tokens plus the 4,096-token output cap at 10 USD per
+million, 0.0924525 USD, plus 10 percent, rounded up to the cent. Tests check
+every objective against the ADR-016 leakage rules, check that no two cases with
+the same model-visible input expect different answers, check that every
+expected reference resolves in the artifacts, and pin v1 to v4.
+
+A v4 result is a design-set, internally reviewed, catalog-selection result
+(`results_not_independently_validated`) and is never B1, B2 or gate evidence.
+Policy cases still fail the side-effects check by construction. The workflow and
+provenance do not yet accept v4; that is a later change.
+
+Regenerate and verify with:
+
+```powershell
+uv run python scripts/generate_evaluation_cases.py --corpus v4 --write
+uv run python -m pytest apps/api/tests/test_evaluation_objective_benchmark.py
+```
+
 ## C1/v1 B0 model with spend limits
 
 `ai_qa_copilot_api.c1_evaluation_model:create_c1_b0_model` is a B0 model
