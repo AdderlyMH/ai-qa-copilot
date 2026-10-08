@@ -142,8 +142,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 103987,
-      "sha256": "21b139296e29a9cfcf04e54041bf7c1fce04dd41703a3d394ec9ef6ba6dd8b93"
+      "bytes": 105910,
+      "sha256": "283f9876864e4701ad0f382c73353b2b9c7c5a5f292fb623ee60b1c6c91b0b4b"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +242,8 @@
     },
     {
       "path": "docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md",
-      "bytes": 15362,
-      "sha256": "bd41b6a3d36d644931c4464cd7fd146cd68aec8cf2d26f8f6c0239337b359bb6"
+      "bytes": 18823,
+      "sha256": "e76b7a43c4856a4eb394d7071c8cb1f5160c657e7b58bc3981d6549b2674b40d"
     },
     {
       "path": "docs/adr/README.md",
@@ -272,8 +272,8 @@
     },
     {
       "path": "fixtures/benchmark/README.md",
-      "bytes": 25705,
-      "sha256": "0ad9ed5db10719be3498290234d398ffb30f22c0160b754c1a21f796267ff3bf"
+      "bytes": 28206,
+      "sha256": "053210c325fa14712c7ae66fa60e2877c350a465be14924ac00ed5d5e7d00207"
     },
     {
       "path": "fixtures/benchmark/baselines/b0-naive-single-prompt.v1.yaml",
@@ -301,9 +301,24 @@
       "sha256": "8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae"
     },
     {
+      "path": "fixtures/benchmark/evaluation-cases.v4.yaml",
+      "bytes": 40357,
+      "sha256": "e79a1a5f771456680a0093d10f8b6f300616dd4f254cc445b86c3769a5daad8d"
+    },
+    {
+      "path": "fixtures/benchmark/evaluation-objectives.v4.yaml",
+      "bytes": 6971,
+      "sha256": "2c7c7b07e6031b40d65115aa5f66604490c9408fb266aedd2a5dea59c03ff7ca"
+    },
+    {
       "path": "fixtures/benchmark/evaluation-review-rubric.v1.yaml",
       "bytes": 1277,
       "sha256": "1cc28a80fc143bdc4e2e19b8a4f21b6577ccab14f8efe0634b3c87c9fca02d32"
+    },
+    {
+      "path": "fixtures/benchmark/evaluation-v4-review.v1.yaml",
+      "bytes": 12849,
+      "sha256": "6bd77be53e16e4fcccb957cab1f04a11f2394d5f9dee815cb78d06a011f1ac5a"
     },
     {
       "path": "fixtures/benchmark/fixture-manifest.v1.yaml",
