@@ -301,6 +301,11 @@
       "sha256": "8511b573d57e24436a705cb119b4c2db47b5883bdcbb9f498d3adfc5e35b69ae"
     },
     {
+      "path": "fixtures/benchmark/evaluation-cases.v4.yaml",
+      "bytes": 40357,
+      "sha256": "e79a1a5f771456680a0093d10f8b6f300616dd4f254cc445b86c3769a5daad8d"
+    },
+    {
       "path": "fixtures/benchmark/evaluation-objectives.v4.yaml",
       "bytes": 6971,
       "sha256": "2c7c7b07e6031b40d65115aa5f66604490c9408fb266aedd2a5dea59c03ff7ca"
