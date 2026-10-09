@@ -121,6 +121,11 @@
       "sha256": "df70e339a107dba5309f2d32704070e720afbfa15dbe66841de6c154879d6fbc"
     },
     {
+      "path": "docs/EVALUATION_V4_PROVIDER_COMPARISON.md",
+      "bytes": 14123,
+      "sha256": "2b8b38a5670b37ed142cebe35070af037cc3c7884415d5962fc1ecca22ba10f0"
+    },
+    {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
       "bytes": 5574,
       "sha256": "abe9b87fc865374cf15652dda56bcb532199c73a62a53cd0039f3268bc2a243a"
@@ -142,8 +147,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 109233,
-      "sha256": "09ddbc371441537097f3b28ffa22f1bd76f4e633cb4cd073eb97525836f7406a"
+      "bytes": 110716,
+      "sha256": "85f39aa4efe5750f56500d44963b456ed4cf00069136a42670e6009f0c8d4cd5"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -242,8 +247,8 @@
     },
     {
       "path": "docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md",
-      "bytes": 28234,
-      "sha256": "ce9127f1f9adf899daeca620a1851890c5e78971a5be67d936c029bb60e4467f"
+      "bytes": 31121,
+      "sha256": "93b4753a44661e967f3c25923bd10acb8395b73be9ad04c658e1f77b3d4a780c"
     },
     {
       "path": "docs/adr/README.md",

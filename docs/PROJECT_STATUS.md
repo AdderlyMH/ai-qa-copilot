@@ -1,5 +1,28 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Informed-v4 provider comparison recorded — 2026-10-09
+
+**Status:** Recorded on branch `docs/v4-comparison-report`; documentation and a
+report script only. No new provider call; the runs below were made earlier
+from commit `93889012`. Results are design-set, internally reviewed,
+`results_not_independently_validated`, catalog-selection results and are never
+B1, B2 or gate evidence. Details:
+[provider comparison](EVALUATION_V4_PROVIDER_COMPARISON.md) and the
+[ADR-016 amendment](adr/ADR-016-objective-fixture-v4-provider-comparison.md#amendment--live-results-2026-10-09).
+
+Runs: two OpenAI probes, one smoke run per provider, two full runs per provider;
+all calls succeeded; total spend 2.408122 USD. Full runs (four discriminating
+checks, passed of applicable): Claude 25 of 27, 26 of 31, 23 of 27, 28 of 31;
+OpenAI 27 of 27, 30 of 31, 24 of 27, 30 of 31; identical selections in both runs
+per provider (n = 31). Cost per full run 0.649638 and 0.650938 USD (Claude),
+0.406144 and 0.408954 USD (OpenAI), a tokenization difference at equal list
+prices. Resolved: explicit cache mode accepted with zero cache tokens, model
+string `gpt-6.1-sol`, reasoning tokens reported, outputs far under 4,096, OpenAI
+calibration 0.4482 to 0.4700 (2.1 retained). New tooling:
+`scripts/report_informed_v4_comparison.py` verifies run folders against their
+provenance, a rebuild and a re-score before rendering. Run artifacts stay
+outside the repository; no evidence convention exists for them.
+
 ## v4 and OpenAI provenance and workflow support — 2026-10-08
 
 **Status:** Implemented on branch `feat/v4-openai-workflow`, not yet merged.

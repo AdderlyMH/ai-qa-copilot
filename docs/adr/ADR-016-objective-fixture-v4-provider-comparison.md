@@ -486,6 +486,65 @@ Steps are in this order and each is authorized separately. Details are in the
   confirms it).
 - Everything listed for the probe in the OpenAI adapter amendment above.
 
+## Amendment — Live results (2026-10-09)
+
+No decision above changed. All runs used commit `93889012` on `main`,
+`informed-single-prompt/v1` and `evaluation-corpus/v4`. Every run folder was
+verified by `scripts/report_informed_v4_comparison.py`: the recorded provenance
+equals a rebuild by the committed recorder, and each score report equals a
+re-score by the committed scorer. The full tables and the reading are in the
+[provider comparison](../EVALUATION_V4_PROVIDER_COMPARISON.md).
+
+### Runs and spend
+
+| Step | Runs | Calls | Charged USD |
+|---|---|---|---|
+| OpenAI probe (EVAL-111) | probe-1, probe-2 | 1 each | 0.019372 each |
+| Smoke | Claude; OpenAI | 8 each | 0.156348; 0.097356 |
+| Full | claude-1, claude-2 | 31 each | 0.649638; 0.650938 |
+| Full | openai-1, openai-2 | 31 each | 0.406144; 0.408954 |
+
+Total spend across the eight runs: **2.408122 USD**, against declared worst
+cases far below each run limit. Every call succeeded.
+
+### Results (four discriminating checks, passed of applicable)
+
+| Run | Required IDs | No unexpected IDs | Source references | Boundary |
+|---|---|---|---|---|
+| claude-1, claude-2 | 25 of 27 | 26 of 31 | 23 of 27 | 28 of 31 |
+| openai-1, openai-2 | 27 of 27 | 30 of 31 | 24 of 27 | 30 of 31 |
+
+Each provider produced identical IDs and boundary on all 31 cases in both runs,
+so n is 31 per provider. These are design-set, internally reviewed results
+(`results_not_independently_validated`), never B1, B2 or gate evidence, with no
+significance claim.
+
+### Unverified items resolved
+
+- **Explicit cache mode** with no breakpoints was accepted for `gpt-6.1-sol`,
+  and no cache tokens were reported: all 72 OpenAI calls succeeded under an
+  adapter that fails closed on any cached or cache-write token.
+- **Model string:** responses reported `gpt-6.1-sol` (the adapter accepts no
+  other string, and no call failed).
+- **Reasoning tokens** were reported on every OpenAI call (no null value):
+  0 on both probes, at most 196 per call in the full runs.
+- **Output cap:** the largest output was 381 tokens (Claude) and 300 tokens
+  (OpenAI, including reasoning), far under 4,096; no call was truncated.
+- **OpenAI calibration:** input tokens were 0.4482 to 0.4700 of the 2.1
+  characters-per-token estimate (Claude: 0.7009 to 0.8283). The estimate
+  overstates input for both providers, so **2.1 is retained** as a conservative
+  pre-call estimate; it is not a tokenizer model.
+- **Still unverified from the artifacts:** which GitHub environment each run
+  used; the run artifacts do not record it.
+
+### Evidence
+
+The repository has no convention for committing evaluation-run artifacts
+(`docs/evidence/` holds one governance bundle; earlier runs were recorded by
+figures and hashes in ADR amendments). The run artifacts stay outside the
+repository; each run's run-report and ledger SHA-256 are listed in the
+comparison's verified-inputs table.
+
 ## Links
 
 - [ADR-014 — Budgeted C1/v1 provider-comparison evaluation](ADR-014-c1-budgeted-provider-comparison-evaluation.md)
