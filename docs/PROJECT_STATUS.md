@@ -1,5 +1,22 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## ADR-005 accepted narrowly — 2026-10-10
+
+**Status:** Recorded on branch `docs/accept-adr-005`; documentation only. No
+code, workflow, fixture, test or pricing change, no provider call, no AWS
+resource and no spend, and no price, version or benchmark claim.
+
+[ADR-005](adr/ADR-005-aws-serverless-and-database.md) is Accepted for: AWS,
+Terraform, a managed container-based application tier, the PostgreSQL plus
+pgvector interface, and local Docker Compose PostgreSQL. The production
+PostgreSQL provider and the API/worker compute service are still open. Gates:
+no production database resource until the provider is recorded in an ADR-005
+amendment or a new ADR; INFRA-002 records the compute choice with dated AWS
+documentation and pricing; the INFRA-001 and INFRA-003 checklists verify NAT or
+egress cost, private connectivity to an external provider, and idle charges
+against current official documentation. The validation table remains planned
+acceptance conditions with no executed evidence. Next action: INFRA-001.
+
 ## Backlog housekeeping and OBS-003 deferral — 2026-10-10
 
 **Status:** Recorded on branch `docs/backlog-housekeeping`; documentation only.
@@ -1882,8 +1899,9 @@ release milestone.
 
 ## Next action
 
-Accept ADR-005 (AWS serverless and database, currently Proposed), then
-implement INFRA-001 (Terraform foundation) as the first Phase 6 item.
-HARD-001 through HARD-004 follow in dependency order. SKEL-007 (Playwright
-smoke test) is unstarted. OBS-003 is deferred and resumable; see the
-2026-10-10 entry above and `BACKLOG.md` section 15.
+Implement INFRA-001 (Terraform foundation), the first Phase 6 item, under the
+narrow ADR-005 acceptance of 2026-10-10: its checklist must cover NAT or egress
+cost, private connectivity to an external provider, and idle charges. INFRA-002
+records the compute-service choice and INFRA-003 the database provider;
+HARD-001 through HARD-004 follow. SKEL-007 (Playwright smoke test) is
+unstarted. OBS-003 is deferred and resumable; see `BACKLOG.md` section 15.

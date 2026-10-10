@@ -1,7 +1,8 @@
 # ADR-005 — AWS application tier and production database choice
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-18
+- **Accepted:** 2026-10-10 (narrow acceptance; see [Acceptance](#acceptance))
 - **Decision owner:** Project owner
 - **Scope:** Production cloud, infrastructure management, application tier, and the unresolved production PostgreSQL provider choice.
 
@@ -20,7 +21,30 @@ The production PostgreSQL provider has not been selected. Naming a provider befo
 - The exact production PostgreSQL provider will be selected through a cost, compatibility, pause or resume, availability, backup, extension, and operational benchmark.
 - Local development uses Docker Compose PostgreSQL with pgvector.
 
-**Decision trigger:** This ADR must be accepted before production Terraform creates the database tier.
+**Decision trigger:** This ADR must be accepted before production Terraform creates the database tier. Acceptance on 2026-10-10 satisfies the trigger for the items listed under Acceptance only; the database-tier gate below still applies.
+
+## Acceptance
+
+Accepted on 2026-10-10 by the project owner. This acceptance is narrow.
+
+**Accepted:**
+
+- AWS as the production cloud.
+- Terraform as the tool that manages production infrastructure.
+- A managed, container-based application tier for the API and worker workloads.
+- PostgreSQL plus pgvector as the required logical database interface.
+- Local Docker Compose PostgreSQL with pgvector as the developer database.
+
+**Not decided by this ADR:**
+
+- The production PostgreSQL provider. Aurora Serverless v2, RDS PostgreSQL, and an external managed PostgreSQL remain candidates.
+- The compute service for the API and worker (for example Lambda container images, ECS, or another AWS service). The Lambda-based diagram and module list in [Architecture 12](../ARCHITECTURE.md#12-production-deployment) are a planned design, not a decision made here.
+
+### Gates
+
+1. **Database gate.** Terraform must not create any production database resource until the provider selection is recorded in an amendment to this ADR or in a new ADR.
+2. **Compute gate.** INFRA-002 records the compute-service choice, citing current AWS documentation and pricing with the date each was read.
+3. **Verification gate.** The INFRA-001 and INFRA-003 checklists must cover NAT or other egress cost, private connectivity to an external provider, and idle charges. Each item is verified against current official documentation and is not assumed.
 
 ## Alternatives considered
 
@@ -44,7 +68,7 @@ The production PostgreSQL provider has not been selected. Naming a provider befo
 ### Costs and trade-offs
 
 - Production database selection requires a benchmark, cost model, recovery exercise, and documented comparison.
-- Infrastructure work cannot complete the production database tier until this proposal is accepted.
+- Infrastructure work cannot create the production database tier until the provider selection is recorded under the database gate.
 - Provider portability may require avoiding provider-specific database features beyond the documented interface.
 
 ## Security, cost, and operational impact
@@ -57,12 +81,13 @@ The production PostgreSQL provider has not been selected. Naming a provider befo
 ### Cost
 
 - Selection is gated by a monthly projection against the project budget, including idle behavior, storage, backups, connection behavior, and application-tier usage.
+- The selection threshold is the project budget in the [project charter](../PROJECT_CHARTER.md#operational-and-portfolio-targets): a monthly normal operating target of at most USD 35 and a hard monthly project budget of USD 50. The charter sets no separate idle-cost figure.
 - No candidate is represented as cost-verified until the benchmark evidence exists.
 
 ### Operations
 
 - The selected tier must support migrations, pgvector, monitoring, backup and restore, connection behavior from the application tier, and a documented recovery procedure.
-- Local Docker Compose remains the supported developer database until a production provider is accepted.
+- Local Docker Compose remains the supported developer database until a production provider is selected.
 
 ## Validation
 
@@ -80,10 +105,10 @@ The following are planned acceptance conditions; this ADR records no executed va
 
 ## Rollback criteria
 
-- Before acceptance, retain Docker Compose PostgreSQL with pgvector for local development and do not create a production database tier from this ADR.
+- Until the provider selection is recorded under the database gate, retain Docker Compose PostgreSQL with pgvector for local development and do not create a production database tier.
 - If an accepted provider fails compatibility, cost, availability, backup, or recovery validation, stop further rollout and restore from the verified backup into a safe environment or another benchmarked candidate.
 - Preserve benchmark data, cost projections, migration records, backup evidence, and incident audit information during a provider change.
-- Re-enable production database provisioning only after the selected candidate is accepted, its recovery procedure is documented, and the required validation conditions are satisfied.
+- Re-enable production database provisioning only after the selected candidate is recorded, its recovery procedure is documented, and the required validation conditions are satisfied.
 
 ## Links
 

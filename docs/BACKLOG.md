@@ -124,7 +124,7 @@ other P0 gates remain non-negotiable.
 - **Estimate:** 2 h
 - **Dependencies:** FND-001
 - **Deliverable:** `docs/adr/README.md` and ADR-001 through ADR-010 in Proposed or Accepted state.
-- **Acceptance:** `docs/adr/README.md` indexes ADR-001 through ADR-010 and matches the status in each record. The decisions cover modular monolith, direct orchestration, hybrid retrieval, safe HTTP execution, AWS application tier and production database choice, public-demo data policy, three-level evaluation, Cognito authorization, parser isolation, and canonical QA-report revisions. ADR-001 through ADR-004 and ADR-006 through ADR-010 are Accepted. ADR-005 remains Proposed until its documented decision trigger is met: it must be accepted before production Terraform creates the database tier.
+- **Acceptance:** `docs/adr/README.md` indexes ADR-001 through ADR-010 and matches the status in each record. The decisions cover modular monolith, direct orchestration, hybrid retrieval, safe HTTP execution, AWS application tier and production database choice, public-demo data policy, three-level evaluation, Cognito authorization, parser isolation, and canonical QA-report revisions. ADR-001 through ADR-010 are Accepted. ADR-005 was accepted narrowly on 2026-10-10: the production PostgreSQL provider and the API/worker compute service remain undecided, and production Terraform must not create the database tier until the provider selection is recorded.
 
 #### FND-004 — Create public repository controls
 
@@ -1197,11 +1197,12 @@ results (ADR-014 to ADR-016) are not B1, B2 or gate evidence.
 
 ### Current next work
 
-1. ADR-005 acceptance: AWS serverless and database decision, currently
-   Proposed.
-2. INFRA-001: Terraform foundation, the first Phase 6 item.
-3. HARD-001 through HARD-004, in dependency order alongside INFRA-002 through
-   INFRA-004.
+1. INFRA-001: Terraform foundation, the first Phase 6 item. ADR-005 is
+   accepted narrowly (2026-10-10); its checklist must cover NAT or egress cost,
+   private connectivity to an external provider, and idle charges.
+2. INFRA-002 (records the compute-service choice) and INFRA-003 (records the
+   database provider) follow, then INFRA-004.
+3. HARD-001 through HARD-004, in dependency order alongside the INFRA items.
 
 SKEL-007 (Playwright end-to-end smoke test, P1) is unstarted and remains open.
 Do not add production deployment scope outside the INFRA items.

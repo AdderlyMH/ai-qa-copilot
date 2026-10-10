@@ -24,7 +24,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-002](ADR-002-direct-responses-orchestration.md)          | Direct Responses API orchestration                                                                       | Accepted |
 | [ADR-003](ADR-003-hybrid-retrieval.md)                        | PostgreSQL full-text plus pgvector hybrid retrieval                                                      | Accepted |
 | [ADR-004](ADR-004-safe-http-execution-topology.md)            | Safe HTTP execution topology: model proposes, code validates, owner approves, restricted worker executes | Accepted |
-| [ADR-005](ADR-005-aws-serverless-and-database.md)             | AWS application tier and production database choice                                                      | Proposed |
+| [ADR-005](ADR-005-aws-serverless-and-database.md)             | AWS application tier and production database choice                                                      | Accepted |
 | [ADR-006](ADR-006-public-demo-data-policy.md)                 | Synthetic/public data and public-demo data policy                                                        | Accepted |
 | [ADR-007](ADR-007-three-level-evaluation.md)                  | Three-level evaluation strategy                                                                          | Accepted |
 | [ADR-008](ADR-008-cognito-owner-guest-authorization.md)       | Cognito owner authentication and scoped public-demo authorization                                        | Accepted |
