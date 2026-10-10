@@ -62,8 +62,8 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 4653,
-      "sha256": "c6c747ed1980a7b812bf43f1a33630fbd9acc7a893b21ba48a62222f5c52ef07"
+      "bytes": 4660,
+      "sha256": "c87b5d06faf69f8fa578d3c9675c48ce9f1a3afd49034d2041076939fe7b2950"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 62134,
-      "sha256": "b7e8699b0648a650364bf3db60ece6b66b30ddd89b769bece8a6436ab33e2e76"
+      "bytes": 62376,
+      "sha256": "27348ee5fd04de7863eb69467b0ae0ce0612e1e0f8976f8147df56a0b366edae"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -147,8 +147,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 111630,
-      "sha256": "473fbfd06197a9c8df6d0269eec954f6c4e128527d964152bcb86c5e9403ca2c"
+      "bytes": 112771,
+      "sha256": "13ef95777932ff5485167c368404a7736bb2d46da539684bbc5b2c55bb44afa8"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -192,8 +192,8 @@
     },
     {
       "path": "docs/adr/ADR-005-aws-serverless-and-database.md",
-      "bytes": 6583,
-      "sha256": "d3ce54d40884f588790b2807586c0031d65d6bbdaf58c38b1dc0b19b7bc29798"
+      "bytes": 8556,
+      "sha256": "492a580e1b1dac277df54053b178e146347abc02dbc4fc17e7a21b5006828a25"
     },
     {
       "path": "docs/adr/ADR-006-public-demo-data-policy.md",
@@ -253,7 +253,7 @@
     {
       "path": "docs/adr/README.md",
       "bytes": 4377,
-      "sha256": "0b16b4f816c70ef78575126d27a39f1bc1152d5d69cf6e65c689509d637e248a"
+      "sha256": "522ac018d2ecd7a1458e827739da3c108b42543eed1c27e3cff2a3b8dd2d21e5"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",

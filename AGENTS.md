@@ -3,8 +3,8 @@
 ## Current boundary
 
 Phases 0 through 4 and most of Phase 5 are accepted on `main`; Phase 6
-(security and deployment, starting with ADR-005 acceptance and INFRA-001) is
-next. OBS-003 is deferred, and SKEL-007 is unstarted. Implementation proceeds
+(security and deployment, starting with INFRA-001; ADR-005 is accepted
+narrowly) is next. OBS-003 is deferred, and SKEL-007 is unstarted. Implementation proceeds
 one approved backlog item at a time; `docs/BACKLOG.md` section 15 lists the
 current next work. SKEL-001 through SKEL-006, IAM-001, IAM-002, and SEC-001 are
 verified on `main`.
