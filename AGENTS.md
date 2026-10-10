@@ -2,9 +2,11 @@
 
 ## Current boundary
 
-Phase 1 is active. The repository retains its verified Phase 0 governance and
-documentation baseline while implementation proceeds one approved backlog item
-at a time. SKEL-001 through SKEL-006, IAM-001, IAM-002, and SEC-001 are
+Phases 0 through 4 and most of Phase 5 are accepted on `main`; Phase 6
+(security and deployment, starting with ADR-005 acceptance and INFRA-001) is
+next. OBS-003 is deferred, and SKEL-007 is unstarted. Implementation proceeds
+one approved backlog item at a time; `docs/BACKLOG.md` section 15 lists the
+current next work. SKEL-001 through SKEL-006, IAM-001, IAM-002, and SEC-001 are
 verified on `main`.
 IAM-002 is accepted at its component boundary: central project-scoped
 authorization, immutable server-selected demo-publication access, and
