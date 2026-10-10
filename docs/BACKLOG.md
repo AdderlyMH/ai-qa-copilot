@@ -856,12 +856,18 @@ of this backlog.
 - **Dependencies:** EVAL-006, EVAL-008, OBS-002
 - **Deliverable:** Candidate comparisons for at least three planned ablations.
 - **Acceptance:** Selection is justified by quality, latency, and cost evidence.
-- **Status:** In progress. The B1 reference-evidence contract and fail-closed
-  reference-assembly component are accepted on main through PRs #129 and #131.
-  Implement EVAL-008 before assembling an internal-mode B1/v1 reference run.
-  An actual immutable B1/v1 reference run is still required before routing
-  ablations. External review is not a prerequisite under ADR-007; any internal
-  result must be disclosed as not independently validated.
+- **Status:** Deferred (2026-10-10), resumable; not done. The B1
+  reference-evidence contract and fail-closed reference-assembly component
+  (PRs #129 and #131), the EVAL-008 internal review mode (PR #143) and the B1
+  candidate-executor contract are accepted and kept. The B1/v1 reference run
+  and the ablations are deferred because no independent reviewer is available;
+  internal review mode needs the owner's own primary labels, holdout-access
+  records and a candidate freeze, which do not yet exist; the development split
+  cannot measure accuracy (ADR-015 amendment, 2026-10-05); and the B1 candidate
+  executor stays disabled. An actual immutable B1/v1 reference run is still
+  required before routing ablations. External review is not a prerequisite
+  under ADR-007; any internal result must be disclosed as not independently
+  validated.
 
 **Phase 5 exit:** A 100-case benchmark, CI gates, traces, and cost/latency evidence support the release candidate.
 
@@ -1077,6 +1083,10 @@ If the schedule slips:
 
 ## 15. Immediate next issue
 
+The current next work is listed under "Current next work" at the end of this
+section (updated 2026-10-10). The paragraphs before it are the historical
+acceptance record.
+
 FND-001 through FND-009 have recorded Phase 0 evidence. IAM-001 is verified on
 merged `main` `b577542cf6c2fb2681141eb3b69571aa7ec36503`, and IAM-002 is
 verified on merged `main` `c4866af6c7d8ab83cb84d2a85e72da0f1e48a06c`.
@@ -1164,10 +1174,34 @@ feature pull-request heads completed their required checks:
 
 OBS-001 and OBS-002 are accepted on main through PRs #121 and #126. OBS-003's
 B1 reference-evidence contract and fail-closed assembly component are accepted
-through PRs #129 and #131. EVAL-008 must implement the internal review mode
-selected in ADR-007 before an internal-mode B1/v1 reference run is assembled.
-Preserve benchmark, label, configuration, holdout-access, quality, latency,
-cost, failure, and security-gate provenance. An actual immutable B1/v1
-reference run remains required before routing ablations. Any result without
-qualifying independent review must be disclosed as not independently
-validated. Do not add production deployment scope.
+through PRs #129 and #131, and EVAL-008's internal review mode through PR #143.
+
+OBS-003 is deferred as of 2026-10-10 and remains resumable; it is not done. The
+B1/v1 reference run and the routing and retrieval ablations are deferred
+because:
+
+- no independent reviewer is available;
+- internal review mode needs the owner's own primary labels, holdout-access
+  records and a candidate freeze, none of which exist yet;
+- the development split cannot measure accuracy (ADR-015 amendment,
+  2026-10-05);
+- the B1 candidate executor stays disabled.
+
+The existing B1 reference assembly, internal review mode and candidate-executor
+contract are kept unchanged. When OBS-003 resumes, preserve benchmark, label,
+configuration, holdout-access, quality, latency, cost, failure, and
+security-gate provenance. An actual immutable B1/v1 reference run remains
+required before routing ablations. Any result without qualifying independent
+review must be disclosed as not independently validated. Provider-comparison
+results (ADR-014 to ADR-016) are not B1, B2 or gate evidence.
+
+### Current next work
+
+1. ADR-005 acceptance: AWS serverless and database decision, currently
+   Proposed.
+2. INFRA-001: Terraform foundation, the first Phase 6 item.
+3. HARD-001 through HARD-004, in dependency order alongside INFRA-002 through
+   INFRA-004.
+
+SKEL-007 (Playwright end-to-end smoke test, P1) is unstarted and remains open.
+Do not add production deployment scope outside the INFRA items.

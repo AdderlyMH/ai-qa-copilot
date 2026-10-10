@@ -62,8 +62,8 @@
     },
     {
       "path": "AGENTS.md",
-      "bytes": 4500,
-      "sha256": "4ddca3cff28f555714444d63bb59f543ff52c09d52c384fd31a47ec01306176a"
+      "bytes": 4653,
+      "sha256": "c6c747ed1980a7b812bf43f1a33630fbd9acc7a893b21ba48a62222f5c52ef07"
     },
     {
       "path": "CONTRIBUTING.md",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 60590,
-      "sha256": "ca7a7035b16bcd913f3cd10737509d7332f4a8f1508c04d2ff6c1364eee31019"
+      "bytes": 62134,
+      "sha256": "b7e8699b0648a650364bf3db60ece6b66b30ddd89b769bece8a6436ab33e2e76"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -147,8 +147,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 110716,
-      "sha256": "85f39aa4efe5750f56500d44963b456ed4cf00069136a42670e6009f0c8d4cd5"
+      "bytes": 111630,
+      "sha256": "473fbfd06197a9c8df6d0269eec954f6c4e128527d964152bcb86c5e9403ca2c"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",

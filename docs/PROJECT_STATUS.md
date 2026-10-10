@@ -1,5 +1,20 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Backlog housekeeping and OBS-003 deferral — 2026-10-10
+
+**Status:** Recorded on branch `docs/backlog-housekeeping`; documentation only.
+No code, workflow, fixture, pricing or test change, no provider call and no
+spend.
+
+OBS-003 (B1/v1 reference run and ablations) is deferred and resumable, not
+done: no independent reviewer is available; internal review mode needs the
+owner's own primary labels, holdout-access records and a candidate freeze; the
+development split cannot measure accuracy (ADR-015 amendment); and the B1
+candidate executor stays disabled. The existing B1 assembly, internal review
+mode and executor contract are kept. Provider-comparison results are not B1, B2
+or gate evidence. Next action: accept ADR-005, then INFRA-001; SKEL-007 is
+unstarted; HARD-001 to HARD-004 follow.
+
 ## Informed-v4 provider comparison recorded — 2026-10-09
 
 **Status:** Recorded on branch `docs/v4-comparison-report`; documentation and a
@@ -1867,6 +1882,8 @@ release milestone.
 
 ## Next action
 
-Implement OBS-001 from accepted `main`. Preserve secret redaction and add only
-correlated structured spans for API, job, retrieval, model, approval,
-execution, and evaluation paths. Do not add deployment scope in this item.
+Accept ADR-005 (AWS serverless and database, currently Proposed), then
+implement INFRA-001 (Terraform foundation) as the first Phase 6 item.
+HARD-001 through HARD-004 follow in dependency order. SKEL-007 (Playwright
+smoke test) is unstarted. OBS-003 is deferred and resumable; see the
+2026-10-10 entry above and `BACKLOG.md` section 15.
