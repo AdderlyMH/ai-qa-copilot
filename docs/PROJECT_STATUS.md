@@ -1,5 +1,29 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-001 stage 1 of 3: Terraform foundation code — 2026-10-12
+
+**Status:** Implemented on branch `feat/infra-001-terraform-foundation`, not yet
+merged. Code and documentation only: no AWS account or credentials, no
+`terraform plan` or `apply`, no AWS resource and no spend. Details and dated
+sources are in [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+
+Delivered under `infra/`: a `bootstrap` root (local state) for the state bucket
+with versioning, SSE-S3, public access block, TLS-only policy and
+noncurrent-version expiry; `naming` and `github_oidc_plan_role` modules; and an
+`environments/production` root with a partial S3 backend using native lock
+files (DynamoDB locking is deprecated), an account guard, a `region` variable
+without a default, and a GitHub OIDC provider with a plan-only role whose trust
+requires an exact repository-and-environment `sub`. Terraform is constrained
+to `>= 1.16.5, < 2.0.0` (1.16.5 is the newest stable release) and the AWS
+provider to `>= 6.68.0, < 7.0.0`, locked to 6.68.0 for `windows_amd64` and
+`linux_amd64`. No database or compute resource exists (ADR-005 gates).
+`INFRASTRUCTURE.md` records the ADR-005 verification-gate checklist as charge
+structures with dated official sources; it is not a cost projection.
+
+Open: Region, compute service (INFRA-002), database provider (INFRA-003), the
+GitHub plan environment and workflow, and IaC policy scanning in CI. Next
+action: INFRA-001 stage 2.
+
 ## ADR-005 accepted narrowly — 2026-10-10
 
 **Status:** Recorded on branch `docs/accept-adr-005`; documentation only. No
@@ -1899,8 +1923,8 @@ release milestone.
 
 ## Next action
 
-Implement INFRA-001 (Terraform foundation), the first Phase 6 item, under the
-narrow ADR-005 acceptance of 2026-10-10: its checklist must cover NAT or egress
+Continue INFRA-001 (Terraform foundation; stage 1 of 3 implemented 2026-10-12),
+the first Phase 6 item, under the narrow ADR-005 acceptance of 2026-10-10: its checklist must cover NAT or egress
 cost, private connectivity to an external provider, and idle charges. INFRA-002
 records the compute-service choice and INFRA-003 the database provider;
 HARD-001 through HARD-004 follow. SKEL-007 (Playwright smoke test) is
