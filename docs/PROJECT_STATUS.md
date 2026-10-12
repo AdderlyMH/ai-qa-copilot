@@ -1,5 +1,29 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-001 stage 2 of 3: Terraform CI validation — 2026-10-12
+
+**Status:** Implemented on branch `feat/infra-001-ci-workflow`, not yet merged.
+Workflow and documentation only: no AWS credentials, no OIDC, no `terraform
+plan` or `apply`, no AWS resource and no spend. The new workflow has not yet run
+on GitHub.
+
+Delivered: `.github/workflows/terraform-ci.yml` (workflow `terraform-ci`, job
+`terraform-validate`) on every pull request without a path filter, with
+`contents: read`, per-ref concurrency, commit-pinned `actions/checkout` v6.0.2
+(unchanged from `application-ci.yml`) and `hashicorp/setup-terraform` v4.0.1
+with Terraform 1.16.5 and the wrapper disabled. It checks the Terraform version,
+`fmt`, lock-file presence, `init -backend=false`, that `init` changed no lock
+file, and `validate` for both roots. Dependabot gains `github-actions` and one
+`terraform` entry per root. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md) and
+[REPOSITORY_GOVERNANCE.md](REPOSITORY_GOVERNANCE.md).
+
+Pending owner action: add `terraform-validate` to the required status checks of
+the GitHub ruleset; it is not required yet. Unverified: Dependabot's documented
+Terraform support stops at 1.15.x while the repository pins 1.16.5, and whether
+it updates `.terraform.lock.hcl` for Terraform. Next action: INFRA-001 stage 3
+(plan-only job after the account, OIDC provider and protected environment
+exist), then INFRA-002.
+
 ## INFRA-001 stage 1 of 3: Terraform foundation code — 2026-10-12
 
 **Status:** Implemented on branch `feat/infra-001-terraform-foundation`, not yet
@@ -1923,7 +1947,8 @@ release milestone.
 
 ## Next action
 
-Continue INFRA-001 (Terraform foundation; stage 1 of 3 implemented 2026-10-12),
+Continue INFRA-001 (Terraform foundation; stages 1 and 2 of 3 implemented
+2026-10-12),
 the first Phase 6 item, under the narrow ADR-005 acceptance of 2026-10-10: its checklist must cover NAT or egress
 cost, private connectivity to an external provider, and idle charges. INFRA-002
 records the compute-service choice and INFRA-003 the database provider;

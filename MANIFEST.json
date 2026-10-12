@@ -37,8 +37,8 @@
     },
     {
       "path": ".github/dependabot.yml",
-      "bytes": 133,
-      "sha256": "e11ee2dd9f1773e15bd2230e150a9f375c08b84fb4ff118e02d942b30639028e"
+      "bytes": 539,
+      "sha256": "529e7b2ae22bbd94215d1836e8bfbfc6f5fd60ce7a904a856581b30d285a0d93"
     },
     {
       "path": ".github/pull_request_template.md",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 62752,
-      "sha256": "c019196b4c3fef3a3f860fffde61ccd0a55da4525b0be82b8c35363dff02e571"
+      "bytes": 62912,
+      "sha256": "29a08842b9804ee38e2930a0ac1ddbbd87729e740b4d39a0bba541c4894fc071"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 9031,
-      "sha256": "e3bb72b469c690c50d9bf782507a35b526fb460eda24d2c8864e0ff7a9c2b08b"
+      "bytes": 10709,
+      "sha256": "8d7705ba83e3e1fdeddce62434526a1e62cd1741180628af3d627a454756bc52"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,13 +152,13 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 114245,
-      "sha256": "c9a7afe96cb942d5ef9ee6732ece68aff210f0957c37369039bcc9ac76bcbc25"
+      "bytes": 115660,
+      "sha256": "d6142995a5e0204f52908c07d409845186c4494760c2d8aea47c066b3a32f07b"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
-      "bytes": 6217,
-      "sha256": "ef9a83060605a6e027c34f85914435341a2b9e571ee4a93a8ade172bbd9f0e8e"
+      "bytes": 7198,
+      "sha256": "14f64d1dcb3934fbf8c11373b93fc45846b77b3a47d2f4f18a4eec594cf5144e"
     },
     {
       "path": "docs/REVIEW_EVIDENCE_CAPTURE.md",
