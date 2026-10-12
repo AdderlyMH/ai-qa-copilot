@@ -1,5 +1,34 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-001 stage 3 of 3: IaC policy scan — 2026-10-12
+
+**Status:** Implemented on branch `feat/infra-001-policy-scan`, not yet merged.
+Workflow, Terraform comments and documentation only: no AWS credentials, no
+`terraform plan` or `apply`, no AWS resource and no spend. All three INFRA-001
+stages are implemented; INFRA-001 is not yet Accepted.
+
+Delivered: Checkov 3.3.20 (PyPI, Apache-2.0) runs in the existing
+`terraform-validate` job through the repository's pinned uv on Python 3.12, so
+the required check name is unchanged. Without a platform API key Checkov
+reports no severities, so the job fails on any failed check. A local run gave
+56 passed, 0 failed and 4 skipped; the four inline suppressions on the state
+bucket (KMS default encryption, access logging, cross-Region replication, event
+notifications) carry written reasons and are listed in
+[INFRASTRUCTURE.md](INFRASTRUCTURE.md#iac-policy-scan). Trivy was not chosen:
+its release and action tags were compromised in March 2026
+(GHSA-69fq-xp46-6x23) and it would add a new action or binary. tfsec is
+superseded by Trivy.
+
+Verified 2026-10-12: `terraform-validate` is a required status check of
+ruleset `19300108`, from the owner's API capture corroborated through the
+public API ([evidence](evidence/github-ruleset-2026-10-12/README.md)). The scan
+step has not yet run on GitHub.
+
+Open: Region, compute service (INFRA-002), database provider (INFRA-003), the
+GitHub plan environment and plan-only job, budgets and alarms (HARD-003), the
+first apply, and S3 access logging (revisit in HARD-001). Next action: INFRA-001
+acceptance review, then INFRA-002.
+
 ## INFRA-001 stage 2 of 3: Terraform CI validation — 2026-10-12
 
 **Status:** Implemented on branch `feat/infra-001-ci-workflow`, not yet merged.
@@ -1947,10 +1976,9 @@ release milestone.
 
 ## Next action
 
-Continue INFRA-001 (Terraform foundation; stages 1 and 2 of 3 implemented
-2026-10-12),
-the first Phase 6 item, under the narrow ADR-005 acceptance of 2026-10-10: its checklist must cover NAT or egress
-cost, private connectivity to an external provider, and idle charges. INFRA-002
-records the compute-service choice and INFRA-003 the database provider;
-HARD-001 through HARD-004 follow. SKEL-007 (Playwright smoke test) is
-unstarted. OBS-003 is deferred and resumable; see `BACKLOG.md` section 15.
+Review INFRA-001 (Terraform foundation, the first Phase 6 item) for acceptance;
+all three stages were implemented on 2026-10-12. Then INFRA-002 records the
+compute-service choice and INFRA-003 the database provider, under the narrow
+ADR-005 acceptance of 2026-10-10. HARD-001 through HARD-004 follow. SKEL-007
+(Playwright smoke test) is unstarted. OBS-003 is deferred and resumable; see
+`BACKLOG.md` section 15.

@@ -66,6 +66,10 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "state" {
+  #checkov:skip=CKV_AWS_145:SSE-S3 is deliberate; it has no extra fee and needs no customer managed KMS key with a monthly charge (docs/INFRASTRUCTURE.md).
+  #checkov:skip=CKV_AWS_18:No server access logging; it needs a second bucket and log storage for a single-owner state bucket. Revisit in HARD-001.
+  #checkov:skip=CKV_AWS_144:No cross-Region replication; the Region is undecided and replication doubles storage. Versioning provides recovery.
+  #checkov:skip=CKV2_AWS_62:No event notifications; there is no consumer for state-bucket events in INFRA-001.
   bucket = var.state_bucket_name
 
   lifecycle {

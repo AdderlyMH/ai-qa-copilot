@@ -1,6 +1,6 @@
 # Infrastructure — INFRA-001 Terraform Foundation
 
-**Status:** Stage 2 of 3 in progress (2026-10-12). Stage 1 (code) is merged; stage 2 adds the validation workflow. Code, workflow and documentation only.
+**Status:** All three INFRA-001 stages implemented (2026-10-12): code (stage 1), the validation workflow (stage 2) and the IaC policy scan (stage 3). INFRA-001 is not yet accepted. Code, workflow and documentation only.
 No AWS account or credentials exist; nothing has been planned against or
 applied to AWS. Nothing here is deployment, cost or security-gate evidence.
 
@@ -11,10 +11,12 @@ Code lives in [`infra/`](../infra/README.md). Governing decision:
 
 The `terraform-ci` workflow (job `terraform-validate`) runs `terraform fmt
 -check`, `init -backend=false` and `validate` for both root modules, and fails
-if a lock file is missing or changed by `init`. It runs on every pull request
-with no credentials. **Plan and apply are not in CI.** A plan-only job needs the
-AWS account, the OIDC provider and the protected GitHub environment, which do
-not exist yet (stage 3).
+if a lock file is missing or changed by `init`. The same job runs the Checkov
+policy scan ([IaC policy scan](#iac-policy-scan)). It runs on every pull request
+with no credentials and is a required check of the `main` ruleset (verified
+2026-10-12; see [REPOSITORY_GOVERNANCE.md](REPOSITORY_GOVERNANCE.md)). **Plan and apply
+are not in CI.** A plan-only job needs the AWS account, the OIDC provider and
+the protected GitHub environment, which do not exist yet.
 
 Pins and sources read 2026-10-12: `hashicorp/setup-terraform` v4.0.1 (commit
 `dfe3c3f87815947d99a8997f908cb6525fc44e9e`, the latest stable release; its
@@ -31,6 +33,65 @@ and `github-actions` as ecosystems and says `directory` takes one path
 The official page states that Dependabot updates `.terraform.lock.hcl` only in
 its OpenTofu section, not in the Terraform section; third-party reports say it
 does for Terraform too. This is unverified for this repository.
+
+## IaC policy scan
+
+**Choice:** Checkov `3.3.20`, run in the `terraform-validate` job as
+`uv tool run --python 3.12 --from checkov==3.3.20 checkov --directory infra
+--framework terraform --compact --skip-download`. The job fails on any failed
+check.
+
+Comparison (official sources read 2026-10-12):
+
+| Scanner | Status and licence | CI install and pinning | Exit behaviour |
+|---|---|---|---|
+| Checkov | Maintained, frequent releases (3.3.28 on 2026-10-12); Apache-2.0 (C1, C2) | PyPI package pinned to an exact version and run with the repository's pinned uv, the same pattern as `pip-audit` and `bandit` in `application-ci.yml`; no third-party action. The `checkov-action` repository's latest GitHub release is from 2022 (C3) | Non-zero on failed checks; `--soft-fail`, `--soft-fail-on` and `--hard-fail-on` accept check IDs or severities (C4) |
+| Trivy (`trivy config`) | Maintained (v0.75.0 on 2026-10-01); Apache-2.0 (C5) | `trivy-action` (v0.36.0) or a pinned binary or container. In March 2026 a malicious Trivy release was published and 76 of 77 `trivy-action` tags and all `setup-trivy` tags were replaced with credential-stealing code (GHSA-69fq-xp46-6x23, CVE-2026-33634); the advisory tells users to pin actions to full commit SHAs (C6) | Severity filter and exit-code flags |
+| tfsec | Maintainers say tfsec is now part of Trivy and engineering attention goes to Trivy (C7); latest release v1.28.14 (2025-05-02); MIT | Binary or action | Not chosen: superseded by Trivy |
+
+**Why Checkov:** it runs through the pinned toolchain the repository already
+uses for scanners, with no new third-party action or container in the job, and
+it has Terraform and GitHub-OIDC policies (for example `CKV_AWS_358` and
+`CKV_AWS_393`, both passing). Trivy is a sound scanner, but its delivery
+channels were compromised in 2026 and using it would add a new action or binary
+to verify.
+
+**Pin:** 3.3.20 was published to PyPI on 2026-09-27, the newest release at
+least 14 days old on 2026-10-12 (3.3.28, the latest, was published that day).
+PyPI classifiers list Python 3.9 to 3.12, so the scan runs on Python 3.12
+rather than the repository's 3.13.
+
+**Severity threshold:** without a Prisma Cloud API key Checkov reports
+`severity: null` for every result (verified locally with `--output json`), so a
+severity filter such as `--hard-fail-on HIGH` cannot be applied. The job
+therefore fails on **any** failed check. `--skip-download` stops calls to the
+Prisma Cloud platform, whose data is not needed without a key.
+
+**Suppressions** (inline `checkov:skip` comments in `infra/bootstrap/main.tf`,
+resource `aws_s3_bucket.state`; no blanket skip and no `--skip-check`):
+
+| Check | Reason |
+|---|---|
+| `CKV_AWS_145` (S3 encrypted with KMS by default) | SSE-S3 is deliberate: no extra fee and no customer managed KMS key with a monthly charge (S11, S12). |
+| `CKV_AWS_18` (S3 access logging) | Server access logging needs a second bucket and log storage for a single-owner state bucket; revisit in HARD-001. |
+| `CKV_AWS_144` (cross-Region replication) | The Region is undecided and replication doubles storage; versioning with noncurrent-version expiry provides recovery. |
+| `CKV2_AWS_62` (S3 event notifications) | No consumer exists for state-bucket events in INFRA-001. |
+
+Local run on 2026-10-12: 56 passed, 0 failed, 4 skipped (the four above). To
+run it locally (needs uv, not Docker; not part of `tasks.py ci`):
+
+```bash
+uv tool run --python 3.12 --from checkov==3.3.20 checkov --directory infra --framework terraform --compact --skip-download
+```
+
+Scanner sources (read 2026-10-12): C1 <https://github.com/bridgecrewio/checkov>;
+C2 <https://pypi.org/project/checkov/>;
+C3 <https://github.com/bridgecrewio/checkov-action>;
+C4 <https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html> and
+<https://www.checkov.io/2.Basics/Suppressing%20and%20Skipping%20Policies.html>;
+C5 <https://github.com/aquasecurity/trivy>;
+C6 <https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23>;
+C7 <https://github.com/aquasecurity/tfsec>.
 
 ## Decisions in stage 1
 
@@ -90,11 +151,12 @@ recorded in an ADR-005 amendment or a new ADR.
 3. **Production PostgreSQL provider.** Recorded in an ADR-005 amendment or new
    ADR before any database resource (ADR-005 database gate; INFRA-003).
 4. **GitHub plan environment** name and protection rules, and the plan-only
-   workflow (stage 2 or 3).
-5. **IaC policy scanning** (THREAT_MODEL every-PR control; SG-07). Not yet in
-   CI.
-6. **Budgets and alarms.** Owned by HARD-003; stage 3 decides whether an AWS
-   Budgets guard comes earlier.
+   job. Needs the AWS account and the OIDC provider first.
+5. **Budgets and alarms.** Owned by HARD-003.
+6. **First apply** of `infra/bootstrap` and `infra/environments/production` by
+   the owner. Nothing has been applied.
+7. **Deferred scanner finding.** S3 server access logging (`CKV_AWS_18`),
+   revisit in HARD-001.
 
 ## Sources (all read 2026-10-12)
 
