@@ -1,7 +1,7 @@
 # Infrastructure (Terraform)
 
-INFRA-001 stage 1 of 3. Code only: nothing here has been planned against or
-applied to an AWS account. Decisions, the ADR-005 gate checklist and dated
+INFRA-001 stage 2 of 3. Nothing here has been planned against or applied to an
+AWS account. Decisions, the ADR-005 gate checklist and dated
 sources are in [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md).
 
 ## Layout
@@ -28,6 +28,13 @@ To refresh the lock files after a provider change:
 ```bash
 terraform -chdir=infra/environments/production providers lock -platform=windows_amd64 -platform=linux_amd64
 ```
+
+## CI
+
+The `terraform-ci` workflow (job `terraform-validate`) runs the checks below on
+every pull request without credentials. **CI validates only: plan and apply are
+not in CI.** Making `terraform-validate` a required check is a pending owner
+action (see `docs/REPOSITORY_GOVERNANCE.md`).
 
 ## Local checks (no AWS credentials needed)
 

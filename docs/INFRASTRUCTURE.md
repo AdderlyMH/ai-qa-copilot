@@ -1,11 +1,36 @@
 # Infrastructure — INFRA-001 Terraform Foundation
 
-**Status:** Stage 1 of 3 in progress (2026-10-12). Code and documentation only.
+**Status:** Stage 2 of 3 in progress (2026-10-12). Stage 1 (code) is merged; stage 2 adds the validation workflow. Code, workflow and documentation only.
 No AWS account or credentials exist; nothing has been planned against or
 applied to AWS. Nothing here is deployment, cost or security-gate evidence.
 
 Code lives in [`infra/`](../infra/README.md). Governing decision:
 [ADR-005](adr/ADR-005-aws-serverless-and-database.md#acceptance).
+
+## CI scope
+
+The `terraform-ci` workflow (job `terraform-validate`) runs `terraform fmt
+-check`, `init -backend=false` and `validate` for both root modules, and fails
+if a lock file is missing or changed by `init`. It runs on every pull request
+with no credentials. **Plan and apply are not in CI.** A plan-only job needs the
+AWS account, the OIDC provider and the protected GitHub environment, which do
+not exist yet (stage 3).
+
+Pins and sources read 2026-10-12: `hashicorp/setup-terraform` v4.0.1 (commit
+`dfe3c3f87815947d99a8997f908cb6525fc44e9e`, the latest stable release; its
+`terraform_wrapper` input defaults to `true` and is set to `false`), and
+`actions/checkout` v6.0.2 as already used by `application-ci.yml` (the latest
+stable release is v7.0.1; the repository pin is intentionally unchanged).
+Sources: <https://github.com/hashicorp/setup-terraform/releases>,
+<https://github.com/actions/checkout/releases> and
+<https://raw.githubusercontent.com/hashicorp/setup-terraform/main/action.yml>.
+Dependabot: the GitHub reference lists `terraform` (versions `>= 0.13, <= 1.15.x`)
+and `github-actions` as ecosystems and says `directory` takes one path
+(<https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference>,
+<https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories>).
+The official page states that Dependabot updates `.terraform.lock.hcl` only in
+its OpenTofu section, not in the Terraform section; third-party reports say it
+does for Terraform too. This is unverified for this repository.
 
 ## Decisions in stage 1
 

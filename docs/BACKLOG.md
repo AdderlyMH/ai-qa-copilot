@@ -882,7 +882,7 @@ of this backlog.
 - **Dependencies:** SKEL-006
 - **Deliverable:** Remote-state strategy, providers, naming, tags, IAM, environment structure.
 - **Acceptance:** `fmt`, `validate`, and policy scan pass; secrets are not in state inputs.
-- **Status:** In progress, stage 1 of 3 (2026-10-12): Terraform code under `infra/` for the state bucket bootstrap, naming and tags, the production root with an S3 backend using native locking, and a GitHub OIDC plan-only role. `fmt` and `validate` pass locally; nothing is planned or applied, and the policy scan is not yet in CI. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+- **Status:** In progress, stage 2 of 3 (2026-10-12). Stage 1 (merged): Terraform code under `infra/` for the state bucket bootstrap, naming and tags, the production root with an S3 backend using native locking, and a GitHub OIDC plan-only role. Stage 2: the credential-free `terraform-ci` workflow (`fmt`, `init -backend=false`, `validate`) and Dependabot entries; making its check required is a pending owner action. Nothing is planned or applied, and the IaC policy scan is not yet in CI. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 
 #### INFRA-002 — Deploy frontend, API, queue, worker, object storage, and auth
 

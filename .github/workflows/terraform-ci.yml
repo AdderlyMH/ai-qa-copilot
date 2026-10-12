@@ -1,0 +1,65 @@
+name: terraform-ci
+
+# Validation only: formatting, init without a backend, and validate. No cloud
+# credentials, no OIDC, no plan and no apply. Do not add a paths filter: if this
+# check is later required on pull requests, a skipped workflow would leave it in
+# Expected.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  terraform-validate:
+    name: terraform-validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      # The wrapper is disabled so terraform output and exit codes pass through
+      # unchanged; no later step reads the wrapper's step outputs.
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.5
+          terraform_wrapper: false
+
+      - name: Confirm the pinned Terraform version
+        run: |
+          terraform version
+          test "$(terraform version | head -n 1)" = "Terraform v1.16.5"
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive -diff infra
+
+      - name: Require committed provider lock files
+        run: |
+          for root in infra/bootstrap infra/environments/production; do
+            test -f "$root/.terraform.lock.hcl" || {
+              echo "missing $root/.terraform.lock.hcl" >&2
+              exit 1
+            }
+          done
+
+      - name: Initialize without a backend
+        run: |
+          for root in infra/bootstrap infra/environments/production; do
+            terraform -chdir="$root" init -backend=false -input=false
+          done
+
+      - name: Fail if init changed a lock file
+        run: git diff --exit-code -- ':(glob)infra/**/.terraform.lock.hcl'
+
+      - name: Validate
+        run: |
+          for root in infra/bootstrap infra/environments/production; do
+            terraform -chdir="$root" validate
+          done
