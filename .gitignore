@@ -49,6 +49,7 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 !*.example.tfvars
+infra/**/backend.hcl
 
 # Local databases and temporary files
 *.db
