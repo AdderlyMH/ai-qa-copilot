@@ -1,5 +1,30 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-002 stage 1 of 4: network module — 2026-10-13
+
+**Status:** Implemented on branch `feat/infra-002-network`, not yet merged.
+Terraform code and documentation only: no `terraform plan` or `apply`, no AWS
+credentials, no AWS resource and no spend.
+
+Delivered: `infra/modules/network`, called from `infra/environments/production`
+with the Region set to us-east-1 in the example variables and all CIDRs and the
+Availability Zone supplied as variables. It creates one VPC, an egress-compute
+subnet and a parser subnet in one AZ, separate route tables (the parser table
+has no route beyond local and the S3 gateway endpoint, enforced by
+`route = []` and a postcondition), an S3 gateway endpoint on both tables, a
+parser security group with no rules, an egress-compute security group allowing
+only outbound TCP 443, and a default security group with every rule removed.
+Network ACLs stay default and VPC flow logs are off (HARD-001). Every resource
+is free per the Amazon VPC User Guide (read 2026-10-13); no public IPv4, NAT,
+internet gateway, interface endpoint or Elastic IP is created. Checkov: 77
+passed, 0 failed, 7 skipped (three new network suppressions with reasons).
+
+Deferred by owner decision (2026-10-13): the two database subnets and the
+database security group move to INFRA-003, because the ADR-005 database gate
+also covers database connectivity resources. Open: SG-08 executor egress (not
+met; INFRA-004), plan-role read access for EC2 (INFRA-005), AZ confirmation
+before apply. Next action: INFRA-002 stage 2 (NAT instance and default route).
+
 ## ADR-017 network egress and database connectivity accepted — 2026-10-13
 
 **Status:** Recorded on branch `docs/adr-network-egress`; documentation only.

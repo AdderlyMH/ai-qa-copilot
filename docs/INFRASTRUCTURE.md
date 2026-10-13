@@ -67,8 +67,9 @@ severity filter such as `--hard-fail-on HIGH` cannot be applied. The job
 therefore fails on **any** failed check. `--skip-download` stops calls to the
 Prisma Cloud platform, whose data is not needed without a key.
 
-**Suppressions** (inline `checkov:skip` comments in `infra/bootstrap/main.tf`,
-resource `aws_s3_bucket.state`; no blanket skip and no `--skip-check`):
+**Suppressions** (inline `checkov:skip` comments inside each resource; no
+blanket skip and no `--skip-check`). On `aws_s3_bucket.state` in
+`infra/bootstrap/main.tf`:
 
 | Check | Reason |
 |---|---|
@@ -77,7 +78,21 @@ resource `aws_s3_bucket.state`; no blanket skip and no `--skip-check`):
 | `CKV_AWS_144` (cross-Region replication) | The Region is undecided and replication doubles storage; versioning with noncurrent-version expiry provides recovery. |
 | `CKV2_AWS_62` (S3 event notifications) | No consumer exists for state-bucket events in INFRA-001. |
 
-Local run on 2026-10-12: 56 passed, 0 failed, 4 skipped (the four above). To
+In `infra/modules/network/main.tf` (INFRA-002 stage 1):
+
+| Check | Resource | Reason |
+|---|---|---|
+| `CKV2_AWS_11` (VPC flow logging) | `aws_vpc.main` | Flow logs are off to avoid log ingestion and storage cost; open item for HARD-001. |
+| `CKV2_AWS_5` (security group attached) | `aws_security_group.parser` | Attached to the parser Lambda in a later INFRA-002 stage; no compute exists yet. |
+| `CKV2_AWS_5` (security group attached) | `aws_security_group.egress_compute` | Attached to the API, worker and executor Lambdas in a later INFRA-002 stage. |
+
+Each network suppression was confirmed necessary on 2026-10-13 by scanning a
+copy with the skip comments removed. `CKV_AWS_382` (unrestricted egress) does
+not fail on the standalone egress-rule resource, so it is not suppressed; the
+SG-08 gap is recorded in the security-group table below instead.
+
+Local run on 2026-10-12: 56 passed, 0 failed, 4 skipped. After INFRA-002
+stage 1 (2026-10-13): 77 passed, 0 failed, 7 skipped (the seven above). To
 run it locally (needs uv, not Docker; not part of `tasks.py ci`):
 
 ```bash
@@ -92,6 +107,75 @@ C4 <https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html> and
 C5 <https://github.com/aquasecurity/trivy>;
 C6 <https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23>;
 C7 <https://github.com/aquasecurity/tfsec>.
+
+## INFRA-002 stage 1: network layout
+
+Code only (`infra/modules/network`, called from `infra/environments/production`);
+not planned or applied. It implements the network part of
+[ADR-017](adr/ADR-017-network-egress-and-database-connectivity.md).
+
+```text
+VPC  vpc_cidr (example 10.20.0.0/16), us-east-1, DNS support and hostnames on
+|
++-- egress-compute subnet  egress_subnet_cidr (example 10.20.0.0/24)
+|     AZ: compute_availability_zone (example us-east-1a); no public IPs
+|     route table "egress-compute": local route, S3 gateway endpoint route
+|     (the default route to the NAT instance is added in stage 2)
+|     used by: API, general worker, executor (stage 3)
+|
++-- parser subnet          parser_subnet_cidr (example 10.20.1.0/24)
+|     same AZ; no public IPs
+|     route table "parser": local route and S3 gateway endpoint route only;
+|     `route = []` plus a postcondition fail if any other route appears
+|     used by: restricted parser (stage 3)
+|
++-- S3 gateway endpoint    on the egress-compute and parser route tables
+|
++-- reserved, not created  10.20.10.0/24 and 10.20.11.0/24 for the database
+      subnets in two AZs (INFRA-003, after the provider is selected)
+```
+
+Security groups:
+
+| Security group | Ingress | Egress | Notes |
+|---|---|---|---|
+| VPC default | none | none | All rules removed by `aws_default_security_group`, so nothing can rely on it. |
+| `parser` | none | none | Terraform removes the AWS default allow-all egress rule. Rules to the S3 gateway endpoint prefix list and to the database are added only when the parser function and the database exist. |
+| `egress-compute` | none | TCP 443 to `0.0.0.0/0` | Needed for the Cognito JWKS endpoint and the model provider through the NAT instance. **SG-08 is not met:** this allows any HTTPS destination; INFRA-004 owns the executor egress control (ADR-017 open item). |
+| database | deferred | deferred | Not created: the ADR-005 database gate also covers database connectivity resources. INFRA-003 adds the database subnets and this group after the provider is selected. |
+
+**Network ACLs** stay at the VPC default, which allows all traffic. Isolation
+is enforced by the route tables (the parser has no internet or NAT route) and
+by stateful, per-resource security groups. Custom stateless ACLs would have to
+mirror every rule and return path in both directions and add no protection in
+this layout; they can be revisited in HARD-001.
+
+**VPC flow logs are off** to avoid log ingestion and storage cost; enabling
+them is an open item for HARD-001.
+
+**No billable resource in this stage** (AWS sources read 2026-10-13): the
+[Amazon VPC User Guide](https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html#pricing)
+states "There's no additional charge for using a VPC" and lists charges only
+for components such as NAT gateways, IP Address Manager, traffic mirroring and
+the analyzers; private IPv4 addresses are not charged; and gateway endpoints
+have "no additional charge"
+([gateway endpoints](https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html)).
+This stage creates no public IPv4 address, NAT device, internet gateway,
+interface endpoint or Elastic IP. VPC Encryption Controls, which the
+[VPC pricing page](https://aws.amazon.com/vpc/pricing/) charges per non-empty
+VPC, are not enabled.
+
+Stage 1 open items:
+
+- The plan-only role in `modules/github_oidc_plan_role` can read only the
+  identity resources. Planning the network needs read access such as
+  `ec2:Describe*`; INFRA-005 owns that change.
+- Availability Zone names map to physical zones per account; confirm
+  `compute_availability_zone` before the first apply.
+- Parser security-group egress to the S3 gateway endpoint and the database is
+  added in a later stage, together with the parser function.
+- Database subnets and the database security group: INFRA-003.
+- VPC flow logs and custom network ACLs: HARD-001.
 
 ## Decisions in stage 1
 
@@ -186,10 +270,9 @@ least-privilege deploy role and the manual approval before apply.
 
 ## Open items
 
-1. **Region.** Not chosen. It decides price rows, Aurora feature availability
-   and any external provider's PrivateLink or peering availability.
-2. **Compute service** for the API and workers. Recorded in INFRA-002 with
-   dated AWS documentation and pricing (ADR-005 compute gate).
+1. **Region:** decided as us-east-1 in ADR-017 (2026-10-13).
+2. **Compute service:** decided as Lambda container images on Arm in ADR-017;
+   INFRA-002 builds it in stages.
 3. **Production PostgreSQL provider.** Recorded in an ADR-005 amendment or new
    ADR before any database resource (ADR-005 database gate; INFRA-003).
 4. **GitHub plan environment** name and protection rules, and the plan-only
