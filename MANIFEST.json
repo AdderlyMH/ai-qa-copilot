@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 66025,
-      "sha256": "e7540ff6cc69771fbd47fc0a4d0d8a2f23d228825e0840bdcb94b1d88afc06d2"
+      "bytes": 80826,
+      "sha256": "8cb6ddc1822e53fded5d0ccf4de848a19a553d8ccfee32ac51eda086584c4152"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 126635,
-      "sha256": "98b3284beddc208d74207071d739052f50bdf211fae2ab89f570e57088144103"
+      "bytes": 130297,
+      "sha256": "009e529d75c935f02c211c341e7a872cbfbaf52b8a0e238b018e1c139562d410"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -267,8 +267,8 @@
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 4562,
-      "sha256": "62a3334107bbc0fc6cd116b1845585f6dd6c252fcd03f57363ae7b77db69d676"
+      "bytes": 4743,
+      "sha256": "48fbd40a6e789c97b2bbe3a28a69b04e865c1abe1b4df2d2c24bed2c12e014a2"
     },
     {
       "path": "docs/evidence/github-ruleset-2026-10-12/README.md",
