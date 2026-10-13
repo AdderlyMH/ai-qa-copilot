@@ -93,6 +93,25 @@ In `infra/modules/nat_instance/main.tf` (INFRA-002 stage 2):
 | `CKV_AWS_126` (detailed monitoring) | `aws_instance.nat` | Detailed monitoring adds per-metric CloudWatch charges; basic metrics are enough for one low-traffic NAT instance. |
 | `CKV2_AWS_19` (EIP attached to an instance) | `aws_eip.nat` | The EIP is attached to the NAT instance's persistent primary network interface through `aws_eip_association`, so it survives replacement. A scan with an instance-based association passes, which confirms the check only recognises that form. |
 
+In `infra/modules/data_plane/main.tf` (INFRA-002 stage 3; each line covers every
+instance of the resource):
+
+| Check | Resource | Reason |
+|---|---|---|
+| `CKV_AWS_136` (ECR KMS encryption) | `aws_ecr_repository.function` (4) | AES256 with an AWS-owned key; no customer managed KMS key with a monthly charge. |
+| `CKV_AWS_158` (log group KMS encryption) | `aws_cloudwatch_log_group.function` (4) | CloudWatch Logs default encryption; no customer managed KMS key. |
+| `CKV_AWS_338` (log retention of at least one year) | `aws_cloudwatch_log_group.function` (4) | Retention is deliberately 14 days to control storage cost. |
+| `CKV_AWS_145` (S3 KMS by default) | `aws_s3_bucket.this` (data, demo) | SSE-S3 is deliberate; no customer managed KMS key. |
+| `CKV_AWS_18` (S3 access logging) | `aws_s3_bucket.this` (data, demo) | Needs another bucket and log storage at portfolio scale; revisit in HARD-001. |
+| `CKV_AWS_144` (cross-Region replication) | `aws_s3_bucket.this` (data, demo) | One Region (ADR-017); versioning provides recovery. |
+| `CKV2_AWS_62` (S3 event notifications) | `aws_s3_bucket.this` (data, demo) | Uploads are announced through SQS by the API, not by bucket events. |
+
+All 20 data-plane suppressions were confirmed necessary on 2026-10-13 by
+scanning a copy with the skip comments removed. Six other first-run findings
+(`CKV2_AWS_6`, `CKV2_AWS_61`, `CKV_AWS_21` on both buckets) were not suppressed:
+the public access block, lifecycle and versioning existed, and the module was
+restructured so Checkov links them to each bucket.
+
 Each network suppression was confirmed necessary on 2026-10-13 by scanning a
 copy with the skip comments removed. `CKV_AWS_382` (unrestricted egress) does
 not fail on the standalone egress-rule resource, so it is not suppressed; the
@@ -100,7 +119,8 @@ SG-08 gap is recorded in the security-group table below instead.
 
 Local run on 2026-10-12: 56 passed, 0 failed, 4 skipped. After INFRA-002
 stage 1 (2026-10-13): 77 passed, 0 failed, 7 skipped. After stage 2
-(2026-10-13): 121 passed, 0 failed, 9 skipped (the nine above). To
+(2026-10-13): 121 passed, 0 failed, 9 skipped. After stage 3 (2026-10-13):
+276 passed, 0 failed, 29 skipped (the 29 above). To
 run it locally (needs uv, not Docker; not part of `tasks.py ci`):
 
 ```bash
@@ -156,7 +176,7 @@ Security groups:
 | Security group | Ingress | Egress | Notes |
 |---|---|---|---|
 | VPC default | none | none | All rules removed by `aws_default_security_group`, so nothing can rely on it. |
-| `parser` | none | none | Terraform removes the AWS default allow-all egress rule. Rules to the S3 gateway endpoint prefix list and to the database are added only when the parser function and the database exist. |
+| `parser` | none | TCP 443 to the S3 gateway endpoint prefix list (stage 3) | Terraform removes the AWS default allow-all egress rule; the S3 rule is the only egress. A database rule is added only when the database exists (INFRA-003). |
 | `nat-instance` (stage 2) | TCP 443 from `egress-compute` | TCP 443 to `0.0.0.0/0` | Forwarded HTTPS, package repositories and the SSM agent. See the NAT instance section. |
 | `egress-compute` | none | TCP 443 to `0.0.0.0/0` | Needed for the Cognito JWKS endpoint and the model provider through the NAT instance. **SG-08 is not met:** this allows any HTTPS destination; INFRA-004 owns the executor egress control (ADR-017 open item). |
 | database | deferred | deferred | Not created: the ADR-005 database gate also covers database connectivity resources. INFRA-003 adds the database subnets and this group after the provider is selected. |
@@ -190,8 +210,8 @@ Stage 1 open items:
   `ec2:Describe*`; INFRA-005 owns that change.
 - Availability Zone names map to physical zones per account; confirm
   `compute_availability_zone` before the first apply.
-- Parser security-group egress to the S3 gateway endpoint and the database is
-  added in a later stage, together with the parser function.
+- Parser security-group egress to the S3 gateway endpoint: added in stage 3.
+  The database rule: INFRA-003.
 - Database subnets and the database security group: INFRA-003.
 - VPC flow logs and custom network ACLs: HARD-001.
 
@@ -304,7 +324,100 @@ Stage 2 open items:
   (INFRA-005).
 - First-boot `user_data` retries package installation for up to ten minutes
   while the Elastic IP is associated; this is verified only at the first apply.
-- Single compute AZ acceptance remains an owner item (ADR-017).
+- Single compute AZ: accepted by the owner on 2026-10-13 (see stage 3).
+
+## INFRA-002 stage 3: data plane
+
+Code only (`infra/modules/data_plane`, called from
+`infra/environments/production`); not planned or applied. It prepares the four
+Lambda function classes named in ARCHITECTURE 12.1 and 12.2 (API, restricted
+parser, general analysis worker, restricted execution worker); the functions
+themselves arrive in stage 4. No Lambda function, API Gateway, CloudFront, KMS
+key, database resource, interface endpoint or flow log is created.
+
+**Resources:**
+
+| Resource | Configuration |
+|---|---|
+| ECR repositories `api`, `parser`, `general`, `executor` | Immutable tags, scan on push (basic scanning), AES256 encryption, lifecycle policy keeping the 5 most recent images. |
+| SQS queues `parser`, `general`, `execution`, each with a DLQ | SSE-SQS; long polling 20 s; source retention 4 days, DLQ retention 14 days (standard-queue messages keep their original enqueue time in a DLQ); `maxReceiveCount` 5; each DLQ accepts redrive only from its own source queue. |
+| Visibility timeouts | 6 x the function timeout (Lambda guidance): parser 90 s (15 s hard parser limit), execution 360 s (60 s function: one request of at most 30 s plus setup), general 1,800 s (**assumed** 300 s function; confirmed in stage 4). |
+| Data bucket (`<prefix>-data-`) | Private: `quarantine/` (raw uploads), `accepted/` (accepted derived artifacts), `exports/` (sanitized exports). Public access block, bucket-owner-enforced ownership, versioning, SSE-S3, TLS-only policy, noncurrent versions expire after 30 days, incomplete multipart uploads after 7 days. |
+| Guest-demo bucket (`<prefix>-demo-`) | Same controls, prefix `publications/`. No public policy; CloudFront access is added in stage 4. Each published revision is written under a new key and older versions are kept, matching the immutable `DemoPublication` rule (ADR-006, ADR-008). |
+| Log groups `/aws/lambda/<prefix>-<class>` | 14-day retention, created before the functions so each role can be scoped to its own log group. |
+| Execution roles `<prefix>-<class>-lambda` | Trust `lambda.amazonaws.com`; one inline least-privilege policy each (below); `AWSLambdaVPCAccessExecutionRole` attached because all four classes run in the VPC (ADR-017). |
+
+**Execution-role permissions** (every resource is an exact ARN or a fixed
+prefix; no wildcard actions):
+
+| Role | CloudWatch Logs | SQS | S3 |
+|---|---|---|---|
+| `api` | Create stream and put events in its own log group | `SendMessage` to `parser`, `general`, `execution` | `PutObject` on `data/quarantine/*`; `GetObject` on `data/accepted/*` and `data/exports/*` (short-lived signed downloads after authorization); `PutObject` on `demo/publications/*` (explicit owner publish) |
+| `parser` | Own log group | Receive, delete and get attributes on `parser`; `SendMessage` to `general` | `GetObject` on `data/quarantine/*` only |
+| `general` | Own log group | Receive, delete and get attributes on `general` | `GetObject` and `PutObject` on `data/accepted/*` and `data/exports/*` |
+| `executor` | Own log group | Receive, delete and get attributes on `execution` | none |
+
+`AWSLambdaVPCAccessExecutionRole` is the only policy with `"Resource": "*"`;
+the EC2 network-interface actions it grants do not support resource-level
+permissions. ECR pull permission is not in any execution role. The executor's
+target-specific secret (ARCHITECTURE 12.2) is not created in this stage.
+
+**Parser network access** now includes one egress rule: TCP 443 to the S3
+prefix list of the gateway endpoint (`aws_vpc_endpoint.s3.prefix_list_id`), the
+outbound rule form the gateway endpoint documentation shows. The parser route
+table still has no internet or NAT route.
+
+**Cost expectations** (Price List and pricing pages read 2026-10-12 and
+2026-10-13; nothing is billed until apply):
+
+- ECR storage: 0.10 USD per GB-month (AmazonECR us-east-1 offer, published
+  2026-09-11); five images per repository are kept.
+- SQS: the first 1 million requests per month are free, then 0.40 USD per
+  million standard requests (AWSQueueService offer, published 2026-09-11);
+  every action, including an empty receive, counts as a request, so Lambda
+  event source polling in stage 4 will consume requests even when idle.
+  SSE-SQS has no additional fee.
+- S3: storage and requests only; "There is no minimum charge" (S3 pricing page).
+- CloudWatch Logs: 0.50 USD per GB ingested and 0.03 USD per GB-month stored
+  after the 5 GB free tier (AmazonCloudWatch offer, published 2026-10-07).
+- ECR basic scanning: the basic-scanning page does not state a price; not
+  verified.
+
+Sources (read 2026-10-13): Lambda with SQS
+<https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-configure.html>;
+SQS dead-letter queues
+<https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html>;
+SSE-SQS
+<https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-configure-sqs-sse-queue.html>;
+ECR lifecycle policies
+<https://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html>;
+ECR tag immutability
+<https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-tag-mutability.html>;
+ECR basic scanning
+<https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning-basic.html>;
+S3 Block Public Access
+<https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html>;
+SQS pricing <https://aws.amazon.com/sqs/pricing/>.
+
+**Single compute AZ: accepted by the owner (2026-10-13).** Compute (API,
+workers and the NAT instance) runs in one Availability Zone. Risk: an outage of
+that zone stops the application until the compute subnets and NAT instance are
+recreated in another zone; the database subnet group still spans two zones when
+INFRA-003 creates it. Fallback: a managed NAT gateway (ADR-017 alternative D)
+when NAT instance recovery or patching becomes unacceptable. This closes the
+ADR-017 single-AZ open item.
+
+Stage 3 open items:
+
+- The general worker's 300 s function timeout is an assumption; stage 4 must
+  confirm it or change `general_function_timeout_seconds`.
+- ECR repository policies for Lambda image pulls, the CloudFront origin access
+  for the demo bucket, and the functions themselves: stage 4.
+- The executor's target-specific secret store: INFRA-004 with the sandbox
+  target.
+- The plan-only role cannot read ECR, SQS, S3, Logs or IAM for these resources
+  yet (INFRA-005).
+- Parser-to-database security-group rule: INFRA-003.
 
 ## Decisions in stage 1
 

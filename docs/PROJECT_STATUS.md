@@ -1,5 +1,32 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-002 stage 3 of 4: data plane — 2026-10-13
+
+**Status:** Implemented on branch `feat/infra-002-data-plane`, not yet merged.
+Terraform code and documentation only: no `terraform plan` or `apply`, no AWS
+credentials, no AWS resource and no spend.
+
+Delivered: `infra/modules/data_plane` with ECR repositories for the API,
+parser, general worker and executor (immutable tags, scan on push, AES256,
+keep five images); `parser`, `general` and `execution` SQS queues with DLQs
+(SSE-SQS, visibility 6 x function timeout: 90 s, 1,800 s assumed, 360 s;
+`maxReceiveCount` 5; retention 4 days and 14 days); a private data bucket
+(`quarantine/`, `accepted/`, `exports/`) and a private guest-demo bucket
+(`publications/`), each with public access block, versioning, SSE-S3, a
+TLS-only policy and noncurrent-version expiry; 14-day log groups; and one
+execution role per function class scoped to exact ARNs and prefixes, with
+`AWSLambdaVPCAccessExecutionRole` as the only wildcard-resource policy. The
+parser security group gains its only egress rule: HTTPS to the S3 gateway
+endpoint prefix list. Checkov: 276 passed, 0 failed, 29 skipped (20 new,
+confirmed necessary). No conflict with ADR-005, ADR-006, ADR-008 or ADR-017.
+
+Owner decision (2026-10-13): a single compute Availability Zone is accepted;
+the ADR-017 open item is closed, with the risk and the managed NAT gateway
+fallback recorded. Open: the general worker timeout assumption, ECR pull and
+CloudFront access (stage 4), the executor secret (INFRA-004), plan-role read
+access (INFRA-005). Next action: INFRA-002 stage 4 (Lambda functions, API
+Gateway, CloudFront).
+
 ## INFRA-002 stage 2 of 4: NAT instance — 2026-10-13
 
 **Status:** Implemented on branch `feat/infra-002-nat-instance`, not yet

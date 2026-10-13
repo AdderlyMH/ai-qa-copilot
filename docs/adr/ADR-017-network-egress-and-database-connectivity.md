@@ -95,7 +95,7 @@ T4g instances launch as `unlimited` by default and incur surplus-credit charges 
 | Resume latency versus the API timeout. A paused instance typically resumes in about 15 seconds and may take 30 seconds or more after more than 24 hours paused (A4). The HTTP API maximum integration timeout is 30 seconds and cannot be increased (A5), so the first API request after a long pause can time out. Mitigations (`connect_timeout` in `DATABASE_URL`, client retry, asynchronous patterns) are not yet chosen. | OPEN | INFRA-002 |
 | SG-08 executor egress control for the sandbox target. | OPEN, **not met** | INFRA-004 |
 | NAT instance AMI build, patching cadence and failover or replacement procedure. | OPEN | INFRA-002 |
-| Acceptance of a single compute availability zone. | OPEN | Project owner |
+| Acceptance of a single compute availability zone. | CLOSED 2026-10-13: accepted by the owner; risk and managed NAT gateway fallback recorded in INFRASTRUCTURE.md (INFRA-002 stage 3) | Project owner |
 | Static guest-demo snapshot design consistent with ADR-006 and ADR-008. | OPEN | INFRA-002 |
 
 ## Validation
