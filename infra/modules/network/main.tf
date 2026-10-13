@@ -211,18 +211,28 @@ resource "aws_vpc_endpoint" "s3" {
   }
 }
 
-# Parser: no ingress and no egress rules. Terraform removes the AWS default
-# allow-all egress rule. Rules for the S3 gateway endpoint and the database are
-# added only when the parser function and the database exist.
+# Parser: no ingress. Terraform removes the AWS default allow-all egress rule;
+# the only egress rule is HTTPS to the S3 prefix list of the gateway endpoint
+# (INFRA-002 stage 3), which the parser subnet reaches without any internet
+# route. A database rule is added only when the database exists (INFRA-003).
 resource "aws_security_group" "parser" {
   #checkov:skip=CKV2_AWS_5:Attached to the parser Lambda in a later INFRA-002 stage; no compute exists yet.
   name        = "${var.name_prefix}-parser"
-  description = "Restricted parser worker: no ingress, no egress"
+  description = "Restricted parser worker: no ingress, egress only to S3 through the gateway endpoint"
   vpc_id      = aws_vpc.main.id
 
   tags = {
     Name = "${var.name_prefix}-parser"
   }
+}
+
+resource "aws_vpc_security_group_egress_rule" "parser_s3_gateway" {
+  security_group_id = aws_security_group.parser.id
+  description       = "HTTPS to Amazon S3 through the gateway endpoint"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+  prefix_list_id    = aws_vpc_endpoint.s3.prefix_list_id
 }
 
 # Egress compute: API, general worker and executor. Outbound HTTPS only.

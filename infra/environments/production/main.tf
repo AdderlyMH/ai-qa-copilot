@@ -1,6 +1,6 @@
 # Production root: the GitHub OIDC provider and plan-only role (INFRA-001), the
-# VPC network layout (INFRA-002 stage 1) and the NAT instance (stage 2), per
-# ADR-017. ADR-005 database gate:
+# VPC network layout (INFRA-002 stage 1), the NAT instance (stage 2) and the
+# data plane (stage 3), per ADR-017. ADR-005 database gate:
 # no database resource, subnet group or database connectivity resource until
 # the provider is recorded (INFRA-003). Not applied.
 
@@ -137,6 +137,16 @@ module "nat_instance" {
   egress_subnet_cidr               = module.network.egress_subnet_cidr
   egress_compute_security_group_id = module.network.egress_compute_security_group_id
   replacement_generation           = var.nat_replacement_generation
+}
+
+module "data_plane" {
+  source      = "../../modules/data_plane"
+  name_prefix = module.naming.name_prefix
+}
+
+output "data_plane_ecr_repository_urls" {
+  description = "ECR repository URL per Lambda function class."
+  value       = module.data_plane.ecr_repository_urls
 }
 
 output "nat_public_ip" {

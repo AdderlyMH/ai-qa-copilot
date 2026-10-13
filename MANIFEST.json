@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 65682,
-      "sha256": "e14df6c9a9bea7d63075020628897f14a637ad77fe7d18ac52e75bd71543be8e"
+      "bytes": 65564,
+      "sha256": "c1f0acbbaec49d96a638f139031c762bbc5787c185db038acc9d1b76401d8f76"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 29735,
-      "sha256": "c25d157fa0bbcc13337a864c30311060f7b250fbba083c919a631a4566898026"
+      "bytes": 37782,
+      "sha256": "0479d4bdba5decfd9ad948351752d44e14e5f67f7943629e3a80301301f4d3e8"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 123028,
-      "sha256": "246b920cabf9c90a7238bb3fcadf5d1817ab9c597b8142dd888d4be4141fba67"
+      "bytes": 124651,
+      "sha256": "95e79b095751b9b371045246c3f3b5b17ba5708cf99d074a43e76d113f488fb8"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -257,8 +257,8 @@
     },
     {
       "path": "docs/adr/ADR-017-network-egress-and-database-connectivity.md",
-      "bytes": 13805,
-      "sha256": "f6bd0fd7b9c6577ac47f118b2817f331beb375475b90b57808c2317149035398"
+      "bytes": 13930,
+      "sha256": "e6d83994f99d4c7397bf8b0f776a5590baec8ee43462f097b212e0ae3f02f08d"
     },
     {
       "path": "docs/adr/README.md",
