@@ -901,7 +901,7 @@ of this backlog.
 
 - **Priority:** P0
 - **Estimate:** 6 h
-- **Dependencies:** INFRA-001, EXEC-008
+- **Dependencies:** INFRA-001, EXEC-008, ADR-017 (network egress and database connectivity)
 - **Deliverable:** AWS application tier.
 - **Acceptance:** Owner workflow and guest read-only demo operate over HTTPS.
 
@@ -909,7 +909,7 @@ of this backlog.
 
 - **Priority:** P0
 - **Estimate:** 4 h
-- **Dependencies:** INFRA-001, OBS-002
+- **Dependencies:** INFRA-001, OBS-002, ADR-017 (connection pattern and open auto-pause item)
 - **Deliverable:** Cost ADR and pgvector-capable production database.
 - **Acceptance:** Idle/resume behavior, migration, connectivity, backup/export, and monthly estimate are verified.
 
@@ -917,7 +917,7 @@ of this backlog.
 
 - **Priority:** P0
 - **Estimate:** 2 h
-- **Dependencies:** EXEC-001, INFRA-002
+- **Dependencies:** EXEC-001, INFRA-002, ADR-017 (executor egress control is open; decide a private-in-VPC target or another control for SG-08)
 - **Deliverable:** Allowlisted public sandbox API.
 - **Acceptance:** Executor can reach only configured target and security suite passes live.
 

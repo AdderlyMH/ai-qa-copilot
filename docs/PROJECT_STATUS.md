@@ -1,5 +1,29 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## ADR-017 network egress and database connectivity accepted — 2026-10-13
+
+**Status:** Recorded on branch `docs/adr-network-egress`; documentation only.
+No Terraform, workflow, test or code change, no AWS resource and no spend.
+
+[ADR-017](adr/ADR-017-network-egress-and-database-connectivity.md) is Accepted
+by the owner: Lambda container images on Arm in us-east-1, one compute
+availability zone (database subnet group across two), a t4g.nano NAT instance
+in `standard` credit mode with simplified automatic recovery (about 7.36 USD per
+month: instance 3.07, gp3 0.64, public IPv4 3.65), a parser subnet with no egress
+route, an S3 gateway endpoint, a direct database connection without RDS Proxy,
+the guest demo as a static snapshot, and the CloudFront certificate in
+us-east-1. Rejected: IPv6 egress-only (revisit when Cognito documents IPv6 and
+SDK dual-stack is proven) and the RDS Data API; the managed NAT gateway (about
+36.50 USD per month before data) is the fallback.
+
+Not decided: the database provider (ADR-005 gate; INFRA-003). Open: auto-pause
+with idle pooled connections (`idle_session_timeout` exists as an Aurora
+PostgreSQL parameter; its effect on pausing is undocumented), resume latency
+against the 30-second HTTP API limit, SG-08 executor egress control (not met;
+INFRA-004), the NAT patching and replacement procedure, and single-AZ
+acceptance. The validation table holds planned conditions only. Next action:
+INFRA-002.
+
 ## INFRA-001 accepted; INFRA-005 added — 2026-10-12
 
 **Status:** Recorded on branch `docs/infra-001-acceptance`; documentation only.
@@ -1998,8 +2022,9 @@ release milestone.
 
 ## Next action
 
-INFRA-001 was accepted on 2026-10-12. Next, INFRA-002 records the Region and the
-compute service and INFRA-003 the database provider, under the narrow ADR-005
+INFRA-001 was accepted on 2026-10-12 and ADR-017 (network egress and database
+connectivity) on 2026-10-13. Next, INFRA-002 builds the application tier on that
+decision and INFRA-003 selects the database provider, under the narrow ADR-005
 acceptance of 2026-10-10. INFRA-005 (plan and apply path) must precede the
 first CI-driven apply. HARD-001 through HARD-004 follow. SKEL-007 (Playwright
 smoke test) is unstarted. OBS-003 is deferred and resumable; see `BACKLOG.md`
