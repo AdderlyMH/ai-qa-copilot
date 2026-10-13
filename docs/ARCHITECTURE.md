@@ -615,6 +615,15 @@ flowchart TB
     ExecutorWorker --> CW
 ```
 
+**Planned-design note (2026-10-13):** [ADR-017](adr/ADR-017-network-egress-and-database-connectivity.md)
+fixes Lambda container images on Arm in us-east-1, one compute availability
+zone, a t4g.nano NAT instance for egress, a parser subnet with no egress route,
+an S3 gateway endpoint and no RDS Proxy. It also serves the guest
+`DemoPublication` as a static snapshot behind CloudFront instead of through
+the API Lambda, so the diagram's guest read path through `LambdaAPI` is
+superseded for guests. The database provider shown as PostgreSQL + pgvector is
+still undecided (ADR-005 database gate, INFRA-003).
+
 ### 12.2 Workload identity and network boundaries
 
 The following deployment roles are separate IAM identities, queue policies, database roles, object-store prefixes, network policies, and telemetry namespaces. A shared code repository or container base image must not merge these permissions.
@@ -644,7 +653,9 @@ The final production selection is a cost-gate decision. If the all-AWS baseline 
 
 Terraform modules should cover:
 
-- Network and security groups where required.
+- Network and security groups where required, including the NAT instance,
+  the parser subnet without an egress route and the S3 gateway endpoint
+  ([ADR-017](adr/ADR-017-network-egress-and-database-connectivity.md)).
 - Frontend hosting.
 - API Gateway.
 - Cognito.
