@@ -1,7 +1,7 @@
 name: terraform-ci
 
-# Validation only: formatting, init without a backend, and validate. No cloud
-# credentials, no OIDC, no plan and no apply. Do not add a paths filter: if this
+# Validation only: formatting, init without a backend, validate and an IaC
+# policy scan. No cloud credentials, no OIDC, no plan and no apply. Do not add a paths filter: if this
 # check is later required on pull requests, a skipped workflow would leave it in
 # Expected.
 on:
@@ -63,3 +63,21 @@ jobs:
           for root in infra/bootstrap infra/environments/production; do
             terraform -chdir="$root" validate
           done
+
+      # IaC policy scan (THREAT_MODEL TM-DATA-007, SG-07). Checkov is pinned to an
+      # exact PyPI release and installed with the repository's pinned uv, as
+      # pip-audit and bandit are in application-ci. Without a platform API key
+      # Checkov reports no severities, so the job fails on any failed check;
+      # intentional exceptions are inline checkov:skip comments with reasons.
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install --disable-pip-version-check uv==0.11.16
+
+      - name: Scan Terraform with Checkov
+        run: >-
+          uv tool run --python 3.12 --from checkov==3.3.20
+          checkov --directory infra --framework terraform
+          --compact --skip-download

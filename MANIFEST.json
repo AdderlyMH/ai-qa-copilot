@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 62912,
-      "sha256": "29a08842b9804ee38e2930a0ac1ddbbd87729e740b4d39a0bba541c4894fc071"
+      "bytes": 63242,
+      "sha256": "899e669e29d9712bd68f5329a28c376f34c12f38ae935db9f77bd83bb20a5dbc"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 10709,
-      "sha256": "8d7705ba83e3e1fdeddce62434526a1e62cd1741180628af3d627a454756bc52"
+      "bytes": 15118,
+      "sha256": "cae0e23315cf98e23e5b61837dfb5a5bf4a702d83a35d19c772feb59c0a9e9c4"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,13 +152,13 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 115660,
-      "sha256": "d6142995a5e0204f52908c07d409845186c4494760c2d8aea47c066b3a32f07b"
+      "bytes": 117195,
+      "sha256": "2827ef21ba9dcf5eec9af79ea06ee95c2745e46f05470f8c201e047086d419a5"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
-      "bytes": 7198,
-      "sha256": "14f64d1dcb3934fbf8c11373b93fc45846b77b3a47d2f4f18a4eec594cf5144e"
+      "bytes": 7400,
+      "sha256": "10ef0e135c2df546fcd59d196ae0050e282cf5d4c9b20cc525ef440581600a6c"
     },
     {
       "path": "docs/REVIEW_EVIDENCE_CAPTURE.md",
@@ -259,6 +259,11 @@
       "path": "docs/adr/README.md",
       "bytes": 4377,
       "sha256": "522ac018d2ecd7a1458e827739da3c108b42543eed1c27e3cff2a3b8dd2d21e5"
+    },
+    {
+      "path": "docs/evidence/github-ruleset-2026-10-12/README.md",
+      "bytes": 1731,
+      "sha256": "3032a2948f7e8adfe6fc4f1b4cad1143395f5f769bce81459dd7ef860f3f0483"
     },
     {
       "path": "docs/evidence/github-security-2026-07-21/README.md",

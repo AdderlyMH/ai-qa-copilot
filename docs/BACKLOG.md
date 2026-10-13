@@ -882,7 +882,7 @@ of this backlog.
 - **Dependencies:** SKEL-006
 - **Deliverable:** Remote-state strategy, providers, naming, tags, IAM, environment structure.
 - **Acceptance:** `fmt`, `validate`, and policy scan pass; secrets are not in state inputs.
-- **Status:** In progress, stage 2 of 3 (2026-10-12). Stage 1 (merged): Terraform code under `infra/` for the state bucket bootstrap, naming and tags, the production root with an S3 backend using native locking, and a GitHub OIDC plan-only role. Stage 2: the credential-free `terraform-ci` workflow (`fmt`, `init -backend=false`, `validate`) and Dependabot entries; making its check required is a pending owner action. Nothing is planned or applied, and the IaC policy scan is not yet in CI. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+- **Status:** All three stages implemented (2026-10-12); not yet Accepted. Stage 1: Terraform code under `infra/` (state bucket bootstrap, naming and tags, production root with an S3 backend using native locking, GitHub OIDC plan-only role). Stage 2: the credential-free `terraform-ci` workflow (`fmt`, `init -backend=false`, `validate`) and Dependabot entries; `terraform-validate` is a required check of ruleset `19300108` (verified 2026-10-12). Stage 3: a pinned Checkov policy scan in the same job, failing on any failed check, with four documented inline suppressions. Open: Region, compute service (INFRA-002), database provider (INFRA-003), the GitHub plan environment and plan-only job, budgets and alarms (HARD-003), and the first apply. Nothing is planned or applied. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md). See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 
 #### INFRA-002 — Deploy frontend, API, queue, worker, object storage, and auth
 

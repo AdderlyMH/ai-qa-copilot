@@ -1,7 +1,7 @@
 # Infrastructure (Terraform)
 
-INFRA-001 stage 2 of 3. Nothing here has been planned against or applied to an
-AWS account. Decisions, the ADR-005 gate checklist and dated
+INFRA-001 stages 1 to 3 implemented; not yet accepted. Nothing here has been
+planned against or applied to an AWS account. Decisions, the ADR-005 gate checklist and dated
 sources are in [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md).
 
 ## Layout
@@ -31,10 +31,10 @@ terraform -chdir=infra/environments/production providers lock -platform=windows_
 
 ## CI
 
-The `terraform-ci` workflow (job `terraform-validate`) runs the checks below on
-every pull request without credentials. **CI validates only: plan and apply are
-not in CI.** Making `terraform-validate` a required check is a pending owner
-action (see `docs/REPOSITORY_GOVERNANCE.md`).
+The `terraform-ci` workflow (job `terraform-validate`) runs the checks below and
+the policy scan on every pull request without credentials. It is a required
+check of the `main` ruleset (verified 2026-10-12). **CI validates only: plan and
+apply are not in CI.**
 
 ## Local checks (no AWS credentials needed)
 
@@ -51,6 +51,20 @@ terraform -chdir=infra/environments/production validate
 ```
 
 Repeat `init -backend=false` and `validate` for `infra/bootstrap`.
+
+## Policy scan
+
+Checkov 3.3.20, pinned on PyPI and run through uv (needs uv, not Docker; it is
+not part of `tasks.py ci`):
+
+```bash
+uv tool run --python 3.12 --from checkov==3.3.20 checkov --directory infra --framework terraform --compact --skip-download
+```
+
+Any failed check fails CI. Intentional exceptions are inline
+`#checkov:skip=<check>:<reason>` comments inside the resource. The current four
+are on `aws_s3_bucket.state` and are listed with reasons in
+[docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md#iac-policy-scan).
 
 ## Inputs
 
