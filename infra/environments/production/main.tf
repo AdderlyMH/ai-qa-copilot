@@ -1,7 +1,7 @@
-# Production root. Stage 1 of INFRA-001 manages only the GitHub OIDC
-# provider and the plan-only role. ADR-005 gates: no database resource until
-# the provider is recorded; no compute resource until INFRA-002 records the
-# compute service. Not applied.
+# Production root: the GitHub OIDC provider and plan-only role (INFRA-001) and
+# the VPC network layout (INFRA-002 stage 1, ADR-017). ADR-005 database gate:
+# no database resource, subnet group or database connectivity resource until
+# the provider is recorded (INFRA-003). Not applied.
 
 terraform {
   required_version = ">= 1.16.5, < 2.0.0"
@@ -63,6 +63,26 @@ variable "state_key" {
   default     = "production/terraform.tfstate"
 }
 
+variable "vpc_cidr" {
+  description = "IPv4 CIDR of the production VPC (example 10.20.0.0/16)."
+  type        = string
+}
+
+variable "compute_availability_zone" {
+  description = "Availability Zone name for the compute subnets (example us-east-1a)."
+  type        = string
+}
+
+variable "egress_subnet_cidr" {
+  description = "IPv4 CIDR of the egress-compute subnet (example 10.20.0.0/24)."
+  type        = string
+}
+
+variable "parser_subnet_cidr" {
+  description = "IPv4 CIDR of the parser subnet (example 10.20.1.0/24)."
+  type        = string
+}
+
 module "naming" {
   source      = "../../modules/naming"
   project     = var.project
@@ -85,6 +105,20 @@ module "github_oidc_plan_role" {
   github_environment = var.github_plan_environment
   state_bucket_name  = var.state_bucket_name
   state_key          = var.state_key
+}
+
+module "network" {
+  source                    = "../../modules/network"
+  name_prefix               = module.naming.name_prefix
+  vpc_cidr                  = var.vpc_cidr
+  compute_availability_zone = var.compute_availability_zone
+  egress_subnet_cidr        = var.egress_subnet_cidr
+  parser_subnet_cidr        = var.parser_subnet_cidr
+}
+
+output "vpc_id" {
+  description = "Production VPC ID."
+  value       = module.network.vpc_id
 }
 
 output "github_plan_role_arn" {
