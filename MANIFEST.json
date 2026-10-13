@@ -37,8 +37,8 @@
     },
     {
       "path": ".github/dependabot.yml",
-      "bytes": 790,
-      "sha256": "79bef9417f8296476c55bd10cb24d07039762487196f8fa94bef5be7aeed86a1"
+      "bytes": 873,
+      "sha256": "f3b7875ef1e9b8387532bea2f53d031e827c637bdeac34fbb82c787b2893c026"
     },
     {
       "path": ".github/pull_request_template.md",
@@ -107,8 +107,8 @@
     },
     {
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
-      "bytes": 34869,
-      "sha256": "eaaed78feefee9adadbb7301091192e2397e0f5f0dc77c72e16df2ff4eaf7744"
+      "bytes": 34872,
+      "sha256": "1f3021939d27c99629b28039591bdc52c8ce9bc361fc5c3b4939c9da2d5904c2"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
@@ -157,8 +157,8 @@
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
-      "bytes": 8880,
-      "sha256": "ca57c12ecc43efb180a069082236e47d20ff00702e5e5ff74335ae88d0ecd656"
+      "bytes": 9094,
+      "sha256": "ea61585539293747a5431c9a43e5a8b60b5bf92c27e67aa48304763647b7a51c"
     },
     {
       "path": "docs/REVIEW_EVIDENCE_CAPTURE.md",

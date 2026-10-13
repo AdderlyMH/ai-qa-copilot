@@ -28,10 +28,14 @@ requests for these roots is not yet verified and will be recorded after its
 first weekly run.
 
 **Dependabot exclusion decision (2026-10-12).** The `github-actions` entry
-excludes `.github/workflows/evaluation-smoke.yml` and
-`.github/workflows/evaluation-release.yml` with `exclude-paths`. Their bytes are
-pinned by `apps/api/tests/test_evaluation_provider_comparison_workflow.py`, so
-Dependabot pull requests #168 to #170, which edited them, failed `quality`.
+excludes three protected evaluation workflows with `exclude-paths`. They are
+changed only by reviewed pull requests, and tests pin them:
+`.github/workflows/evaluation-smoke.yml` and
+`.github/workflows/evaluation-release.yml` by SHA-256 of their bytes, and
+`.github/workflows/evaluation-provider-comparison.yml` by its exact commit-pinned
+`uses:` list, all in
+`apps/api/tests/test_evaluation_provider_comparison_workflow.py`. Dependabot
+pull requests #168 to #170 edited these files and failed `quality`.
 Sources read 2026-10-12: the
 [Dependabot options reference](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference)
 documents `exclude-paths` as glob patterns for "directories and files that
