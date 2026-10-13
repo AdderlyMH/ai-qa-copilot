@@ -57,6 +57,12 @@ variable "log_retention_days" {
   default     = 14
 }
 
+variable "demo_cloudfront_distribution_arn" {
+  description = "CloudFront distribution allowed to read demo publications through Origin Access Control (INFRA-002 stage 4); null for none."
+  type        = string
+  default     = null
+}
+
 variable "ecr_images_to_keep" {
   description = "Number of most recent images kept per ECR repository."
   type        = number
@@ -259,6 +265,31 @@ data "aws_iam_policy_document" "tls_only" {
       values   = ["false"]
     }
   }
+
+  # Guest demo only: the CloudFront distribution may read publications/
+  # through Origin Access Control. The fixed SourceArn keeps the policy
+  # non-public, so Block Public Access stays on.
+  dynamic "statement" {
+    for_each = each.key == "demo" && var.demo_cloudfront_distribution_arn != null ? [var.demo_cloudfront_distribution_arn] : []
+
+    content {
+      sid       = "AllowCloudFrontOacReadPublications"
+      effect    = "Allow"
+      actions   = ["s3:GetObject"]
+      resources = ["${aws_s3_bucket.this[each.key].arn}/publications/*"]
+
+      principals {
+        type        = "Service"
+        identifiers = ["cloudfront.amazonaws.com"]
+      }
+
+      condition {
+        test     = "StringEquals"
+        variable = "AWS:SourceArn"
+        values   = [statement.value]
+      }
+    }
+  }
 }
 
 resource "aws_s3_bucket_policy" "tls_only" {
@@ -444,6 +475,26 @@ output "ecr_repository_urls" {
 output "queue_arns" {
   description = "Source queue ARN per queue."
   value       = { for k, q in aws_sqs_queue.source : k => q.arn }
+}
+
+output "queue_urls" {
+  description = "Source queue URL per queue."
+  value       = { for k, q in aws_sqs_queue.source : k => q.id }
+}
+
+output "ecr_repositories" {
+  description = "ECR repository name and ARN per function class."
+  value       = { for k, r in aws_ecr_repository.function : k => { name = r.name, arn = r.arn } }
+}
+
+output "log_group_names" {
+  description = "Log group name per function class."
+  value       = { for k, g in aws_cloudwatch_log_group.function : k => g.name }
+}
+
+output "demo_bucket_regional_domain_name" {
+  description = "Regional domain name of the guest-demo bucket (CloudFront origin)."
+  value       = aws_s3_bucket.this["demo"].bucket_regional_domain_name
 }
 
 output "dlq_arns" {

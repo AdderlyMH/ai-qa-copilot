@@ -1,6 +1,7 @@
 # Production root: the GitHub OIDC provider and plan-only role (INFRA-001), the
-# VPC network layout (INFRA-002 stage 1), the NAT instance (stage 2) and the
-# data plane (stage 3), per ADR-017. ADR-005 database gate:
+# VPC network layout (INFRA-002 stage 1), the NAT instance (stage 2), the data
+# plane (stage 3) and compute, API, guest-demo CDN and Cognito (stage 4), per
+# ADR-017. ADR-005 database gate:
 # no database resource, subnet group or database connectivity resource until
 # the provider is recorded (INFRA-003). Not applied.
 
@@ -89,6 +90,28 @@ variable "public_subnet_cidr" {
   type        = string
 }
 
+variable "image_uris" {
+  description = "Container image URI per Lambda function class (api, parser, general, executor); images must exist in ECR before apply."
+  type        = map(string)
+}
+
+variable "cognito_owner_subject" {
+  description = "Cognito sub of the single owner user (not a secret); see the runbook in docs/INFRASTRUCTURE.md."
+  type        = string
+}
+
+variable "model_provider" {
+  description = "Model provider for the general worker (openai or anthropic)."
+  type        = string
+  default     = "openai"
+}
+
+variable "executor_enabled" {
+  description = "Enable the executor trigger; keep false until SG-08 executor egress control exists (INFRA-004)."
+  type        = bool
+  default     = false
+}
+
 variable "nat_replacement_generation" {
   description = "Change to replace the NAT instance with the current AL2023 AMI (monthly runbook in docs/INFRASTRUCTURE.md)."
   type        = string
@@ -140,8 +163,45 @@ module "nat_instance" {
 }
 
 module "data_plane" {
-  source      = "../../modules/data_plane"
-  name_prefix = module.naming.name_prefix
+  source                           = "../../modules/data_plane"
+  name_prefix                      = module.naming.name_prefix
+  demo_cloudfront_distribution_arn = module.compute_api.demo_distribution_arn
+}
+
+module "compute_api" {
+  source                           = "../../modules/compute_api"
+  name_prefix                      = module.naming.name_prefix
+  image_uris                       = var.image_uris
+  egress_subnet_id                 = module.network.egress_subnet_id
+  parser_subnet_id                 = module.network.parser_subnet_id
+  egress_compute_security_group_id = module.network.egress_compute_security_group_id
+  parser_security_group_id         = module.network.parser_security_group_id
+  role_arns                        = module.data_plane.function_role_arns
+  log_group_names                  = module.data_plane.log_group_names
+  queue_arns                       = module.data_plane.queue_arns
+  queue_urls                       = module.data_plane.queue_urls
+  ecr_repositories                 = module.data_plane.ecr_repositories
+  data_bucket_name                 = module.data_plane.data_bucket_name
+  demo_bucket_name                 = module.data_plane.demo_bucket_name
+  demo_bucket_regional_domain_name = module.data_plane.demo_bucket_regional_domain_name
+  cognito_owner_subject            = var.cognito_owner_subject
+  model_provider                   = var.model_provider
+  executor_enabled                 = var.executor_enabled
+}
+
+output "http_api_endpoint" {
+  description = "Default HTTP API endpoint."
+  value       = module.compute_api.http_api_endpoint
+}
+
+output "demo_distribution_domain_name" {
+  description = "Default CloudFront domain of the guest demo."
+  value       = module.compute_api.demo_distribution_domain_name
+}
+
+output "cognito_user_pool_id" {
+  description = "Owner user pool ID."
+  value       = module.compute_api.cognito_user_pool_id
 }
 
 output "data_plane_ecr_repository_urls" {

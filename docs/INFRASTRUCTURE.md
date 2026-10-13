@@ -112,6 +112,29 @@ scanning a copy with the skip comments removed. Six other first-run findings
 the public access block, lifecycle and versioning existed, and the module was
 restructured so Checkov links them to each bucket.
 
+In `infra/modules/compute_api/main.tf` (INFRA-002 stage 4):
+
+| Check | Resource | Reason |
+|---|---|---|
+| `CKV_AWS_50` (X-Ray tracing) | `aws_lambda_function.this` | ADR-011 tracing is application-level; X-Ray adds per-trace charges. |
+| `CKV_AWS_115` (reserved concurrency) | `aws_lambda_function.this` | SQS sources are capped at 2 concurrent invocations and the HTTP API is throttled; reserving concurrency is not possible on accounts with the reduced new-account concurrency quota. |
+| `CKV_AWS_116` (function DLQ) | `aws_lambda_function.this` | Invocations are synchronous (HTTP API, SQS event source mappings); failed messages go to the queue DLQs. |
+| `CKV_AWS_173` (environment variables KMS) | `aws_lambda_function.this` | Only non-secret settings; Lambda default encryption; no customer managed KMS key. |
+| `CKV_AWS_272` (code signing) | `aws_lambda_function.this` | Code signing is supported for container images but needs a signing profile and pipeline (INFRA-005); images are immutable and scanned on push. |
+| `CKV_AWS_309` (route authorization) | `aws_apigatewayv2_route.default` | Guest routes are anonymous by design (ADR-008); the API function validates Cognito access tokens itself (`auth.py`). |
+| `CKV_AWS_158` (log group KMS) | `aws_cloudwatch_log_group.api_access` | CloudWatch Logs default encryption; no customer managed KMS key. |
+| `CKV_AWS_338` (log retention one year) | `aws_cloudwatch_log_group.api_access` | 14-day retention to control storage cost. |
+| `CKV_AWS_68` (CloudFront WAF) | `aws_cloudfront_distribution.demo` | No WAF in this stage (scope and cost); static read-only origin behind OAC. |
+| `CKV2_AWS_47` (Log4j WAF rule) | `aws_cloudfront_distribution.demo` | No WAF; static S3 objects only. |
+| `CKV_AWS_86` (CloudFront access logging) | `aws_cloudfront_distribution.demo` | Avoids log storage in this stage; revisit in HARD-001. |
+| `CKV_AWS_174` (minimum TLS version) | `aws_cloudfront_distribution.demo` | The default CloudFront certificate does not allow setting it; custom domain and ACM are deferred. |
+| `CKV2_AWS_42` (custom certificate) | `aws_cloudfront_distribution.demo` | Custom domain and ACM are deferred. |
+| `CKV_AWS_310` (origin failover) | `aws_cloudfront_distribution.demo` | One private S3 origin in one Region (ADR-017). |
+| `CKV_AWS_374` (geo restriction) | `aws_cloudfront_distribution.demo` | The public demo is meant to be reachable worldwide. |
+
+All 15 compute suppressions were confirmed necessary on 2026-10-13 by scanning
+a copy with the skip comments removed.
+
 Each network suppression was confirmed necessary on 2026-10-13 by scanning a
 copy with the skip comments removed. `CKV_AWS_382` (unrestricted egress) does
 not fail on the standalone egress-rule resource, so it is not suppressed; the
@@ -120,7 +143,8 @@ SG-08 gap is recorded in the security-group table below instead.
 Local run on 2026-10-12: 56 passed, 0 failed, 4 skipped. After INFRA-002
 stage 1 (2026-10-13): 77 passed, 0 failed, 7 skipped. After stage 2
 (2026-10-13): 121 passed, 0 failed, 9 skipped. After stage 3 (2026-10-13):
-276 passed, 0 failed, 29 skipped (the 29 above). To
+276 passed, 0 failed, 29 skipped. After stage 4 (2026-10-13): 300 passed,
+0 failed, 44 skipped (the 44 above). To
 run it locally (needs uv, not Docker; not part of `tasks.py ci`):
 
 ```bash
@@ -418,6 +442,130 @@ Stage 3 open items:
 - The plan-only role cannot read ECR, SQS, S3, Logs or IAM for these resources
   yet (INFRA-005).
 - Parser-to-database security-group rule: INFRA-003.
+
+## INFRA-002 stage 4: compute, API, guest demo and Cognito
+
+Code only (`infra/modules/compute_api`, called from
+`infra/environments/production`); not planned or applied. Together with stages
+1 to 3 this completes the INFRA-002 code. No database, KMS key, interface
+endpoint, flow log, custom domain, ACM certificate or WAF is created.
+
+```text
+owner browser --HTTPS--> HTTP API ($default route, rate 5/s, burst 10)
+                          |  Lambda proxy, payload 2.0, 29 s integration timeout
+                          v
+                       api Lambda (egress subnet; validates Cognito tokens)
+                          |-- SendMessage --> parser queue --ESM--> parser Lambda (parser subnet)
+                          |-- SendMessage --> general queue --ESM--> general Lambda (egress subnet)
+                          |-- SendMessage --> execution queue --ESM (disabled)--> executor Lambda
+                          |-- S3 quarantine/ write, accepted/ and exports/ read, demo publications/ write
+                          v
+                       NAT instance --> Cognito JWKS, model provider (general)
+
+guest browser --HTTPS--> CloudFront (default domain, GET/HEAD, https-only)
+                          |  Origin Access Control, origin path /publications
+                          v
+                       demo bucket publications/ (private; bucket policy allows only this
+                       distribution's ARN; Block Public Access stays on)
+```
+
+**Lambda functions** (`<prefix>-api`, `-parser`, `-general`, `-executor`):
+container images on `arm64` from variables with no default (images must be
+pushed to the stage 3 ECR repositories first; the example file holds fake
+digests), the stage 3 roles and log groups, and VPC attachment: the API,
+general worker and executor in the egress-compute subnet with the
+egress-compute security group, the parser in the parser subnet with the parser
+security group. Timeouts: API 29 s (under the 30 s HTTP API limit), parser 15 s,
+general 300 s (assumption), executor 60 s. Memory: 512 MB, except the general
+worker at 1,024 MB.
+
+**Environment variables** (non-secret only): `APP_ENV=production` everywhere;
+the API also gets `COGNITO_ISSUER`, `COGNITO_CLIENT_ID`,
+`COGNITO_OWNER_SUBJECT`, `LOCAL_AUTH_BYPASS_ENABLED=false`, the three queue URLs
+and both bucket names; the parser gets `PARSER_WORKER_ROLE`,
+`PARSER_WORKER_NETWORK=none`, the general queue URL and the data bucket; the
+general worker gets `MODEL_PROVIDER` and the data bucket; the executor gets
+`AI_QA_COPILOT_EXECUTION_WORKER_ENABLED=false` unless `executor_enabled` is set.
+`DATABASE_URL`, `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` are secrets the
+application currently reads from the environment; they are **not** set, so the
+functions cannot serve real work until the application reads them from a
+secret store.
+
+**SQS triggers:** one event source mapping per queue, batch size 1, partial
+batch responses (`ReportBatchItemFailures`), maximum concurrency 2 (the minimum
+allowed). The execution mapping is **disabled** by default (`executor_enabled =
+false`) because SG-08 executor egress control is not met.
+
+**HTTP API:** `$default` route with a Lambda proxy integration, no API Gateway
+authorizer (guests are anonymous; the function validates owner tokens), stage
+throttling 5 requests per second with burst 10, and access logs to a 14-day log
+group that records no headers, query strings or bodies.
+
+**Guest demo CDN:** CloudFront with Origin Access Control (SigV4, always sign)
+to the demo bucket with origin path `/publications`, GET and HEAD only,
+HTTPS only, the default CloudFront certificate and domain, the managed
+CachingOptimized cache policy and SecurityHeadersPolicy, and `PriceClass_100`.
+The demo bucket policy gains one statement: `s3:GetObject` on `publications/*`
+for `cloudfront.amazonaws.com` with `AWS:SourceArn` equal to this distribution.
+A fixed source ARN keeps the policy non-public, so Block Public Access stays on.
+
+**Cognito:** one owner user pool (email sign-in, administrator-created users
+only, deletion protection, 14-character password policy) and a public app client
+with no secret, SRP and refresh-token flows, token revocation and 60-minute
+access tokens. No user pool domain and no OAuth flows: authorization code with
+PKCE needs a domain and HTTPS callback URLs, which are deferred.
+
+**New permissions** (execution-role permissions are unchanged from stage 3):
+
+| Grant | Principal | Scope |
+|---|---|---|
+| ECR repository policy: `ecr:BatchGetImage`, `ecr:GetDownloadUrlForLayer` | `lambda.amazonaws.com` | Each of the four repositories, condition `aws:sourceArn` like `arn:aws:lambda:<region>:<account>:function:<prefix>-*` |
+| Lambda permission: `lambda:InvokeFunction` | `apigateway.amazonaws.com` | The API function, source ARN `<http-api execution ARN>/*/*` |
+| Demo bucket policy: `s3:GetObject` | `cloudfront.amazonaws.com` | `publications/*`, `AWS:SourceArn` equal to the distribution |
+
+**Owner runbook (first apply, unexecuted):** push the four images and record
+their digests; apply with a placeholder `cognito_owner_subject`; create the
+owner user in the pool; copy its `sub` into `cognito_owner_subject` and apply
+again. Until then the API rejects every owner request.
+
+**Cost notes** (list prices; read 2026-10-12 and 2026-10-13):
+
+- Lambda (AWSLambda us-east-1 offer, published 2026-10-12): Arm compute
+  0.0000133334 USD per GB-second and requests 0.20 USD per million; the price
+  list shows a free tier of 400,000 GB-seconds and 1 million requests per month.
+- HTTP API (AmazonApiGateway us-east-1 offer, published 2026-10-12): 1.00 USD
+  per million requests for the first 300 million.
+- CloudFront (pricing page): a Free flat-rate plan with 1 million requests and
+  100 GB data transfer per month per distribution; the pay-as-you-go rates were
+  not read.
+- SQS event source polling consumes requests even when queues are idle; the
+  first 1 million SQS requests per month are free.
+- Cognito user pool pricing: **not verified**.
+
+**INFRA-002 is not Accepted:** its criterion ("owner workflow and guest
+read-only demo operate over HTTPS") needs an apply, real images and the open
+items below.
+
+Stage 4 open items:
+
+- Aurora resume (about 15 s, 30 s or more after a day paused) against the 30 s
+  HTTP API limit, which cannot be raised (ADR-017 open item; INFRA-002/INFRA-003).
+- Images must exist in ECR before apply; none are built yet.
+- Lambda adapters: the repository has no Lambda handlers. The API needs an
+  ASGI-to-Lambda adapter; the workers are `run_once()` loops that claim jobs
+  from the database and need SQS handlers that return `batchItemFailures`.
+- Secrets: `DATABASE_URL` (secret reference in INFRA-003) and the model-provider
+  keys need a secret store and application support; none is set here.
+- The parser has no network path to SQS, but ARCHITECTURE 12.2 says it enqueues
+  the accepted general job. Options: hand off through the database and a
+  trigger outside the parser, or an SQS interface endpoint (cost).
+- Frontend hosting, the Cognito domain, OAuth with PKCE, callback URLs and CORS:
+  not built; required for the owner workflow over HTTPS.
+- Executor secret store and SG-08 control: INFRA-004; the executor trigger stays
+  disabled until then.
+- Plan-role read access for Lambda, API Gateway, CloudFront, Cognito, ECR, SQS,
+  S3, Logs and IAM: INFRA-005.
+- Custom domain, ACM certificate (us-east-1 for CloudFront) and WAF: deferred.
 
 ## Decisions in stage 1
 
