@@ -882,7 +882,20 @@ of this backlog.
 - **Dependencies:** SKEL-006
 - **Deliverable:** Remote-state strategy, providers, naming, tags, IAM, environment structure.
 - **Acceptance:** `fmt`, `validate`, and policy scan pass; secrets are not in state inputs.
-- **Status:** All three stages implemented (2026-10-12); not yet Accepted. Stage 1: Terraform code under `infra/` (state bucket bootstrap, naming and tags, production root with an S3 backend using native locking, GitHub OIDC plan-only role). Stage 2: the credential-free `terraform-ci` workflow (`fmt`, `init -backend=false`, `validate`) and Dependabot entries; `terraform-validate` is a required check of ruleset `19300108` (verified 2026-10-12). Stage 3: a pinned Checkov policy scan in the same job, failing on any failed check, with four documented inline suppressions. Open: Region, compute service (INFRA-002), database provider (INFRA-003), the GitHub plan environment and plan-only job, budgets and alarms (HARD-003), and the first apply. Nothing is planned or applied. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md). See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+- **Status:** Accepted 2026-10-12 against its acceptance criteria. `fmt`, `validate` and the Checkov policy scan pass on the required check `terraform-validate` (PR #172, [run 38324750350](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/38324750350/job/115060718731) on head `7fdab99`), and no secret can reach state inputs: every variable, backend setting and example file holds identifiers or placeholders only, and filled-in `*.tfvars` and `backend.hcl` files are ignored by Git. Delivered in three stages: Terraform code under `infra/` (state bucket bootstrap, naming and tags, production root with an S3 backend using native locking, GitHub OIDC plan-only role); the credential-free `terraform-ci` workflow and Dependabot entries; and the pinned Checkov scan with four documented inline suppressions. **Not met, owned by INFRA-005:** TM-IAM-005 protected environments, and TM-DATA-007 plan review, protected production environment and least-privilege deploy role. Other open items: Region and compute service (INFRA-002), database provider (INFRA-003), budgets and alarms (HARD-003), S3 access logging (HARD-001) and the first apply. Nothing is planned or applied. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+
+#### INFRA-005 — Plan and apply path
+
+- **Priority:** P0
+- **Estimate:** 4 h
+- **Dependencies:** INFRA-001. Must precede the first CI-driven apply.
+- **Deliverable:** A protected GitHub environment with a required reviewer; a CI plan job that assumes the INFRA-001 plan-only OIDC role from that environment; a least-privilege deploy role trusted only from a protected environment; a manual approval before any apply; and a documented exception that allows owner applies with local credentials only until this item is accepted.
+- **Acceptance:**
+  - The plan job runs `terraform plan` through the plan-only role and cannot write to any managed resource.
+  - Apply runs only after a required reviewer approves it in the protected environment; no long-lived AWS keys are stored in GitHub.
+  - The deploy role's permissions are limited to the resources Terraform manages and are reviewed and recorded.
+  - Closes the INFRA-001 gaps: TM-IAM-005 protected environments, and TM-DATA-007 plan review, protected production environment and least-privilege deploy role.
+  - The local-credential exception, its scope and its end condition are recorded in `docs/INFRASTRUCTURE.md`.
 
 #### INFRA-002 — Deploy frontend, API, queue, worker, object storage, and auth
 
@@ -1198,11 +1211,11 @@ results (ADR-014 to ADR-016) are not B1, B2 or gate evidence.
 
 ### Current next work
 
-1. INFRA-001: Terraform foundation, the first Phase 6 item. ADR-005 is
-   accepted narrowly (2026-10-10); its checklist must cover NAT or egress cost,
-   private connectivity to an external provider, and idle charges.
-2. INFRA-002 (records the compute-service choice) and INFRA-003 (records the
-   database provider) follow, then INFRA-004.
+1. INFRA-002 (records the compute-service choice and the Region) and INFRA-003
+   (records the database provider), under the narrow ADR-005 acceptance of
+   2026-10-10. INFRA-001 was accepted on 2026-10-12.
+2. INFRA-005 (plan and apply path) before the first CI-driven apply; INFRA-004
+   after INFRA-002.
 3. HARD-001 through HARD-004, in dependency order alongside the INFRA items.
 
 SKEL-007 (Playwright end-to-end smoke test, P1) is unstarted and remains open.

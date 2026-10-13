@@ -1,7 +1,7 @@
 # Infrastructure (Terraform)
 
-INFRA-001 stages 1 to 3 implemented; not yet accepted. Nothing here has been
-planned against or applied to an AWS account. Decisions, the ADR-005 gate checklist and dated
+INFRA-001 accepted 2026-10-12; the plan and apply path is INFRA-005. Nothing
+here has been planned against or applied to an AWS account. Decisions, the ADR-005 gate checklist and dated
 sources are in [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md).
 
 ## Layout
