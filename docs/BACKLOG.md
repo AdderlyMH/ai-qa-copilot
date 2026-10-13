@@ -904,7 +904,7 @@ of this backlog.
 - **Dependencies:** INFRA-001, EXEC-008, ADR-017 (network egress and database connectivity)
 - **Deliverable:** AWS application tier.
 - **Acceptance:** Owner workflow and guest read-only demo operate over HTTPS.
-- **Status:** In progress, stage 1 of 4 (2026-10-13): Terraform network module (VPC, egress-compute and parser subnets in one AZ, separate route tables, S3 gateway endpoint, parser and egress-compute security groups, locked default security group). Free resources only; nothing planned or applied. Database subnets and the database security group are deferred to INFRA-003 under the ADR-005 database gate. SG-08 is not met. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+- **Status:** In progress, stage 2 of 4 (2026-10-13). Stage 1: Terraform network module (VPC, egress-compute and parser subnets in one AZ, separate route tables, S3 gateway endpoint, parser and egress-compute security groups, locked default security group). Stage 2: public subnet, internet gateway and the ADR-017 t4g.nano NAT instance (AL2023 arm64 from the SSM parameter, IMDSv2, encrypted gp3, `standard` credits, Elastic IP on a persistent network interface, Session Manager only, egress default route; about 7.36 USD per month) with a monthly replacement runbook. Nothing planned or applied. Database subnets and the database security group are deferred to INFRA-003. SG-08 is not met. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 
 #### INFRA-003 — Select and deploy production PostgreSQL
 

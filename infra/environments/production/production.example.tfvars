@@ -11,3 +11,8 @@ vpc_cidr                  = "10.20.0.0/16"
 compute_availability_zone = "us-east-1a"
 egress_subnet_cidr        = "10.20.0.0/24"
 parser_subnet_cidr        = "10.20.1.0/24"
+public_subnet_cidr        = "10.20.2.0/24"
+
+# NAT instance (ADR-017). Change this value to replace the instance with the
+# current AL2023 AMI; see the monthly runbook in docs/INFRASTRUCTURE.md.
+nat_replacement_generation = "2026-10-13"

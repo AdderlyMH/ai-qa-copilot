@@ -1,5 +1,6 @@
-# Production root: the GitHub OIDC provider and plan-only role (INFRA-001) and
-# the VPC network layout (INFRA-002 stage 1, ADR-017). ADR-005 database gate:
+# Production root: the GitHub OIDC provider and plan-only role (INFRA-001), the
+# VPC network layout (INFRA-002 stage 1) and the NAT instance (stage 2), per
+# ADR-017. ADR-005 database gate:
 # no database resource, subnet group or database connectivity resource until
 # the provider is recorded (INFRA-003). Not applied.
 
@@ -83,6 +84,16 @@ variable "parser_subnet_cidr" {
   type        = string
 }
 
+variable "public_subnet_cidr" {
+  description = "IPv4 CIDR of the public subnet for the NAT instance (example 10.20.2.0/24)."
+  type        = string
+}
+
+variable "nat_replacement_generation" {
+  description = "Change to replace the NAT instance with the current AL2023 AMI (monthly runbook in docs/INFRASTRUCTURE.md)."
+  type        = string
+}
+
 module "naming" {
   source      = "../../modules/naming"
   project     = var.project
@@ -114,6 +125,23 @@ module "network" {
   compute_availability_zone = var.compute_availability_zone
   egress_subnet_cidr        = var.egress_subnet_cidr
   parser_subnet_cidr        = var.parser_subnet_cidr
+  public_subnet_cidr        = var.public_subnet_cidr
+}
+
+module "nat_instance" {
+  source                           = "../../modules/nat_instance"
+  name_prefix                      = module.naming.name_prefix
+  vpc_id                           = module.network.vpc_id
+  public_subnet_id                 = module.network.public_subnet_id
+  egress_route_table_id            = module.network.egress_route_table_id
+  egress_subnet_cidr               = module.network.egress_subnet_cidr
+  egress_compute_security_group_id = module.network.egress_compute_security_group_id
+  replacement_generation           = var.nat_replacement_generation
+}
+
+output "nat_public_ip" {
+  description = "Elastic IP used for all egress through the NAT instance."
+  value       = module.nat_instance.nat_public_ip
 }
 
 output "vpc_id" {

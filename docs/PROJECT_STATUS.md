@@ -1,5 +1,30 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-002 stage 2 of 4: NAT instance — 2026-10-13
+
+**Status:** Implemented on branch `feat/infra-002-nat-instance`, not yet
+merged. Terraform code and documentation only: no `terraform plan` or `apply`,
+no AWS credentials, no AWS resource and no spend.
+
+Delivered: a public subnet, internet gateway and public route table in
+`infra/modules/network`, and `infra/modules/nat_instance`: a t4g.nano from the
+AL2023 arm64 SSM parameter, configured at first boot by `user_data` (IP
+forwarding and MASQUERADE for the egress-compute subnet only), on a persistent
+network interface with the source/destination check off that holds the Elastic
+IP and is the egress default route target; IMDSv2 required, encrypted gp3 root
+volume, `standard` CPU credits, simplified automatic recovery at its default,
+no key pair or SSH, and an instance profile with only
+`AmazonSSMManagedInstanceCore`. The NAT security group allows HTTPS in only
+from the egress-compute security group and HTTPS out. Replacement is explicit
+through `nat_replacement_generation`, with a monthly runbook. The parser route
+table still has no routes. Price List figures are unchanged on 2026-10-13:
+3.07 + 0.64 + 3.65 = about 7.36 USD per month. Checkov: 121 passed, 0 failed,
+9 skipped (two new, both documented).
+
+Open: the runbook is unexecuted; the plan-only role cannot yet read EC2, IAM or
+the SSM parameter (INFRA-005); SG-08 is not met (INFRA-004); single-AZ
+acceptance (owner). Next action: INFRA-002 stage 3 (Lambda functions).
+
 ## INFRA-002 stage 1 of 4: network module — 2026-10-13
 
 **Status:** Implemented on branch `feat/infra-002-network`, not yet merged.

@@ -9,8 +9,11 @@ terraform {
   }
 }
 
-# INFRA-002 stage 1: VPC layout from ADR-017. Free resources only: no public
-# IPv4 address, NAT, internet gateway, interface endpoint or Elastic IP.
+# INFRA-002 stages 1 and 2: VPC layout from ADR-017. Stage 1 created only
+# free resources. Stage 2 adds the public subnet, internet gateway and public
+# route table used by the NAT instance (infra/modules/nat_instance); the NAT
+# instance, its Elastic IP and the egress default route live in that module.
+# No interface endpoint, NAT gateway or database resource exists here.
 # Database subnets and the database security group are deferred to INFRA-003
 # (ADR-005 database gate). Network ACLs stay at the VPC default (allow all);
 # isolation is enforced by route tables and security groups, which are
@@ -45,6 +48,16 @@ variable "egress_subnet_cidr" {
   validation {
     condition     = can(cidrhost(var.egress_subnet_cidr, 0))
     error_message = "egress_subnet_cidr must be a valid IPv4 CIDR block."
+  }
+}
+
+variable "public_subnet_cidr" {
+  description = "IPv4 CIDR of the public subnet that holds only the NAT instance, for example 10.20.2.0/24."
+  type        = string
+
+  validation {
+    condition     = can(cidrhost(var.public_subnet_cidr, 0))
+    error_message = "public_subnet_cidr must be a valid IPv4 CIDR block."
   }
 }
 
@@ -92,6 +105,47 @@ resource "aws_subnet" "egress" {
   }
 }
 
+# Public subnet for the NAT instance only. No automatic public IPs: the NAT
+# instance gets its address from an Elastic IP.
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = var.compute_availability_zone
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "${var.name_prefix}-public-nat"
+    Tier = "public"
+  }
+}
+
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.name_prefix}-igw"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.name_prefix}-public-nat"
+  }
+}
+
+resource "aws_route" "public_internet" {
+  route_table_id         = aws_route_table.public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.main.id
+}
+
+resource "aws_route_table_association" "public" {
+  subnet_id      = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
+
 resource "aws_subnet" "parser" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.parser_subnet_cidr
@@ -104,9 +158,9 @@ resource "aws_subnet" "parser" {
   }
 }
 
-# Egress route table. The default route to the NAT instance is added in
-# INFRA-002 stage 2; until then it has only the local route and the S3
-# gateway endpoint route.
+# Egress route table: local route, S3 gateway endpoint route, and the default
+# route to the NAT instance network interface (aws_route in
+# infra/modules/nat_instance, INFRA-002 stage 2).
 resource "aws_route_table" "egress" {
   vpc_id = aws_vpc.main.id
 
@@ -206,14 +260,24 @@ output "egress_subnet_id" {
   value       = aws_subnet.egress.id
 }
 
+output "public_subnet_id" {
+  description = "Public subnet ID for the NAT instance."
+  value       = aws_subnet.public.id
+}
+
 output "parser_subnet_id" {
   description = "Parser subnet ID."
   value       = aws_subnet.parser.id
 }
 
 output "egress_route_table_id" {
-  description = "Egress-compute route table ID; stage 2 adds the NAT default route here."
+  description = "Egress-compute route table ID; the NAT module adds the default route here."
   value       = aws_route_table.egress.id
+}
+
+output "egress_subnet_cidr" {
+  description = "Egress-compute subnet CIDR, the only source the NAT instance translates."
+  value       = aws_subnet.egress.cidr_block
 }
 
 output "parser_security_group_id" {

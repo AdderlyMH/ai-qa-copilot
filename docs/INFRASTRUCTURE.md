@@ -86,13 +86,21 @@ In `infra/modules/network/main.tf` (INFRA-002 stage 1):
 | `CKV2_AWS_5` (security group attached) | `aws_security_group.parser` | Attached to the parser Lambda in a later INFRA-002 stage; no compute exists yet. |
 | `CKV2_AWS_5` (security group attached) | `aws_security_group.egress_compute` | Attached to the API, worker and executor Lambdas in a later INFRA-002 stage. |
 
+In `infra/modules/nat_instance/main.tf` (INFRA-002 stage 2):
+
+| Check | Resource | Reason |
+|---|---|---|
+| `CKV_AWS_126` (detailed monitoring) | `aws_instance.nat` | Detailed monitoring adds per-metric CloudWatch charges; basic metrics are enough for one low-traffic NAT instance. |
+| `CKV2_AWS_19` (EIP attached to an instance) | `aws_eip.nat` | The EIP is attached to the NAT instance's persistent primary network interface through `aws_eip_association`, so it survives replacement. A scan with an instance-based association passes, which confirms the check only recognises that form. |
+
 Each network suppression was confirmed necessary on 2026-10-13 by scanning a
 copy with the skip comments removed. `CKV_AWS_382` (unrestricted egress) does
 not fail on the standalone egress-rule resource, so it is not suppressed; the
 SG-08 gap is recorded in the security-group table below instead.
 
 Local run on 2026-10-12: 56 passed, 0 failed, 4 skipped. After INFRA-002
-stage 1 (2026-10-13): 77 passed, 0 failed, 7 skipped (the seven above). To
+stage 1 (2026-10-13): 77 passed, 0 failed, 7 skipped. After stage 2
+(2026-10-13): 121 passed, 0 failed, 9 skipped (the nine above). To
 run it locally (needs uv, not Docker; not part of `tasks.py ci`):
 
 ```bash
@@ -117,10 +125,18 @@ not planned or applied. It implements the network part of
 ```text
 VPC  vpc_cidr (example 10.20.0.0/16), us-east-1, DNS support and hostnames on
 |
++-- internet gateway       attached to the VPC; routed only from "public"
+|
++-- public subnet          public_subnet_cidr (example 10.20.2.0/24)    [stage 2]
+|     same AZ; no automatic public IPs
+|     route table "public": local route, 0.0.0.0/0 -> internet gateway
+|     contains only: NAT instance (t4g.nano) on a persistent network
+|     interface that holds the Elastic IP
+|
 +-- egress-compute subnet  egress_subnet_cidr (example 10.20.0.0/24)
 |     AZ: compute_availability_zone (example us-east-1a); no public IPs
-|     route table "egress-compute": local route, S3 gateway endpoint route
-|     (the default route to the NAT instance is added in stage 2)
+|     route table "egress-compute": local route, S3 gateway endpoint route,
+|     0.0.0.0/0 -> NAT instance network interface                   [stage 2]
 |     used by: API, general worker, executor (stage 3)
 |
 +-- parser subnet          parser_subnet_cidr (example 10.20.1.0/24)
@@ -141,6 +157,7 @@ Security groups:
 |---|---|---|---|
 | VPC default | none | none | All rules removed by `aws_default_security_group`, so nothing can rely on it. |
 | `parser` | none | none | Terraform removes the AWS default allow-all egress rule. Rules to the S3 gateway endpoint prefix list and to the database are added only when the parser function and the database exist. |
+| `nat-instance` (stage 2) | TCP 443 from `egress-compute` | TCP 443 to `0.0.0.0/0` | Forwarded HTTPS, package repositories and the SSM agent. See the NAT instance section. |
 | `egress-compute` | none | TCP 443 to `0.0.0.0/0` | Needed for the Cognito JWKS endpoint and the model provider through the NAT instance. **SG-08 is not met:** this allows any HTTPS destination; INFRA-004 owns the executor egress control (ADR-017 open item). |
 | database | deferred | deferred | Not created: the ADR-005 database gate also covers database connectivity resources. INFRA-003 adds the database subnets and this group after the provider is selected. |
 
@@ -160,8 +177,9 @@ for components such as NAT gateways, IP Address Manager, traffic mirroring and
 the analyzers; private IPv4 addresses are not charged; and gateway endpoints
 have "no additional charge"
 ([gateway endpoints](https://docs.aws.amazon.com/vpc/latest/privatelink/gateway-endpoints.html)).
-This stage creates no public IPv4 address, NAT device, internet gateway,
-interface endpoint or Elastic IP. VPC Encryption Controls, which the
+Stage 1 created no public IPv4 address, NAT device, internet gateway,
+interface endpoint or Elastic IP. Stage 2 adds the billable NAT instance,
+its root volume and Elastic IP (below) and a free internet gateway. VPC Encryption Controls, which the
 [VPC pricing page](https://aws.amazon.com/vpc/pricing/) charges per non-empty
 VPC, are not enabled.
 
@@ -176,6 +194,117 @@ Stage 1 open items:
   added in a later stage, together with the parser function.
 - Database subnets and the database security group: INFRA-003.
 - VPC flow logs and custom network ACLs: HARD-001.
+
+## INFRA-002 stage 2: NAT instance
+
+Code only (`infra/modules/nat_instance`, plus the public subnet, internet
+gateway and public route table in `infra/modules/network`); not planned or
+applied. It implements the ADR-017 egress decision.
+
+**Configuration.** One `t4g.nano` in the public subnet, launched from the AMI in
+the public SSM parameter
+`/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64` (A1).
+Instead of a pre-built NAT AMI, first-boot `user_data` applies the steps of the
+AWS NAT instance guide (A2): it installs `iptables-services`, enables
+`net.ipv4.ip_forward`, masquerades traffic from the egress-compute subnet only,
+and drops every other forwarded packet except replies and TCP 443 from that
+subnet. Other settings:
+
+- source/destination check disabled on the persistent network interface;
+- IMDSv2 required (`http_tokens = "required"`, hop limit 1, no containers) (A3);
+- encrypted gp3 root volume (size variable, default 8 GB), EBS optimised;
+- `standard` CPU credit mode (T4g launches as `unlimited` by default) (A4);
+- simplified automatic recovery left at its default, which is on for T4g; no
+  CloudWatch recover alarm is added because it is optional and may add
+  CloudWatch charges (A5);
+- no key pair and no SSH ingress; access is through Session Manager with an
+  instance profile that has only `AmazonSSMManagedInstanceCore`, which needs
+  outbound HTTPS to the `ssm`, `ssmmessages` and `ec2messages` endpoints (A6);
+- detailed monitoring off (basic five-minute metrics only).
+
+**Security group** (`nat-instance`): ingress TCP 443 only from the
+egress-compute security group; egress TCP 443 to `0.0.0.0/0` for forwarded
+traffic, package repositories and the SSM agent. No DNS or NTP rule is needed:
+security groups do not filter Amazon DNS, the Amazon Time Sync Service or
+instance metadata (A7). **SG-08 is still not met:** forwarded HTTPS may reach any
+destination; INFRA-004 owns the executor egress control.
+
+**Cost** (AWS Price List, us-east-1, 730 hours; the EC2 offer published
+2026-10-12 and the VPC offer published 2026-09-17 were still current on
+2026-10-13):
+
+| Item | Rate | Monthly USD |
+|---|---|---|
+| t4g.nano, Linux, on demand | 0.0042 per hour | 3.07 |
+| gp3 root volume, 8 GB | 0.08 per GB-month | 0.64 |
+| Elastic IP (public IPv4 address) | 0.005 per hour | 3.65 |
+| **Total** | | **about 7.36** |
+
+Internet data transfer is extra. In `standard` credit mode there is no
+surplus-credit charge; the instance is throttled to its baseline instead.
+
+**Failure behaviour.** The NAT instance is a single point of failure for the
+API, general worker and executor. If it stops, their outbound HTTPS fails; the
+parser is unaffected because it never had an outbound route. Simplified
+automatic recovery covers failed **system** status checks only; an operating
+system fault needs the replacement runbook. Compute runs in one Availability
+Zone (ADR-017), so an AZ outage stops the application until it is moved.
+
+**Monthly replacement runbook** (not yet executed; nothing has been applied):
+
+1. Pick a low-traffic window; egress stops while the instance is replaced.
+2. Set `nat_replacement_generation` to the current date in the ignored
+   `production.tfvars` and run `terraform plan`; it must show the NAT
+   instance replaced and nothing else changed.
+3. Apply. The persistent network interface keeps the Elastic IP and the egress
+   route, so no re-association is needed. `create_before_destroy` is not used
+   because the interface can attach to only one instance.
+4. Within ten minutes, check through Session Manager that `iptables -t nat -S`
+   shows the MASQUERADE rule and that a function in the egress-compute subnet
+   reaches an HTTPS endpoint.
+5. If the new instance fails, set `nat_replacement_generation` back and apply,
+   which launches a fresh instance from the then-current AMI; if that also
+   fails, use the switch trigger below.
+
+A newer AMI alone never replaces the instance: `ami` and `user_data` changes
+are ignored, and replacement happens only when `nat_replacement_generation`
+changes. AL2023 AMIs are deprecated 90 days after release, so the monthly
+cadence keeps the instance on a supported image (A1).
+
+**Switch trigger.** Move to a managed NAT gateway (ADR-017 alternative D) when
+patching or recovery becomes unacceptable to the owner. Move to a larger T4g
+size when the `CPUCreditBalance` metric reaches zero or throttling is observed
+in `standard` mode. Both changes are recorded before they are made, with the
+budget impact.
+
+Sources (read 2026-10-13): A1 AL2023 on EC2
+<https://docs.aws.amazon.com/linux/al2023/ug/ec2.html>; A2 NAT instances
+<https://docs.aws.amazon.com/vpc/latest/userguide/work-with-nat-instances.html>;
+A3 IMDS options
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-IMDS-new-instances.html>;
+A4 unlimited mode
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/burstable-performance-instances-unlimited-mode.html>;
+A5 automatic recovery
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-recover.html> and
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-configuration-recovery.html>;
+A6 Session Manager prerequisites
+<https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-prerequisites.html>;
+A7 security groups
+<https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html>;
+prices from the AWS Price List bulk API
+<https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json>.
+
+Stage 2 open items:
+
+- NAT patching and replacement now has a runbook; it is **unexecuted** until
+  the first apply (ADR-017 open item).
+- The plan-only role cannot read EC2, IAM instance profiles or the SSM AMI
+  parameter yet; planning this root needs `ec2:Describe*`, `iam:Get*` on the
+  NAT role and profile, and `ssm:GetParameter` on the AMI parameter
+  (INFRA-005).
+- First-boot `user_data` retries package installation for up to ten minutes
+  while the Elastic IP is associated; this is verified only at the first apply.
+- Single compute AZ acceptance remains an owner item (ADR-017).
 
 ## Decisions in stage 1
 
