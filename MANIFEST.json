@@ -87,8 +87,8 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 45406,
-      "sha256": "208e273fafd3ac22bb8b3020b3d1ffeaf4dd910f82c1ab3a1beb04f1caafe63c"
+      "bytes": 46099,
+      "sha256": "2c42582dbf82045c7eb9905fb964b1604ea4c28107a7200fb0341d7c21323194"
     },
     {
       "path": "docs/B1_CANDIDATE_EXECUTOR.md",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 66025,
-      "sha256": "e7540ff6cc69771fbd47fc0a4d0d8a2f23d228825e0840bdcb94b1d88afc06d2"
+      "bytes": 80826,
+      "sha256": "8cb6ddc1822e53fded5d0ccf4de848a19a553d8ccfee32ac51eda086584c4152"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 126635,
-      "sha256": "98b3284beddc208d74207071d739052f50bdf211fae2ab89f570e57088144103"
+      "bytes": 130297,
+      "sha256": "009e529d75c935f02c211c341e7a872cbfbaf52b8a0e238b018e1c139562d410"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -217,8 +217,8 @@
     },
     {
       "path": "docs/adr/ADR-009-parser-isolation.md",
-      "bytes": 10084,
-      "sha256": "05b84e297f8c7068c3b04f8dbe8d5061d3f1e2f38a5e76f01abdfa5119bd28ff"
+      "bytes": 10521,
+      "sha256": "2dd9dcf7ed91f3925ab6e067504c67a2d6b0e86df5fae5c76269ed5c22644051"
     },
     {
       "path": "docs/adr/ADR-010-canonical-report-revisions.md",
@@ -257,13 +257,18 @@
     },
     {
       "path": "docs/adr/ADR-017-network-egress-and-database-connectivity.md",
-      "bytes": 13930,
-      "sha256": "e6d83994f99d4c7397bf8b0f776a5590baec8ee43462f097b212e0ae3f02f08d"
+      "bytes": 14416,
+      "sha256": "d66d3bf90f6fedde3b1a551deb7c2ad6776a575fa7298f854de1c19942798773"
+    },
+    {
+      "path": "docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md",
+      "bytes": 23723,
+      "sha256": "5f5a75379c4e16cd19d2468b82a599602efe1b6d3b6978ea3850820c887d9eef"
     },
     {
       "path": "docs/adr/README.md",
-      "bytes": 4562,
-      "sha256": "62a3334107bbc0fc6cd116b1845585f6dd6c252fcd03f57363ae7b77db69d676"
+      "bytes": 4743,
+      "sha256": "48fbd40a6e789c97b2bbe3a28a69b04e865c1abe1b4df2d2c24bed2c12e014a2"
     },
     {
       "path": "docs/evidence/github-ruleset-2026-10-12/README.md",

@@ -1,5 +1,61 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Deployment plan and ADR-018 — 2026-10-13
+
+**Status:** Documentation only, on branch `docs/deployment-plan`, not yet merged.
+No code, Terraform, workflow or test change; no AWS credentials, resource or spend.
+Nothing here is deployment, cost or security-gate evidence.
+
+Trigger: a read-only review on 2026-10-13 of what the application needs to run on
+the INFRA-002 infrastructure found that it has no production composition (the
+default wiring uses `Unavailable*` classes for document intake, quarantine
+storage, the parser queue, retrieval and the demo repository), no `boto3` use, no
+Lambda handlers or ASGI adapter, about 11 SQLAlchemy engines per API process, a
+parser credential check that Lambda's injected credentials would always trip, no
+demo persistence or publish path, and no Cognito login or upload form in the web
+app.
+
+Owner decisions recorded: (1) minimum live demo: guest page on CloudFront HTTPS
+showing a sanitized snapshot, owner login through Cognito, synthetic-text analysis
+with OpenAI only, Markdown or text upload with status; no retrieval, execution
+(disabled, SG-08 disclosed as unmet), Claude or PDF in production. (2) Deploy
+freeze 2026-12-06; Phase 7 Dec 7 to Dec 20. (3) Demo published by a local script
+writing a pre-sanitized snapshot. (4) Parser-to-general handoff through the
+database with an API-sent wake-up (option A). (5) Upload cap 4 MiB pending
+verification. (6) S3 and CloudFront static frontend with Cognito Hosted UI and
+PKCE. (7) First apply and image pushes with local credentials; INFRA-005 reduced to
+the documented exception. (8) Database provider decided in INFRA-003. (9) Parser
+database credential: prefer RDS IAM authentication, with the environment-variable
+fallback and its state exposure accepted explicitly.
+
+Delivered: [ADR-018](adr/ADR-018-production-composition-lambda-runtime-and-secrets.md)
+(Accepted; validation planned only), which also corrects ADR-017's "no application
+code change" claim, amends ADR-009 for the parser credential check under four
+stated conditions, and adds planned-design notes to ARCHITECTURE 12.2; BACKLOG
+items INFRA-006 to INFRA-012 (P0, 69 h), INFRA-013 (P1) and INFRA-014 (post-MVP),
+scope notes on INFRA-002, INFRA-004, INFRA-005, HARD-002, PORT-004 and PORT-005, a
+re-baselined calendar with milestones M1 (Nov 15), M2 (Nov 22) and M3 (Nov 29),
+an ordered cut list, and a new "Current next work".
+
+Schedule risk: Phase 6 work is about 87 h against about 92 h available before the
+Dec 6 freeze, so about 5 h of slack. HARD-002 and INFRA-004 cannot meet their
+written acceptance for SG-08 and execution; they are marked open, not Accepted.
+
+Verified 2026-10-13 from official sources (details in ADR-018): Lambda synchronous
+payload 6 MB; Python 3.13 base image on Amazon Linux 2023 with the SDK documented
+as part of the runtime (container image presence not tested because the Docker
+daemon is not running); aarch64 wheels exist for the locked `psycopg-binary`,
+`cryptography` and `pydantic-core`; a Cognito user pool domain is required for the
+OIDC authorize endpoint (cost of a prefix domain not stated); RDS IAM database
+authentication supports Aurora PostgreSQL 11 to 17 (Serverless v2 not stated).
+Open: Aurora Serverless v2 and IAM authentication, token signing without a network
+call, the 4 MiB cap against base64 expansion, Cognito domain cost and user pool
+tier, `boto3` in the container base image, the execution-job reaper, SG-08.
+
+Next action: INFRA-006 (production composition root and shared engine), the
+owner's INFRA-003 database provider decision, and the first apply of the bootstrap,
+network and data plane under the local-credential exception.
+
 ## INFRA-002 stage 4 of 4: compute, API, guest demo and Cognito — 2026-10-13
 
 **Status:** Implemented on branch `feat/infra-002-compute-api`, not yet merged.

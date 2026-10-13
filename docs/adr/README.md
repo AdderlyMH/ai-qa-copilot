@@ -37,6 +37,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-015](ADR-015-informed-baseline-development-comparison.md) | Informed single-call baseline for a development-split provider comparison                                | Accepted |
 | [ADR-016](ADR-016-objective-fixture-v4-provider-comparison.md) | Objective-bearing fixture v4 for the informed provider comparison                                        | Accepted |
 | [ADR-017](ADR-017-network-egress-and-database-connectivity.md) | Network egress and database connectivity for Lambda                                                      | Accepted |
+| [ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) | Production composition, Lambda runtime and secrets                                          | Accepted |
 
 ## Required ADR structure
 

@@ -72,6 +72,46 @@ configuration consumed by that workflow.
 | 7. Portfolio release            | Dec 7–Dec 20  |           18 h | Public repo, demo, video, case study                |
 | **Total**                       |               |      **231 h** |                                                     |
 
+### Re-baselined deployment calendar — decision recorded 2026-10-13
+
+The 2026-07-20 dates for Phases 6 and 7 are superseded for deployment work. A code review on 2026-10-13 found that the application has no production composition, Lambda handlers, S3 or SQS adapters, or secret loading ([ADR-018](adr/ADR-018-production-composition-lambda-runtime-and-secrets.md)), so Phase 6 starts now instead of on Nov 23. Owner decisions of 2026-10-13: the minimum live demo is a guest page on CloudFront HTTPS showing a sanitized snapshot, owner login through Cognito (Hosted UI with PKCE), synthetic-text analysis with OpenAI, and Markdown or text upload with a visible status; production excludes retrieval, restricted execution (disabled; SG-08 disclosed as unmet), Anthropic Claude and PDF. **Deploy freeze: 2026-12-06. Phase 7: Dec 7 to Dec 20.** Capacity stays 12 hours per week.
+
+| Phase                      | Dates          | Planned effort | Exit result                                                                  |
+|----------------------------|----------------|---------------:|------------------------------------------------------------------------------|
+| 6. Security and deployment | Oct 13–Dec 6   |         ~87 h  | Minimum live demo deployed through Terraform, hardened, rollback documented  |
+| 7. Portfolio release       | Dec 7–Dec 20   |          18 h  | Public repo, demo, video, case study                                         |
+
+Phase 6 work is 69 h of new items (INFRA-006 to INFRA-012), 6 h to accept INFRA-002, 4 h for INFRA-003, 1 h for the reduced INFRA-005 and 7 h for HARD-001 to HARD-004, about 87 h against about 92 h available from Oct 13 to Dec 6. That leaves roughly 5 h (about 5 percent) of slack, so the cut list below is part of the plan, not a contingency.
+
+| Week | Dates         | Work                                                                                              | Milestone |
+|-----:|---------------|---------------------------------------------------------------------------------------------------|-----------|
+| 1    | Oct 13–18     | ADR-018 and this plan; INFRA-006 starts; owner first apply of bootstrap, network and data plane   |           |
+| 2    | Oct 19–25     | INFRA-006 finishes; INFRA-007 (API entry point, queue handlers, parser amendment)                 |           |
+| 3    | Oct 26–Nov 1  | INFRA-007 finishes; INFRA-003 database provider and database; INFRA-009 starts                    |           |
+| 4    | Nov 2–8       | INFRA-009 images; INFRA-008 secrets and parser database credential                                |           |
+| 5    | Nov 9–15      | INFRA-012 migration runner; INFRA-002 compute apply and acceptance                                | **M1**    |
+| 6    | Nov 16–22     | INFRA-010 static frontend, Cognito Hosted UI with PKCE, CORS, hosting, upload and status panel    | **M2**    |
+| 7    | Nov 23–29     | ADR-019 and INFRA-011 snapshot, local publish script, guest page                                  | **M3**    |
+| 8    | Nov 30–Dec 6  | HARD-001, HARD-002 (limited scope), HARD-003, HARD-004, INFRA-005 exception; **deploy freeze Dec 6** |        |
+| 9–10 | Dec 7–Dec 20  | PORT-001 to PORT-008                                                                              | Release   |
+
+Milestones:
+
+- **M1 — authenticated API call live (target Nov 15):** a Cognito access token for the configured owner is accepted by the deployed API over HTTPS and a project can be created and read from the production database.
+- **M2 — owner login, upload and analysis over HTTPS (target Nov 22):** in a browser on the CloudFront domain the owner signs in through the Hosted UI, submits synthetic text and sees an OpenAI analysis run, uploads a Markdown or text file and sees its parser status reach accepted or rejected.
+- **M3 — minimum live demo (target Nov 29):** an anonymous guest opens the CloudFront guest page and sees the sanitized published snapshot, with no database connection opened and no write route reachable.
+
+**Ordered cut list** (apply in this order when a trigger fires: M1 not reached by Nov 15 applies cuts 1 to 3; M2 not reached by Nov 22 adds 4 and 5; M3 not reached by Nov 29 adds 6):
+
+1. HARD-004 becomes a documented rollback procedure without a recorded exercise.
+2. PORT-002, PORT-006 and PORT-007 (P1) are reduced to the minimum acceptable text.
+3. The parser database credential uses the explicit environment-variable fallback instead of RDS IAM authentication (ADR-018).
+4. Visual polish of the owner and guest pages.
+5. The upload form is dropped from the web page; upload and status are shown through the documented API call.
+6. Markdown or text upload and the parser are removed from the live scope and disclosed; login, synthetic-text analysis and the guest demo remain.
+
+Never cut: owner-only Cognito authorization, the read-only guest boundary, parser isolation, secrets outside code and state for the API, HTTPS, and the schedule protection rules in section 14.
+
 ### Superseded initial planning calendar
 
 | Phase                           | Dates         | Planned effort | Exit result                                      |
@@ -896,6 +936,7 @@ of this backlog.
   - The deploy role's permissions are limited to the resources Terraform manages and are reviewed and recorded.
   - Closes the INFRA-001 gaps: TM-IAM-005 protected environments, and TM-DATA-007 plan review, protected production environment and least-privilege deploy role.
   - The local-credential exception, its scope and its end condition are recorded in `docs/INFRASTRUCTURE.md`.
+- **Scope note (2026-10-13):** reduced by owner decision to the documented local-credential exception (about 1 h). The CI plan job, protected environment and deploy role are deferred, so TM-IAM-005 and TM-DATA-007 remain unmet. First apply and image pushes use the owner's local credentials.
 
 #### INFRA-002 — Deploy frontend, API, queue, worker, object storage, and auth
 
@@ -904,7 +945,7 @@ of this backlog.
 - **Dependencies:** INFRA-001, EXEC-008, ADR-017 (network egress and database connectivity)
 - **Deliverable:** AWS application tier.
 - **Acceptance:** Owner workflow and guest read-only demo operate over HTTPS.
-- **Status:** All four stages implemented (2026-10-13); **not yet Accepted**: acceptance needs an apply showing the owner workflow and guest read-only demo over HTTPS. Stage 1: network module. Stage 2: the ADR-017 t4g.nano NAT instance (about 7.36 USD per month). Stage 3: data plane (ECR, SQS with DLQs, private data and demo buckets, log groups, least-privilege execution roles). Stage 4: four Arm Lambda container functions in the VPC, SQS event source mappings (batch 1, partial batch responses, concurrency 2; executor trigger disabled), ECR pull policies, the HTTP API (throttled, no authorizer because the API validates Cognito tokens), the guest-demo CloudFront distribution with Origin Access Control, and the Cognito owner pool with a public client. Open: Lambda adapters, secrets (`DATABASE_URL`, model keys), images, frontend hosting and OAuth domain, Aurora resume vs the 30 s API limit, the parser enqueue path. Single compute AZ accepted. Database subnets and security group are deferred to INFRA-003. SG-08 is not met. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+- **Status:** All four stages implemented (2026-10-13); **not yet Accepted**: acceptance needs an apply showing the owner workflow and guest read-only demo over HTTPS. Stage 1: network module. Stage 2: the ADR-017 t4g.nano NAT instance (about 7.36 USD per month). Stage 3: data plane (ECR, SQS with DLQs, private data and demo buckets, log groups, least-privilege execution roles). Stage 4: four Arm Lambda container functions in the VPC, SQS event source mappings (batch 1, partial batch responses, concurrency 2; executor trigger disabled), ECR pull policies, the HTTP API (throttled, no authorizer because the API validates Cognito tokens), the guest-demo CloudFront distribution with Origin Access Control, and the Cognito owner pool with a public client. Open: Lambda adapters, secrets (`DATABASE_URL`, model keys), images, frontend hosting and OAuth domain, Aurora resume vs the 30 s API limit, the parser enqueue path. Single compute AZ accepted. Database subnets and security group are deferred to INFRA-003. SG-08 is not met. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md). **Scope note (2026-10-13):** the open application items are owned by INFRA-006 to INFRA-012 under [ADR-018](adr/ADR-018-production-composition-lambda-runtime-and-secrets.md); the acceptance apply targets milestone M1 (Nov 15) and the owner-workflow part of the criterion is completed by M2.
 
 #### INFRA-003 — Select and deploy production PostgreSQL
 
@@ -921,6 +962,79 @@ of this backlog.
 - **Dependencies:** EXEC-001, INFRA-002, ADR-017 (executor egress control is open; decide a private-in-VPC target or another control for SG-08)
 - **Deliverable:** Allowlisted public sandbox API.
 - **Acceptance:** Executor can reach only configured target and security suite passes live.
+- **Scope note (2026-10-13):** deferred out of the minimum live demo by owner decision. The executor stays disabled in production and SG-08 is disclosed as unmet (ADR-017, ADR-018). The acceptance above cannot be met by the Dec 6 freeze; this item stays open and is not Accepted.
+
+#### INFRA-006 — Production composition root and shared database engine
+
+- **Priority:** P0
+- **Estimate:** 10 h
+- **Dependencies:** ADR-018, INFRA-002 (data plane resources), ING-001, ING-002, ING-003
+- **Deliverable:** A production composition selected by `APP_ENV=production` that replaces the `Unavailable*` defaults: one shared SQLAlchemy engine with `NullPool` injected into the repositories, the database-backed intake repository and `SqlAlchemyParserJobQueue`, an S3 `QuarantineStorage` (API, write) and `QuarantineReader` (parser, read-only) using `boto3`, a read-only owner-authorized document-status route, and a production upload cap (4 MiB pending verification). Local and test composition are unchanged.
+- **Acceptance:** Unit and PostgreSQL integration tests pass; no idle pooled connection remains after a request; the S3 adapters pass tests against a fake client; the status route denies cross-project access with a safe 404 and audits the decision; a 4 MiB Markdown request passes the API size checks and a larger one is rejected before parsing; `python scripts/tasks.py ci` and `db-check` pass; B1/v1 OpenAI behavior and evidence are unchanged.
+
+#### INFRA-007 — Lambda entry points, parser runtime amendment and general wake-up
+
+- **Priority:** P0
+- **Estimate:** 14 h
+- **Dependencies:** ADR-018, INFRA-006
+- **Deliverable:** A Mangum handler for the API; SQS handlers for the parser, general worker and executor that treat the message as a wake-up and return `batchItemFailures` only for infrastructure errors before a claim; a configurable claim duration; the ADR-018 parser credential check with unit tests for every accepted and rejected combination; the API's general-queue wake-up after upload and on status reads, behind a flag that is off until INFRA-013; the Terraform change that removes the parser's `SendMessage` on the general queue and sets the API model variables.
+- **Acceptance:** Local invocation of each handler with sample events passes tests (empty, duplicate and post-claim messages produce no failure entry; a pre-claim database error produces exactly one); the Compose parser isolation job is unchanged and passes; the executor handler stays disabled by configuration; `terraform fmt`, `validate` and the Checkov scan pass.
+
+#### INFRA-008 — Secrets bootstrap and parser database credential
+
+- **Priority:** P0
+- **Estimate:** 7 h
+- **Dependencies:** ADR-018, INFRA-006, INFRA-003 (database provider, for IAM authentication)
+- **Deliverable:** A bootstrap that loads `DATABASE_URL` and `OPENAI_API_KEY` from Secrets Manager at cold start for the API and general worker; Terraform for the two secrets (no values), the `GetSecretValue` grants on exact ARNs and the function environment; the parser database credential: RDS IAM authentication with a restricted parser database user, or, if INFRA-003 cannot support it, the explicit environment-variable fallback with the state exposure recorded and the `CKV_AWS_173` suppression reason updated. No Anthropic secret is created.
+- **Acceptance:** A missing secret fails closed and no secret value reaches logs (tests); the IAM-authentication token path connects from the parser subnet at the first apply, or the fallback is recorded; the monthly secret cost (0.40 USD per secret, Price List 2026-09-11) is recorded; the Checkov scan passes.
+
+#### INFRA-009 — Arm64 Lambda container images and build/push path
+
+- **Priority:** P0
+- **Estimate:** 7 h
+- **Dependencies:** ADR-018, INFRA-007
+- **Deliverable:** One multi-stage Dockerfile on `public.ecr.aws/lambda/python:3.13` for `linux/arm64` (`--provenance=false`) producing the API, parser, general and executor images by command, tagged by commit; a documented local build and push procedure using the owner's credentials; recorded image sizes; `boto3` presence confirmed.
+- **Acceptance:** The four images build for arm64 from the locked dependencies, start under the Lambda runtime interface emulator, and are pushed to the immutable ECR repositories; digests are recorded for the Terraform variables; the existing parser Compose job and Dockerfile are unchanged.
+
+#### INFRA-010 — Static frontend, Cognito Hosted UI with PKCE, CORS and hosting
+
+- **Priority:** P0
+- **Estimate:** 18 h
+- **Dependencies:** ADR-018, INFRA-007, INFRA-006 (status route), INFRA-009
+- **Deliverable:** `apps/web` exported as a static site with a build-time API base URL and no rewrites; Cognito user pool domain, OAuth authorization code with PKCE and callback URLs in Terraform; owner sign-in, sign-out and token handling in the page; an upload form and a document-status panel; HTTP API CORS for the web origin (including the `X-Upload-Filename` header and `X-Correlation-ID` exposure); S3 and CloudFront hosting with the default HTTPS domain.
+- **Acceptance:** `npm run build` for the web workspace and the web checks pass; in a browser over HTTPS the owner signs in, creates a project, submits synthetic text and uploads a Markdown file whose status is shown; an unauthenticated request to an owner route returns 401; the Cognito user pool tier and any domain charge are recorded; Checkov passes. Completes milestone M2.
+
+#### INFRA-011 — Demo snapshot, local publish script and guest page
+
+- **Priority:** P0
+- **Estimate:** 10 h
+- **Dependencies:** ADR-019 (to be written and accepted first), INFRA-010, REP-001 to REP-004
+- **Deliverable:** ADR-019 defining the snapshot schema, the sanitization policy and the static "server-selected" rule; a sanitizer and a local publish script that write a pre-sanitized snapshot to a new immutable key under `publications/` in the demo bucket with the owner's local credentials; a guest page that renders it from CloudFront. There is no owner publish API in this item.
+- **Acceptance:** A published snapshot passes the ADR-006 data policy checks and content-hash verification; the guest page loads over HTTPS with no database connection and no write route; a second publication does not overwrite the first; the script refuses unsanitized input. Completes milestone M3.
+
+#### INFRA-012 — Migration runner
+
+- **Priority:** P0
+- **Estimate:** 3 h
+- **Dependencies:** INFRA-003, INFRA-009
+- **Deliverable:** A one-shot job that runs Alembic inside the VPC against the private database (for example the API image with a different command), with a documented first-apply runbook.
+- **Acceptance:** A clean production database is migrated to head and the migration version is read back; a failed run leaves the version unchanged and reports a sanitized error.
+
+#### INFRA-013 — Production embeddings and retrieval composition
+
+- **Priority:** P1
+- **Estimate:** 8 h
+- **Dependencies:** INFRA-008, INFRA-007; not started before milestone M3
+- **Deliverable:** A real `EmbeddingAdapter` (OpenAI), the retrieval and citation composition in the production root, the general worker's indexing turned on and the general wake-up flag enabled.
+- **Acceptance:** An uploaded Markdown document is indexed and retrieved with citations in production; embedding calls use the server-only key; provider usage is accounted per ADR-012. Out of the minimum live demo.
+
+#### INFRA-014 — Asynchronous model call for Claude in production
+
+- **Priority:** P2 (post-MVP)
+- **Estimate:** 6 h (planning estimate)
+- **Dependencies:** INFRA-008, ADR-013, ADR-018
+- **Deliverable:** A design and implementation that runs the Anthropic adapter (60 s timeout) outside the 29 s API request, with a stored Anthropic secret.
+- **Acceptance:** A Claude analysis run completes through the queue and the owner sees its result; the default provider stays OpenAI. Not in the minimum live demo.
 
 ### Epic HARD — Release hardening
 
@@ -945,6 +1059,7 @@ of this backlog.
   - `SG-07` uses completed `HARD-001` scanner evidence.
   - The evaluation uses the completed `EVAL-007` release workflow rather than treating corpus existence as execution evidence.
   - A completed corpus, workflow definition, or scanner configuration is not itself evidence that the gate passed.
+- **Scope note (2026-10-13):** with the executor disabled and INFRA-004 deferred, the live execution and SG-08 parts of this acceptance cannot be met by the Dec 6 freeze. The matrix is run for every gate that the minimum live demo exposes, the unmet gates are reported as unmet, and PORT-003 states the limitation. This item is not Accepted unless the owner records an amended acceptance.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
@@ -999,6 +1114,7 @@ of this backlog.
 - **Dependencies:** INFRA-004
 - **Deliverable:** Stable read-only project plus documented reset/seed command.
 - **Acceptance:** Guest cannot mutate or create spend.
+- **Scope note (2026-10-13):** the INFRA-004 dependency is deferred; the stable read-only demo is the INFRA-011 snapshot published by the local script, and the reset process is the documented re-publish procedure.
 
 #### PORT-005 — Record 3–5 minute demo video
 
@@ -1007,6 +1123,7 @@ of this backlog.
 - **Dependencies:** PORT-001, PORT-004
 - **Deliverable:** Problem → upload → findings → tests → approval → execution → report → metrics.
 - **Acceptance:** Video matches deployed version and contains no secrets.
+- **Scope note (2026-10-13):** the deployed demo has no live approval or execution, so the video shows login, upload, synthetic-text analysis and the guest snapshot, and states the execution limitation.
 
 #### PORT-006 — Write case study and interview narrative
 
@@ -1099,7 +1216,7 @@ If the schedule slips:
 ## 15. Immediate next issue
 
 The current next work is listed under "Current next work" at the end of this
-section (updated 2026-10-10). The paragraphs before it are the historical
+section (updated 2026-10-13). The paragraphs before it are the historical
 acceptance record.
 
 FND-001 through FND-009 have recorded Phase 0 evidence. IAM-001 is verified on
@@ -1212,12 +1329,13 @@ results (ADR-014 to ADR-016) are not B1, B2 or gate evidence.
 
 ### Current next work
 
-1. INFRA-002 (records the compute-service choice and the Region) and INFRA-003
-   (records the database provider), under the narrow ADR-005 acceptance of
-   2026-10-10. INFRA-001 was accepted on 2026-10-12.
-2. INFRA-005 (plan and apply path) before the first CI-driven apply; INFRA-004
-   after INFRA-002.
-3. HARD-001 through HARD-004, in dependency order alongside the INFRA items.
+Re-baselined 2026-10-13 (see the deployment calendar in section 2 and [ADR-018](adr/ADR-018-production-composition-lambda-runtime-and-secrets.md)). Deploy freeze 2026-12-06; Phase 7 Dec 7 to Dec 20.
+
+1. INFRA-006, then INFRA-007 (application work needed before anything can run on the INFRA-002 infrastructure). In parallel, INFRA-003 (records the database provider) and the owner's first apply of the bootstrap, network and data plane.
+2. INFRA-009 and INFRA-008, then INFRA-012 and the INFRA-002 compute apply. Milestone M1 (authenticated API call live) by Nov 15.
+3. INFRA-010 (milestone M2 by Nov 22), then ADR-019 and INFRA-011 (milestone M3 by Nov 29).
+4. HARD-001 to HARD-004 and the reduced INFRA-005 in week 8; then Phase 7.
+5. After M3 only if time remains: INFRA-013. INFRA-004 and INFRA-014 are out of the minimum live demo.
 
 SKEL-007 (Playwright end-to-end smoke test, P1) is unstarted and remains open.
 Do not add production deployment scope outside the INFRA items.
