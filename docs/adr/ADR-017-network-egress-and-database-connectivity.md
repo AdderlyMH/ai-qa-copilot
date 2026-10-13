@@ -49,6 +49,9 @@ Research for this decision was done on 2026-10-12 and 2026-10-13 from official A
 ### Positive consequences
 
 - No application code change: the existing SQLAlchemy and `DATABASE_URL` path is kept.
+
+> **Correction (2026-10-13):** the statement above is wrong for the pooling behavior. The application creates about 11 SQLAlchemy engines per API process, each with the default pool, so warm Lambda environments keep idle connections open and Aurora cannot auto-pause. [ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) decides a single shared engine with `NullPool`, which is a code change. The decision to use a direct connection without RDS Proxy is unchanged.
+
 - The executor and other functions keep a VPC network boundary, so security-group egress rules and network ACLs remain available for SG-08.
 - The parser has no route to the internet, matching ADR-009.
 - Egress costs about a fifth of a managed NAT gateway and keeps the budget achievable.

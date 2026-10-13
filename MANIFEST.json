@@ -87,8 +87,8 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 45406,
-      "sha256": "208e273fafd3ac22bb8b3020b3d1ffeaf4dd910f82c1ab3a1beb04f1caafe63c"
+      "bytes": 46099,
+      "sha256": "2c42582dbf82045c7eb9905fb964b1604ea4c28107a7200fb0341d7c21323194"
     },
     {
       "path": "docs/B1_CANDIDATE_EXECUTOR.md",
@@ -217,8 +217,8 @@
     },
     {
       "path": "docs/adr/ADR-009-parser-isolation.md",
-      "bytes": 10084,
-      "sha256": "05b84e297f8c7068c3b04f8dbe8d5061d3f1e2f38a5e76f01abdfa5119bd28ff"
+      "bytes": 10521,
+      "sha256": "2dd9dcf7ed91f3925ab6e067504c67a2d6b0e86df5fae5c76269ed5c22644051"
     },
     {
       "path": "docs/adr/ADR-010-canonical-report-revisions.md",
@@ -257,8 +257,13 @@
     },
     {
       "path": "docs/adr/ADR-017-network-egress-and-database-connectivity.md",
-      "bytes": 13930,
-      "sha256": "e6d83994f99d4c7397bf8b0f776a5590baec8ee43462f097b212e0ae3f02f08d"
+      "bytes": 14416,
+      "sha256": "d66d3bf90f6fedde3b1a551deb7c2ad6776a575fa7298f854de1c19942798773"
+    },
+    {
+      "path": "docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md",
+      "bytes": 23723,
+      "sha256": "5f5a75379c4e16cd19d2468b82a599602efe1b6d3b6978ea3850820c887d9eef"
     },
     {
       "path": "docs/adr/README.md",

@@ -22,6 +22,8 @@ Markdown, text, bounded PDF, and OpenAPI 3.0.x/3.1.x YAML or JSON uploads are at
 - Parser profiles and numerical limits are normative in PRODUCT_REQUIREMENTS.md §10. This ADR must reference them rather than duplicate values that could drift.
 - OpenAPI accepts only root-local #/... references. External, relative, encoded, file:, data:, and network references are rejected; OpenAPI URLs and metadata are inert evidence.
 
+> **Amendment note (2026-10-13):** [ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) relaxes the parser credential check only for the temporary execution-role credentials that AWS Lambda injects, under four stated conditions, and moves the parser-to-general handoff to the database. The queue message is a wake-up; the opaque document identifier is not used to select work. All other decisions here are unchanged.
+
 ## Alternatives considered
 
 | Alternative                                             | Decision | Reason                                                                              |
