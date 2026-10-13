@@ -1,5 +1,35 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-002 stage 4 of 4: compute, API, guest demo and Cognito — 2026-10-13
+
+**Status:** Implemented on branch `feat/infra-002-compute-api`, not yet merged.
+Terraform code and documentation only: no `terraform plan` or `apply`, no AWS
+credentials, no AWS resource and no spend. All four INFRA-002 stages are
+implemented; INFRA-002 is **not Accepted** because its criterion needs an apply.
+
+Delivered: `infra/modules/compute_api` with four Arm Lambda container functions
+in the VPC (image URIs without defaults; timeouts 29, 15, 300 and 60 s;
+non-secret environment variables only), SQS event source mappings (batch 1,
+`ReportBatchItemFailures`, maximum concurrency 2; the execution trigger and the
+executor enable flag are off because SG-08 is not met), ECR repository policies
+for Lambda pulls scoped to this deployment's functions, an HTTP API with a Lambda
+proxy integration (rate 5/s, burst 10, access logs without headers), a CloudFront
+distribution with Origin Access Control serving only `publications/` from the
+private demo bucket (bucket policy statement scoped to the distribution ARN;
+Block Public Access stays on), and a Cognito owner user pool with a public client
+and no domain. Checkov: 300 passed, 0 failed, 44 skipped (15 new, confirmed
+necessary). No conflict with ADR-005, ADR-006, ADR-008 or ADR-017.
+
+Step 0 findings: the API validates Cognito tokens itself, so no API Gateway
+authorizer is used; INFRA-002 owns the user pool. The repository has no Lambda
+handlers (adapters needed) and reads `DATABASE_URL` and the model keys from the
+environment, so they are not set and the functions cannot serve real work yet.
+Open: adapters, secrets (INFRA-003 for `DATABASE_URL`), images, frontend hosting
+and OAuth domain, Aurora resume vs the 30 s API limit, the parser enqueue path,
+SG-08 (INFRA-004), plan-role read access (INFRA-005). Next action: Lambda
+adapters and secret handling in the application, then the first apply under the
+local-credential exception.
+
 ## INFRA-002 stage 3 of 4: data plane — 2026-10-13
 
 **Status:** Implemented on branch `feat/infra-002-data-plane`, not yet merged.

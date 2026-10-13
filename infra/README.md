@@ -14,11 +14,12 @@ sources are in [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md).
 | `modules/network/` | VPC, egress-compute and parser subnets, route tables, S3 gateway endpoint, parser and egress-compute security groups, locked default security group (ADR-017) | Module |
 | `modules/nat_instance/` | t4g.nano NAT instance on a persistent network interface with an Elastic IP, NAT security group, Session Manager instance profile, egress default route (ADR-017) | Module |
 | `modules/data_plane/` | ECR repositories, SQS queues with DLQs, private data and guest-demo buckets, log groups, one least-privilege execution role per Lambda function class | Module |
-| `environments/production/` | Production root: OIDC provider and plan role (INFRA-001), network (INFRA-002 stage 1), NAT instance (stage 2), data plane (stage 3) | S3 backend with native lock file |
+| `modules/compute_api/` | Four Lambda container functions (Arm, VPC), SQS event source mappings, ECR pull policies, HTTP API, guest-demo CloudFront with Origin Access Control, Cognito owner user pool and public client | Module |
+| `environments/production/` | Production root: OIDC provider and plan role (INFRA-001), network, NAT instance, data plane and compute/API (INFRA-002 stages 1 to 4) | S3 backend with native lock file |
 
-No database, database connectivity or compute resource exists here. The
-ADR-005 database gate holds until INFRA-003 records the provider; compute
-arrives in later INFRA-002 stages (ADR-017).
+No database or database connectivity resource exists here; the ADR-005
+database gate holds until INFRA-003 records the provider. Compute (Lambda)
+is defined in INFRA-002 stage 4 (ADR-017); images must be pushed before apply.
 
 ## Versions
 
@@ -66,8 +67,9 @@ uv tool run --python 3.12 --from checkov==3.3.20 checkov --directory infra --fra
 
 Any failed check fails CI. Intentional exceptions are inline
 `#checkov:skip=<check>:<reason>` comments inside the resource. The current
-29 (four on the state bucket, three in the network module, two in the NAT
-module, 20 in the data-plane module) are listed with reasons in
+44 (four on the state bucket, three in the network module, two in the NAT
+module, 20 in the data-plane module, 15 in the compute module) are listed
+with reasons in
 [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md#iac-policy-scan).
 
 ## Inputs

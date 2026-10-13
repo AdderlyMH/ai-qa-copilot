@@ -16,3 +16,17 @@ public_subnet_cidr        = "10.20.2.0/24"
 # NAT instance (ADR-017). Change this value to replace the instance with the
 # current AL2023 AMI; see the monthly runbook in docs/INFRASTRUCTURE.md.
 nat_replacement_generation = "2026-10-13"
+
+# Lambda images (INFRA-002 stage 4). FAKE example URIs: push real images to the
+# ECR repositories first and use their digests.
+image_uris = {
+  api      = "000000000000.dkr.ecr.us-east-1.amazonaws.com/ai-qa-copilot-production-api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  parser   = "000000000000.dkr.ecr.us-east-1.amazonaws.com/ai-qa-copilot-production-parser@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  general  = "000000000000.dkr.ecr.us-east-1.amazonaws.com/ai-qa-copilot-production-general@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  executor = "000000000000.dkr.ecr.us-east-1.amazonaws.com/ai-qa-copilot-production-executor@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+}
+
+# Cognito sub of the owner user (not a secret). Set after creating the user.
+cognito_owner_subject = "REPLACE_WITH_OWNER_SUB"
+model_provider        = "openai"
+executor_enabled      = false
