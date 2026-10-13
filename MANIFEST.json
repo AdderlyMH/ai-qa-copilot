@@ -37,8 +37,8 @@
     },
     {
       "path": ".github/dependabot.yml",
-      "bytes": 539,
-      "sha256": "529e7b2ae22bbd94215d1836e8bfbfc6f5fd60ce7a904a856581b30d285a0d93"
+      "bytes": 790,
+      "sha256": "79bef9417f8296476c55bd10cb24d07039762487196f8fa94bef5be7aeed86a1"
     },
     {
       "path": ".github/pull_request_template.md",
@@ -157,8 +157,8 @@
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
-      "bytes": 7400,
-      "sha256": "10ef0e135c2df546fcd59d196ae0050e282cf5d4c9b20cc525ef440581600a6c"
+      "bytes": 8880,
+      "sha256": "ca57c12ecc43efb180a069082236e47d20ff00702e5e5ff74335ae88d0ecd656"
     },
     {
       "path": "docs/REVIEW_EVIDENCE_CAPTURE.md",

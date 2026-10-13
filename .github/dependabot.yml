@@ -7,6 +7,11 @@ updates:
     open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
+    # Byte-pinned evaluation workflows are changed only by reviewed PRs, never
+    # by Dependabot (see docs/REPOSITORY_GOVERNANCE.md).
+    exclude-paths:
+      - .github/workflows/evaluation-smoke.yml
+      - .github/workflows/evaluation-release.yml
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
