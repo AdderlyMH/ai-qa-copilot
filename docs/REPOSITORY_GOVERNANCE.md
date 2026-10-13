@@ -27,6 +27,30 @@ repository pins Terraform 1.16.5; whether Dependabot opens Terraform update pull
 requests for these roots is not yet verified and will be recorded after its
 first weekly run.
 
+**Dependabot exclusion decision (2026-10-12).** The `github-actions` entry
+excludes three protected evaluation workflows with `exclude-paths`. They are
+changed only by reviewed pull requests, and tests pin them:
+`.github/workflows/evaluation-smoke.yml` and
+`.github/workflows/evaluation-release.yml` by SHA-256 of their bytes, and
+`.github/workflows/evaluation-provider-comparison.yml` by its exact commit-pinned
+`uses:` list, all in
+`apps/api/tests/test_evaluation_provider_comparison_workflow.py`. Dependabot
+pull requests #168 to #170 edited these files and failed `quality`.
+Sources read 2026-10-12: the
+[Dependabot options reference](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference)
+documents `exclude-paths` as glob patterns for "directories and files that
+Dependabot should ignore", set per `package-ecosystem` entry, and the
+[2025-08-26 changelog](https://github.blog/changelog/2025-08-26-dependabot-can-now-exclude-automatic-pull-requests-for-manifests-in-selected-subdirectories/)
+announced it. Neither page lists supported ecosystems; the `github-actions`
+fetcher in
+[dependabot-core](https://github.com/dependabot/dependabot-core/blob/main/github_actions/lib/dependabot/github_actions/file_fetcher.rb)
+lists `.github/workflows` through the shared repository-contents call, which
+filters entries by repository-relative path against `exclude-paths`. Whether the
+exclusion takes effect is verified only after the next Dependabot run. `ignore`
+rules were not used: they match dependency names, so ignoring
+`actions/checkout`, `actions/setup-python` or `actions/upload-artifact` would also
+stop updates for every other workflow.
+
 The public GitHub API verified that `main` is protected and that the active
 [`main-protection` ruleset](https://github.com/AdderlyMH/ai-qa-copilot/rules/19300108)
 has the controls stated above. The historical public endpoints remain the

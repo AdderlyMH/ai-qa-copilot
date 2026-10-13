@@ -1,6 +1,6 @@
 # Infrastructure — INFRA-001 Terraform Foundation
 
-**Status:** All three INFRA-001 stages implemented (2026-10-12): code (stage 1), the validation workflow (stage 2) and the IaC policy scan (stage 3). INFRA-001 is not yet accepted. Code, workflow and documentation only.
+**Status:** INFRA-001 accepted 2026-10-12 after three stages: code (stage 1), the validation workflow (stage 2) and the IaC policy scan (stage 3). The plan and apply path is INFRA-005. Code, workflow and documentation only.
 No AWS account or credentials exist; nothing has been planned against or
 applied to AWS. Nothing here is deployment, cost or security-gate evidence.
 
@@ -46,7 +46,7 @@ Comparison (official sources read 2026-10-12):
 | Scanner | Status and licence | CI install and pinning | Exit behaviour |
 |---|---|---|---|
 | Checkov | Maintained, frequent releases (3.3.28 on 2026-10-12); Apache-2.0 (C1, C2) | PyPI package pinned to an exact version and run with the repository's pinned uv, the same pattern as `pip-audit` and `bandit` in `application-ci.yml`; no third-party action. The `checkov-action` repository's latest GitHub release is from 2022 (C3) | Non-zero on failed checks; `--soft-fail`, `--soft-fail-on` and `--hard-fail-on` accept check IDs or severities (C4) |
-| Trivy (`trivy config`) | Maintained (v0.75.0 on 2026-10-01); Apache-2.0 (C5) | `trivy-action` (v0.36.0) or a pinned binary or container. In March 2026 a malicious Trivy release was published and 76 of 77 `trivy-action` tags and all `setup-trivy` tags were replaced with credential-stealing code (GHSA-69fq-xp46-6x23, CVE-2026-33634); the advisory tells users to pin actions to full commit SHAs (C6) | Severity filter and exit-code flags |
+| Trivy (`trivy config`) | Maintained (v0.75.0 on 2026-10-01); Apache-2.0 (C5) | `trivy-action` (v0.36.0) or a pinned binary or container. On 2026-03-19 a malicious Trivy v0.69.4 release was published, 76 of 77 `trivy-action` tags were force-pushed to credential-stealing malware and all 7 `setup-trivy` tags were replaced with malicious commits; on 2026-03-22 malicious Docker Hub images v0.69.5 and v0.69.6 were published (GHSA-69fq-xp46-6x23, CVE-2026-33634; advisory read 2026-10-12); the advisory tells users to pin actions to full commit SHAs (C6) | Severity filter and exit-code flags |
 | tfsec | Maintainers say tfsec is now part of Trivy and engineering attention goes to Trivy (C7); latest release v1.28.14 (2025-05-02); MIT | Binary or action | Not chosen: superseded by Trivy |
 
 **Why Checkov:** it runs through the pinned toolchain the repository already
@@ -117,6 +117,37 @@ workflows assume the role (S5). AWS also recommends protection rules on any
 GitHub environment used in OIDC policies (S5). The plan environment must
 therefore be created with protection rules before the role is used.
 
+## Re-verified prices (AWS Price List, read 2026-10-12)
+
+On-demand USD rates from the AWS Price List bulk API
+(<https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json>), regional
+offer files read 2026-10-12. Offer publication dates: AmazonVPC 2026-09-17,
+AmazonEC2 (NAT gateway) 2026-10-12, AWSSecretsManager and awskms 2026-09-11,
+AmazonRDS 2026-10-06, AWSLambda 2026-10-12, AmazonECS 2026-09-11,
+AmazonApiGateway 2026-10-12, AmazonCloudWatch 2026-10-07. These are list prices,
+not a cost projection; free tiers and the account's Free Tier plan are not
+applied.
+
+| Item | us-east-1 | us-east-2 | sa-east-1 |
+|---|---|---|---|
+| NAT gateway, per hour | 0.045 | 0.045 | 0.093 |
+| NAT gateway, per GB processed | 0.045 | 0.045 | 0.093 |
+| Public IPv4 address, per hour (in use or idle) | 0.005 | 0.005 | 0.005 |
+| Interface VPC endpoint, per hour per AZ | 0.01 | 0.01 | 0.021 |
+| Interface VPC endpoint, per GB (first 1 PB) | 0.01 | 0.01 | 0.01 |
+| Secrets Manager, per secret per month | 0.40 | 0.40 | 0.40 |
+| KMS customer managed key, per month | 1.00 | 1.00 | 1.00 |
+| Aurora PostgreSQL Serverless v2, per ACU-hour | 0.12 | 0.12 | 0.25 |
+| Aurora storage, per GB-month (standard) | 0.10 | 0.10 | 0.19 |
+| Lambda compute, Arm, per GB-second (first tier) | 0.0000133334 | 0.0000133334 | 0.0000133334 |
+| Fargate Linux x86, per vCPU-hour | 0.04048 | 0.04048 | 0.0696 |
+| API Gateway HTTP API, per million requests (first 300 M) | 1.00 | 1.00 | 1.59 |
+| CloudWatch Logs Standard ingestion, per GB | 0.50 | 0.50 | 0.90 |
+
+The NAT gateway and public IPv4 figures in the checklist below match these
+rates. Cognito, CloudFront or Amplify, load balancers and S3 storage were not
+read.
+
 ## ADR-005 verification-gate checklist
 
 Charge structures are recorded from official pages read on 2026-10-12. Numbers
@@ -141,6 +172,17 @@ Region before deciding.
 The ADR-005 database gate still applies: no database resource, subnet group or
 connectivity resource for a database is created until the provider selection is
 recorded in an ADR-005 amendment or a new ADR.
+
+## Local-credential apply exception
+
+Until INFRA-005 (plan and apply path) is accepted, the only permitted applies
+are by the project owner from a workstation with their own AWS credentials,
+following the order in [`infra/README.md`](../infra/README.md). Scope: the
+`infra/bootstrap` and `infra/environments/production` roots only, and no
+database or compute resource while the ADR-005 gates are open. No AWS
+credentials are stored in GitHub, and CI does not plan or apply. The exception
+ends when INFRA-005 provides the protected environment, the plan job, the
+least-privilege deploy role and the manual approval before apply.
 
 ## Open items
 

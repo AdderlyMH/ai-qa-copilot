@@ -1,5 +1,27 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-001 accepted; INFRA-005 added — 2026-10-12
+
+**Status:** Recorded on branch `docs/infra-001-acceptance`; documentation only.
+No code, workflow, Terraform, fixture or pricing change, no `terraform plan` or
+`apply`, no AWS resource and no spend.
+
+INFRA-001 is Accepted against its criteria: `fmt`, `validate` and the Checkov
+policy scan pass on the required check `terraform-validate` (PR #172, run
+38324750350), and no secret can reach state inputs. Not met and now owned by
+the new P0 item INFRA-005 (plan and apply path, 4 h): TM-IAM-005 protected
+environments, and TM-DATA-007 plan review, protected production environment and
+least-privilege deploy role. Until INFRA-005 is accepted, only owner applies
+with local credentials are allowed.
+
+[INFRASTRUCTURE.md](INFRASTRUCTURE.md) now matches advisory GHSA-69fq-xp46-6x23
+(`setup-trivy` tags replaced with malicious commits; malicious Docker Hub
+images v0.69.5 and v0.69.6 on 2026-03-22) and records list prices for
+us-east-1, us-east-2 and sa-east-1 from the AWS Price List read 2026-10-12. The
+previously quoted NAT gateway and public IPv4 rates still match. Next action:
+INFRA-002 (Region and compute service) and INFRA-003 (database provider);
+INFRA-005 before the first CI-driven apply.
+
 ## INFRA-001 stage 3 of 3: IaC policy scan — 2026-10-12
 
 **Status:** Implemented on branch `feat/infra-001-policy-scan`, not yet merged.
@@ -1976,9 +1998,9 @@ release milestone.
 
 ## Next action
 
-Review INFRA-001 (Terraform foundation, the first Phase 6 item) for acceptance;
-all three stages were implemented on 2026-10-12. Then INFRA-002 records the
-compute-service choice and INFRA-003 the database provider, under the narrow
-ADR-005 acceptance of 2026-10-10. HARD-001 through HARD-004 follow. SKEL-007
-(Playwright smoke test) is unstarted. OBS-003 is deferred and resumable; see
-`BACKLOG.md` section 15.
+INFRA-001 was accepted on 2026-10-12. Next, INFRA-002 records the Region and the
+compute service and INFRA-003 the database provider, under the narrow ADR-005
+acceptance of 2026-10-10. INFRA-005 (plan and apply path) must precede the
+first CI-driven apply. HARD-001 through HARD-004 follow. SKEL-007 (Playwright
+smoke test) is unstarted. OBS-003 is deferred and resumable; see `BACKLOG.md`
+section 15.
