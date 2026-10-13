@@ -12,7 +12,8 @@ sources are in [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md).
 | `modules/naming/` | `<project>-<environment>` prefix and standard tags | Module |
 | `modules/github_oidc_plan_role/` | GitHub Actions OIDC provider and a plan-only IAM role | Module |
 | `modules/network/` | VPC, egress-compute and parser subnets, route tables, S3 gateway endpoint, parser and egress-compute security groups, locked default security group (ADR-017) | Module |
-| `environments/production/` | Production root: OIDC provider and plan role (INFRA-001), network (INFRA-002 stage 1) | S3 backend with native lock file |
+| `modules/nat_instance/` | t4g.nano NAT instance on a persistent network interface with an Elastic IP, NAT security group, Session Manager instance profile, egress default route (ADR-017) | Module |
+| `environments/production/` | Production root: OIDC provider and plan role (INFRA-001), network (INFRA-002 stage 1), NAT instance (stage 2) | S3 backend with native lock file |
 
 No database, database connectivity or compute resource exists here. The
 ADR-005 database gate holds until INFRA-003 records the provider; compute
@@ -64,8 +65,8 @@ uv tool run --python 3.12 --from checkov==3.3.20 checkov --directory infra --fra
 
 Any failed check fails CI. Intentional exceptions are inline
 `#checkov:skip=<check>:<reason>` comments inside the resource. The current
-seven (four on the state bucket, three in the network module) are listed with
-reasons in
+nine (four on the state bucket, three in the network module, two in the NAT
+module) are listed with reasons in
 [docs/INFRASTRUCTURE.md](../docs/INFRASTRUCTURE.md#iac-policy-scan).
 
 ## Inputs
