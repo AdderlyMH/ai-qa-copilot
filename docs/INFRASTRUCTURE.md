@@ -4,6 +4,10 @@
 No AWS account or credentials exist; nothing has been planned against or
 applied to AWS. Nothing here is deployment, cost or security-gate evidence.
 
+**Update (2026-10-13):** the owner has since run a first, partial apply with local
+credentials; see [First apply, 2026-10-13](#first-apply-2026-10-13). The
+sentence above describes INFRA-001 only.
+
 Code lives in [`infra/`](../infra/README.md). Governing decision:
 [ADR-005](adr/ADR-005-aws-serverless-and-database.md#acceptance).
 
@@ -567,6 +571,78 @@ Stage 4 open items:
   S3, Logs and IAM: INFRA-005.
 - Custom domain, ACM certificate (us-east-1 for CloudFront) and WAF: deferred.
 
+## First apply, 2026-10-13
+
+The owner ran the first applies from a workstation with their own credentials
+under the [local-credential apply exception](#local-credential-apply-exception),
+in us-east-1. Facts only; account and resource identifiers are not recorded here.
+
+**What was applied:**
+
+- `infra/bootstrap`: applied, 7 resources created (the state bucket and its
+  controls).
+- `infra/environments/production`: a targeted apply of `naming`,
+  `github_oidc_plan_role`, `network`, `nat_instance` and `data_plane` created
+  63 resources.
+- `compute_api` was **not** applied (no Lambda functions, HTTP API, CloudFront
+  distribution, demo bucket policy or Cognito user pool exist).
+
+**What failed or drifted:**
+
+1. Both `data_plane` buckets (`data` and `demo`) failed with `InvalidTag: The
+   TagValue you have provided is invalid`. Their `Purpose` tag values contained
+   parentheses and commas. S3 tag values may contain only Unicode letters,
+   digits, white space and `_ . : / = + @ -` (S3 User Guide, read 2026-10-13).
+   The other tags that reach the buckets through `default_tags` (`Project`,
+   `Environment`, `ManagedBy`, `Repository` = `AdderlyMH/ai-qa-copilot`) use
+   only allowed characters. Fixed by rewriting the two `Purpose` values and
+   moving the document references to a comment. The buckets are created by the
+   next apply.
+2. A drift plan proposed `source_dest_check` `false -> true` on
+   `module.nat_instance.aws_instance.nat`. The NAT network interface has
+   `source_dest_check = false` (verified live). In AWS provider 6.68.0 the
+   instance argument defaults to `true`, is declared as conflicting with
+   `primary_network_interface`, and its diff is suppressed only when the
+   deprecated `network_interface` block is used; the instance read sets it from
+   the instance (`false`). Applying that plan would have re-enabled the check
+   and broken NAT forwarding. Fixed by adding `source_dest_check` to the
+   instance's `ignore_changes`; the persistent interface keeps owning the
+   setting. `terraform validate` also accepts an explicit
+   `source_dest_check = false` next to `primary_network_interface`, but the
+   provider schema declares the two as conflicting, so that form was not used.
+
+**Live checks done after the apply:**
+
+- NAT instance running; system and instance status checks both ok.
+- The instance is online in Systems Manager (Session Manager reachable).
+- The NAT network interface reports `SourceDestCheck` false.
+- The production root outputs are present.
+
+**Not proven:**
+
+- NAT forwarding for other hosts: there is no client in the egress-compute
+  subnet yet, so no packet has been forwarded through the instance.
+- CloudFront and the demo bucket policy: not applied (`compute_api`).
+- `compute_api` as a whole: not applied, so nothing about the Lambda functions,
+  HTTP API, Cognito or the guest demo is verified.
+- The two buckets: not yet created; the fix is verified only by `fmt`,
+  `validate` and the Checkov scan, not by an apply.
+
+**Lessons:**
+
+- S3 tag characters are validated only by the S3 API: `terraform validate` and
+  Checkov accepted the invalid values, and the error appeared at apply time.
+- When an instance uses `primary_network_interface`, the instance's
+  `source_dest_check` must agree with the network interface or be ignored;
+  otherwise the default `true` silently fights the interface setting.
+
+Sources (read 2026-10-13):
+<https://docs.aws.amazon.com/AmazonS3/latest/userguide/tagging.html>;
+<https://docs.aws.amazon.com/tag-editor/latest/userguide/best-practices-and-strats.html>
+("Allowed characters can vary by AWS service");
+<https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/v6.68.0/website/docs/r/instance.html.markdown>;
+<https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/v6.68.0/internal/service/ec2/ec2_instance.go>.
+
 ## Decisions in stage 1
 
 | Decision | Choice | Basis |
@@ -669,7 +745,8 @@ least-privilege deploy role and the manual approval before apply.
    job. Needs the AWS account and the OIDC provider first.
 5. **Budgets and alarms.** Owned by HARD-003.
 6. **First apply** of `infra/bootstrap` and `infra/environments/production` by
-   the owner. Nothing has been applied.
+   the owner: partially done on 2026-10-13 (see [First apply, 2026-10-13](#first-apply-2026-10-13));
+   the two buckets and `compute_api` remain.
 7. **Deferred scanner finding.** S3 server access logging (`CKV_AWS_18`),
    revisit in HARD-001.
 

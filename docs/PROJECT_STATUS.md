@@ -1,5 +1,33 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-002 first apply findings — 2026-10-13
+
+**Status:** Fix and documentation on branch `fix/infra-002-first-apply-findings`,
+not yet merged. No apply was run for this change.
+
+The owner's first apply (us-east-1, local credentials): `infra/bootstrap`
+created 7 resources; a targeted production apply of `naming`,
+`github_oidc_plan_role`, `network`, `nat_instance` and `data_plane` created 63
+resources. Both `data_plane` buckets failed with `InvalidTag` because their
+`Purpose` values contained parentheses and commas, which S3 tag values do not
+allow. A drift plan proposed `source_dest_check` `false -> true` on the NAT
+instance, which would have broken NAT forwarding.
+
+Fixed in code: the two `Purpose` values use only allowed characters (references
+moved to a comment), and the NAT instance ignores `source_dest_check` so the
+persistent network interface keeps it false. `terraform fmt`, `init
+-backend=false` and `validate` pass in both roots; Checkov 300 passed, 0
+failed, 44 skipped.
+
+Live checks: NAT instance running with both status checks ok, online in
+Systems Manager, network interface `SourceDestCheck` false, outputs present.
+Not proven: NAT forwarding for another host (no client in the egress subnet),
+CloudFront and the demo bucket policy, and all of `compute_api` (not applied).
+INFRA-002 is **not Accepted**.
+
+Next action: re-run the targeted production apply after merge (owner) to create
+the two buckets and confirm the NAT plan shows no change; then INFRA-006.
+
 ## Deployment plan and ADR-018 — 2026-10-13
 
 **Status:** Documentation only, on branch `docs/deployment-plan`, not yet merged.
