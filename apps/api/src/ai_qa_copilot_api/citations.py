@@ -11,8 +11,10 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_qa_copilot_api.database_engine import session_factory
 from ai_qa_copilot_api.documents import (
     CitationRecord,
     DocumentChunkRecord,
@@ -265,9 +267,13 @@ class SqlAlchemyCitationRepository:
         return _citation_from_row(row) if row is not None else None
 
 
-def citation_repository_from_environment() -> CitationRepository:
+def citation_repository_from_environment(
+    *, engine: Engine | None = None
+) -> CitationRepository:
     """Build citation persistence only from the explicit durable database URL."""
 
+    if engine is not None:
+        return SqlAlchemyCitationRepository(session_factory(engine))
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return UnavailableCitationRepository()

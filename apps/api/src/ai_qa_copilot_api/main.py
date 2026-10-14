@@ -8,7 +8,9 @@ import os
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from sqlalchemy.engine import Engine
 
+from ai_qa_copilot_api.database_engine import create_shared_engine, session_factory
 from ai_qa_copilot_api.audit import (
     AuthorizationAuditSink,
     AuthorizationAuditUnavailable,
@@ -712,35 +714,42 @@ def create_app(
         application.state.project_authorization_boundary = ProjectAuthorizationBoundary(
             auth_boundary, project_policy, auditor
         )
+        # One NullPool engine per process for every default repository (ADR-018);
+        # without DATABASE_URL the defaults stay fail-closed Unavailable*.
+        database_url = os.environ.get("DATABASE_URL", "").strip()
+        shared_engine = create_shared_engine(database_url) if database_url else None
+        application.state.database_engine = shared_engine
         application.state.requirement_analysis_repository = (
             requirement_analysis_repository
             if requirement_analysis_repository is not None
-            else requirement_analysis_repository_from_environment()
+            else requirement_analysis_repository_from_environment(engine=shared_engine)
         )
         application.state.finding_feedback_repository = (
             finding_feedback_repository
             if finding_feedback_repository is not None
-            else finding_feedback_repository_from_environment()
+            else finding_feedback_repository_from_environment(engine=shared_engine)
         )
         application.state.execution_approval_repository = (
             execution_approval_repository
             if execution_approval_repository is not None
-            else execution_approval_repository_from_environment()
+            else execution_approval_repository_from_environment(engine=shared_engine)
         )
         application.state.execution_job_queue = (
             execution_job_queue
             if execution_job_queue is not None
-            else execution_job_queue_from_environment()
+            else execution_job_queue_from_environment(engine=shared_engine)
         )
         application.state.execution_result_repository = (
             execution_result_repository
             if execution_result_repository is not None
-            else execution_result_repository_from_environment()
+            else execution_result_repository_from_environment(engine=shared_engine)
         )
         selected_quality_report_revision_repository = (
             quality_report_revision_repository
             if quality_report_revision_repository is not None
-            else quality_report_revision_repository_from_environment()
+            else quality_report_revision_repository_from_environment(
+                engine=shared_engine
+            )
         )
         application.state.quality_report_revision_repository = (
             selected_quality_report_revision_repository
@@ -749,7 +758,7 @@ def create_app(
             quality_report_generation_service
             if quality_report_generation_service is not None
             else _default_quality_report_generation_service(
-                selected_quality_report_revision_repository
+                selected_quality_report_revision_repository, engine=shared_engine
             )
         )
         application.state.demo_publication_service = DemoPublicationService(
@@ -764,12 +773,12 @@ def create_app(
         application.state.project_repository = (
             project_repository
             if project_repository is not None
-            else project_repository_from_environment()
+            else project_repository_from_environment(engine=shared_engine)
         )
         application.state.citation_repository = (
             citation_repository
             if citation_repository is not None
-            else citation_repository_from_environment()
+            else citation_repository_from_environment(engine=shared_engine)
         )
         application.state.retrieval_citation_service = (
             retrieval_citation_service
@@ -793,14 +802,18 @@ def create_app(
         application.state.analysis_run_service = (
             analysis_run_service
             if analysis_run_service is not None
-            else analysis_run_service_from_environment()
+            else analysis_run_service_from_environment(engine=shared_engine)
         )
         application.state.workflow_trace_sink = (
             workflow_trace_sink
             if workflow_trace_sink is not None
             else StructuredLoggingTraceSink()
         )
-        yield
+        try:
+            yield
+        finally:
+            if shared_engine is not None:
+                shared_engine.dispose()
 
     application = FastAPI(lifespan=lifespan)
 
@@ -1931,6 +1944,8 @@ def _document_intake_service(request: Request) -> DocumentIntakeService:
 
 def _default_quality_report_generation_service(
     revision_repository: QualityReportRevisionRepository,
+    *,
+    engine: Engine | None = None,
 ) -> QualityReportGenerationService | UnavailableQualityReportGenerationService:
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url or not isinstance(
@@ -1939,6 +1954,13 @@ def _default_quality_report_generation_service(
     ):
         return UnavailableQualityReportGenerationService()
 
+    if engine is not None:
+        return QualityReportGenerationService(
+            evidence_collector=SqlAlchemyQualityReportEvidenceCollector(
+                session_factory(engine)
+            ),
+            revision_repository=revision_repository,
+        )
     return QualityReportGenerationService(
         evidence_collector=SqlAlchemyQualityReportEvidenceCollector.from_database_url(
             database_url

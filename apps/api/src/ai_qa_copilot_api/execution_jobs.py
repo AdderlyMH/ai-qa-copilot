@@ -11,8 +11,10 @@ import os
 
 from sqlalchemy import create_engine, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_qa_copilot_api.database_engine import session_factory
 from ai_qa_copilot_api.documents import (
     ExecutionApprovalRecord,
     ExecutionJobRecord,
@@ -309,9 +311,13 @@ class UnavailableExecutionJobQueue:
         raise ExecutionJobQueueUnavailable
 
 
-def execution_job_queue_from_environment() -> ExecutionJobQueue:
+def execution_job_queue_from_environment(
+    *, engine: Engine | None = None
+) -> ExecutionJobQueue:
     """Build durable job storage only when the database is explicitly configured."""
 
+    if engine is not None:
+        return SqlAlchemyExecutionJobQueue(session_factory(engine))
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return UnavailableExecutionJobQueue()
