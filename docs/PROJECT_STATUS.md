@@ -1,5 +1,27 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-006 stage 1 of 3: shared database engine — 2026-10-14
+
+**Status:** Code on branch `feat/infra-006-shared-engine`, not yet merged.
+
+New `database_engine.py` builds one SQLAlchemy engine with `NullPool` and
+`pool_pre_ping` off; PostgreSQL URLs get `connect_timeout` from the URL or a
+10 s default, and a missing or invalid `DATABASE_URL` fails closed without
+echoing the URL. The default `create_app` composition previously built ten
+pooled engines (one per database-backed default); it now builds the shared
+engine once at startup when `DATABASE_URL` is set, injects it through a new
+optional `engine` argument on the `*_from_environment` factories, and disposes
+it on shutdown. Without `DATABASE_URL` the `Unavailable*` defaults are
+unchanged. `from_database_url`, the retrieval, evaluation-review and
+restricted-execution worker engines, and B1/v1 OpenAI behavior are unchanged.
+
+Evidence: Docker-free unit tests for the helper and the composition; the
+PostgreSQL integration tests stay skipped and `db-check` was not run, so "no
+idle pooled connection after a request" is shown against SQLite only.
+INFRA-006 is **not Accepted**.
+
+Next action: INFRA-006 stage 2 (production composition root and S3 adapters).
+
 ## INFRA-002 first apply findings — 2026-10-13
 
 **Status:** Fix and documentation on branch `fix/infra-002-first-apply-findings`,

@@ -13,8 +13,10 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, select, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_qa_copilot_api.database_engine import session_factory
 from ai_qa_copilot_api.auth import (
     CognitoOwnerPrincipal,
     LocalDevelopmentOwnerPrincipal,
@@ -324,9 +326,13 @@ class ExecutionApprovalService:
         )
 
 
-def execution_approval_repository_from_environment() -> ExecutionApprovalRepository:
+def execution_approval_repository_from_environment(
+    *, engine: Engine | None = None
+) -> ExecutionApprovalRepository:
     """Build durable approval persistence only with an explicit database URL."""
 
+    if engine is not None:
+        return SqlAlchemyExecutionApprovalRepository(session_factory(engine))
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return UnavailableExecutionApprovalRepository()

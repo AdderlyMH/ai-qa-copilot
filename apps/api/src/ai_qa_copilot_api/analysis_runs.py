@@ -20,9 +20,11 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Mapped, Session, mapped_column, sessionmaker
 from sqlalchemy.types import Uuid
 
+from ai_qa_copilot_api.database_engine import session_factory
 from ai_qa_copilot_api.model_gateway import (
     ModelGateway,
     ModelGatewayConfigurationError,
@@ -274,17 +276,21 @@ class UnavailableAnalysisRunService:
         raise AnalysisRunUnavailable
 
 
-def analysis_run_repository_from_environment() -> AnalysisRunRepository:
+def analysis_run_repository_from_environment(
+    *, engine: Engine | None = None
+) -> AnalysisRunRepository:
+    if engine is not None:
+        return SqlAlchemyAnalysisRunRepository(session_factory(engine))
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return UnavailableAnalysisRunRepository()
     return SqlAlchemyAnalysisRunRepository.from_database_url(database_url)
 
 
-def analysis_run_service_from_environment() -> (
-    AnalysisRunService | UnavailableAnalysisRunService
-):
-    repository = analysis_run_repository_from_environment()
+def analysis_run_service_from_environment(
+    *, engine: Engine | None = None
+) -> AnalysisRunService | UnavailableAnalysisRunService:
+    repository = analysis_run_repository_from_environment(engine=engine)
     if isinstance(repository, UnavailableAnalysisRunRepository):
         return UnavailableAnalysisRunService()
     try:

@@ -77,6 +77,7 @@ The owner made the production scope decisions recorded below on 2026-10-13. Fact
 
 - A new production composition module, a shared engine helper, handlers, an S3 adapter, a secrets bootstrap and a status route must be written and tested (INFRA-006 to INFRA-008).
 - `NullPool` opens a connection per unit of work; latency per request rises slightly and the database connection limit at low capacity must be checked.
+- Factual note (2026-10-14, INFRA-006 stage 1): the default API composition built ten engines, not about eleven; the restricted-execution worker keeps its own engine in its separate process until INFRA-007.
 - The parser's credential check is weaker inside Lambda than in Compose; the compensating controls are the role scope, the missing route and the tests above.
 - Until INFRA-013 the owner sees documents parsed but not indexed, and no retrieval or requirement analysis runs in production.
 - Execution evidence cannot be shown live; HARD-002 and PORT-005 cannot meet their written acceptance for SG-08 and execution, and the scope change is recorded against them in the backlog.

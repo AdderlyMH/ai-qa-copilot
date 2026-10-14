@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ from typing import Protocol
 import re
 import os
 
+from ai_qa_copilot_api.database_engine import session_factory
 from ai_qa_copilot_api.citations import (
     Citation,
     CitationRepository,
@@ -519,9 +521,13 @@ class SqlAlchemyRequirementAnalysisRepository:
             raise RequirementAnalysisUnavailable from error
 
 
-def requirement_analysis_repository_from_environment() -> RequirementAnalysisRepository:
+def requirement_analysis_repository_from_environment(
+    *, engine: Engine | None = None
+) -> RequirementAnalysisRepository:
     """Build durable persistence only when DATABASE_URL is configured."""
 
+    if engine is not None:
+        return SqlAlchemyRequirementAnalysisRepository(session_factory(engine))
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return UnavailableRequirementAnalysisRepository()

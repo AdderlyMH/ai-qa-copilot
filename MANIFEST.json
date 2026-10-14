@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 81278,
-      "sha256": "2ed10abc54578677878b2baa23e04a977e0709f629b95abc9e880a9305530353"
+      "bytes": 81874,
+      "sha256": "2d9d16699d58a6b4bde9c3cf5753a59dfb100a7320be1fbaafceff1cfb9ebcc4"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 131788,
-      "sha256": "375d3c1796cd2cd1c5105ff947849e22b3fc44cfba704e1d1c2bb3aa037bd046"
+      "bytes": 133011,
+      "sha256": "d8424c03044186ccfc9a0ca357b0f19d4cda3d0039385a7c41098e61d0efc18f"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -262,8 +262,8 @@
     },
     {
       "path": "docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md",
-      "bytes": 23723,
-      "sha256": "5f5a75379c4e16cd19d2468b82a599602efe1b6d3b6978ea3850820c887d9eef"
+      "bytes": 23930,
+      "sha256": "84a8634671e07ce14325b7ea3a6cd279ca87695137168639cdc780449747741a"
     },
     {
       "path": "docs/adr/README.md",

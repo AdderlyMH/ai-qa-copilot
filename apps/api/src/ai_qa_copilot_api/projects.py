@@ -11,8 +11,11 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, String, Text, create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from sqlalchemy.types import Uuid
+
+from ai_qa_copilot_api.database_engine import session_factory
 
 
 PROJECTS_UNAVAILABLE_DETAIL = "Project service is temporarily unavailable"
@@ -183,9 +186,13 @@ class UnavailableProjectRepository:
         raise ProjectRepositoryUnavailable
 
 
-def project_repository_from_environment() -> ProjectRepository:
+def project_repository_from_environment(
+    *, engine: Engine | None = None
+) -> ProjectRepository:
     """Build durable storage only when an explicit database URL is available."""
 
+    if engine is not None:
+        return SqlAlchemyProjectRepository(session_factory(engine))
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return UnavailableProjectRepository()

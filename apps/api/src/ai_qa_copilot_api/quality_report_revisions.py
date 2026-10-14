@@ -11,8 +11,10 @@ from uuid import UUID
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from ai_qa_copilot_api.database_engine import session_factory
 from ai_qa_copilot_api.documents import QualityReportRevisionRecord
 from ai_qa_copilot_api.quality_report_snapshots import (
     QualityReportEvidenceSnapshot,
@@ -224,11 +226,13 @@ class UnavailableQualityReportRevisionRepository:
         raise QualityReportRevisionUnavailable
 
 
-def quality_report_revision_repository_from_environment() -> (
-    QualityReportRevisionRepository
-):
+def quality_report_revision_repository_from_environment(
+    *, engine: Engine | None = None
+) -> QualityReportRevisionRepository:
     """Build immutable report persistence only from DATABASE_URL."""
 
+    if engine is not None:
+        return SqlAlchemyQualityReportRevisionRepository(session_factory(engine))
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         return UnavailableQualityReportRevisionRepository()
