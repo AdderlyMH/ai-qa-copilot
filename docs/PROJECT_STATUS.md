@@ -1,8 +1,42 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-006 stage 3 of 3: document status routes and upload cap — 2026-10-14
+
+**Status:** Code on branch `feat/infra-006-status-and-cap`, not yet merged.
+INFRA-006 is implemented (3 of 3) and **not Accepted**.
+
+Upload cap: `DOCUMENT_UPLOAD_MAX_BYTES` is read once at startup. Unset keeps
+the 10 MiB default; a non-integer, zero, negative or larger value stops
+startup with a fixed message. The cap is enforced where the limit already
+was (declared `Content-Length` and the streamed byte count in the intake
+service) and passed to the S3 quarantine storage. Per-type limits still apply.
+The payload arithmetic (base64 plus a 16 KiB envelope against 6,000,000
+bytes) gives 29.8 percent margin at 3 MiB and 6.5 percent at 4 MiB, so the
+recommended production value is 3 MiB; it is recorded in INFRASTRUCTURE.md
+for INFRA-009 or INFRA-010 to set. Which content types API Gateway
+base64-encodes is not documented in the pages read; a measured request after
+the compute apply should confirm it.
+
+Status routes (owner only, `project.read`, audited with the response
+correlation ID): `GET /projects/{project_id}/documents` lists at most 100
+uploads newest first, and `GET /projects/{project_id}/documents/{document_id}`
+returns one by the upload `id`. Status is derived from the intake outcome and
+the parser job: `rejected`, `quarantined`, `parser_queued`, `parsing`,
+`parsed`, `parse_failed`; parsed documents also report
+`indexing_not_enabled` until INFRA-013. Responses carry no storage key,
+bucket or content hash. A foreign or missing document returns the same 404;
+non-owners get 403, guests 401, and a database outage the existing 503. The
+status reader uses the stage 1 shared engine; no schema change.
+
+Evidence: Docker- and network-free tests only. Not proven: live PostgreSQL
+and S3 behavior, the real API Gateway envelope, and `db-check`. Open: the API
+role's `s3:DeleteObject` for orphan cleanup (INFRA-008 Terraform).
+
+Next action: owner review and merge; then INFRA-007.
+
 ## CI Python dependency audit now covers the project — 2026-10-14
 
-**Status:** Fix on branch `fix/ci-pip-audit-project`, not yet merged.
+**Status:** Merged to `main` in PR #184.
 
 Finding: the required `security-scans` job ran
 `uv tool run --from pip-audit==2.9.0 pip-audit --strict` with no input.

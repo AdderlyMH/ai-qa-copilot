@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Annotated, Literal, Never
+from typing import Annotated, Literal, Never, cast
 from uuid import UUID, uuid4
 
 import os
@@ -125,7 +125,7 @@ from ai_qa_copilot_api.demo import (
     DemoPublicationUnavailable,
     UnavailableDemoPublicationRepository,
 )
-from ai_qa_copilot_api.documents import DocumentIntakeState
+from ai_qa_copilot_api.documents import DocumentIntakeState, ParserJobState
 from ai_qa_copilot_api.finding_feedback import (
     FindingFeedback,
     FindingFeedbackAction,
@@ -146,7 +146,18 @@ from ai_qa_copilot_api.ingestion import (
     SqlAlchemyDocumentIntakeRepository,
     UploadPolicy,
     UnavailableDocumentIntakeRepository,
+    upload_policy_from_environment,
     UnavailableQuarantineStorage,
+)
+from ai_qa_copilot_api.document_status import (
+    DOCUMENT_STATUS_LIST_LIMIT,
+    DocumentStatus,
+    DocumentStatusRepository,
+    DocumentStatusUnavailable,
+    DocumentStatusView,
+    IndexingStatus,
+    SqlAlchemyDocumentStatusRepository,
+    UnavailableDocumentStatusRepository,
 )
 from ai_qa_copilot_api.s3_quarantine import (
     DATA_BUCKET_ENVIRONMENT_VARIABLE,
@@ -278,6 +289,25 @@ class DocumentIntakeResponse(BaseModel):
     content_sha256: str | None
     rejection_code: str | None
     deduplicated: bool
+    created_at: datetime
+
+
+class DocumentStatusResponse(BaseModel):
+    """Owner-only document status; no storage key, bucket or content hash."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    project_id: UUID
+    document_id: UUID | None
+    filename: str
+    content_type: str
+    byte_size: int
+    outcome: DocumentIntakeState
+    rejection_code: str | None
+    status: DocumentStatus
+    parser_stage: ParserJobState | None
+    indexing: IndexingStatus | None
     created_at: datetime
 
 
@@ -681,7 +711,8 @@ def create_app(
     document_intake_repository: DocumentIntakeRepository | None = None,
     quarantine_storage: QuarantineStorage | None = None,
     parser_job_queue: ParserJobQueue | None = None,
-    document_intake_policy: UploadPolicy = UploadPolicy(),
+    document_intake_policy: UploadPolicy | None = None,
+    document_status_repository: DocumentStatusRepository | None = None,
     requirement_analysis_repository: RequirementAnalysisRepository | None = None,
     finding_feedback_repository: FindingFeedbackRepository | None = None,
     execution_approval_repository: ExecutionApprovalRepository | None = None,
@@ -790,6 +821,12 @@ def create_app(
             if retrieval_citation_service is not None
             else UnavailableRetrievalCitationService()
         )
+        # The operator cap is read once here; an invalid value stops startup.
+        selected_upload_policy = (
+            document_intake_policy
+            if document_intake_policy is not None
+            else upload_policy_from_environment()
+        )
         # Durable intake needs both the shared engine and the private data
         # bucket; with either missing every intake default stays fail-closed.
         default_intake_repository: DocumentIntakeRepository = (
@@ -803,7 +840,9 @@ def create_app(
             default_intake_repository = SqlAlchemyDocumentIntakeRepository(
                 intake_sessions
             )
-            default_quarantine_storage = S3QuarantineStorage(data_bucket_name)
+            default_quarantine_storage = S3QuarantineStorage(
+                data_bucket_name, max_object_bytes=selected_upload_policy.max_raw_bytes
+            )
             default_parser_job_queue = SqlAlchemyParserJobQueue(intake_sessions)
         application.state.document_intake_service = DocumentIntakeService(
             (
@@ -821,7 +860,16 @@ def create_app(
                 if parser_job_queue is not None
                 else default_parser_job_queue
             ),
-            policy=document_intake_policy,
+            policy=selected_upload_policy,
+        )
+        application.state.document_status_repository = (
+            document_status_repository
+            if document_status_repository is not None
+            else (
+                SqlAlchemyDocumentStatusRepository(session_factory(shared_engine))
+                if shared_engine is not None
+                else UnavailableDocumentStatusRepository()
+            )
         )
         application.state.analysis_run_service = (
             analysis_run_service
@@ -1052,6 +1100,71 @@ def create_app(
         if intake.state is DocumentIntakeState.REJECTED:
             _raise_document_intake_rejected(intake, correlation_id)
         return _document_intake_response(intake)
+
+    @application.get(
+        "/projects/{project_id}/documents",
+        response_model=list[DocumentStatusResponse],
+    )
+    def list_documents(
+        project_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> list[DocumentStatusResponse]:
+        """List the newest uploads with derived status; bounded and read-only."""
+
+        correlation_id = _request_correlation_id(request)
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+        repository = _document_status_repository(request)
+        try:
+            documents = repository.list_for_project(
+                project_id=project_id, limit=DOCUMENT_STATUS_LIST_LIMIT
+            )
+        except DocumentStatusUnavailable:
+            _raise_document_intake_unavailable(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return [_document_status_response(item) for item in documents]
+
+    @application.get(
+        "/projects/{project_id}/documents/{document_id}",
+        response_model=DocumentStatusResponse,
+    )
+    def get_document(
+        project_id: UUID,
+        document_id: UUID,
+        request: Request,
+        response: Response,
+    ) -> DocumentStatusResponse:
+        """Return one upload by the `id` the upload response returned."""
+
+        correlation_id = _request_correlation_id(request)
+        boundary, project_repository = _project_dependencies(request)
+        _authorize_project_resource(
+            boundary=boundary,
+            request=request,
+            action=ProjectAction.READ,
+            project_id=project_id,
+            correlation_id=correlation_id,
+        )
+        _require_project(project_repository, project_id, correlation_id)
+        repository = _document_status_repository(request)
+        try:
+            document = repository.get_for_project(
+                project_id=project_id, document_id=document_id
+            )
+        except DocumentStatusUnavailable:
+            _raise_document_intake_unavailable(correlation_id)
+        if document is None:
+            _raise_document_not_found(correlation_id)
+        response.headers["X-Correlation-ID"] = str(correlation_id)
+        return _document_status_response(document)
 
     @application.post(
         "/projects/{project_id}/analysis-runs",
@@ -2249,6 +2362,38 @@ def _document_intake_response(intake: DocumentIntake) -> DocumentIntakeResponse:
         rejection_code=intake.rejection_code,
         deduplicated=intake.deduplicated,
         created_at=intake.created_at,
+    )
+
+
+def _document_status_repository(request: Request) -> DocumentStatusRepository:
+    repository = getattr(request.app.state, "document_status_repository", None)
+    if repository is None:
+        raise RuntimeError("Document status boundary was not initialized")
+    return cast(DocumentStatusRepository, repository)
+
+
+def _document_status_response(document: DocumentStatusView) -> DocumentStatusResponse:
+    return DocumentStatusResponse(
+        id=document.id,
+        project_id=document.project_id,
+        document_id=document.document_id,
+        filename=document.filename,
+        content_type=document.content_type,
+        byte_size=document.byte_size,
+        outcome=document.outcome,
+        rejection_code=document.rejection_code,
+        status=document.status,
+        parser_stage=document.parser_stage,
+        indexing=document.indexing,
+        created_at=document.created_at,
+    )
+
+
+def _raise_document_not_found(correlation_id: UUID) -> Never:
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Document not found",
+        headers={"X-Correlation-ID": str(correlation_id)},
     )
 
 

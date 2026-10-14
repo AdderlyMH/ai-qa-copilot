@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 83237,
-      "sha256": "50f606823934300a682c375d1779bf02178c33e0ca3817e1aa74825cb5959cba"
+      "bytes": 84391,
+      "sha256": "1e1b240902c6efa80aeac1991873df69b347bb74119dc36d51eee191fac2f42b"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 51980,
-      "sha256": "783fa2fece715fd4bfa8d1e36aae6d9976c859f61974bff5d73430d3580c735a"
+      "bytes": 54652,
+      "sha256": "a04c7b0b3c858886f95b924619675b07d5257d67b520e0c82b8e5c78c9025ef1"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 137222,
-      "sha256": "ea7f9a9364a817692c31dfd08e6e50af424ad4e0881d84716e4ad56fc2d78c5e"
+      "bytes": 139176,
+      "sha256": "38cc93326465eb3ffa4793584b20bc5f29ec7c5cdef03fbc0fa07f32e6d3eab8"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -262,8 +262,8 @@
     },
     {
       "path": "docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md",
-      "bytes": 23930,
-      "sha256": "84a8634671e07ce14325b7ea3a6cd279ca87695137168639cdc780449747741a"
+      "bytes": 24424,
+      "sha256": "9115cc2718cfb5ce408a9220db0839c283297c284cfc9952f225abced79b16f4"
     },
     {
       "path": "docs/adr/README.md",
