@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 81874,
-      "sha256": "2d9d16699d58a6b4bde9c3cf5753a59dfb100a7320be1fbaafceff1cfb9ebcc4"
+      "bytes": 82812,
+      "sha256": "ddda1fc3b1ffaa30434dda91d3beaa053f360febbb193c4092b6aea368087e5f"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 133011,
-      "sha256": "d8424c03044186ccfc9a0ca357b0f19d4cda3d0039385a7c41098e61d0efc18f"
+      "bytes": 135423,
+      "sha256": "b3e885353211594f9f69f84aad90c56e2418f4e12983f5973958926c70799574"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -397,8 +397,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 1100,
-      "sha256": "1cfdf6a3cb4c869fddf58d983e295d79f476762cc5a42f9269058152e9590c95"
+      "bytes": 1355,
+      "sha256": "79c05fb4e259db5a7f09d624c40314b57d52774d9c869c287379014be6c79a8c"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -422,8 +422,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 85067,
-      "sha256": "fac579aa1b2941e8d2ad85535cd01b874874c32acf79cfbdb5a615acee86bfff"
+      "bytes": 90349,
+      "sha256": "fac055ad6e68cc53ec0c18a6a79d82fe95661ecf249e50b741d4fd53f8290895"
     }
   ]
 }

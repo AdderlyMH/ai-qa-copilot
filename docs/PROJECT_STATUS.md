@@ -1,8 +1,54 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-006 stage 2 of 3: S3 quarantine adapters and intake composition — 2026-10-14
+
+**Status:** Code on branch `feat/infra-006-s3-composition`, not yet merged.
+
+`boto3==1.43.113` is a new locked API dependency (the lock adds boto3,
+botocore, s3transfer, jmespath, python-dateutil, six and urllib3; nothing
+else changed). New `s3_quarantine.py`:
+
+- `S3QuarantineStorage` (API) writes with `PutObject` and `If-None-Match: *`,
+  so an existing key is never overwritten; it sends no encryption header (the
+  bucket default SSE-S3 applies) and checks the size against the 10 MiB upload
+  limit before upload.
+- `S3QuarantineReader` (parser) only reads; it refuses a declared size above
+  the limit and reads at most the limit plus one byte.
+- Both accept only `quarantine/` keys without empty, `.` or `..` segments,
+  read the bucket from `DATA_BUCKET_NAME` (the name Terraform sets), and
+  create one client lazily from a dedicated session and the default AWS chain
+  (no credentials, region or endpoint in code). Every S3 service error and
+  every botocore transport or credential error becomes
+  `DocumentIntakeUnavailable` with only the operation and S3 error code; the
+  bucket name, key and content never appear in error text.
+
+`create_app` now builds the database intake repository and
+`SqlAlchemyParserJobQueue` on the stage 1 shared engine, plus the S3 storage,
+when both `DATABASE_URL` and `DATA_BUCKET_NAME` are set. With either missing,
+the `Unavailable*` intake defaults are unchanged. No new engine is created.
+
+Verified while writing the adapters (2026-10-14): botocore 1.43.113 takes the
+region from `AWS_DEFAULT_REGION`, not `AWS_REGION`; Lambda sets both, so no
+region code was added.
+
+Open: the API execution role has `s3:PutObject` but not `s3:DeleteObject` on
+`quarantine/*`. When the database insert fails after an upload, the intake's
+best-effort cleanup is denied and swallowed (the request still fails closed),
+leaving an unreferenced private quarantine object. This needs a Terraform
+change or a cleanup job; it is not fixed here. The `compute_api` comment that
+the application does not read the bucket variables yet is now out of date for
+`DATA_BUCKET_NAME`.
+
+Evidence: Docker- and network-free tests with botocore `Stubber` and fakes.
+No live S3 call, `db-check` or PostgreSQL integration test was run.
+INFRA-006 is **not Accepted**.
+
+Next action: INFRA-006 stage 3 (document-status route and production upload
+cap).
+
 ## INFRA-006 stage 1 of 3: shared database engine — 2026-10-14
 
-**Status:** Code on branch `feat/infra-006-shared-engine`, not yet merged.
+**Status:** Merged to `main` in PR #182.
 
 New `database_engine.py` builds one SQLAlchemy engine with `NullPool` and
 `pool_pre_ping` off; PostgreSQL URLs get `connect_timeout` from the URL or a

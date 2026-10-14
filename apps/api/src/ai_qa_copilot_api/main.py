@@ -143,9 +143,14 @@ from ai_qa_copilot_api.ingestion import (
     DocumentIntakeService,
     DocumentIntakeUnavailable,
     QuarantineStorage,
+    SqlAlchemyDocumentIntakeRepository,
     UploadPolicy,
     UnavailableDocumentIntakeRepository,
     UnavailableQuarantineStorage,
+)
+from ai_qa_copilot_api.s3_quarantine import (
+    DATA_BUCKET_ENVIRONMENT_VARIABLE,
+    S3QuarantineStorage,
 )
 from ai_qa_copilot_api.projects import (
     PROJECTS_UNAVAILABLE_DETAIL,
@@ -153,7 +158,7 @@ from ai_qa_copilot_api.projects import (
     ProjectRepositoryUnavailable,
     project_repository_from_environment,
 )
-from ai_qa_copilot_api.parser_queue import ParserJobQueue
+from ai_qa_copilot_api.parser_queue import ParserJobQueue, SqlAlchemyParserJobQueue
 from ai_qa_copilot_api.requirements_analysis import (
     RequirementAnalysisRepository,
     RequirementAnalysisRun,
@@ -785,18 +790,37 @@ def create_app(
             if retrieval_citation_service is not None
             else UnavailableRetrievalCitationService()
         )
+        # Durable intake needs both the shared engine and the private data
+        # bucket; with either missing every intake default stays fail-closed.
+        default_intake_repository: DocumentIntakeRepository = (
+            UnavailableDocumentIntakeRepository()
+        )
+        default_quarantine_storage: QuarantineStorage = UnavailableQuarantineStorage()
+        default_parser_job_queue: ParserJobQueue | None = None
+        data_bucket_name = os.environ.get(DATA_BUCKET_ENVIRONMENT_VARIABLE, "").strip()
+        if shared_engine is not None and data_bucket_name:
+            intake_sessions = session_factory(shared_engine)
+            default_intake_repository = SqlAlchemyDocumentIntakeRepository(
+                intake_sessions
+            )
+            default_quarantine_storage = S3QuarantineStorage(data_bucket_name)
+            default_parser_job_queue = SqlAlchemyParserJobQueue(intake_sessions)
         application.state.document_intake_service = DocumentIntakeService(
             (
                 document_intake_repository
                 if document_intake_repository is not None
-                else UnavailableDocumentIntakeRepository()
+                else default_intake_repository
             ),
             (
                 quarantine_storage
                 if quarantine_storage is not None
-                else UnavailableQuarantineStorage()
+                else default_quarantine_storage
             ),
-            parser_job_queue,
+            (
+                parser_job_queue
+                if parser_job_queue is not None
+                else default_parser_job_queue
+            ),
             policy=document_intake_policy,
         )
         application.state.analysis_run_service = (
