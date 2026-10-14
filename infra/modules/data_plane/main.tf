@@ -163,10 +163,15 @@ resource "aws_sqs_queue_redrive_allow_policy" "dlq" {
 
 # ---------------------------------------------------------------- S3
 
+# The values become S3 bucket Purpose tags. S3 accepts only Unicode letters,
+# digits, white space and _ . : / = + @ - in tag values, and only the API
+# checks this (the first apply failed with InvalidTag on parentheses and
+# commas). References: data is ARCHITECTURE 10.2; demo is ADR-006, ADR-008
+# and ADR-017.
 locals {
   buckets = {
-    data = "Private quarantine, accepted-artifact and export objects (ARCHITECTURE 10.2)"
-    demo = "Private guest-demo publication snapshots (ADR-006, ADR-008, ADR-017)"
+    data = "Private quarantine accepted-artifact and export objects"
+    demo = "Private guest-demo publication snapshots"
   }
 }
 
