@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
+import os
 from pathlib import PurePath
+import re
 from tempfile import SpooledTemporaryFile
 from typing import BinaryIO, Protocol, cast
 from uuid import UUID, uuid4
@@ -36,6 +38,7 @@ DOCUMENT_INTAKE_UNAVAILABLE_DETAIL = (
 MAX_RAW_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_FILES_PER_PROJECT = 20
 MAX_TOTAL_RAW_BYTES_PER_PROJECT = 50 * 1024 * 1024
+DOCUMENT_UPLOAD_MAX_BYTES_ENVIRONMENT_VARIABLE = "DOCUMENT_UPLOAD_MAX_BYTES"
 
 
 class DocumentIntakeUnavailable(RuntimeError):
@@ -57,6 +60,36 @@ class UploadPolicy:
     max_raw_bytes: int = MAX_RAW_UPLOAD_BYTES
     max_files_per_project: int = MAX_FILES_PER_PROJECT
     max_total_bytes_per_project: int = MAX_TOTAL_RAW_BYTES_PER_PROJECT
+
+
+class UploadPolicyConfigurationError(ValueError):
+    """Raised at composition when the operator upload cap is invalid."""
+
+
+def upload_policy_from_environment(
+    environ: Mapping[str, str] = os.environ,
+) -> UploadPolicy:
+    """Read the operator per-file cap once; unset keeps the product default.
+
+    The value can only lower the cap: it must be a positive integer number of
+    bytes no greater than `MAX_RAW_UPLOAD_BYTES`. Per-type limits still apply,
+    so the effective limit for a file is the smaller of the two. Error messages
+    are fixed and never echo the configured value.
+    """
+
+    raw = environ.get(DOCUMENT_UPLOAD_MAX_BYTES_ENVIRONMENT_VARIABLE)
+    if raw is None:
+        return UploadPolicy()
+    if re.fullmatch(r"[0-9]+", raw.strip()) is None or int(raw.strip()) <= 0:
+        raise UploadPolicyConfigurationError(
+            "DOCUMENT_UPLOAD_MAX_BYTES must be a positive integer number of bytes"
+        )
+    max_raw_bytes = int(raw.strip())
+    if max_raw_bytes > MAX_RAW_UPLOAD_BYTES:
+        raise UploadPolicyConfigurationError(
+            "DOCUMENT_UPLOAD_MAX_BYTES must not exceed the hard maximum upload size"
+        )
+    return UploadPolicy(max_raw_bytes=max_raw_bytes)
 
 
 @dataclass(frozen=True)

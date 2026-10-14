@@ -571,6 +571,53 @@ Stage 4 open items:
   S3, Logs and IAM: INFRA-005.
 - Custom domain, ACM certificate (us-east-1 for CloudFront) and WAF: deferred.
 
+## Upload size and the Lambda payload limit (INFRA-006, 2026-10-14)
+
+The API now reads an optional per-file cap, `DOCUMENT_UPLOAD_MAX_BYTES`, once at
+startup. It can only lower the 10 MiB product maximum; a non-integer, zero,
+negative or larger value stops startup with a fixed message. Per-type limits
+still apply (Markdown and text 2 MiB, YAML and JSON 5 MiB, PDF 10 MiB), so the
+effective limit is the smaller of the two. Terraform does not set it yet.
+
+Limits read on 2026-10-14:
+
+- Lambda: "6 MB each for request and response (synchronous)"; the same page
+  says MB means 1,024 KB, which suggests 6,291,456 bytes. The stricter reading,
+  6,000,000 bytes, is used below (S1).
+- HTTP API: payload size 10 MB; request line plus headers 10,240 bytes (S2).
+  The Lambda limit binds first.
+- Payload format 2.0 sends the request to Lambda as a JSON envelope with the
+  body as a string and an `isBase64Encoded` flag (S3). The pages read do not
+  say which content types are base64-encoded, so the table assumes every body
+  is (4/3 expansion) plus a 16 KiB envelope allowance for headers and request
+  context.
+
+| Raw file | Raw bytes | Base64 bytes | With 16 KiB envelope | Margin vs 6,000,000 | Margin vs 6,291,456 |
+|---|---|---|---|---|---|
+| 2 MiB | 2,097,152 | 2,796,204 | 2,812,588 | 3,187,412 (53.1%) | 3,478,868 (55.3%) |
+| 3 MiB | 3,145,728 | 4,194,304 | 4,210,688 | 1,789,312 (29.8%) | 2,080,768 (33.1%) |
+| 4 MiB | 4,194,304 | 5,592,408 | 5,608,792 | 391,208 (6.5%) | 682,664 (10.9%) |
+| 5 MiB | 5,242,880 | 6,990,508 | 7,006,892 | exceeds | exceeds |
+
+**Recommended production value: `DOCUMENT_UPLOAD_MAX_BYTES=3145728` (3 MiB)**,
+for INFRA-009 or INFRA-010 to set on the API function. 4 MiB leaves 6.5 percent
+under the stricter reading, below the 10 percent margin required. With the
+production scope limited to Markdown and text, the 2 MiB per-type limit is the
+effective limit today; the 3 MiB cap bounds YAML, JSON and PDF if they are
+enabled later.
+
+Not covered by the table: if API Gateway passes a text body unencoded, JSON
+string escaping can expand it (two bytes per quote, backslash or newline, six
+per control character). A pathological 2 MiB text could then exceed the Lambda
+limit; Lambda rejects that request before the application runs, so it fails
+closed. Verify the real envelope with one logged test request after the
+compute apply.
+
+Sources: S1 <https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html>;
+S2 <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-quotas.html>;
+S3 <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html>
+(all read 2026-10-14).
+
 ## First apply, 2026-10-13
 
 The owner ran the first applies from a workstation with their own credentials
