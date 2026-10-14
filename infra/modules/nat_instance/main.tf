@@ -253,7 +253,15 @@ resource "aws_instance" "nat" {
   lifecycle {
     # A newer AMI in the SSM parameter does not replace the instance by
     # itself; replacement happens only when replacement_generation changes.
-    ignore_changes       = [ami, user_data]
+    #
+    # source_dest_check is set to false on the persistent network interface.
+    # With primary_network_interface, the provider reads the instance value
+    # (false) but the argument defaults to true, conflicts with
+    # primary_network_interface and its diff is suppressed only for the
+    # deprecated network_interface block. Without ignoring it, a plan
+    # proposes false -> true and the apply would re-enable the check on the
+    # interface, which breaks NAT forwarding.
+    ignore_changes       = [ami, user_data, source_dest_check]
     replace_triggered_by = [terraform_data.replacement_generation]
   }
 }
