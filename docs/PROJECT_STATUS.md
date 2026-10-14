@@ -1,8 +1,42 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## CI Python dependency audit now covers the project — 2026-10-14
+
+**Status:** Fix on branch `fix/ci-pip-audit-project`, not yet merged.
+
+Finding: the required `security-scans` job ran
+`uv tool run --from pip-audit==2.9.0 pip-audit --strict` with no input.
+pip-audit then audits the environment it runs in, which is its own isolated
+tool environment (27 packages such as `pip-api` and `cyclonedx-python-lib`).
+No project dependency was ever audited by that step, including at the
+SEC-001 verification on 2026-08-29 (correction note added there). The npm
+audit, Bandit and the security harness were not affected.
+
+Fix (workflow step only, same pinned tools): export the lock with
+`uv export --quiet --locked --no-dev --no-emit-workspace --format
+requirements.txt` (hashed, no dev group, no editable workspace members) and
+run `pip-audit==2.9.0 --strict --disable-pip -r` on that file. `--locked`
+fails the step if `uv.lock` is out of date. pip-audit 2.10.1 (2026-06-10) is
+the latest release; 2.9.0 already supports these flags, so the pin is kept.
+
+Local evidence: the new commands audit 34 runtime packages (including
+boto3, fastapi, sqlalchemy, cryptography, pyjwt, pypdf) with no known
+vulnerabilities; a negative control pinning `requests==2.19.0` exited 1 with
+five advisories, so the gate blocks on findings. Including the dev group
+would audit 50 packages, also with no known vulnerabilities.
+
+Decision: audit runtime only. The dev group (pytest, mypy, ruff, alembic and
+their dependencies) is not deployed. Exception to track: INFRA-012 plans to
+run Alembic in production for migrations; when that job ships, Alembic (with
+Mako and MarkupSafe) must move to runtime dependencies or the audit must
+include it.
+
+Not yet verified on GitHub: the first `application-ci` run of this change is
+the evidence for the required check.
+
 ## INFRA-006 stage 2 of 3: S3 quarantine adapters and intake composition — 2026-10-14
 
-**Status:** Code on branch `feat/infra-006-s3-composition`, not yet merged.
+**Status:** Merged to `main` in PR #183.
 
 `boto3==1.43.113` is a new locked API dependency (the lock adds boto3,
 botocore, s3transfer, jmespath, python-dateutil, six and urllib3; nothing

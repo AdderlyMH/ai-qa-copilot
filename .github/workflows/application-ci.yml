@@ -90,7 +90,11 @@ jobs:
       - run: uv sync --locked
       - run: npm ci
       - run: npm audit --omit=dev --audit-level=high
-      - run: uv tool run --from pip-audit==2.9.0 pip-audit --strict
+      # Audit the locked runtime dependencies of the workspace, not pip-audit's
+      # own tool environment: export uv.lock (hashed, no dev group, no editable
+      # workspace members) and audit that file without pip resolution.
+      - run: uv export --quiet --locked --no-dev --no-emit-workspace --format requirements.txt -o "$RUNNER_TEMP/runtime-requirements.txt"
+      - run: uv tool run --from pip-audit==2.9.0 pip-audit --strict --disable-pip -r "$RUNNER_TEMP/runtime-requirements.txt"
       # Low-severity process-management advisories remain visible in Bandit output;
       # this blocking gate fails on medium and high severity findings.
       - run: uv tool run --from bandit==1.8.6 bandit --quiet --recursive apps/api/src scripts --severity-level medium
