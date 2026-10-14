@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "FastAPI walking skeleton for AI Quality Engineering Copilot"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "boto3==1.43.113",
     "fastapi==0.139.2",
     "pyjwt[crypto]==2.15.0",
     "pydantic==2.13.4",
