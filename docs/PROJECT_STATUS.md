@@ -1,8 +1,49 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-007 stage 2 of 3: SQS worker handlers and general wake-up — 2026-10-15
+
+**Status:** Code on branch `feat/infra-007-sqs-handlers`, not yet merged.
+
+New `lambda_workers.py` provides the parser, general and executor handlers
+(CMD strings in INFRASTRUCTURE.md). Each SQS message is a wake-up only: the
+body, attributes and receipt handle are never read and a hostile body cannot
+select a job. One worker turn runs per record. A `messageId` is reported in
+`batchItemFailures` only when the database or queue is unavailable before a
+claim; after a claim the worker records a terminal state and the message
+succeeds; idle or duplicate wake-ups succeed. Malformed events run no work.
+Dependencies are built once per process on the shared NullPool engine; a
+missing `DATABASE_URL` (or, for the parser, `DATA_BUCKET_NAME`) is reported
+as unavailable without claiming. Abandoned parser and indexing claims are
+reaped with the existing `expire_claims()` before each turn. Only fixed event
+names and counts are logged.
+
+`PARSER_CLAIM_DURATION_SECONDS` and `INDEXING_CLAIM_DURATION_SECONDS` make
+the leases configurable (default 60, accepted 1 to 3600). Execution claims
+have no lease, so no execution setting exists (reaper: INFRA-004). The
+executor handler claims nothing unless
+`AI_QA_COPILOT_EXECUTION_WORKER_ENABLED=true`; approval, SSRF and replay
+controls are unchanged (`compose_restricted_execution_worker` is the single
+executor composition, shared with the CLI).
+
+`general_wakeup.py` sends one fixed, identifier-free message with a 60 s
+delay to `GENERAL_QUEUE_URL` when a document status read shows a parsed
+document, only with `AI_QA_COPILOT_GENERAL_WAKEUP_ENABLED=true` (default
+off). Send failures are logged as a fixed event and never affect the
+response. The SQS delay maximum is 900 s.
+
+Plainly: the parser handler cannot run in real Lambda until stage 3 relaxes
+the credential check, and nothing yet sends parser-queue wake-ups, so uploads
+are not parsed in Lambda yet. The general handler claims nothing until an
+embedding adapter and a general-worker runtime check exist (INFRA-013).
+Tested with simulated SQS events and SQLite only; no Lambda runtime or AWS
+call. ADR-018 has a dated note.
+
+Next action: INFRA-007 stage 3 (parser credential-check amendment, parser
+wake-up, Terraform changes).
+
 ## INFRA-007 stage 1 of 3: API Lambda entry point — 2026-10-15
 
-**Status:** Code on branch `feat/infra-007-api-lambda-entry`, not yet merged.
+**Status:** Merged to `main` in PR #186.
 
 `mangum==0.22.0` is a new locked runtime dependency (released 2026-08-22, the
 version ADR-018 names; no newer release exists). It adds one package; its

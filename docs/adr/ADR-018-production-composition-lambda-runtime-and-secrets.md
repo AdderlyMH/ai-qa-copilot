@@ -129,6 +129,8 @@ Database list prices, us-east-1, 730 hours: Aurora PostgreSQL Serverless v2 0.12
 
 > **Note (2026-10-15, INFRA-007 stage 1):** the API adapter decision says Mangum runs "with lifespan enabled". Mangum 0.22.0 enters the ASGI lifespan on every invocation in its `auto` and `on` modes (source of `Mangum.__call__`), which would rebuild the shared engine, repositories and JWKS cache per request and dispose the engine after each one. The handler therefore runs the application lifespan once per process itself and calls Mangum with lifespan `off`. The intent (lifespan startup builds the composition) is unchanged; only the mechanism differs.
 
+> **Note (2026-10-15, INFRA-007 stage 2):** three facts found while writing the handlers. (1) Execution claims have no lease: a claim consumes the approval and marks the job `running`, so the configurable claim duration applies to parser and indexing claims only; the execution reaper stays with INFRA-004. (2) The indexing worker uses the parser runtime check (`verify_runtime`) and has no production embedding adapter, so the general handler claims nothing until INFRA-013 decides both. (3) The Decision describes only the general wake-up; the parser function is also triggered by its queue, so the API must send a parser-queue wake-up after upload for parsing to run in Lambda (planned for stage 3). The DelaySeconds maximum is 900 s, which answers that open item.
+
 ## Verification record
 
 Read on 2026-10-13 from official sources. Anything not listed here was not verified.

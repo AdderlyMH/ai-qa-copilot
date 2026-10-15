@@ -641,6 +641,53 @@ S3 <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develo
   runtime interface emulator or a real HTTP API (INFRA-009 and the compute
   apply).
 
+## Worker Lambda handlers (INFRA-007 stage 2, 2026-10-15)
+
+Container `CMD` strings for INFRA-009:
+
+| Function | `CMD` |
+|---|---|
+| api | `ai_qa_copilot_api.lambda_api.handler` |
+| parser | `ai_qa_copilot_api.lambda_workers.parser_handler` |
+| general | `ai_qa_copilot_api.lambda_workers.general_handler` |
+| executor | `ai_qa_copilot_api.lambda_workers.executor_handler` |
+
+- **Wake-up semantics:** the SQS body is never read. Each record runs one
+  worker turn; a record is returned in `batchItemFailures` only when the
+  database or queue is unavailable before a claim is stored. Lambda treats
+  an exception as a complete batch failure (S4), so invalid configuration and
+  the parser runtime check fail the invocation and the message is retried up
+  to `maxReceiveCount` (5) before the dead-letter queue.
+- **Claim durations** (must be at least the function timeout plus a margin;
+  to be set by INFRA-009 or INFRA-010 on the function, not yet in Terraform):
+
+  | Variable | Function timeout | Recommended production value |
+  |---|---|---|
+  | `PARSER_CLAIM_DURATION_SECONDS` | 15 s | 60 (the default) |
+  | `INDEXING_CLAIM_DURATION_SECONDS` | 300 s | 360 |
+
+  The default of 60 s is shorter than the general function's 300 s timeout,
+  so it must be raised before indexing is enabled. Execution claims have no
+  lease and no variable; a job interrupted after its claim stays `running`
+  until the INFRA-004 reaper exists.
+- **General wake-up:** `AI_QA_COPILOT_GENERAL_WAKEUP_ENABLED` (exactly `true`,
+  default off) on the API, with the existing `GENERAL_QUEUE_URL`. When on, a
+  status read that shows a parsed document sends one message with the fixed
+  body `wake-up` and `DelaySeconds=60`, at most once per 60 s per process.
+  SQS allows 0 to 900 s per message on standard queues (S5), so one delayed
+  message cannot cover a slow parse; repeated status reads re-send and extra
+  wake-ups are no-ops. Keep it off until INFRA-013.
+- **Gaps:** the parser handler cannot run in real Lambda until INFRA-007
+  stage 3 relaxes the parser credential check. Nothing sends parser-queue
+  wake-ups yet, so uploads are not parsed in Lambda until that sender exists.
+  The indexing worker also uses the parser runtime check and has no real
+  embedding adapter, so the general handler claims nothing (INFRA-013).
+
+Sources (read 2026-10-15): S4
+<https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-errorhandling.html>;
+S5 <https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html>;
+<https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html>.
+
 ## First apply, 2026-10-13
 
 The owner ran the first applies from a workstation with their own credentials
