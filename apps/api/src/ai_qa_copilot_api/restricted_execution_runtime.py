@@ -118,18 +118,27 @@ def build_restricted_execution_worker(
     engine = create_engine(database_url, pool_pre_ping=True)
     sessions = sessionmaker(engine, expire_on_commit=False)
 
-    worker = RestrictedExecutionWorker(
-        jobs=SqlAlchemyExecutionJobQueue(sessions),
+    return RestrictedExecutionWorkerRuntime(
+        worker=compose_restricted_execution_worker(sessions),
+        engine=engine,
+    )
+
+
+def compose_restricted_execution_worker(
+    sessions: sessionmaker[Session],
+    *,
+    jobs: SqlAlchemyExecutionJobQueue | None = None,
+) -> RestrictedExecutionWorker:
+    """The one executor composition, shared by the CLI and the Lambda handler."""
+
+    return RestrictedExecutionWorker(
+        jobs=jobs if jobs is not None else SqlAlchemyExecutionJobQueue(sessions),
         executor=RestrictedExecutionExecutor(
             resolver=_address_resolver(),
             transport=PinnedHttpxExecutionTransport(),
             cancellation_probe=SqlAlchemyExecutionJobCancellationProbe(sessions),
         ),
         results=SqlAlchemyExecutionResultRepository(sessions),
-    )
-    return RestrictedExecutionWorkerRuntime(
-        worker=worker,
-        engine=engine,
     )
 
 

@@ -159,6 +159,7 @@ from ai_qa_copilot_api.document_status import (
     SqlAlchemyDocumentStatusRepository,
     UnavailableDocumentStatusRepository,
 )
+from ai_qa_copilot_api.general_wakeup import GeneralWakeup
 from ai_qa_copilot_api.s3_quarantine import (
     DATA_BUCKET_ENVIRONMENT_VARIABLE,
     S3QuarantineStorage,
@@ -713,6 +714,7 @@ def create_app(
     parser_job_queue: ParserJobQueue | None = None,
     document_intake_policy: UploadPolicy | None = None,
     document_status_repository: DocumentStatusRepository | None = None,
+    general_wakeup: GeneralWakeup | None = None,
     requirement_analysis_repository: RequirementAnalysisRepository | None = None,
     finding_feedback_repository: FindingFeedbackRepository | None = None,
     execution_approval_repository: ExecutionApprovalRepository | None = None,
@@ -861,6 +863,11 @@ def create_app(
                 else default_parser_job_queue
             ),
             policy=selected_upload_policy,
+        )
+        application.state.general_wakeup = (
+            general_wakeup
+            if general_wakeup is not None
+            else GeneralWakeup.from_environment()
         )
         application.state.document_status_repository = (
             document_status_repository
@@ -1129,6 +1136,7 @@ def create_app(
             )
         except DocumentStatusUnavailable:
             _raise_document_intake_unavailable(correlation_id)
+        _general_wakeup(request).notify_if_parsed_unindexed(documents)
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return [_document_status_response(item) for item in documents]
 
@@ -1163,6 +1171,7 @@ def create_app(
             _raise_document_intake_unavailable(correlation_id)
         if document is None:
             _raise_document_not_found(correlation_id)
+        _general_wakeup(request).notify_if_parsed_unindexed((document,))
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _document_status_response(document)
 
@@ -2370,6 +2379,13 @@ def _document_status_repository(request: Request) -> DocumentStatusRepository:
     if repository is None:
         raise RuntimeError("Document status boundary was not initialized")
     return cast(DocumentStatusRepository, repository)
+
+
+def _general_wakeup(request: Request) -> GeneralWakeup:
+    wakeup = getattr(request.app.state, "general_wakeup", None)
+    if not isinstance(wakeup, GeneralWakeup):
+        raise RuntimeError("General wake-up boundary was not initialized")
+    return wakeup
 
 
 def _document_status_response(document: DocumentStatusView) -> DocumentStatusResponse:
