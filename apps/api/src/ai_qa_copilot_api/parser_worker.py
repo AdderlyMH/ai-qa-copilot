@@ -24,8 +24,54 @@ FORBIDDEN_CREDENTIAL_ENVIRONMENT_VARIABLES = frozenset(
 )
 
 
+LAMBDA_EXECUTION_ROLE_CREDENTIAL_VARIABLES = frozenset(
+    {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"}
+)
+TEMPORARY_ACCESS_KEY_PREFIX = "ASIA"
+
+
 class ParserWorkerConfigurationError(RuntimeError):
     """Raised when the worker runtime is not isolated enough to start."""
+
+
+def lambda_parser_credentials_allowed(environment: Mapping[str, str]) -> bool:
+    """ADR-018 amendment to ADR-009: accept only the Lambda parser's own role keys.
+
+    All four conditions must hold together; any unmet condition keeps the
+    original strict rejection:
+
+    1. ``AWS_LAMBDA_FUNCTION_NAME`` is set (the Lambda runtime sets it; it is a
+       reserved variable that function configuration cannot set);
+    2. all three AWS variables are present, the access key identifier starts
+       with ``ASIA`` (temporary STS credentials) and the session token is
+       non-empty;
+    3. ``PARSER_WORKER_ROLE`` is ``restricted-parser`` and
+       ``PARSER_WORKER_NETWORK`` is ``none``;
+    4. no other credential is present: the model provider keys stay forbidden.
+
+    There is deliberately no switch to turn this on; the decision is derived
+    only from facts the Lambda runtime and the parser's fixed role settings set.
+    """
+
+    if not environment.get("AWS_LAMBDA_FUNCTION_NAME", "").strip():
+        return False
+    access_key_id = environment.get("AWS_ACCESS_KEY_ID", "")
+    if (
+        not access_key_id.startswith(TEMPORARY_ACCESS_KEY_PREFIX)
+        or not environment.get("AWS_SECRET_ACCESS_KEY", "")
+        or not environment.get("AWS_SESSION_TOKEN", "").strip()
+    ):
+        return False
+    if (
+        environment.get("PARSER_WORKER_ROLE") != PARSER_WORKER_ROLE
+        or environment.get("PARSER_WORKER_NETWORK") != "none"
+    ):
+        return False
+    return not any(
+        environment.get(name)
+        for name in FORBIDDEN_CREDENTIAL_ENVIRONMENT_VARIABLES
+        - LAMBDA_EXECUTION_ROLE_CREDENTIAL_VARIABLES
+    )
 
 
 @dataclass(frozen=True)
@@ -43,12 +89,15 @@ class ParserWorkerRuntime:
         *,
         uid: int | None,
     ) -> ParserWorkerRuntime:
-        forbidden = sorted(
+        forbidden = {
             name
             for name in FORBIDDEN_CREDENTIAL_ENVIRONMENT_VARIABLES
             if environment.get(name)
-        )
-        if forbidden:
+        }
+        if forbidden and not (
+            forbidden <= LAMBDA_EXECUTION_ROLE_CREDENTIAL_VARIABLES
+            and lambda_parser_credentials_allowed(environment)
+        ):
             raise ParserWorkerConfigurationError(
                 "Parser worker received forbidden credential environment variables"
             )
