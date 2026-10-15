@@ -1,8 +1,37 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-007 stage 1 of 3: API Lambda entry point — 2026-10-15
+
+**Status:** Code on branch `feat/infra-007-api-lambda-entry`, not yet merged.
+
+`mangum==0.22.0` is a new locked runtime dependency (released 2026-08-22, the
+version ADR-018 names; no newer release exists). It adds one package; its
+only dependency, `typing-extensions`, was already locked. The CI runtime audit
+now covers 35 packages with no known vulnerabilities.
+
+New `lambda_api.py` exposes `ai_qa_copilot_api.lambda_api.handler` for the
+HTTP API (payload 2.0, `$default` stage, base path `/`). Finding: Mangum
+0.22.0 enters the ASGI lifespan on every invocation unless lifespan is
+`off`, so per request it would rebuild the engine, repositories and JWKS
+cache and dispose the engine. The handler runs the application lifespan once
+per process on the first invocation and calls Mangum with lifespan `off`.
+Tests show one app, one engine and one set of repositories across
+invocations, that Mangum's own `auto` lifespan would build two engines for
+two invocations, and that skipping startup entirely leaves the app unusable
+(500). ADR-018 has a dated note; `main.py` is unchanged.
+
+Tested through simulated HTTP API v2 events: health, the unauthenticated 401,
+a JSON body, a base64 upload larger than one chunk arriving byte-for-byte,
+over-cap rejection with and without `Content-Length`, the correlation ID
+header, 503 without configuration, startup failure and retry, and no
+environment values in responses. Not tested: the Lambda runtime, the runtime
+interface emulator or a real HTTP API.
+
+Next action: INFRA-007 stage 2 (SQS wake-up handlers and claim duration).
+
 ## INFRA-006 stage 3 of 3: document status routes and upload cap — 2026-10-14
 
-**Status:** Code on branch `feat/infra-006-status-and-cap`, not yet merged.
+**Status:** Merged to `main` in PR #185.
 INFRA-006 is implemented (3 of 3) and **not Accepted**.
 
 Upload cap: `DOCUMENT_UPLOAD_MAX_BYTES` is read once at startup. Unset keeps

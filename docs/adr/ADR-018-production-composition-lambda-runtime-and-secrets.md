@@ -127,6 +127,8 @@ Database list prices, us-east-1, 730 hours: Aurora PostgreSQL Serverless v2 0.12
 
 > **Note (2026-10-14, INFRA-006 stage 3):** for the upload-cap item, the arithmetic in [INFRASTRUCTURE.md](../INFRASTRUCTURE.md#upload-size-and-the-lambda-payload-limit-infra-006-2026-10-14) shows 4 MiB leaves 6.5 percent margin against 6,000,000 bytes after base64 and a 16 KiB envelope, so the recommended production cap is 3 MiB (`DOCUMENT_UPLOAD_MAX_BYTES=3145728`), now configurable in the API. It stays open until the value is set in Terraform and one real request envelope is measured.
 
+> **Note (2026-10-15, INFRA-007 stage 1):** the API adapter decision says Mangum runs "with lifespan enabled". Mangum 0.22.0 enters the ASGI lifespan on every invocation in its `auto` and `on` modes (source of `Mangum.__call__`), which would rebuild the shared engine, repositories and JWKS cache per request and dispose the engine after each one. The handler therefore runs the application lifespan once per process itself and calls Mangum with lifespan `off`. The intent (lifespan startup builds the composition) is unchanged; only the mechanism differs.
+
 ## Verification record
 
 Read on 2026-10-13 from official sources. Anything not listed here was not verified.

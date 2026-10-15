@@ -618,6 +618,29 @@ S2 <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-quotas
 S3 <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html>
 (all read 2026-10-14).
 
+## API Lambda entry point (INFRA-007 stage 1, 2026-10-15)
+
+- **Handler for INFRA-009:** the API image's `CMD` must be
+  `ai_qa_copilot_api.lambda_api.handler`. The `compute_api` Lambda function sets
+  no `image_config`, so the handler comes from the image.
+- **Stage and base path:** the HTTP API uses `payload_format_version = "2.0"`,
+  route key `$default` and stage `$default`, so no stage prefix reaches the
+  application and the Mangum base path is `/`. A named stage would need the
+  base path changed to match.
+- **Lifespan:** the application lifespan (auth boundary and JWKS cache, the
+  NullPool engine, repositories, upload policy, S3 intake wiring) starts once
+  per execution environment on the first invocation and never shuts down.
+  A startup error, such as a missing `APP_ENV` or an invalid
+  `DOCUMENT_UPLOAD_MAX_BYTES`, fails that invocation and is retried on the
+  next one. Missing optional configuration (`DATABASE_URL`,
+  `DATA_BUCKET_NAME`) leaves the existing `Unavailable` defaults and 503s.
+- **Body handling:** Mangum decodes base64 bodies (`isBase64Encoded`) and
+  passes the whole body to the application as one message, so the upload
+  size checks see one chunk.
+- **Not verified:** the handler has not run under the Lambda runtime, the
+  runtime interface emulator or a real HTTP API (INFRA-009 and the compute
+  apply).
+
 ## First apply, 2026-10-13
 
 The owner ran the first applies from a workstation with their own credentials
