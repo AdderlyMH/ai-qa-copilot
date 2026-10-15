@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 import os
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.engine import Engine
 
@@ -160,6 +161,7 @@ from ai_qa_copilot_api.document_status import (
     UnavailableDocumentStatusRepository,
 )
 from ai_qa_copilot_api.general_wakeup import GeneralWakeup
+from ai_qa_copilot_api.parser_wakeup import ParserWakeup
 from ai_qa_copilot_api.s3_quarantine import (
     DATA_BUCKET_ENVIRONMENT_VARIABLE,
     S3QuarantineStorage,
@@ -715,6 +717,7 @@ def create_app(
     document_intake_policy: UploadPolicy | None = None,
     document_status_repository: DocumentStatusRepository | None = None,
     general_wakeup: GeneralWakeup | None = None,
+    parser_wakeup: ParserWakeup | None = None,
     requirement_analysis_repository: RequirementAnalysisRepository | None = None,
     finding_feedback_repository: FindingFeedbackRepository | None = None,
     execution_approval_repository: ExecutionApprovalRepository | None = None,
@@ -863,6 +866,11 @@ def create_app(
                 else default_parser_job_queue
             ),
             policy=selected_upload_policy,
+        )
+        application.state.parser_wakeup = (
+            parser_wakeup
+            if parser_wakeup is not None
+            else ParserWakeup.from_environment()
         )
         application.state.general_wakeup = (
             general_wakeup
@@ -1106,6 +1114,10 @@ def create_app(
         response.headers["X-Correlation-ID"] = str(correlation_id)
         if intake.state is DocumentIntakeState.REJECTED:
             _raise_document_intake_rejected(intake, correlation_id)
+        # The parser job row is committed by receive(); the wake-up is sent off
+        # the event loop and never fails or blocks the response beyond its
+        # client timeouts.
+        await run_in_threadpool(_parser_wakeup(request).notify_upload_accepted)
         return _document_intake_response(intake)
 
     @application.get(
@@ -1137,6 +1149,7 @@ def create_app(
         except DocumentStatusUnavailable:
             _raise_document_intake_unavailable(correlation_id)
         _general_wakeup(request).notify_if_parsed_unindexed(documents)
+        _parser_wakeup(request).notify_if_parser_queued(documents)
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return [_document_status_response(item) for item in documents]
 
@@ -1172,6 +1185,7 @@ def create_app(
         if document is None:
             _raise_document_not_found(correlation_id)
         _general_wakeup(request).notify_if_parsed_unindexed((document,))
+        _parser_wakeup(request).notify_if_parser_queued((document,))
         response.headers["X-Correlation-ID"] = str(correlation_id)
         return _document_status_response(document)
 
@@ -2379,6 +2393,13 @@ def _document_status_repository(request: Request) -> DocumentStatusRepository:
     if repository is None:
         raise RuntimeError("Document status boundary was not initialized")
     return cast(DocumentStatusRepository, repository)
+
+
+def _parser_wakeup(request: Request) -> ParserWakeup:
+    wakeup = getattr(request.app.state, "parser_wakeup", None)
+    if not isinstance(wakeup, ParserWakeup):
+        raise RuntimeError("Parser wake-up boundary was not initialized")
+    return wakeup
 
 
 def _general_wakeup(request: Request) -> GeneralWakeup:

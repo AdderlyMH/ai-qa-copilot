@@ -1,8 +1,42 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-007 stage 3 of 3: parser credential check and parser wake-up — 2026-10-15
+
+**Status:** Two commits on branch `feat/infra-007-parser-runtime`, not yet
+merged. INFRA-007 is implemented (3 of 3) and **not Accepted**.
+
+Commit 1 implements the ADR-018 amendment to ADR-009 in `parser_worker.py`
+(`lambda_parser_credentials_allowed`): the parser accepts
+`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `AWS_SESSION_TOKEN` only when
+`AWS_LAMBDA_FUNCTION_NAME` is set, all three are present with an `ASIA` key
+and a non-empty session token, the role is `restricted-parser` with network
+`none`, and neither model provider key is present. There is no switch; every
+other configuration, including Compose and CI, keeps the strict rule.
+`test_parser_runtime_lambda.py` covers every accepted and rejected
+combination, credential-free error messages, and the real parser handler
+inside and outside a Lambda-shaped environment. The security harness still
+passes all 57 fixtures.
+
+Commit 2 adds `parser_wakeup.py`: after an accepted upload the API sends one
+fixed, identifier-free message with `DelaySeconds=0` to `PARSER_QUEUE_URL`,
+off the event loop, only if `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED=true`
+(default off). Rejected uploads send nothing; send failures never affect the
+upload. Status reads re-send at most once per 60 s while a document is
+`parser_queued`. The general and parser senders now share one `QueueWakeup`
+base; the general sender's behavior is unchanged.
+
+Remaining gaps: real Lambda behavior is unproven until the compute apply;
+the general handler is a no-op until INFRA-013; execution claims have no
+lease (INFRA-004); the Terraform delta (remove the parser's
+`sqs:SendMessage` on the general queue, which the amendment's security
+review assumes, and set the new flag and claim-duration variables) is
+INFRA-008/INFRA-009 work and must land before the parser runs in production.
+
+Next action: owner review and merge; then INFRA-008.
+
 ## INFRA-007 stage 2 of 3: SQS worker handlers and general wake-up — 2026-10-15
 
-**Status:** Code on branch `feat/infra-007-sqs-handlers`, not yet merged.
+**Status:** Merged to `main` in PR #188.
 
 New `lambda_workers.py` provides the parser, general and executor handlers
 (CMD strings in INFRASTRUCTURE.md). Each SQS message is a wake-up only: the
