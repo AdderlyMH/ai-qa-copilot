@@ -677,9 +677,10 @@ Container `CMD` strings for INFRA-009:
   SQS allows 0 to 900 s per message on standard queues (S5), so one delayed
   message cannot cover a slow parse; repeated status reads re-send and extra
   wake-ups are no-ops. Keep it off until INFRA-013.
-- **Gaps:** the parser handler cannot run in real Lambda until INFRA-007
-  stage 3 relaxes the parser credential check. Nothing sends parser-queue
-  wake-ups yet, so uploads are not parsed in Lambda until that sender exists.
+- **Gaps:** the parser handler could not run in real Lambda until the
+  parser credential check was relaxed; this is done in INFRA-007 stage 3
+  (see below). The API sends parser-queue wake-ups since INFRA-007 stage 3
+  (see below).
   The indexing worker also uses the parser runtime check and has no real
   embedding adapter, so the general handler claims nothing (INFRA-013).
 
@@ -687,6 +688,41 @@ Sources (read 2026-10-15): S4
 <https://docs.aws.amazon.com/lambda/latest/dg/services-sqs-errorhandling.html>;
 S5 <https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html>;
 <https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html>.
+
+## Parser credential check in Lambda (INFRA-007 stage 3, 2026-10-15)
+
+`verify_runtime` accepts `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and
+`AWS_SESSION_TOKEN` only when all four ADR-018 conditions hold:
+`AWS_LAMBDA_FUNCTION_NAME` is set (a reserved variable only the Lambda runtime
+sets), all three credentials are present with an `ASIA` (temporary STS)
+access key and a non-empty session token, `PARSER_WORKER_ROLE` is
+`restricted-parser` and `PARSER_WORKER_NETWORK` is `none` (both fixed by the
+parser function's Terraform environment), and neither `OPENAI_API_KEY` nor
+`ANTHROPIC_API_KEY` is present. Anywhere else, including Compose and CI, the
+original rule rejects all five variables. The general function does not set
+the parser role, so the shared check still rejects it there.
+
+Before the parser runs in production, apply the ADR-018 Terraform change that
+removes the parser role's `sqs:SendMessage` on the general queue; the
+security review of the relaxation assumes it.
+
+## Parser wake-up (INFRA-007 stage 3, 2026-10-15)
+
+- **Flag:** `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED` (exactly `true`; default
+  off) with the existing `PARSER_QUEUE_URL` on the API function. **Production
+  must set the flag**; without it uploads are stored and queued in the
+  database but the parser function is never invoked. Not yet in Terraform
+  (INFRA-008/INFRA-009).
+- **Send:** after an accepted upload, once the parser job row is committed,
+  the API sends one message with the fixed body `wake-up`, no identifiers and
+  `DelaySeconds=0` (S5). It runs in the threadpool with a 2 s connect and 3 s
+  read timeout and at most two attempts; a failure is logged as
+  `parser_wakeup.send_failed` and the upload still returns 202. Rejected
+  uploads send nothing.
+- **Recovery:** each parser invocation claims one job, so every accepted upload
+  sends its own wake-up. A lost wake-up is recovered by the document status
+  reads, which re-send at most once per 60 s while any listed document is
+  `parser_queued`; each re-send lets one more queued job be parsed.
 
 ## First apply, 2026-10-13
 

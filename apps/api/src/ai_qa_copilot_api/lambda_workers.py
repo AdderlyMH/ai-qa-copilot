@@ -21,10 +21,10 @@ unavailable error, so the message is reported and retried. Other startup or
 pre-claim errors (invalid configuration, the parser runtime check) fail the
 whole invocation. Only fixed event names and counts are logged.
 
-The parser's runtime check (``verify_runtime``) rejects the credentials Lambda
-injects, so the parser handler cannot run in real Lambda until INFRA-007
-stage 3. The general handler claims nothing until an embedding adapter exists
-(INFRA-013). The executor handler claims nothing unless
+The parser's runtime check (``verify_runtime``) accepts the credentials Lambda
+injects only under the four ADR-018 conditions for the ``restricted-parser``
+role (``lambda_parser_credentials_allowed``). The general handler claims
+nothing until an embedding adapter and its own runtime check exist (INFRA-013). The executor handler claims nothing unless
 ``AI_QA_COPILOT_EXECUTION_WORKER_ENABLED`` is exactly ``true``.
 """
 

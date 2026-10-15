@@ -131,6 +131,8 @@ Database list prices, us-east-1, 730 hours: Aurora PostgreSQL Serverless v2 0.12
 
 > **Note (2026-10-15, INFRA-007 stage 2):** three facts found while writing the handlers. (1) Execution claims have no lease: a claim consumes the approval and marks the job `running`, so the configurable claim duration applies to parser and indexing claims only; the execution reaper stays with INFRA-004. (2) The indexing worker uses the parser runtime check (`verify_runtime`) and has no production embedding adapter, so the general handler claims nothing until INFRA-013 decides both. (3) The Decision describes only the general wake-up; the parser function is also triggered by its queue, so the API must send a parser-queue wake-up after upload for parsing to run in Lambda (planned for stage 3). The DelaySeconds maximum is 900 s, which answers that open item.
 
+> **Note (2026-10-15, INFRA-007 stage 3):** the parser credential-check amendment is implemented in `apps/api/src/ai_qa_copilot_api/parser_worker.py` (`lambda_parser_credentials_allowed`, used by `ParserWorkerRuntime.from_environment`) exactly as the four conditions state, with no switch; every accepted and rejected combination is tested in `apps/api/tests/test_parser_runtime_lambda.py`, and the Compose configuration keeps the strict rule. The security review assumes the parser role has no queue-send permission; Terraform still grants `sqs:SendMessage` on the general queue (`infra/modules/data_plane/main.tf`), so that removal must be applied before the parser runs in production. The parser subnet has no route to SQS in the meantime.
+
 ## Verification record
 
 Read on 2026-10-13 from official sources. Anything not listed here was not verified.
