@@ -1,9 +1,40 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-003 Terraform for RDS for PostgreSQL (ADR-020) — 2026-10-16
+
+**Status:** Two commits on branch `feat/infra-003-rds`, not yet merged.
+**Not applied; nothing is deployed.** INFRA-003 is not Accepted.
+
+New `infra/modules/database`: DB subnet group over two zones, a PostgreSQL 17
+parameter group with the family defaults and only `rds.force_ssl = 1` pinned
+(already the RDS default for PostgreSQL 15+), and the db.t4g.micro instance
+(engine version a validated variable, 17.10 or later; gp3 20 GiB; Single-AZ;
+encrypted; not public; RDS-managed master password, so no password in
+variables or state; IAM database authentication enabled but still unverified
+on 1 GiB; 7-day backups; deletion protection; final snapshot; no Performance
+Insights, Enhanced Monitoring or storage autoscaling), plus a console-only
+`CPUSurplusCreditsCharged` alarm. `infra/modules/network` adds the two
+database subnets, a route-less route table and the database security group
+with 5432 only from the API/worker and parser groups, and matching egress
+rules to that group only; the parser keeps no internet route.
+
+Checks: `terraform fmt -check`, `init -backend=false` and `validate` pass in
+both roots; Checkov 3.3.20 reports 338 passed, 0 failed, 49 skipped (5 new
+suppressions with reasons: Single-AZ, Enhanced Monitoring, Performance
+Insights, log export cost, cross-module security-group attachment). No
+Terraform contract tests exist in the repository, so none were added.
+
+OPEN before the first apply: the 17.x minors offered in us-east-1 and the
+`postgres17` family string (confirmed by the runbook's first step), and how
+a later automatic minor upgrade shows in the plan. Recurring cost per ADR-020:
+13.98 USD per month.
+
+Next action: owner review and merge; then the owner's first database apply
+by the runbook in INFRASTRUCTURE.md, then INFRA-008 and INFRA-012.
+
 ## INFRA-003 provider decided: RDS for PostgreSQL db.t4g.micro (ADR-020) — 2026-10-16
 
-**Status:** Documentation and one offline test on branch
-`docs/infra-003-database-provider`, not yet merged. Nothing is deployed.
+**Status:** Merged to `main` in PR #190. Nothing is deployed.
 
 The owner decided the production database: RDS for PostgreSQL 17 (minor 17.10
 or later), db.t4g.micro, Single-AZ in a two-AZ DB subnet group, gp3 20 GiB,
