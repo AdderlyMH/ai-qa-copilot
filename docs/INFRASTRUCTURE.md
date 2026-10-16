@@ -730,9 +730,10 @@ security review of the relaxation assumes it.
 
 ## Production database, RDS for PostgreSQL (INFRA-003, 2026-10-16)
 
-Code only (`infra/modules/database`, plus the database subnets, route table,
-security group and rules in `infra/modules/network`); **not planned or
-applied**. It implements [ADR-020](adr/ADR-020-production-database-rds-postgresql.md).
+Code in `infra/modules/database`, plus the database subnets, route table,
+security group and rules in `infra/modules/network`; **applied by the owner
+on 2026-10-16** (see [First database apply, 2026-10-16](#first-database-apply-2026-10-16)).
+It implements [ADR-020](adr/ADR-020-production-database-rds-postgresql.md).
 
 **Resources:**
 
@@ -745,7 +746,9 @@ applied**. It implements [ADR-020](adr/ADR-020-production-database-rds-postgresq
 - `aws_db_parameter_group.this`, family `postgres17`, keeping the family
   defaults; the only parameter is `rds.force_ssl = 1`, which is already the
   RDS default for PostgreSQL 15 and later and is pinned so TLS enforcement is
-  explicit. No tuning (INFRA-008).
+  explicit. Its `apply_method` is `pending-reboot`, matching what AWS reports
+  for it, so plans show no permanent diff (see the 2026-10-16 apply). No
+  tuning (INFRA-008).
 - `aws_db_instance.this`: PostgreSQL `engine_version` (variable, 17.10 or
   later, default `17.10`), `db.t4g.micro`, gp3 20 GiB (fixed 3,000 IOPS and
   125 MiB/s baseline below 400 GiB, so no IOPS or throughput is set), Single-AZ,
@@ -837,20 +840,23 @@ record account or resource identifiers in the repository.
    that `compute_availability_zone` is one of `database_availability_zones`:
    the instance is placed in the compute zone, and the plan fails otherwise.
 3. Initialize with the real backend (`terraform init -backend-config=backend.hcl`).
-4. Plan with the same targets as the 2026-10-13 apply plus the database:
+4. Plan the network and the database only:
 
    ```powershell
-   terraform plan "-var-file=production.tfvars" "-target=module.network" "-target=module.nat_instance" "-target=module.data_plane" "-target=module.database" "-out=tfplan"
+   terraform plan "-var-file=production.tfvars" "-target=module.network" "-target=module.database" "-out=tfplan"
    ```
+
+   Do not add `-target=module.data_plane`: its input
+   `demo_cloudfront_distribution_arn` comes from `module.compute_api`, so
+   targeting it pulls in the CloudFront distribution and the bucket
+   policies (seen in the first targeted plan on 2026-10-16).
 
 5. Read the **whole** plan. Expect the new database resources (two subnets,
    a route table and two associations, the database security group and four
    security-group rules, the DB subnet group, the parameter group, the DB
-   instance and the alarm). **Drift is possible:** the pending fixes from the
-   first apply, the two `data_plane` buckets with corrected `Purpose` tags and
-   the NAT instance `source_dest_check` handling, may also appear. If the plan
-   destroys or replaces any existing resource, or lists anything in
-   `module.compute_api`, stop and do not apply.
+   instance and the alarm): 14 to add on 2026-10-16. If the plan destroys or
+   replaces any existing resource, or lists anything in `module.compute_api`
+   or `module.data_plane`, stop and do not apply.
 6. Apply the saved plan (`terraform apply tfplan`). Creating the instance can
    take several minutes.
 7. Record `terraform output database_resource_id` and
@@ -876,6 +882,62 @@ Deletion protection is on, so a destroy fails until it is turned off:
    provisioned storage no longer covers it; delete it when it is no longer
    needed.
 4. Restore deletion protection in code before any new database is created.
+
+## First database apply, 2026-10-16
+
+The owner applied the database from a workstation under the
+[local-credential apply exception](#local-credential-apply-exception), in
+us-east-1. Facts only; account IDs, endpoints, resource IDs, ARNs and IP
+addresses are not recorded here.
+
+**What was applied:** a targeted plan showed 14 to add; the apply completed
+with 14 added. The instance is `available`: engine 17.10, us-east-1a, not
+publicly accessible, Single-AZ, storage encrypted, IAM database
+authentication enabled.
+
+**Targets.** The first targeted plan used the earlier target list, which
+included `module.data_plane`; through its CloudFront distribution input that
+pulled in CloudFront and the bucket policies. The runbook step now targets
+`module.network` and `module.database` only.
+
+**Plan afterwards.** An untargeted plan showed 22 to add (the compute stage,
+not applied), 1 to change and 0 to destroy. The change was the parameter
+group: state holds `rds.force_ssl` value `1` with `apply_method`
+`pending-reboot`, while the configuration used the provider default
+`immediate`, so every plan showed an in-place update. Fixed by setting
+`apply_method = "pending-reboot"` on that parameter. The earlier drift
+from the 2026-10-13 apply (bucket `Purpose` tags, NAT `source_dest_check`)
+did not appear.
+
+Parameter facts behind the fix: provider 6.68.0 defaults `apply_method` to
+`immediate`, and its docs say "AWS does not allow changing the
+`apply_method` of a default parameter (or an existing parameter) without
+also modifying its `value`", recommending to align `apply_method` with what
+AWS reports. AWS lists `rds.force_ssl` as Dynamic, and the
+ModifyDBParameterGroup reference says "You can use the `pending-reboot` value
+for both dynamic and static parameters." The group was attached when the
+instance was created with this value, so no reboot is pending.
+
+**First memory readings** (CloudWatch, converted to MiB as bytes /
+1,048,576; no application connections to the instance):
+
+| Metric | Reading |
+|---|---|
+| `FreeableMemory` | About 223 MiB right after creation; about 65 to 70 MiB at idle after the first 15 minutes |
+| `SwapUsage` | About 129 to 138 MiB, rising slowly |
+
+These are first readings, not a verdict. The ADR-020 `FreeableMemory`
+threshold stays **OPEN**; INFRA-008 repeats the readings after a day and
+under a connection load before applying the decision rule.
+
+**Not proven:** connectivity from the functions (no compute applied), the
+INFRA-012 migration including `CREATE EXTENSION vector`, IAM database
+authentication in use, and a backup restore. INFRA-003 is not Accepted.
+
+Sources (read 2026-10-16):
+<https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/v6.68.0/website/docs/r/db_parameter_group.html.markdown>;
+<https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Appendix.PostgreSQL.CommonDBATasks.Parameters.html>;
+<https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_ModifyDBParameterGroup.html>.
 
 ## First apply, 2026-10-13
 
