@@ -1,9 +1,44 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-003 provider decided: RDS for PostgreSQL db.t4g.micro (ADR-020) — 2026-10-16
+
+**Status:** Documentation and one offline test on branch
+`docs/infra-003-database-provider`, not yet merged. Nothing is deployed.
+
+The owner decided the production database: RDS for PostgreSQL 17 (minor 17.10
+or later), db.t4g.micro, Single-AZ in a two-AZ DB subnet group, gp3 20 GiB,
+`us-east-1`, master password managed by RDS in Secrets Manager. ADR-020
+records it; Aurora Serverless v2 at 0 ACU is rejected for now (resume and
+wake-up handling, revisit if idle cost near zero is needed). The decision
+was made without the benchmark ADR-005 describes. Database gate condition met
+(provider recorded in ADR-020); the database is not deployed and ADR-005's
+validation conditions are unmet.
+
+Cost (AWS Price List `AmazonRDS` us-east-1, publication 2026-10-06, read
+2026-10-16; 730 h, no CPU-credit surcharge): instance 11.68 USD, gp3 2.30
+USD, database tier 13.98 USD; with the 7.36 USD NAT instance 21.34 of the 35
+USD target.
+
+Parser credential: IAM database authentication is the planned method,
+**unverified on a 1 GiB instance**; AWS states it needs 300 to 1000 MiB extra
+memory for reliable connectivity. The ADR-018 environment-variable fallback
+is pre-approved, and INFRA-008 applies a decision rule after the first apply
+(threshold OPEN, set from the first measurement). The ADR-017 auto-pause and
+resume items are not applicable, closed by the provider change and not by
+evidence. Open items include the pgvector drift (RDS at most 0.8.2, local
+0.8.6), `CREATE EXTENSION vector` needing `rds_superuser`, `max_connections`
+and API reserved concurrency, the CA bundle, CPU credits (Unlimited mode only
+documented) and the single-AZ restore procedure.
+
+A new offline test shows boto3 signs an RDS IAM token with no network call;
+it does not show IAM authentication is stable on a 1 GiB instance.
+
+Next action: owner review and merge; then INFRA-003 Terraform for the RDS
+instance and INFRA-008.
+
 ## INFRA-007 stage 3 of 3: parser credential check and parser wake-up — 2026-10-15
 
-**Status:** Two commits on branch `feat/infra-007-parser-runtime`, not yet
-merged. INFRA-007 is implemented (3 of 3) and **not Accepted**.
+**Status:** Merged to `main` in PR #189. INFRA-007 is implemented (3 of 3) and **not Accepted**.
 
 Commit 1 implements the ADR-018 amendment to ADR-009 in `parser_worker.py`
 (`lambda_parser_credentials_allowed`): the parser accepts

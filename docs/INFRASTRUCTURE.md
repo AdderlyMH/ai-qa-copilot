@@ -554,6 +554,8 @@ Stage 4 open items:
 
 - Aurora resume (about 15 s, 30 s or more after a day paused) against the 30 s
   HTTP API limit, which cannot be raised (ADR-017 open item; INFRA-002/INFRA-003).
+  **Not applicable since 2026-10-16:** ADR-020 selects always-on RDS for
+  PostgreSQL; closed by the provider change, not by evidence.
 - Images must exist in ECR before apply; none are built yet.
 - Lambda adapters: the repository has no Lambda handlers. The API needs an
   ASGI-to-Lambda adapter; the workers are `run_once()` loops that claim jobs

@@ -38,6 +38,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-016](ADR-016-objective-fixture-v4-provider-comparison.md) | Objective-bearing fixture v4 for the informed provider comparison                                        | Accepted |
 | [ADR-017](ADR-017-network-egress-and-database-connectivity.md) | Network egress and database connectivity for Lambda                                                      | Accepted |
 | [ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) | Production composition, Lambda runtime and secrets                                          | Accepted |
+| [ADR-020](ADR-020-production-database-rds-postgresql.md) | Production database: RDS for PostgreSQL db.t4g.micro (ADR-019 is reserved for INFRA-011) | Accepted |
 
 ## Required ADR structure
 
