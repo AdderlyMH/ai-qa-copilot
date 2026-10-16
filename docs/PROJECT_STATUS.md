@@ -19,8 +19,11 @@ documented owner step (PowerShell runbook in INFRASTRUCTURE.md).
 
 Smoke build of the parser target only: 207 s under QEMU emulation on
 Windows, 243,606,244 bytes uncompressed, `boto3` present in the base image
-(the locked 1.43.113 takes precedence); image, builder and cache removed;
-no container run. 16 new Docker-free contract tests. No Terraform change.
+(whether the locked 1.43.113 takes precedence is OPEN until the runtime
+interface emulator start); image, builder and cache removed; no container
+run. 16 new Docker-free contract tests. No Terraform change. The images do
+not contain Alembic or the migrations (`apps/api/alembic.ini`,
+`apps/api/alembic/`; Alembic is dev-only), so INFRA-012 must add them.
 
 Next action: owner review and merge; then build the four images, start one
 under the runtime interface emulator, push them and record the digests;

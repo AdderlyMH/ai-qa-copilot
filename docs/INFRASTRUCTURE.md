@@ -938,13 +938,26 @@ from the repository (with its source and checksum recorded) under
 `${LAMBDA_TASK_ROOT}`, and the connection setting that points at it belongs
 in the function environment, not in the image.
 
+**Migrations are not in the images (INFRA-012).** The ignore-file allowlist
+and the `COPY` lines include only `apps/api/src/ai_qa_copilot_api`. The
+Alembic configuration is `apps/api/alembic.ini` (`script_location =
+%(here)s/alembic`) and the migration environment and revisions are under
+`apps/api/alembic/` (`env.py`, `script.py.mako`, `versions/`), outside that
+package; `env.py` imports `ai_qa_copilot_api.migration_config`, which is in
+the image. `alembic==1.19.0` is only in the root `dev` dependency group, so
+it is not in the `uv export --no-dev` set the images install. A migration
+image built from this Dockerfile (INFRA-012) must therefore add Alembic to
+its installed dependencies and add `apps/api/alembic.ini` and
+`apps/api/alembic/**` to the allowlist and its `COPY` lines, preferably in a
+separate target so the four function images stay unchanged.
+
 **Verified on 2026-10-16** (sources below):
 
 | Question | Result |
 |---|---|
 | Base image and tags | `public.ecr.aws/lambda/python`, tag `3.13`, Amazon Linux 2023, deprecation Jun 30, 2029 (block create Jul 31, 2029; block update Aug 31, 2029). The `3.13` tag is a manifest list with `linux/arm64/v8` and `linux/amd64`; `3.13-arm64` is the single arm64 manifest (registry read with `docker buildx imagetools inspect`). |
 | Handler convention | Copy code and dependencies to `${LAMBDA_TASK_ROOT}` and set `CMD` to the handler. |
-| `boto3` | The docs say the Python runtime includes the SDK; the smoke build printed `base image boto3: present`. The locked `boto3 1.43.113` is installed in `${LAMBDA_TASK_ROOT}`, which is searched first, so it takes precedence. This answers the ADR-018 open item about `boto3`. |
+| `boto3` | The docs say the Python runtime includes the SDK; the smoke build printed `base image boto3: present`, which answers the presence part of the ADR-018 open item. The locked `boto3 1.43.113` is installed in `${LAMBDA_TASK_ROOT}`, which the docs say is searched first, so it should take precedence; **OPEN:** not verified in this image until the runtime interface emulator start (check in the build runbook). |
 | Image format | Docker image manifest V2 schema 2 or OCI v1.0.0 and later; the image must target one architecture (no multi-architecture images); `--provenance=false` is required; maximum 10 GB uncompressed. |
 | User and filesystem | Lambda defines a least-privileged default user, so no `USER` is needed; the image must run on a read-only filesystem with a writable `/tmp`. |
 | arm64 on a Windows host | Docker Desktop builds other platforms under QEMU emulation with no configuration; the Docker docs say emulation "can be much slower than native builds". |
@@ -973,18 +986,26 @@ or scan result exists; the compressed size in ECR is unknown.
 From the repository root in PowerShell, on a clean commit:
 
 ```powershell
-python scripts/build_lambda_images.py
+py scripts/build_lambda_images.py
 ```
 
 It builds the four images (expect several minutes each under emulation) and
 prints `ai-qa-copilot-lambda/<function>:<SHA>` with each local image ID and
-size. Record the sizes. The local image ID is **not** the ECR digest.
+size. Record the sizes and the SHA: the push must run from this same commit,
+because the tag is the SHA. The local image ID is **not** the ECR digest.
 
 Optional local start under the runtime interface emulator (part of the
 INFRA-009 acceptance, not run here): the AWS base image includes it.
 
 ```powershell
 docker run --rm --platform linux/arm64 -p 9000:8080 "ai-qa-copilot-lambda/api:<SHA>"
+```
+
+To close the `boto3` precedence item, also print which copy is imported (it
+should be 1.43.113 from `/var/task`):
+
+```powershell
+docker run --rm --platform linux/arm64 --entrypoint python "ai-qa-copilot-lambda/api:<SHA>" -c "import boto3; print(boto3.__version__, boto3.__file__)"
 ```
 
 Then post `{}` to `http://localhost:9000/2015-03-31/functions/function/invocations`
@@ -999,7 +1020,10 @@ or without its role and network variables, so its local start needs
 Run under the [local-credential apply exception](#local-credential-apply-exception).
 The ECR repositories exist since the 2026-10-13 apply
 (`ai-qa-copilot-production-<function>`, tags immutable, scan on push). Keep
-the account ID in private notes, not in the repository.
+the account ID in private notes, not in the repository. Push from the same
+checkout and commit that was built: `$Sha` below is `HEAD`, and `docker tag`
+fails if no local image carries that SHA, which means the build and the push
+commits differ.
 
 ```powershell
 $Region = "us-east-1"
@@ -1023,10 +1047,34 @@ docker logout $Registry
 - Pushing the same SHA again fails with `ImageTagAlreadyExistsException`
   (immutable tags). Rebuild from a new commit instead. The lifecycle policy
   keeps the 5 most recent images per repository.
+- **OPEN:** that lifecycle rule counts pushes, not deployments, so after
+  more than five newer pushes it could expire the digest a deployed function
+  still uses. What Lambda does when its image is deleted from ECR is not
+  verified here; until it is, do not push more than five images per
+  repository without deploying one of them, or revisit the rule.
 - Put the digests into `production.tfvars` (ignored by Git) as
   `<registry>/ai-qa-copilot-production-<function>@sha256:<digest>` for the
   four `image_uris` keys. The compute apply waits for INFRA-008 and the
   CloudFront decision.
+
+### Refresh the base image digest
+
+The base image is pinned by digest, so it gets **no automatic patches**: AWS
+updates the `3.13-arm64` tag, but this Dockerfile keeps the old image until
+the pin is changed. The base is supported until its deprecation on
+Jun 30, 2029 (cited above). To take a newer base:
+
+1. Read the current digest (an anonymous registry read, no AWS account):
+
+   ```powershell
+   docker buildx imagetools inspect public.ecr.aws/lambda/python:3.13-arm64
+   ```
+
+2. Replace the `sha256:` value in the `ARG LAMBDA_PYTHON_BASE=` line of
+   `apps/api/Dockerfile.lambda`, run `py scripts/tasks.py ci`, and commit.
+3. Build from that new commit (`py scripts/build_lambda_images.py`) and push
+   with the push runbook; the new SHA gives new tags, so immutability is not
+   an issue. Then update the `image_uris` digests and apply.
 
 No Terraform change was needed: `image_uris` already takes one URI per
 function and checks the four keys. A validation that rejects the all-zero
