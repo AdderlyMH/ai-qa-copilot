@@ -1,9 +1,36 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-009 Lambda container images: Dockerfile, build script, tests — 2026-10-16
+
+**Status:** Three commits on branch `feat/infra-009-lambda-images`, not yet
+merged. **No image is pushed; nothing is deployed.** INFRA-009 is not
+Accepted.
+
+One multi-stage `apps/api/Dockerfile.lambda` on the AWS Lambda Python 3.13
+arm64 base image (pinned by digest) builds four images, `api`, `parser`,
+`general` and `executor`, which differ only in the handler `CMD`; one image
+per ECR repository, as Terraform expects. Dependencies come from `uv.lock`
+(no dev group, hashes required, wheels only); every compiled package has an
+aarch64 wheel. No secret, credential, database setting or CA bundle is in
+the images. A Dockerfile-specific allowlist ignore file keeps the parser
+Compose build unchanged. `scripts/build_lambda_images.py` builds for
+`linux/arm64` with `--provenance=false` and tags by commit SHA; pushing is a
+documented owner step (PowerShell runbook in INFRASTRUCTURE.md).
+
+Smoke build of the parser target only: 207 s under QEMU emulation on
+Windows, 243,606,244 bytes uncompressed, `boto3` present in the base image
+(the locked 1.43.113 takes precedence); image, builder and cache removed;
+no container run. 16 new Docker-free contract tests. No Terraform change.
+
+Next action: owner review and merge; then build the four images, start one
+under the runtime interface emulator, push them and record the digests;
+then INFRA-008 and INFRA-012. The compute apply waits for the images and
+the October 20 CloudFront decision.
+
 ## INFRA-003 first database apply and parameter-group drift fix — 2026-10-16
 
-**Status:** Two commits on branch `fix/infra-003-parameter-group-drift`, not
-yet merged. The database is applied; INFRA-003 is **not Accepted**.
+**Status:** Merged to `main` in PR #192. The database is applied; INFRA-003
+is **not Accepted**.
 
 The owner applied the database (targeted plan 14 to add, apply 14 added).
 The instance is available: engine 17.10, us-east-1a, not public, Single-AZ,

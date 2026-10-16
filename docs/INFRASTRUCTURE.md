@@ -883,6 +883,167 @@ Deletion protection is on, so a destroy fails until it is turned off:
    needed.
 4. Restore deletion protection in code before any new database is created.
 
+## Lambda container images (INFRA-009, 2026-10-16)
+
+Code only: **no image is pushed and nothing is deployed.** One build of the
+parser target was made locally as a smoke test and deleted afterwards.
+
+**Files:**
+
+- `apps/api/Dockerfile.lambda`: one multi-stage Dockerfile. The base is
+  `public.ecr.aws/lambda/python:3.13-arm64` pinned by digest (the
+  single-architecture arm64 manifest of the 3.13 tag, Amazon Linux 2023).
+  The `dependencies` stage installs `uv==0.11.16`, runs `uv export --locked
+  --no-dev --no-emit-workspace` and installs the result with `pip
+  --require-hashes --only-binary=:all: --no-deps` (no compilation). The
+  `runtime` stage copies those packages and `apps/api/src/ai_qa_copilot_api`
+  into `${LAMBDA_TASK_ROOT}`. Four targets, `api`, `parser`, `general` and
+  `executor`, differ only in `CMD`:
+
+  | Target | Handler (`CMD`) |
+  |---|---|
+  | `api` | `ai_qa_copilot_api.lambda_api.handler` |
+  | `parser` | `ai_qa_copilot_api.lambda_workers.parser_handler` |
+  | `general` | `ai_qa_copilot_api.lambda_workers.general_handler` |
+  | `executor` | `ai_qa_copilot_api.lambda_workers.executor_handler` |
+
+  One image per function class, each pushed to its own ECR repository, as
+  `compute_api` expects (`image_uris` with the keys `api`, `parser`,
+  `general`, `executor`). No `USER` is set: Lambda runs the function as its
+  own least-privileged default user. No secret, `.env`, credential, AWS
+  configuration, database setting or CA bundle is in the image.
+- `apps/api/Dockerfile.lambda.dockerignore`: a Dockerfile-specific allowlist
+  (only `pyproject.toml`, `uv.lock`, `apps/api/pyproject.toml` and the
+  application package; `.env` files, `.git`, tests, docs, infra,
+  `node_modules` and `HANDOFF*.md` are excluded). Because it is specific to
+  this Dockerfile, the parser-worker Compose build and
+  `apps/api/Dockerfile.parser-worker` are unchanged.
+- `scripts/build_lambda_images.py`: builds the selected targets (default
+  all four) with `docker buildx build --platform linux/arm64
+  --provenance=false --sbom=false --load`, tags them
+  `ai-qa-copilot-lambda/<function>:<commit SHA>`, refuses to build when the
+  build inputs differ from the commit, and prints each local image ID, size
+  and platform. It never pushes and makes no AWS call.
+- `apps/api/tests/test_lambda_images.py`: Docker-free contract tests.
+
+**Parser image.** The parser image has the same contents as the others. It
+gets no network from the image: its isolation is the parser subnet with no
+route except the S3 gateway endpoint (ADR-017) and the ADR-009/ADR-018
+runtime check in `parser_worker.py`, which is unchanged.
+
+**RDS CA bundle (INFRA-008, not done here).** The parser has no internet
+route, so it cannot download the bundle at run time. When INFRA-008 adds
+`verify-full`, the bundle belongs in the `runtime` stage as a file copied
+from the repository (with its source and checksum recorded) under
+`${LAMBDA_TASK_ROOT}`, and the connection setting that points at it belongs
+in the function environment, not in the image.
+
+**Verified on 2026-10-16** (sources below):
+
+| Question | Result |
+|---|---|
+| Base image and tags | `public.ecr.aws/lambda/python`, tag `3.13`, Amazon Linux 2023, deprecation Jun 30, 2029 (block create Jul 31, 2029; block update Aug 31, 2029). The `3.13` tag is a manifest list with `linux/arm64/v8` and `linux/amd64`; `3.13-arm64` is the single arm64 manifest (registry read with `docker buildx imagetools inspect`). |
+| Handler convention | Copy code and dependencies to `${LAMBDA_TASK_ROOT}` and set `CMD` to the handler. |
+| `boto3` | The docs say the Python runtime includes the SDK; the smoke build printed `base image boto3: present`. The locked `boto3 1.43.113` is installed in `${LAMBDA_TASK_ROOT}`, which is searched first, so it takes precedence. This answers the ADR-018 open item about `boto3`. |
+| Image format | Docker image manifest V2 schema 2 or OCI v1.0.0 and later; the image must target one architecture (no multi-architecture images); `--provenance=false` is required; maximum 10 GB uncompressed. |
+| User and filesystem | Lambda defines a least-privileged default user, so no `USER` is needed; the image must run on a read-only filesystem with a writable `/tmp`. |
+| arm64 on a Windows host | Docker Desktop builds other platforms under QEMU emulation with no configuration; the Docker docs say emulation "can be much slower than native builds". |
+| ECR tags | With tag immutability, pushing an existing tag returns `ImageTagAlreadyExistsException`. |
+| Digest | Lambda resolves an image tag to a digest when the function is created or updated; `compute_api` is given `@sha256:` URIs directly. |
+| aarch64 wheels | Every compiled runtime package in `uv.lock` has an aarch64 wheel for CPython 3.13 or abi3: `cffi 2.1.1` (manylinux 2.17), `cryptography 50.0.0` (abi3, manylinux 2.17/2.28/2.34), `greenlet 3.5.4` (manylinux 2.28), `psycopg-binary 3.3.4` (manylinux 2.28), `pydantic-core 2.46.4` (manylinux 2.17), `sqlalchemy 2.0.51` (manylinux 2.17/2.28). The rest are pure Python. The smoke build installed all of them with `--only-binary=:all:`. |
+
+**Smoke build (parser target only, 2026-10-16).** Docker Desktop 29.8.1 on
+Windows (amd64 engine, QEMU for arm64), in a temporary `docker-container`
+builder with no cache:
+
+- wall time 207 s, of which the locked dependency install took about 110 s
+  under emulation;
+- image `linux/arm64`, 8 layers, 243,606,244 bytes (about 232 MiB)
+  uncompressed as reported by `docker image inspect`; `CMD` is the parser
+  handler; no `User` is set;
+- the image, the temporary builder (with its cache) and the BuildKit image
+  it pulled were removed afterwards; no container was run.
+
+Not verified: the other three targets were not built; no image was started
+under the runtime interface emulator; nothing was pushed, so no ECR digest
+or scan result exists; the compressed size in ECR is unknown.
+
+### Image build runbook (owner)
+
+From the repository root in PowerShell, on a clean commit:
+
+```powershell
+python scripts/build_lambda_images.py
+```
+
+It builds the four images (expect several minutes each under emulation) and
+prints `ai-qa-copilot-lambda/<function>:<SHA>` with each local image ID and
+size. Record the sizes. The local image ID is **not** the ECR digest.
+
+Optional local start under the runtime interface emulator (part of the
+INFRA-009 acceptance, not run here): the AWS base image includes it.
+
+```powershell
+docker run --rm --platform linux/arm64 -p 9000:8080 "ai-qa-copilot-lambda/api:<SHA>"
+```
+
+Then post `{}` to `http://localhost:9000/2015-03-31/functions/function/invocations`
+and stop the container. Without a database or the production settings the
+handlers are expected to fail at composition; the check is that the runtime
+starts and loads the handler. The parser additionally refuses to run as root
+or without its role and network variables, so its local start needs
+`--user 10001:10001` and those variables (OPEN until tried).
+
+### Image push runbook (owner, local credentials)
+
+Run under the [local-credential apply exception](#local-credential-apply-exception).
+The ECR repositories exist since the 2026-10-13 apply
+(`ai-qa-copilot-production-<function>`, tags immutable, scan on push). Keep
+the account ID in private notes, not in the repository.
+
+```powershell
+$Region = "us-east-1"
+$Registry = "<account-id>.dkr.ecr.$Region.amazonaws.com"
+$Sha = git rev-parse HEAD
+aws ecr get-login-password --region $Region | docker login --username AWS --password-stdin $Registry
+foreach ($Function in "api", "parser", "general", "executor") {
+    $Repository = "ai-qa-copilot-production-$Function"
+    docker tag "ai-qa-copilot-lambda/${Function}:${Sha}" "${Registry}/${Repository}:${Sha}"
+    docker push "${Registry}/${Repository}:${Sha}"
+    aws ecr describe-images --region $Region --repository-name $Repository --image-ids "imageTag=$Sha" --query "imageDetails[0].[imageDigest,imageManifestMediaType,imageSizeInBytes]" --output text
+}
+docker logout $Registry
+```
+
+- The password goes from `get-login-password` to `docker login` through the
+  pipe only; do not echo it or paste it. The registry login token is valid
+  for 12 hours; `docker logout` removes it from the local credential store.
+- Expect `imageManifestMediaType` to be a single image manifest (Docker V2
+  schema 2 or OCI), not a manifest list or index; stop if it is a list.
+- Pushing the same SHA again fails with `ImageTagAlreadyExistsException`
+  (immutable tags). Rebuild from a new commit instead. The lifecycle policy
+  keeps the 5 most recent images per repository.
+- Put the digests into `production.tfvars` (ignored by Git) as
+  `<registry>/ai-qa-copilot-production-<function>@sha256:<digest>` for the
+  four `image_uris` keys. The compute apply waits for INFRA-008 and the
+  CloudFront decision.
+
+No Terraform change was needed: `image_uris` already takes one URI per
+function and checks the four keys. A validation that rejects the all-zero
+example digest is a possible follow-up; it was not added.
+
+Sources (read 2026-10-16):
+<https://docs.aws.amazon.com/lambda/latest/dg/python-image.html>;
+<https://docs.aws.amazon.com/lambda/latest/dg/images-create.html>;
+<https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html>;
+<https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html>;
+<https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.html>;
+<https://docs.docker.com/build/building/multi-platform/>;
+<https://docs.docker.com/build/concepts/context/>;
+<https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-tag-mutability.html>;
+<https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html>;
+wheel files from `uv.lock` (PyPI URLs recorded at lock time).
+
 ## First database apply, 2026-10-16
 
 The owner applied the database from a workstation under the
