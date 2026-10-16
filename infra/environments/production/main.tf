@@ -1,9 +1,9 @@
 # Production root: the GitHub OIDC provider and plan-only role (INFRA-001), the
 # VPC network layout (INFRA-002 stage 1), the NAT instance (stage 2), the data
 # plane (stage 3) and compute, API, guest-demo CDN and Cognito (stage 4), per
-# ADR-017. ADR-005 database gate:
-# no database resource, subnet group or database connectivity resource until
-# the provider is recorded (INFRA-003). Not applied.
+# ADR-017, and the production database (INFRA-003, ADR-020: RDS for
+# PostgreSQL db.t4g.micro). The ADR-005 database gate condition is met by
+# ADR-020. Not applied.
 
 terraform {
   required_version = ">= 1.16.5, < 2.0.0"
@@ -112,6 +112,28 @@ variable "executor_enabled" {
   default     = false
 }
 
+variable "database_availability_zones" {
+  description = "Two distinct Availability Zones for the database subnets (ADR-020), for example [\"us-east-1a\", \"us-east-1b\"]."
+  type        = list(string)
+}
+
+variable "database_subnet_cidrs" {
+  description = "IPv4 CIDRs of the two database subnets, for example [\"10.20.10.0/24\", \"10.20.11.0/24\"]."
+  type        = list(string)
+}
+
+variable "database_engine_version" {
+  description = "PostgreSQL 17 minor version, 17.10 or later (ADR-020)."
+  type        = string
+  default     = "17.10"
+}
+
+variable "database_backup_retention_period" {
+  description = "Automated backup retention in days (1 to 35)."
+  type        = number
+  default     = 7
+}
+
 variable "nat_replacement_generation" {
   description = "Change to replace the NAT instance with the current AL2023 AMI (monthly runbook in docs/INFRASTRUCTURE.md)."
   type        = string
@@ -142,13 +164,24 @@ module "github_oidc_plan_role" {
 }
 
 module "network" {
-  source                    = "../../modules/network"
-  name_prefix               = module.naming.name_prefix
-  vpc_cidr                  = var.vpc_cidr
-  compute_availability_zone = var.compute_availability_zone
-  egress_subnet_cidr        = var.egress_subnet_cidr
-  parser_subnet_cidr        = var.parser_subnet_cidr
-  public_subnet_cidr        = var.public_subnet_cidr
+  source                      = "../../modules/network"
+  name_prefix                 = module.naming.name_prefix
+  vpc_cidr                    = var.vpc_cidr
+  compute_availability_zone   = var.compute_availability_zone
+  egress_subnet_cidr          = var.egress_subnet_cidr
+  parser_subnet_cidr          = var.parser_subnet_cidr
+  public_subnet_cidr          = var.public_subnet_cidr
+  database_availability_zones = var.database_availability_zones
+  database_subnet_cidrs       = var.database_subnet_cidrs
+}
+
+module "database" {
+  source                  = "../../modules/database"
+  name_prefix             = module.naming.name_prefix
+  subnet_ids              = module.network.database_subnet_ids
+  security_group_id       = module.network.database_security_group_id
+  engine_version          = var.database_engine_version
+  backup_retention_period = var.database_backup_retention_period
 }
 
 module "nat_instance" {
@@ -217,6 +250,36 @@ output "nat_public_ip" {
 output "vpc_id" {
   description = "Production VPC ID."
   value       = module.network.vpc_id
+}
+
+output "database_instance_identifier" {
+  description = "RDS DB instance identifier."
+  value       = module.database.instance_identifier
+}
+
+output "database_endpoint_address" {
+  description = "RDS endpoint address (no credentials)."
+  value       = module.database.endpoint_address
+}
+
+output "database_port" {
+  description = "PostgreSQL port."
+  value       = module.database.port
+}
+
+output "database_resource_id" {
+  description = "DbiResourceId for the rds-db:connect ARN (ADR-020)."
+  value       = module.database.resource_id
+}
+
+output "database_master_user_secret_arn" {
+  description = "ARN of the RDS-managed master user secret (never the value)."
+  value       = module.database.master_user_secret_arn
+}
+
+output "database_security_group_id" {
+  description = "Database security group ID."
+  value       = module.database.security_group_id
 }
 
 output "github_plan_role_arn" {

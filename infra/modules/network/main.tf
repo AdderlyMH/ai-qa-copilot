@@ -13,9 +13,10 @@ terraform {
 # free resources. Stage 2 adds the public subnet, internet gateway and public
 # route table used by the NAT instance (infra/modules/nat_instance); the NAT
 # instance, its Elastic IP and the egress default route live in that module.
-# No interface endpoint, NAT gateway or database resource exists here.
-# Database subnets and the database security group are deferred to INFRA-003
-# (ADR-005 database gate). Network ACLs stay at the VPC default (allow all);
+# No interface endpoint or NAT gateway exists here. INFRA-003 (ADR-020) adds
+# the two database subnets, their route-less route table, the database
+# security group and the PostgreSQL rules from the API/worker and parser
+# groups; the RDS instance itself lives in infra/modules/database. Network ACLs stay at the VPC default (allow all);
 # isolation is enforced by route tables and security groups, which are
 # stateful and per-resource. The parser's no-internet guarantee comes from its
 # route table, which has no route beyond the local VPC route and the S3
@@ -68,6 +69,26 @@ variable "parser_subnet_cidr" {
   validation {
     condition     = can(cidrhost(var.parser_subnet_cidr, 0))
     error_message = "parser_subnet_cidr must be a valid IPv4 CIDR block."
+  }
+}
+
+variable "database_availability_zones" {
+  description = "Two distinct Availability Zone names for the database subnets (ADR-020), for example [\"us-east-1a\", \"us-east-1b\"]."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.database_availability_zones) == 2 && length(distinct(var.database_availability_zones)) == 2
+    error_message = "database_availability_zones must list exactly two distinct Availability Zones."
+  }
+}
+
+variable "database_subnet_cidrs" {
+  description = "IPv4 CIDRs of the two database subnets, in the same order as database_availability_zones, for example [\"10.20.10.0/24\", \"10.20.11.0/24\"]. They never have an internet or NAT route."
+  type        = list(string)
+
+  validation {
+    condition     = length(var.database_subnet_cidrs) == 2 && alltrue([for cidr in var.database_subnet_cidrs : can(cidrhost(cidr, 0))])
+    error_message = "database_subnet_cidrs must list exactly two valid IPv4 CIDR blocks."
   }
 }
 
@@ -260,6 +281,103 @@ resource "aws_vpc_security_group_egress_rule" "egress_compute_https" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
+# ---------------------------------------------------------------- database (INFRA-003, ADR-020)
+
+# Two private subnets in two Availability Zones for the RDS DB subnet group.
+# The Single-AZ instance runs in one of them; the second lets it be recreated
+# in the other zone.
+resource "aws_subnet" "database" {
+  count = 2
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.database_subnet_cidrs[count.index]
+  availability_zone       = var.database_availability_zones[count.index]
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "${var.name_prefix}-database-${count.index}"
+    Tier = "database"
+  }
+}
+
+# Database route table: local VPC route only. `route = []` removes any other
+# route and the postcondition fails the plan or apply if one appears, as for
+# the parser.
+resource "aws_route_table" "database" {
+  vpc_id = aws_vpc.main.id
+  route  = []
+
+  tags = {
+    Name = "${var.name_prefix}-database"
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = length(self.route) == 0
+      error_message = "The database route table must not contain any route to the internet, a NAT device or another network."
+    }
+  }
+}
+
+resource "aws_route_table_association" "database" {
+  count = 2
+
+  subnet_id      = aws_subnet.database[count.index].id
+  route_table_id = aws_route_table.database.id
+}
+
+# Database: ingress TCP 5432 only from the API/worker and parser groups (group
+# references, no CIDRs). No egress rule: Terraform removes the AWS default
+# allow-all egress rule, and the instance needs no outbound connection.
+resource "aws_security_group" "database" {
+  #checkov:skip=CKV2_AWS_5:Attached to the RDS instance in infra/modules/database through vpc_security_group_ids; this check does not see the cross-module attachment.
+  name        = "${var.name_prefix}-database"
+  description = "RDS for PostgreSQL: ingress 5432 from the API/worker and parser groups only"
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "${var.name_prefix}-database"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "database_from_egress_compute" {
+  security_group_id            = aws_security_group.database.id
+  description                  = "PostgreSQL from the API, general worker and executor"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.egress_compute.id
+}
+
+resource "aws_vpc_security_group_ingress_rule" "database_from_parser" {
+  security_group_id            = aws_security_group.database.id
+  description                  = "PostgreSQL from the restricted parser"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.parser.id
+}
+
+# Matching egress rules. They point only at the database group, so the parser
+# still has no route or rule to the internet.
+resource "aws_vpc_security_group_egress_rule" "egress_compute_database" {
+  security_group_id            = aws_security_group.egress_compute.id
+  description                  = "PostgreSQL to the database group only"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.database.id
+}
+
+resource "aws_vpc_security_group_egress_rule" "parser_database" {
+  security_group_id            = aws_security_group.parser.id
+  description                  = "PostgreSQL to the database group only"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.database.id
+}
+
 output "vpc_id" {
   description = "VPC ID."
   value       = aws_vpc.main.id
@@ -298,4 +416,14 @@ output "parser_security_group_id" {
 output "egress_compute_security_group_id" {
   description = "Egress-compute security group ID."
   value       = aws_security_group.egress_compute.id
+}
+
+output "database_subnet_ids" {
+  description = "The two database subnet IDs for the RDS DB subnet group."
+  value       = aws_subnet.database[*].id
+}
+
+output "database_security_group_id" {
+  description = "Database security group ID."
+  value       = aws_security_group.database.id
 }
