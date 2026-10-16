@@ -955,6 +955,7 @@ of this backlog.
 - **Dependencies:** INFRA-001, OBS-002, ADR-017 (connection pattern and open auto-pause item)
 - **Deliverable:** Cost ADR and pgvector-capable production database.
 - **Acceptance:** Idle/resume behavior, migration, connectivity, backup/export, and monthly estimate are verified.
+- **Status (2026-10-16):** Provider **decided, deployment pending**. [ADR-020](adr/ADR-020-production-database-rds-postgresql.md) records the owner decision: RDS for PostgreSQL 17 (minor 17.10 or later), db.t4g.micro, Single-AZ in a two-AZ DB subnet group, gp3 20 GiB, `us-east-1`, master password managed by RDS in Secrets Manager; database tier 13.98 USD per month. Remaining scope is the **Terraform for RDS only** (DB subnet group, security group and parser rule, parameter group, instance) plus the CPU-credit alarm and the single-AZ restore procedure. The idle/resume part of the acceptance is not applicable to RDS (closed by the provider change, not by evidence). ADR-005 database gate: database gate condition met (provider recorded in ADR-020); the database is not deployed and ADR-005's validation conditions are unmet. The decision was made without the ADR-005 benchmark.
 
 #### INFRA-004 — Deploy mock sandbox target
 
@@ -990,6 +991,7 @@ of this backlog.
 - **Dependencies:** ADR-018, INFRA-006, INFRA-003 (database provider, for IAM authentication)
 - **Deliverable:** A bootstrap that loads `DATABASE_URL` and `OPENAI_API_KEY` from Secrets Manager at cold start for the API and general worker; Terraform for the two secrets (no values), the `GetSecretValue` grants on exact ARNs and the function environment; the parser database credential: RDS IAM authentication with a restricted parser database user, or, if INFRA-003 cannot support it, the explicit environment-variable fallback with the state exposure recorded and the `CKV_AWS_173` suppression reason updated. No Anthropic secret is created.
 - **Acceptance:** A missing secret fails closed and no secret value reaches logs (tests); the IAM-authentication token path connects from the parser subnet at the first apply, or the fallback is recorded; the monthly secret cost (0.40 USD per secret, Price List 2026-09-11) is recorded; the Checkov scan passes.
+- **Dependency note (2026-10-16):** INFRA-003 is decided by [ADR-020](adr/ADR-020-production-database-rds-postgresql.md) (RDS for PostgreSQL db.t4g.micro, 1 GiB). IAM database authentication for the parser is the planned method but is **unverified on a 1 GiB instance** (AWS states 300 to 1000 MiB extra memory is needed). The ADR-018 fallback is pre-approved; INFRA-008 applies the ADR-020 decision rule after the first apply (switch to the fallback if `FreeableMemory` falls below a threshold set from the first measurement, or any IAM-authenticated connection fails or times out). INFRA-008 also owns the `FreeableMemory` alarm, parameter tuning, the RDS CA bundle and `verify-full`, and reading the RDS-managed master secret.
 
 #### INFRA-009 — Arm64 Lambda container images and build/push path
 
@@ -1022,6 +1024,7 @@ of this backlog.
 - **Dependencies:** INFRA-003, INFRA-009
 - **Deliverable:** A one-shot job that runs Alembic inside the VPC against the private database (for example the API image with a different command), with a documented first-apply runbook.
 - **Acceptance:** A clean production database is migrated to head and the migration version is read back; a failed run leaves the version unchanged and reports a sanitized error.
+- **Dependency note (2026-10-16):** the target is RDS for PostgreSQL 17.10 or later ([ADR-020](adr/ADR-020-production-database-rds-postgresql.md)). pgvector is not a trusted extension on RDS, so migration `0001_enable_pgvector` (`CREATE EXTENSION vector`) needs the master user or an `rds_superuser` member for that step. The runner also owns creating the parser database user and granting `rds_iam` (or the fallback user's privileges), and recording the pgvector drift (RDS at most 0.8.2, local Compose 0.8.6-pg17).
 
 #### INFRA-013 — Production embeddings and retrieval composition
 

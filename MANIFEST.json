@@ -87,8 +87,8 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 46099,
-      "sha256": "2c42582dbf82045c7eb9905fb964b1604ea4c28107a7200fb0341d7c21323194"
+      "bytes": 46417,
+      "sha256": "2359add600227ff36a3d91703c4dfc91fbcbdf25f787d8858af128f5a3e97d00"
     },
     {
       "path": "docs/B1_CANDIDATE_EXECUTOR.md",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 87374,
-      "sha256": "58bb7958576ff271fc226042ec0e5a27a0d67e91079fef5a33c3da2b5dcd90cd"
+      "bytes": 89505,
+      "sha256": "4f3931c33699b26f29f648d77d340bf1498e6674e0e77c70027c139ed36a397f"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 60647,
-      "sha256": "f4ccb68efc7369255690118cdec23f696282acc2260b455471e2bbde4996ccfc"
+      "bytes": 60782,
+      "sha256": "8c2b51987f4e2bbfac2deba63fb18055d201685fe82803329383678fb8e5aa88"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 144977,
-      "sha256": "c0a298f8cdb3526433bfeb39f7d4b99bad753ab696aedde4b006239d423113a7"
+      "bytes": 146927,
+      "sha256": "2b9deb06e5f01484446c26d29e7ac19100ba98f9999b6e36f3063b01d0799ac2"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -266,9 +266,14 @@
       "sha256": "6ef4b4a1e62b60d0ad0f060a26dae4b5965119e2ab079abe7c73931366ffaffc"
     },
     {
+      "path": "docs/adr/ADR-020-production-database-rds-postgresql.md",
+      "bytes": 19052,
+      "sha256": "af2c45886cb5db95b39c26c5e458bfddc86cb322d9b9e0d2b465abd02bd591a9"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 4743,
-      "sha256": "48fbd40a6e789c97b2bbe3a28a69b04e865c1abe1b4df2d2c24bed2c12e014a2"
+      "bytes": 4906,
+      "sha256": "dbf17379ea2e0dfad2cecb09d4452fa8be07fc622b512737641bc1725e88c6f4"
     },
     {
       "path": "docs/evidence/github-ruleset-2026-10-12/README.md",

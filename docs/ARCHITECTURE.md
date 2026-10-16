@@ -651,6 +651,8 @@ Preferred all-AWS candidate:
 
 The final production selection is a cost-gate decision. If the all-AWS baseline cannot stay within the monthly limit, an external serverless PostgreSQL provider with pgvector may be used while AWS remains the application and object-storage platform. This trade-off must be documented rather than hidden.
 
+**Planned-design note (2026-10-16):** [ADR-020](adr/ADR-020-production-database-rds-postgresql.md) selects **RDS for PostgreSQL db.t4g.micro (Single-AZ, gp3 20 GiB)**, not Aurora PostgreSQL Serverless v2; the Aurora candidate above and its automatic pause are not the production design. The database is not deployed.
+
 ### 12.4 Infrastructure modules
 
 Terraform modules should cover:
