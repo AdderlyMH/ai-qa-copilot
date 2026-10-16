@@ -109,9 +109,18 @@ resource "aws_db_parameter_group" "this" {
   family      = var.parameter_group_family
   description = "PostgreSQL 17 defaults with TLS required; no tuning (INFRA-008)"
 
+  # apply_method matches what AWS reports for this parameter (pending-reboot)
+  # after the first apply on 2026-10-16. The provider defaults to immediate,
+  # and AWS does not change an existing parameter's apply_method unless its
+  # value also changes, so the default left a permanent in-place diff on every
+  # plan (provider 6.68.0 docs, "Solution 3"). rds.force_ssl is dynamic, and
+  # pending-reboot is valid for dynamic parameters (ModifyDBParameterGroup).
+  # The group was attached when the instance was created with this value, so
+  # no reboot is pending.
   parameter {
-    name  = "rds.force_ssl"
-    value = "1"
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   tags = {
