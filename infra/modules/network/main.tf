@@ -427,3 +427,8 @@ output "database_security_group_id" {
   description = "Database security group ID."
   value       = aws_security_group.database.id
 }
+
+output "database_availability_zones" {
+  description = "Availability Zones of the two database subnets."
+  value       = aws_subnet.database[*].availability_zone
+}

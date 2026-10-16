@@ -176,12 +176,14 @@ module "network" {
 }
 
 module "database" {
-  source                  = "../../modules/database"
-  name_prefix             = module.naming.name_prefix
-  subnet_ids              = module.network.database_subnet_ids
-  security_group_id       = module.network.database_security_group_id
-  engine_version          = var.database_engine_version
-  backup_retention_period = var.database_backup_retention_period
+  source                    = "../../modules/database"
+  name_prefix               = module.naming.name_prefix
+  subnet_ids                = module.network.database_subnet_ids
+  security_group_id         = module.network.database_security_group_id
+  subnet_availability_zones = module.network.database_availability_zones
+  availability_zone         = var.compute_availability_zone
+  engine_version            = var.database_engine_version
+  backup_retention_period   = var.database_backup_retention_period
 }
 
 module "nat_instance" {

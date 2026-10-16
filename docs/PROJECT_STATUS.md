@@ -24,10 +24,14 @@ suppressions with reasons: Single-AZ, Enhanced Monitoring, Performance
 Insights, log export cost, cross-module security-group attachment). No
 Terraform contract tests exist in the repository, so none were added.
 
-OPEN before the first apply: the 17.x minors offered in us-east-1 and the
-`postgres17` family string (confirmed by the runbook's first step), and how
-a later automatic minor upgrade shows in the plan. Recurring cost per ADR-020:
-13.98 USD per month.
+Confirmed on 2026-10-16 by the owner's `describe-db-engine-versions` output:
+PostgreSQL 17.5 to 17.11 are offered in us-east-1 with family `postgres17`;
+the default engine version stays 17.10. Provider 6.68.0 would plan an
+in-place downgrade after an automatic minor upgrade (no diff suppression on
+`aws_db_instance`), so the instance ignores later `engine_version` changes;
+the version applies at creation only. The instance is placed in the compute
+zone, checked by a precondition. Recurring cost per ADR-020: 13.98 USD per
+month.
 
 Next action: owner review and merge; then the owner's first database apply
 by the runbook in INFRASTRUCTURE.md, then INFRA-008 and INFRA-012.

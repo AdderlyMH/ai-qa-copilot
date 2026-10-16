@@ -42,8 +42,18 @@ variable "security_group_id" {
   type        = string
 }
 
+variable "subnet_availability_zones" {
+  description = "Availability Zones of the two database subnets, from the network module."
+  type        = list(string)
+}
+
+variable "availability_zone" {
+  description = "Availability Zone for the Single-AZ instance; the production root passes compute_availability_zone so the database sits next to the Lambda subnets. Must be one of the database subnet zones."
+  type        = string
+}
+
 variable "engine_version" {
-  description = "PostgreSQL 17 minor version, 17.10 or later (ADR-020: first 17.x with pgvector 0.8.2). The versions offered in the Region were not listed offline; confirm before apply (runbook in docs/INFRASTRUCTURE.md)."
+  description = "PostgreSQL 17 minor version at creation, 17.10 or later (ADR-020: first 17.x with pgvector 0.8.2). The owner confirmed 17.5 to 17.11 offered in us-east-1 on 2026-10-16."
   type        = string
   default     = "17.10"
 
@@ -54,7 +64,7 @@ variable "engine_version" {
 }
 
 variable "parameter_group_family" {
-  description = "DB parameter group family for PostgreSQL 17. The value postgres17 follows the documented postgresNN pattern but was not confirmed offline; confirm before apply."
+  description = "DB parameter group family for PostgreSQL 17 (postgres17, confirmed by the owner's describe-db-engine-versions output on 2026-10-16)."
   type        = string
   default     = "postgres17"
 
@@ -136,6 +146,7 @@ resource "aws_db_instance" "this" {
   parameter_group_name   = aws_db_parameter_group.this.name
   publicly_accessible    = false
   multi_az               = false
+  availability_zone      = var.availability_zone
   network_type           = "IPV4"
 
   iam_database_authentication_enabled = true
@@ -153,6 +164,22 @@ resource "aws_db_instance" "this" {
 
   tags = {
     Name = local.identifier
+  }
+
+  lifecycle {
+    precondition {
+      condition     = contains(var.subnet_availability_zones, var.availability_zone)
+      error_message = "availability_zone must be one of the two database subnet Availability Zones."
+    }
+
+    # With auto_minor_version_upgrade, RDS raises the minor version itself.
+    # Provider 6.68.0 then reads the running version into engine_version
+    # (compareActualEngineVersion keeps "17.10" only for a "17.10." prefix) and
+    # aws_db_instance has no diff suppression, so the next plan would try to
+    # downgrade 17.11 -> 17.10, which RDS rejects. engine_version is used at
+    # creation only; the running version is engine_version_actual. Remove this
+    # entry deliberately for a planned version change.
+    ignore_changes = [engine_version]
   }
 }
 

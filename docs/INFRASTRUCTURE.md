@@ -206,9 +206,9 @@ Security groups:
 | Security group | Ingress | Egress | Notes |
 |---|---|---|---|
 | VPC default | none | none | All rules removed by `aws_default_security_group`, so nothing can rely on it. |
-| `parser` | none | TCP 443 to the S3 gateway endpoint prefix list (stage 3) | Terraform removes the AWS default allow-all egress rule; the S3 rule is the only egress. A database rule is added only when the database exists (INFRA-003). |
+| `parser` | none | TCP 443 to the S3 gateway endpoint prefix list (stage 3); TCP 5432 to the `database` group only (INFRA-003) | Terraform removes the AWS default allow-all egress rule; these two rules are the only egress. The parser subnet still has no internet or NAT route. |
 | `nat-instance` (stage 2) | TCP 443 from `egress-compute` | TCP 443 to `0.0.0.0/0` | Forwarded HTTPS, package repositories and the SSM agent. See the NAT instance section. |
-| `egress-compute` | none | TCP 443 to `0.0.0.0/0` | Needed for the Cognito JWKS endpoint and the model provider through the NAT instance. **SG-08 is not met:** this allows any HTTPS destination; INFRA-004 owns the executor egress control (ADR-017 open item). |
+| `egress-compute` | none | TCP 443 to `0.0.0.0/0`; TCP 5432 to the `database` group only (INFRA-003) | The 5432 rule lets the API, general worker and executor reach the database. HTTPS is needed for the Cognito JWKS endpoint and the model provider through the NAT instance. **SG-08 is not met:** this allows any HTTPS destination; INFRA-004 owns the executor egress control (ADR-017 open item). |
 | database (INFRA-003) | TCP 5432 from `egress-compute` and from `parser` (security-group references, no CIDRs) | none | Attached to the RDS instance. `egress-compute` and `parser` each gain one egress rule: TCP 5432 to this group only; the parser still has no internet route. Code only, not applied. |
 
 **Network ACLs** stay at the VPC default, which allows all traffic. Isolation
@@ -793,15 +793,27 @@ without suppression.
 sources; backup storage is free up to the provisioned database storage in
 the Region (RDS FAQ, cited in ADR-020). No new price is claimed here.
 
-**OPEN before the first apply** (not verifiable offline):
+**Engine version and family: confirmed 2026-10-16.** The owner's
+`aws rds describe-db-engine-versions` output for us-east-1 lists PostgreSQL
+17.5 to 17.11 with parameter group family `postgres17`; the default
+`database_engine_version` stays `17.10`.
 
-- The PostgreSQL 17 minor versions offered in us-east-1 and the parameter
-  group family string `postgres17` (inferred from the documented `postgresNN`
-  pattern). Both are confirmed by the first runbook step.
-- After RDS applies an automatic minor upgrade, `database_engine_version`
-  must be raised to the running version before the next plan, or the plan
-  shows an engine version change; whether provider 6.68.0 suppresses that
-  diff is unverified.
+**Automatic minor upgrades.** In provider 6.68.0 `engine_version` on
+`aws_db_instance` is optional and computed with no diff suppression, and
+after a read the provider keeps the configured value only when the running
+version starts with it plus a dot (`compareActualEngineVersion`); the docs
+say "If `auto_minor_version_upgrade` is enabled, you can provide a prefix of
+the version such as `8.0` (for `8.0.36`). The actual engine version used is
+returned in the attribute `engine_version_actual`". A pinned `17.10` would
+therefore show an in-place downgrade to `17.10` after RDS moves to 17.11,
+which RDS rejects. The instance uses `lifecycle { ignore_changes =
+[engine_version] }`: the variable sets the version at creation only, the
+running version is `engine_version_actual`, and a deliberate version change
+needs that entry removed for the change.
+
+**Availability Zone.** The Single-AZ instance is placed in
+`compute_availability_zone`, next to the Lambda subnets; a precondition
+fails the plan if that zone is not one of `database_availability_zones`.
 
 ### First apply runbook (owner, local credentials)
 
@@ -812,15 +824,18 @@ record account or resource identifiers in the repository.
 1. Add `database_availability_zones` (two distinct zones) and
    `database_subnet_cidrs` to `production.tfvars` (ignored by Git), using
    `production.example.tfvars` as the template.
-2. Confirm the engine version and parameter group family offered in the
-   Region (read-only calls):
+2. Re-check (confirmed on 2026-10-16; repeat in case the offering changed)
+   the engine versions and parameter group family offered in the Region
+   (read-only call):
 
    ```powershell
    aws rds describe-db-engine-versions --region us-east-1 --engine postgres --query "DBEngineVersions[?starts_with(EngineVersion, '17.')].[EngineVersion,DBParameterGroupFamily]" --output table
    ```
 
    If 17.10 is not listed but a later 17.x is, set `database_engine_version`
-   to it; if the family is not `postgres17`, stop and report.
+   to it; if the family is not `postgres17`, stop and report. Also confirm
+   that `compute_availability_zone` is one of `database_availability_zones`:
+   the instance is placed in the compute zone, and the plan fails otherwise.
 3. Initialize with the real backend (`terraform init -backend-config=backend.hcl`).
 4. Plan with the same targets as the 2026-10-13 apply plus the database:
 
