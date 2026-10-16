@@ -1,0 +1,50 @@
+# INFRA-009: Lambda container images for the four function classes (ADR-017,
+# ADR-018). One Dockerfile, one target per function; each target differs only
+# in its CMD (the Lambda handler). Build for linux/arm64 with --provenance=false
+# through scripts/build_lambda_images.py; build context is the repository root.
+#
+# The base is the single-architecture arm64 manifest of the AWS Lambda Python
+# 3.13 base image (Amazon Linux 2023), pinned by digest (read 2026-10-16).
+# Lambda runs the function as its own least-privileged default user, so no
+# USER is set (AWS Lambda Developer Guide, images-create). No secret, .env,
+# credential, AWS configuration, database setting or CA bundle is copied in:
+# settings come from the function environment at run time (INFRA-008).
+ARG LAMBDA_PYTHON_BASE=public.ecr.aws/lambda/python:3.13-arm64@sha256:beebf5d3bf90deef2a7620801edc811b7922163023358c8471fc4d92409e873f
+
+FROM ${LAMBDA_PYTHON_BASE} AS dependencies
+
+# Record which SDK the base image ships; the locked boto3 installed below
+# takes precedence because LAMBDA_TASK_ROOT is first on the search path.
+RUN python -c "import importlib.util as u; print('base image boto3:', 'present' if u.find_spec('boto3') else 'absent')"
+
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+COPY apps/api/pyproject.toml apps/api/pyproject.toml
+
+# Runtime dependencies only, exactly as locked: uv exports the locked
+# non-dev set with hashes, and pip installs wheels only (no compilation).
+RUN python -m pip install --disable-pip-version-check --no-cache-dir uv==0.11.16 \
+    && uv export --locked --no-dev --no-emit-workspace --format requirements-txt --output-file /build/requirements.txt \
+    && python -m pip install --disable-pip-version-check --no-cache-dir \
+        --require-hashes --only-binary=:all: --no-deps \
+        --target /build/site-packages --requirement /build/requirements.txt
+
+FROM ${LAMBDA_PYTHON_BASE} AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY --from=dependencies /build/site-packages ${LAMBDA_TASK_ROOT}
+COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api
+
+FROM runtime AS api
+CMD ["ai_qa_copilot_api.lambda_api.handler"]
+
+FROM runtime AS parser
+CMD ["ai_qa_copilot_api.lambda_workers.parser_handler"]
+
+FROM runtime AS general
+CMD ["ai_qa_copilot_api.lambda_workers.general_handler"]
+
+FROM runtime AS executor
+CMD ["ai_qa_copilot_api.lambda_workers.executor_handler"]
