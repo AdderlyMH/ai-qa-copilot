@@ -1,9 +1,39 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-003 first database apply and parameter-group drift fix — 2026-10-16
+
+**Status:** Two commits on branch `fix/infra-003-parameter-group-drift`, not
+yet merged. The database is applied; INFRA-003 is **not Accepted**.
+
+The owner applied the database (targeted plan 14 to add, apply 14 added).
+The instance is available: engine 17.10, us-east-1a, not public, Single-AZ,
+encrypted, IAM database authentication enabled. An untargeted plan
+afterwards showed 22 to add (compute stage, not applied), 1 to change and 0
+to destroy; the change was `rds.force_ssl` reported by AWS with
+`apply_method` `pending-reboot` against the provider default `immediate`.
+Commit 1 sets `apply_method = "pending-reboot"` (rds.force_ssl is dynamic;
+pending-reboot is valid for dynamic parameters; no reboot is pending). The
+earlier bucket-tag and NAT `source_dest_check` drift did not appear. The
+runbook now targets `module.network` and `module.database` only, because
+targeting `module.data_plane` pulled in CloudFront and the bucket policies.
+
+First memory readings with no application connections: `FreeableMemory`
+about 65 to 70 MiB at idle after the first 15 minutes (about 223 MiB right
+after creation), `SwapUsage` about 129 to 138 MiB and rising slowly. First
+readings, not a verdict; the ADR-020 threshold stays OPEN, and they lean
+toward the ADR-018 fallback.
+
+Checks: `terraform fmt -check`, `validate` in both roots, Checkov 3.3.20 338
+passed, 0 failed, 49 skipped.
+
+Next action: INFRA-009 images, then INFRA-008 (repeat the memory readings
+after a day and under a connection load), then INFRA-012. The compute apply
+waits for the images and the October 20 CloudFront decision.
+
 ## INFRA-003 Terraform for RDS for PostgreSQL (ADR-020) — 2026-10-16
 
-**Status:** Two commits on branch `feat/infra-003-rds`, not yet merged.
-**Not applied; nothing is deployed.** INFRA-003 is not Accepted.
+**Status:** Merged to `main` in PR #191. Applied by the owner on 2026-10-16
+(see the entry above). INFRA-003 is not Accepted.
 
 New `infra/modules/database`: DB subnet group over two zones, a PostgreSQL 17
 parameter group with the family defaults and only `rds.force_ssl = 1` pinned
