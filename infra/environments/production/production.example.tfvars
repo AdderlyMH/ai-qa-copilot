@@ -4,14 +4,23 @@ aws_account_id          = "000000000000"
 github_plan_environment = "REPLACE_WITH_GITHUB_ENVIRONMENT"
 state_bucket_name       = "REPLACE_WITH_STATE_BUCKET_NAME"
 
-# Network (ADR-017). Example values; 10.20.10.0/24 and 10.20.11.0/24 are kept
-# free for the INFRA-003 database subnets. AZ names map to physical zones per
-# account, so confirm the zone before applying.
+# Network (ADR-017). Example values. AZ names map to physical zones per
+# account, so confirm the zones before applying.
 vpc_cidr                  = "10.20.0.0/16"
 compute_availability_zone = "us-east-1a"
 egress_subnet_cidr        = "10.20.0.0/24"
 parser_subnet_cidr        = "10.20.1.0/24"
 public_subnet_cidr        = "10.20.2.0/24"
+
+# Database (INFRA-003, ADR-020): two private subnets in two distinct zones.
+# The Single-AZ instance is placed in compute_availability_zone, which must
+# be one of database_availability_zones (a precondition checks this).
+database_availability_zones = ["us-east-1a", "us-east-1b"]
+database_subnet_cidrs       = ["10.20.10.0/24", "10.20.11.0/24"]
+# Optional; defaults shown. engine_version must be 17.10 or later (17.5 to
+# 17.11 offered in us-east-1 on 2026-10-16); it applies at creation only.
+# database_engine_version          = "17.10"
+# database_backup_retention_period = 7
 
 # NAT instance (ADR-017). Change this value to replace the instance with the
 # current AL2023 AMI; see the monthly runbook in docs/INFRASTRUCTURE.md.

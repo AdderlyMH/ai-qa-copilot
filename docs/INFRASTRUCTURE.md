@@ -195,8 +195,10 @@ VPC  vpc_cidr (example 10.20.0.0/16), us-east-1, DNS support and hostnames on
 |
 +-- S3 gateway endpoint    on the egress-compute and parser route tables
 |
-+-- reserved, not created  10.20.10.0/24 and 10.20.11.0/24 for the database
-      subnets in two AZs (INFRA-003, after the provider is selected)
++-- database subnets       database_subnet_cidrs (example 10.20.10.0/24 and
+      10.20.11.0/24) in database_availability_zones (two distinct zones);
+      route table "database": local route only, `route = []` plus a
+      postcondition; used by: the RDS instance (INFRA-003, code only)
 ```
 
 Security groups:
@@ -204,10 +206,10 @@ Security groups:
 | Security group | Ingress | Egress | Notes |
 |---|---|---|---|
 | VPC default | none | none | All rules removed by `aws_default_security_group`, so nothing can rely on it. |
-| `parser` | none | TCP 443 to the S3 gateway endpoint prefix list (stage 3) | Terraform removes the AWS default allow-all egress rule; the S3 rule is the only egress. A database rule is added only when the database exists (INFRA-003). |
+| `parser` | none | TCP 443 to the S3 gateway endpoint prefix list (stage 3); TCP 5432 to the `database` group only (INFRA-003) | Terraform removes the AWS default allow-all egress rule; these two rules are the only egress. The parser subnet still has no internet or NAT route. |
 | `nat-instance` (stage 2) | TCP 443 from `egress-compute` | TCP 443 to `0.0.0.0/0` | Forwarded HTTPS, package repositories and the SSM agent. See the NAT instance section. |
-| `egress-compute` | none | TCP 443 to `0.0.0.0/0` | Needed for the Cognito JWKS endpoint and the model provider through the NAT instance. **SG-08 is not met:** this allows any HTTPS destination; INFRA-004 owns the executor egress control (ADR-017 open item). |
-| database | deferred | deferred | Not created: the ADR-005 database gate also covers database connectivity resources. INFRA-003 adds the database subnets and this group after the provider is selected. |
+| `egress-compute` | none | TCP 443 to `0.0.0.0/0`; TCP 5432 to the `database` group only (INFRA-003) | The 5432 rule lets the API, general worker and executor reach the database. HTTPS is needed for the Cognito JWKS endpoint and the model provider through the NAT instance. **SG-08 is not met:** this allows any HTTPS destination; INFRA-004 owns the executor egress control (ADR-017 open item). |
+| database (INFRA-003) | TCP 5432 from `egress-compute` and from `parser` (security-group references, no CIDRs) | none | Attached to the RDS instance. `egress-compute` and `parser` each gain one egress rule: TCP 5432 to this group only; the parser still has no internet route. Code only, not applied. |
 
 **Network ACLs** stay at the VPC default, which allows all traffic. Isolation
 is enforced by the route tables (the parser has no internet or NAT route) and
@@ -725,6 +727,155 @@ security review of the relaxation assumes it.
   sends its own wake-up. A lost wake-up is recovered by the document status
   reads, which re-send at most once per 60 s while any listed document is
   `parser_queued`; each re-send lets one more queued job be parsed.
+
+## Production database, RDS for PostgreSQL (INFRA-003, 2026-10-16)
+
+Code only (`infra/modules/database`, plus the database subnets, route table,
+security group and rules in `infra/modules/network`); **not planned or
+applied**. It implements [ADR-020](adr/ADR-020-production-database-rds-postgresql.md).
+
+**Resources:**
+
+- `aws_subnet.database` (2), `aws_route_table.database` (no routes;
+  postcondition) and its two associations, in two distinct zones.
+- `aws_security_group.database`: ingress TCP 5432 from `egress-compute` and
+  `parser` by security-group reference; no egress. Matching egress rules TCP
+  5432 from `egress-compute` and `parser` to this group only.
+- `aws_db_subnet_group.this` over the two database subnets.
+- `aws_db_parameter_group.this`, family `postgres17`, keeping the family
+  defaults; the only parameter is `rds.force_ssl = 1`, which is already the
+  RDS default for PostgreSQL 15 and later and is pinned so TLS enforcement is
+  explicit. No tuning (INFRA-008).
+- `aws_db_instance.this`: PostgreSQL `engine_version` (variable, 17.10 or
+  later, default `17.10`), `db.t4g.micro`, gp3 20 GiB (fixed 3,000 IOPS and
+  125 MiB/s baseline below 400 GiB, so no IOPS or throughput is set), Single-AZ,
+  encrypted with the RDS AWS managed key (`aws/rds`), not publicly
+  accessible, database `ai_qa_copilot`, master user `copilot_master` with the
+  password generated and kept by RDS in Secrets Manager
+  (`manage_master_user_password`; no password input, variable or state
+  value), IAM database authentication enabled (planned parser method,
+  unverified on 1 GiB per ADR-020), backup retention `backup_retention_period`
+  (default 7 days), copy tags to snapshots, deletion protection on, final
+  snapshot `<prefix>-postgres-final` on destroy, automatic minor version
+  upgrades on, no Performance Insights, no Enhanced Monitoring, no storage
+  autoscaling, no RDS Proxy, no read replica.
+- `aws_cloudwatch_metric_alarm.cpu_surplus_credits_charged`:
+  `CPUSurplusCreditsCharged` (`AWS/RDS`, Sum over 300 s) greater than 0. It
+  has **no alarm action and no SNS topic** (no confirmed subscriber), so it is
+  visible in the CloudWatch console only. The `FreeableMemory` alarm and its
+  threshold are INFRA-008 (ADR-020: threshold OPEN).
+
+**Not created here:** database users, grants, `CREATE EXTENSION` or any SQL
+(INFRA-012); the endpoint in Lambda environment variables or secrets
+(INFRA-008).
+
+**Outputs** (production root): `database_instance_identifier`,
+`database_endpoint_address`, `database_port`, `database_resource_id`
+(DbiResourceId, for the `rds-db:connect` ARN), `database_master_user_secret_arn`
+(the ARN only) and `database_security_group_id`. No password and no
+connection string.
+
+**New variables:** `database_availability_zones` and `database_subnet_cidrs`
+(required; see `production.example.tfvars`), `database_engine_version`
+(default `17.10`) and `database_backup_retention_period` (default 7, 1 to 35).
+
+**Checkov suppressions** (inline, with reasons): `CKV_AWS_157` Multi-AZ
+(Single-AZ by ADR-020), `CKV_AWS_118` Enhanced Monitoring and `CKV_AWS_353`
+Performance Insights (cost), `CKV_AWS_129` log export to CloudWatch Logs
+(cost: RDS would create a log group without retention; revisit in HARD-001)
+and `CKV2_AWS_5` on the database security group (attached across modules).
+Encryption at rest, public access, deletion protection, IAM authentication
+and encryption in transit (`CKV2_AWS_69`, through `rds.force_ssl`) pass
+without suppression.
+
+**Expected recurring cost:** 13.98 USD per month for the database tier
+(instance 11.68 plus gp3 2.30), from the ADR-020 cost section and its
+sources; backup storage is free up to the provisioned database storage in
+the Region (RDS FAQ, cited in ADR-020). No new price is claimed here.
+
+**Engine version and family: confirmed 2026-10-16.** The owner's
+`aws rds describe-db-engine-versions` output for us-east-1 lists PostgreSQL
+17.5 to 17.11 with parameter group family `postgres17`; the default
+`database_engine_version` stays `17.10`.
+
+**Automatic minor upgrades.** In provider 6.68.0 `engine_version` on
+`aws_db_instance` is optional and computed with no diff suppression, and
+after a read the provider keeps the configured value only when the running
+version starts with it plus a dot (`compareActualEngineVersion`); the docs
+say "If `auto_minor_version_upgrade` is enabled, you can provide a prefix of
+the version such as `8.0` (for `8.0.36`). The actual engine version used is
+returned in the attribute `engine_version_actual`". A pinned `17.10` would
+therefore show an in-place downgrade to `17.10` after RDS moves to 17.11,
+which RDS rejects. The instance uses `lifecycle { ignore_changes =
+[engine_version] }`: the variable sets the version at creation only, the
+running version is `engine_version_actual`, and a deliberate version change
+needs that entry removed for the change.
+
+**Availability Zone.** The Single-AZ instance is placed in
+`compute_availability_zone`, next to the Lambda subnets; a precondition
+fails the plan if that zone is not one of `database_availability_zones`.
+
+### First apply runbook (owner, local credentials)
+
+Run from `infra/environments/production` in PowerShell, under the
+[local-credential apply exception](#local-credential-apply-exception). Do not
+record account or resource identifiers in the repository.
+
+1. Add `database_availability_zones` (two distinct zones) and
+   `database_subnet_cidrs` to `production.tfvars` (ignored by Git), using
+   `production.example.tfvars` as the template.
+2. Re-check (confirmed on 2026-10-16; repeat in case the offering changed)
+   the engine versions and parameter group family offered in the Region
+   (read-only call):
+
+   ```powershell
+   aws rds describe-db-engine-versions --region us-east-1 --engine postgres --query "DBEngineVersions[?starts_with(EngineVersion, '17.')].[EngineVersion,DBParameterGroupFamily]" --output table
+   ```
+
+   If 17.10 is not listed but a later 17.x is, set `database_engine_version`
+   to it; if the family is not `postgres17`, stop and report. Also confirm
+   that `compute_availability_zone` is one of `database_availability_zones`:
+   the instance is placed in the compute zone, and the plan fails otherwise.
+3. Initialize with the real backend (`terraform init -backend-config=backend.hcl`).
+4. Plan with the same targets as the 2026-10-13 apply plus the database:
+
+   ```powershell
+   terraform plan "-var-file=production.tfvars" "-target=module.network" "-target=module.nat_instance" "-target=module.data_plane" "-target=module.database" "-out=tfplan"
+   ```
+
+5. Read the **whole** plan. Expect the new database resources (two subnets,
+   a route table and two associations, the database security group and four
+   security-group rules, the DB subnet group, the parameter group, the DB
+   instance and the alarm). **Drift is possible:** the pending fixes from the
+   first apply, the two `data_plane` buckets with corrected `Purpose` tags and
+   the NAT instance `source_dest_check` handling, may also appear. If the plan
+   destroys or replaces any existing resource, or lists anything in
+   `module.compute_api`, stop and do not apply.
+6. Apply the saved plan (`terraform apply tfplan`). Creating the instance can
+   take several minutes.
+7. Record `terraform output database_resource_id` and
+   `terraform output database_endpoint_address` in the owner's private notes
+   (they are needed for INFRA-008 and INFRA-012); do not commit them.
+8. Not acceptance evidence by itself: INFRA-003 still needs connectivity from
+   the functions, the INFRA-012 migration (including `CREATE EXTENSION
+   vector`) and a backup restore test.
+
+### Destroy procedure
+
+Deletion protection is on, so a destroy fails until it is turned off:
+
+1. Change `deletion_protection` to `false` in `infra/modules/database/main.tf`
+   on a branch, plan and apply that change only (`"-target=module.database"`).
+2. Run the destroy plan for the database (`terraform plan -destroy
+   "-var-file=production.tfvars" "-target=module.database" "-out=destroyplan"`),
+   read it, and apply it. RDS takes the final snapshot
+   `<prefix>-postgres-final`; if a snapshot with that name already exists,
+   delete or rename it first or the destroy fails.
+3. The RDS-managed master secret is deleted with the instance. The final
+   snapshot remains and is billed as backup storage once the instance's
+   provisioned storage no longer covers it; delete it when it is no longer
+   needed.
+4. Restore deletion protection in code before any new database is created.
 
 ## First apply, 2026-10-13
 
