@@ -1,10 +1,44 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-008 Stage A: secrets bootstrap, secret containers, memory alarm — 2026-10-16
+
+**Status:** Three commits on branch `feat/infra-008-secrets-stage-a`, not yet
+merged. **Not planned or applied; no secret exists and no value is set.**
+INFRA-008 is not Accepted; Stage B is open.
+
+`secrets_bootstrap.py` reads the `database-url` and `openai-api-key` secrets
+once per process from their ARNs and sets `DATABASE_URL` and `OPENAI_API_KEY`
+before the API lifespan and the general worker composition; the parser and
+executor never load secrets. It fails closed with sanitized errors (no
+value, ARN or response body; no chained AWS exception), writes nothing
+unless both secrets validate, uses 3 attempts in total, and leaves local and
+test runs without ARNs unchanged. 36 new tests (fake client and botocore
+`Stubber`, no network).
+
+Terraform: two secret containers with no value in state, `GetSecretValue`
+on exactly their ARNs for the api and general roles, the two ARN variables
+in those environments, and a console-only `FreeableMemory` alarm whose MiB
+threshold has no default, so every plan of the production root now needs the
+owner's number (ADR-020 keeps it OPEN). Checkov 334 passed, 0 failed, 53
+skipped (`CKV_AWS_149`, `CKV2_AWS_57` suppressed with reasons). Cost: +0.80
+USD per month for two secrets plus API calls, 22.14 USD per month plus API
+calls against ADR-020's 21.34 USD running total; not a total for everything.
+
+Found while testing: `Config(retries={"max_attempts": 3})` means three
+retries (four attempts); the bootstrap uses `total_max_attempts`, and the
+unchanged S3 adapters make up to four attempts.
+
+Next action: owner review and merge; owner chooses the alarm threshold,
+creates the two containers (targeted plan, 2 to add) and sets the OpenAI
+key; then INFRA-012 (application user, then the database-url value) and
+INFRA-008 Stage B. The compute apply waits for those and the October 20
+CloudFront decision.
+
 ## INFRA-009 images pushed to ECR (owner record) — 2026-10-16
 
-**Status:** One docs-only commit on branch `docs/infra-009-push-record`, not
-yet merged. The images are pushed; **nothing is deployed**. INFRA-009 is
-**not Accepted**; acceptance is the owner's call on the facts below.
+**Status:** Merged to `main` in PR #194. The images are pushed; **nothing is
+deployed**. INFRA-009 is **not Accepted**; acceptance is the owner's call on
+the facts below.
 
 Owner-observed on 2026-10-16: built from `main` at `4fdbfc2` (parser 130 s
 under QEMU, 1.35 MB context; the other three targets reused cached layers)
