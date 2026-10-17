@@ -115,6 +115,8 @@ AWS Price List `AmazonRDS`, `us-east-1`, publication 2026-10-06, read 2026-10-16
 | T4g Standard (non-Unlimited) credit mode for RDS: not documented as available | OPEN, treated as unavailable | INFRA-003 |
 | Single-AZ acceptance for the database; no RPO or RTO claimed; restore procedure | OPEN | INFRA-003 |
 
+> **Note (2026-10-17, INFRA-012 run):** the pgvector drift item above is answered by the owner's first production `migrate`: RDS installed pgvector **0.8.2** (local Compose 0.8.6-pg17); `CREATE EXTENSION vector` ran as the master user. The runner also read the RDS-managed master secret (`username`, `password`) with a plain `GetSecretValue` grant. Record: [INFRASTRUCTURE.md](../INFRASTRUCTURE.md#migration-runner-apply-2026-10-17). The table rows above are unchanged.
+
 ## Verification record
 
 Read on 2026-10-16 from official AWS sources. Anything not listed here was not verified.
