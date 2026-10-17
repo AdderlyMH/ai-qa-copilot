@@ -139,6 +139,18 @@ variable "database_freeable_memory_alarm_threshold_mib" {
   type        = number
 }
 
+variable "migration_enabled" {
+  description = "Create the one-shot migration runner function (INFRA-012). Keep false except while running migrations; the ECR repository exists either way."
+  type        = bool
+  default     = false
+}
+
+variable "migration_image_uri" {
+  description = "migrate image by digest (<migrate repository URL>@sha256:<digest>); required when migration_enabled is true."
+  type        = string
+  default     = null
+}
+
 variable "nat_replacement_generation" {
   description = "Change to replace the NAT instance with the current AL2023 AMI (monthly runbook in docs/INFRASTRUCTURE.md)."
   type        = string
@@ -208,6 +220,20 @@ module "data_plane" {
   source                           = "../../modules/data_plane"
   name_prefix                      = module.naming.name_prefix
   demo_cloudfront_distribution_arn = module.compute_api.demo_distribution_arn
+}
+
+module "migration" {
+  source                  = "../../modules/migration"
+  name_prefix             = module.naming.name_prefix
+  migration_enabled       = var.migration_enabled
+  image_uri               = var.migration_image_uri
+  subnet_id               = module.network.egress_subnet_id
+  security_group_id       = module.network.egress_compute_security_group_id
+  db_host                 = module.database.endpoint_address
+  db_port                 = module.database.port
+  db_name                 = module.database.database_name
+  master_secret_arn       = module.database.master_user_secret_arn
+  database_url_secret_arn = module.data_plane.application_secret_arns.database_url
 }
 
 module "compute_api" {
@@ -285,6 +311,16 @@ output "database_resource_id" {
 output "database_master_user_secret_arn" {
   description = "ARN of the RDS-managed master user secret (never the value)."
   value       = module.database.master_user_secret_arn
+}
+
+output "migration_ecr_repository_url" {
+  description = "Push target for the migrate image (INFRA-012)."
+  value       = module.migration.ecr_repository_url
+}
+
+output "migration_function_name" {
+  description = "Migration runner function name, or null while migration_enabled is false."
+  value       = module.migration.function_name
 }
 
 output "database_security_group_id" {
