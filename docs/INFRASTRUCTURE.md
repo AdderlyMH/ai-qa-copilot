@@ -883,6 +883,266 @@ Deletion protection is on, so a destroy fails until it is turned off:
    needed.
 4. Restore deletion protection in code before any new database is created.
 
+## Migration runner (INFRA-012, 2026-10-17)
+
+Code only: **not planned, not applied, no image pushed, nothing invoked.**
+
+**What it is.** A Lambda function, `ai-qa-copilot-production-migrate`, built
+from the `migrate` target of `apps/api/Dockerfile.lambda` (arm64) and invoked
+manually by the owner with the AWS CLI. It has no HTTP API, event source or
+schedule. It runs in the egress-compute subnet with the `egress_compute`
+security group: TCP 5432 to the database group was already allowed, and
+Secrets Manager is reached through the NAT instance.
+
+**Image.** The four function images are unchanged. Two new stages,
+`migrate-dependencies` and `migrate`, install the runtime dependencies plus the
+locked `migrate` dependency group (`alembic==1.19.0`, which brings `mako` and
+`markupsafe`; all have arm64 wheels or are pure Python) and copy
+`apps/api/alembic.ini` and `apps/api/alembic/` to `migrations/` in the task
+root. A top-level `alembic/` there would shadow the installed `alembic`
+package. The ignore-file allowlist gains the two Alembic paths. `uv.lock`
+changed only by the group metadata (no version moved).
+`scripts/build_lambda_images.py --function migrate` builds it; the default
+build stays the four functions.
+
+**Handler** (`ai_qa_copilot_api.lambda_migrate.handler`), event field
+`action`:
+
+| Action | What it does | Response |
+|---|---|---|
+| `status` | Reads `alembic_version` and the packaged head; no lock. | `revision`, `head`, `at_head` |
+| `migrate` (default, also for `{}`) | `pg_try_advisory_lock` (a second run fails instead of waiting), `alembic upgrade head` through the unchanged `env.py`, revision read back, lock released. | `revision_before`, `revision`, `head`, `at_head`, `upgraded` |
+| `create_app_user` | Under the same lock: requires a migrated database; creates the application role (or, with `"rotate": true`, resets its password); grants; then writes the URL to the `database-url` secret. | `role_created`, `password_rotated`, `secret_written`, `tables_granted`, `append_only_tables` |
+
+Unknown actions, unknown event fields, a non-boolean `rotate` and `rotate` on
+another action fail closed before any AWS or database call.
+
+**Transactions.** `env.py` reads `DATABASE_URL` and runs all pending
+migrations inside one `context.begin_transaction()`;
+`transaction_per_migration` is not set, and PostgreSQL has transactional DDL,
+so a failed upgrade rolls back every pending migration and `alembic_version`
+keeps its old value. No migration uses `CONCURRENTLY` or an autocommit block.
+`env.py` and the migrations are unchanged; the runner sets `DATABASE_URL` in
+its own process for the upgrade only and removes it afterwards. A failure is
+reported as `Upgrade failed (<exception type>); revision before X, after Y`
+with Y read back from the database. A PostgreSQL integration test in
+`db-check` proves this with a probe migration that creates a table and then
+raises: the revision stays at head and the table does not exist.
+
+**Credentials.** The RDS-managed master secret (`MASTER_SECRET_ARN`) is read
+at invocation; it must hold `username` and `password` (other keys are
+ignored). Host, port and database come from `DB_HOST`, `DB_PORT`, `DB_NAME`.
+Connections use `sslmode=require`; `verify-full` with the RDS CA bundle is
+INFRA-008 Stage B (the bundle would be copied into the `runtime` and
+`migrate` stages, and `sslrootcert` added to both URLs). The master user is a
+member of `rds_superuser`, which `CREATE EXTENSION vector` in
+`0001_enable_pgvector` needs because pgvector is not a trusted extension on
+RDS (ADR-020).
+
+**Application role** (`APP_DB_USER`, default `ai_qa_copilot_app`):
+
+- `CREATE ROLE ... WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT
+  NOREPLICATION NOBYPASSRLS`; a password from `secrets.token_urlsafe(32)` (32
+  random bytes).
+- The password is sent to PostgreSQL only as a **SCRAM-SHA-256 verifier**
+  computed by the runner; PostgreSQL stores a pre-encrypted password as-is.
+  The PostgreSQL docs warn that a cleartext `PASSWORD` may be logged in the
+  server log (for example when the statement fails); with the verifier, no
+  SQL text, server log, exception, log record or response contains the
+  password. All SQL is composed with `psycopg.sql` (`Identifier`, `Literal`);
+  a test checks every `sql.SQL(...)` argument is a constant string.
+- Grants: `CONNECT` on the database; `USAGE` on schema `public`; `CREATE` on
+  the schema revoked; per table `REVOKE ALL`, then:
+
+  | Tables | Privileges | Why |
+  |---|---|---|
+  | `document_versions`, `execution_approvals`, `execution_jobs`, `indexing_jobs`, `parser_jobs`, `projects` | SELECT, INSERT, UPDATE, DELETE | The application updates them (claims, leases, terminal states, `parser_version_id`, `archived_at`). |
+  | `quality_report_revisions` | SELECT, INSERT, UPDATE, DELETE | Rows are never updated, but the code locks them with `SELECT ... FOR UPDATE`, which PostgreSQL allows only with UPDATE privilege; immutability there stays enforced by the application. |
+  | The other 20 tables | SELECT, INSERT | Append-only for the application: no runtime UPDATE or DELETE was found. |
+  | `alembic_version` | none | Only the runner reads it. |
+
+  `USAGE, SELECT` on all sequences (there are none today), and
+  `ALTER DEFAULT PRIVILEGES FOR ROLE <master> IN SCHEMA public` grants SELECT,
+  INSERT, UPDATE, DELETE on future tables and USAGE, SELECT on future
+  sequences. **Choices to know:** the split was found by reading the code
+  (ORM updates, `update()` statements and row locks), not by running every
+  workflow as the role; **no table is ever deleted from at run time**, so
+  DELETE on the seven mutable tables is the owner's default rather than a
+  need; future tables get the mutable set by default, so a new immutable
+  table needs an explicit revoke in its migration or a later `rotate` run. A
+  contract test fails when a migration adds a table that is in neither list.
+- Order and failure window: the role change and all grants commit in one
+  transaction **first**; the secret is written **last**. If the secret write
+  fails, the database has the new password and the secret does not: the
+  error says so and the fix is to rerun with `"rotate": true`. While a rotate
+  runs, functions that are already warm keep the old URL until their next
+  cold start and their new connections fail with the old password.
+- The secret value is never read back or returned. If the role already
+  exists, the action fails unless `rotate` is true; `rotate` on a role that
+  does not exist also fails.
+
+**Errors.** Every failure is a `MigrationRunnerError` with the step and an AWS
+error code or exception type only; the AWS or database exception is not
+chained, and no value, ARN, host, user name or SQL text appears. boto3 uses
+standard retries with 3 attempts in total and 5 s timeouts.
+
+**Terraform** (`infra/modules/migration`, wired in the production root):
+
+- Always created: the `ai-qa-copilot-production-migrate` ECR repository
+  (immutable tags, scan on push, AES256) and its lifecycle policy (5 images),
+  so the image can be pushed before the runner is turned on.
+- Only while `migration_enabled = true` (default false, count 0): the log group
+  `/aws/lambda/ai-qa-copilot-production-migrate` (14 days), the role, the
+  `AWSLambdaVPCAccessExecutionRole` attachment, the inline policy, the ECR
+  pull policy for this function, and the function (arm64, image by digest,
+  900 s, 1024 MB, egress subnet, `egress_compute` group).
+- The inline policy: `logs:CreateLogStream`/`PutLogEvents` on its own log
+  group; `secretsmanager:GetSecretValue` on the **RDS master secret ARN
+  only**; `secretsmanager:PutSecretValue` on the **database-url secret ARN
+  only**. No wildcard resource. The master secret uses the AWS managed key
+  `aws/secretsmanager`, so no `kms:Decrypt` grant is needed. **No other
+  function role can read the master secret**; the api and general roles can
+  read only the two application secrets.
+- Environment: `APP_ENV=production`, `DB_HOST`, `DB_PORT`, `DB_NAME`,
+  `MASTER_SECRET_ARN`, `DATABASE_URL_SECRET_ARN`, `APP_DB_USER`; no value.
+- `migration_image_uri` must end in `@sha256:<64 hex>` and not be the all-zero
+  digest (validation), and must point at this module's repository
+  (precondition when enabled).
+- Checkov 3.3.20: 381 passed, 0 failed, 61 skipped. New suppressions on the
+  module, each confirmed to fail without it and each with the same reason as
+  the existing functions: `CKV_AWS_50` (X-Ray), `CKV_AWS_115` (reserved
+  concurrency; overlapping runs are excluded by the advisory lock),
+  `CKV_AWS_116` (DLQ; the owner invokes synchronously), `CKV_AWS_173`
+  (environment holds no secret value), `CKV_AWS_272` (code signing),
+  `CKV_AWS_136` (ECR AES256), `CKV_AWS_158` (log group default encryption),
+  `CKV_AWS_338` (14-day retention).
+
+**Cost.** No new secret is created. While the runner is enabled the log group
+and function cost nothing material at a few manual invocations; the function
+is meant to be turned off again. ECR storage for a few migrate images is not
+material. No figure is claimed.
+
+**Not here:** the parser database user and any `rds_iam` grant (INFRA-008
+Stage B, which moves that item from INFRA-012), the CA bundle and
+`verify-full`, parameter tuning, rotation automation, the compute apply.
+
+**OPEN:** the keys of the RDS-managed master secret are not listed on the
+pages read (the runner requires `username` and `password` and fails closed
+otherwise); what happens to an open migration transaction when Lambda stops
+at its timeout is not documented (PostgreSQL rolls back an open transaction
+when its session ends; when the session ends after a Lambda timeout is
+unverified); the response does not report the installed pgvector version
+that ADR-020 asks to record; `db-check` with the new integration test was not
+run locally (Docker Desktop was not running) and runs in the required
+`migration-check` job.
+
+### Migration runbook (owner, local credentials)
+
+PowerShell, from `infra/environments/production` unless noted, under the
+[local-credential apply exception](#local-credential-apply-exception).
+`production.tfvars` must contain `database_freeable_memory_alarm_threshold_mib`
+(every plan needs it). Read every plan in full. **Stop rule** for every plan
+below: stop if it shows any destroy or replace (except step f), anything in
+`module.compute_api`, or any IAM permission other than the ones listed in the
+migration section.
+
+**a. Secret containers (INFRA-008 Stage A).** The two
+`aws_secretsmanager_secret.application` resources depend only on the name
+prefix, so they can be applied without CloudFront. The api and general role
+policies and function environments are not needed for migrations and wait for
+the compute apply. Smallest safe target list:
+
+```powershell
+terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_secretsmanager_secret.application' "-out=tfplan"
+```
+
+Expect 2 to add, 0 to change, 0 to destroy; then `terraform apply tfplan`.
+Do **not** set the `database-url` value by hand: step d writes it.
+
+**b. ECR repository, then build and push only the migrate image.** With
+`migration_enabled` unset or false:
+
+```powershell
+terraform plan "-var-file=production.tfvars" '-target=module.migration' "-out=tfplan"
+```
+
+Expect 2 to add (`aws_ecr_repository.migrate`, `aws_ecr_lifecycle_policy.migrate`)
+and nothing else; apply. Then from the repository root on a clean commit:
+
+```powershell
+py scripts/build_lambda_images.py --function migrate
+```
+
+Push with the [image push runbook](#image-push-runbook-owner-local-credentials)
+for the one repository `ai-qa-copilot-production-migrate` (replace the
+`foreach` list with `"migrate"`; same commit, tag = SHA, same Windows
+credential-helper fallback if `docker login` fails), and read the digest back
+with the `describe-images` line. Expect a single OCI image manifest.
+
+**c. Turn the runner on.** In `production.tfvars`:
+
+```hcl
+migration_enabled   = true
+migration_image_uri = "<terraform output migration_ecr_repository_url>@sha256:<digest from step b>"
+```
+
+```powershell
+terraform plan "-var-file=production.tfvars" '-target=module.migration' "-out=tfplan"
+```
+
+Expect 6 to add: the log group, the role, the VPC-access attachment, the
+inline policy, the ECR repository policy and the function; 0 to change, 0 to
+destroy. Check that the inline policy has exactly the three statements above.
+Apply.
+
+**d. Invoke** (repeat the block with each payload, in this order: status,
+migrate, status, create_app_user). The payload is written to a temporary
+ASCII file; the response file holds only revisions, booleans and counts and is
+deleted afterwards. `AWS_MAX_ATTEMPTS=1` stops the CLI from retrying a long
+call, and the read timeout covers the 900 s function timeout.
+
+```powershell
+$Region = "us-east-1"
+$Function = "ai-qa-copilot-production-migrate"
+$Body = '{"action":"status"}'   # then '{"action":"migrate"}', then '{"action":"create_app_user"}'
+$Payload = Join-Path $env:TEMP ("migrate-in-" + [guid]::NewGuid().ToString() + ".json")
+$Response = Join-Path $env:TEMP ("migrate-out-" + [guid]::NewGuid().ToString() + ".json")
+$env:AWS_MAX_ATTEMPTS = "1"
+try {
+    $null = [System.IO.File]::WriteAllText($Payload, $Body, [System.Text.Encoding]::ASCII)
+    aws lambda invoke --region $Region --function-name $Function --cli-binary-format raw-in-base64-out --cli-read-timeout 960 --payload "file://$Payload" $Response --query "[StatusCode,FunctionError]" --output text
+    Get-Content -LiteralPath $Response
+} finally {
+    Remove-Item -LiteralPath $Payload, $Response -Force -ErrorAction SilentlyContinue
+    Remove-Item Env:AWS_MAX_ATTEMPTS -ErrorAction SilentlyContinue
+}
+```
+
+The status code is 200 even when the function fails; a second column
+`Unhandled` means a `MigrationRunnerError`, whose sanitized message is in the
+response. Expected results: the first `status` shows `revision` null; `migrate`
+shows `revision_before` null, `revision` equal to `head` and `upgraded` true;
+`create_app_user` shows `role_created` true and `secret_written` true. If
+`create_app_user` reports that the secret was not written, rerun it with
+`'{"action":"create_app_user","rotate":true}'`.
+
+**e. Read back.** Run `status` again (expect `at_head` true), and check that
+the `database-url` secret now has a version without printing it:
+
+```powershell
+aws secretsmanager describe-secret --region $Region --secret-id "ai-qa-copilot-production/database-url" --query "length(VersionIdsToStages)" --output text
+```
+
+**f. Turn the runner off.** Set `migration_enabled = false` (the image URI may
+stay), then:
+
+```powershell
+terraform plan "-var-file=production.tfvars" '-target=module.migration' "-out=tfplan"
+```
+
+Expect exactly 6 to destroy (the resources from step c) and nothing else; the
+ECR repository and its images stay. Apply.
+
 ## Secrets and the cold-start bootstrap (INFRA-008 Stage A, 2026-10-16)
 
 Code only: **not planned, not applied, no secret exists, no value is set.**
@@ -1017,8 +1277,8 @@ command line, in history or in the repository.
    instances), 0 to change, 0 to destroy. Stop if anything else appears. Then
    `terraform apply tfplan`.
 
-2. Set the OpenAI key (repeat with `database-url` once INFRA-012 has created
-   the application database user):
+2. Set the OpenAI key. The `database-url` value is **not** set by hand: the
+   INFRA-012 runner writes it (`create_app_user`, migration runbook step d).
 
    ```powershell
    $Region = "us-east-1"
@@ -1034,11 +1294,10 @@ command line, in history or in the repository.
    }
    ```
 
-   The query prints only the new version ID, not the ARN. The
-   `database-url` value is a PostgreSQL URL for the **application** user, for
-   example `postgresql+psycopg://<user>:<url-encoded password>@<endpoint>:5432/ai_qa_copilot?sslmode=require`;
-   the endpoint comes from `terraform output database_endpoint_address` in
-   the owner's private notes. `verify-full` replaces `require` in Stage B.
+   The query prints only the new version ID, not the ARN. For reference, the
+   runner writes `database-url` in the form
+   `postgresql+psycopg://<application user>:<password>@<endpoint>:5432/ai_qa_copilot?sslmode=require`;
+   `verify-full` replaces `require` in Stage B.
 
 3. Check that a value exists without printing it:
 

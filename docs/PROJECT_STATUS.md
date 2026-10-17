@@ -1,10 +1,38 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-012 migration runner: Lambda, migrate image target, Terraform module — 2026-10-17
+
+**Status:** Three commits on branch `feat/infra-012-migration-runner`, not
+yet merged. **Not planned or applied; no image pushed; nothing invoked.**
+INFRA-012 is not Accepted.
+
+A manually invoked Lambda (`status`, `migrate`, `create_app_user`) runs
+Alembic under an advisory lock through the unchanged `env.py`, which applies
+all pending migrations in one transaction, so a failed run leaves the
+revision unchanged; it reads the revision back. It creates the application
+role (password sent only as a SCRAM-SHA-256 verifier, SQL composed with
+`psycopg.sql`), grants SELECT/INSERT on 20 append-only tables and also
+UPDATE/DELETE on the 7 the application updates or row-locks, and writes the
+`database-url` secret last. Errors are sanitized; responses carry revisions,
+booleans and counts only. New `migrate` image target and `migrate`
+dependency group (Alembic); the four function images are unchanged.
+Terraform module `infra/modules/migration`: ECR repository always, the
+function and role only while `migration_enabled` (default false), reading
+only the master secret and writing only the `database-url` secret; no other
+role can read the master secret. Checkov 381 passed, 0 failed, 61 skipped.
+CI 1766 passed, 79 skipped (55 new tests; 4 PostgreSQL integration tests
+skip in `ci` and run in `db-check`, not run locally because Docker Desktop
+was not running). The parser user and `rds_iam` move to INFRA-008 Stage B.
+
+Next action: owner review and merge; then the runbook in INFRASTRUCTURE.md:
+secret containers, the migrate repository, build and push, runner on,
+`status`/`migrate`/`create_app_user`, read back, runner off. Then INFRA-008
+Stage B. The compute apply waits for those and the CloudFront decision.
+
 ## INFRA-008 Stage A: secrets bootstrap, secret containers, memory alarm — 2026-10-16
 
-**Status:** Three commits on branch `feat/infra-008-secrets-stage-a`, not yet
-merged. **Not planned or applied; no secret exists and no value is set.**
-INFRA-008 is not Accepted; Stage B is open.
+**Status:** Merged to `main` in PR #195. **Not planned or applied; no secret
+exists and no value is set.** INFRA-008 is not Accepted; Stage B is open.
 
 `secrets_bootstrap.py` reads the `database-url` and `openai-api-key` secrets
 once per process from their ARNs and sets `DATABASE_URL` and `OPENAI_API_KEY`
