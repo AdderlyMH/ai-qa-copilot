@@ -17,6 +17,11 @@ dev = [
     "ruff==0.15.22",
     "types-pyyaml==6.0.12.20260518",
 ]
+# Installed only into the Lambda "migrate" image (INFRA-012), on top of the
+# runtime dependencies; the four function images use --no-dev without it.
+migrate = [
+    "alembic==1.19.0",
+]
 
 [tool.uv]
 package = false

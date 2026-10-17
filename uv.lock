@@ -26,6 +26,9 @@ dev = [
     { name = "ruff" },
     { name = "types-pyyaml" },
 ]
+migrate = [
+    { name = "alembic" },
+]
 
 [package.metadata]
 requires-dist = [{ name = "ai-qa-copilot-api", editable = "apps/api" }]
@@ -40,6 +43,7 @@ dev = [
     { name = "ruff", specifier = "==0.15.22" },
     { name = "types-pyyaml", specifier = "==6.0.12.20260518" },
 ]
+migrate = [{ name = "alembic", specifier = "==1.19.0" }]
 
 [[package]]
 name = "ai-qa-copilot-api"

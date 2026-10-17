@@ -1,4 +1,4 @@
-"""Build the four Lambda container images for linux/arm64 (INFRA-009).
+"""Build the Lambda container images for linux/arm64 (INFRA-009, INFRA-012).
 
 The images are built from ``apps/api/Dockerfile.lambda`` (one target per
 function class), tagged locally with the current Git commit SHA and loaded into
@@ -6,11 +6,15 @@ the local Docker image store. Nothing is pushed: pushing to ECR is a separate
 owner step with local credentials (docs/INFRASTRUCTURE.md). This script makes
 no AWS call, reads no credentials and prints no environment values.
 
+By default it builds the four application functions. The one-shot migration
+runner (target ``migrate``, INFRA-012) is built only when named.
+
 Usage (PowerShell or any shell):
 
-    python scripts/build_lambda_images.py
-    python scripts/build_lambda_images.py --function parser
-    python scripts/build_lambda_images.py --dry-run
+    py scripts/build_lambda_images.py
+    py scripts/build_lambda_images.py --function parser
+    py scripts/build_lambda_images.py --function migrate
+    py scripts/build_lambda_images.py --dry-run
 """
 
 from __future__ import annotations
@@ -26,6 +30,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCKERFILE = "apps/api/Dockerfile.lambda"
 PLATFORM = "linux/arm64"
 FUNCTIONS = ("api", "parser", "general", "executor")
+MIGRATION_TARGET = "migrate"
+TARGETS = (*FUNCTIONS, MIGRATION_TARGET)
 LOCAL_REPOSITORY_PREFIX = "ai-qa-copilot-lambda"
 # Paths that reach the build context (see Dockerfile.lambda.dockerignore). The
 # tag names a commit, so these must match that commit exactly.
@@ -34,6 +40,8 @@ BUILD_INPUTS = (
     "uv.lock",
     "apps/api/pyproject.toml",
     "apps/api/src",
+    "apps/api/alembic.ini",
+    "apps/api/alembic",
     DOCKERFILE,
     f"{DOCKERFILE}.dockerignore",
 )
@@ -119,8 +127,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--function",
         action="append",
-        choices=FUNCTIONS,
-        help="Build only this function class (repeatable); default: all four.",
+        choices=TARGETS,
+        help=(
+            "Build only this target (repeatable); default: the four function "
+            "classes. 'migrate' is built only when named."
+        ),
     )
     parser.add_argument(
         "--dry-run",

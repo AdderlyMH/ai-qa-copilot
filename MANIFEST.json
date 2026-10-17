@@ -402,8 +402,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 1355,
-      "sha256": "79c05fb4e259db5a7f09d624c40314b57d52774d9c869c287379014be6c79a8c"
+      "bytes": 1542,
+      "sha256": "6dc6f45a5baa2ca9e937561266a19bf8b7ad691e6fcaf473a08e950d9a2899dd"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -417,8 +417,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 30703,
-      "sha256": "407e8cf7d8abd413111a5b1cd335dbdb5f298cee5a29c2203a6407e2d2b27293"
+      "bytes": 30765,
+      "sha256": "cc4e9ff9cdb0616e00e2101d70f0c77056452c060c58984b298cdb0c0bce1acd"
     },
     {
       "path": "scripts/validate_docs.py",
@@ -427,8 +427,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 91169,
-      "sha256": "5c935406b678ab3befc73a9748995ac2c2085c534b01d690cab795dc4bec8509"
+      "bytes": 91266,
+      "sha256": "d8892ad51768b5ccd42d9efa0a94ae1a4db8178dc7c4be4f63ef99d785cec6e5"
     }
   ]
 }
