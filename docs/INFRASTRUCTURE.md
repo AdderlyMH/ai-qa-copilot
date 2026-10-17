@@ -885,8 +885,10 @@ Deletion protection is on, so a destroy fails until it is turned off:
 
 ## Lambda container images (INFRA-009, 2026-10-16)
 
-Code only: **no image is pushed and nothing is deployed.** One build of the
-parser target was made locally as a smoke test and deleted afterwards.
+**Pushed 2026-10-16, nothing deployed.** The owner built the four images
+from `main` at `4fdbfc2` and pushed them to ECR (see
+[Push record, 2026-10-16](#push-record-2026-10-16)). No Lambda function
+exists yet. INFRA-009 is not Accepted.
 
 **Files:**
 
@@ -957,7 +959,7 @@ separate target so the four function images stay unchanged.
 |---|---|
 | Base image and tags | `public.ecr.aws/lambda/python`, tag `3.13`, Amazon Linux 2023, deprecation Jun 30, 2029 (block create Jul 31, 2029; block update Aug 31, 2029). The `3.13` tag is a manifest list with `linux/arm64/v8` and `linux/amd64`; `3.13-arm64` is the single arm64 manifest (registry read with `docker buildx imagetools inspect`). |
 | Handler convention | Copy code and dependencies to `${LAMBDA_TASK_ROOT}` and set `CMD` to the handler. |
-| `boto3` | The docs say the Python runtime includes the SDK; the smoke build printed `base image boto3: present`, which answers the presence part of the ADR-018 open item. The locked `boto3 1.43.113` is installed in `${LAMBDA_TASK_ROOT}`, which the docs say is searched first, so it should take precedence; **OPEN:** not verified in this image until the runtime interface emulator start (check in the build runbook). |
+| `boto3` | The docs say the Python runtime includes the SDK; the smoke build printed `base image boto3: present`, which answers the presence part of the ADR-018 open item. **Precedence verified 2026-10-16 (owner):** `python -c` in the pushed parser image printed `1.43.113` from `/var/task/boto3/__init__.py`, so the locked copy in `${LAMBDA_TASK_ROOT}` is the one that loads. |
 | Image format | Docker image manifest V2 schema 2 or OCI v1.0.0 and later; the image must target one architecture (no multi-architecture images); `--provenance=false` is required; maximum 10 GB uncompressed. |
 | User and filesystem | Lambda defines a least-privileged default user, so no `USER` is needed; the image must run on a read-only filesystem with a writable `/tmp`. |
 | arm64 on a Windows host | Docker Desktop builds other platforms under QEMU emulation with no configuration; the Docker docs say emulation "can be much slower than native builds". |
@@ -971,15 +973,16 @@ builder with no cache:
 
 - wall time 207 s, of which the locked dependency install took about 110 s
   under emulation;
-- image `linux/arm64`, 8 layers, 243,606,244 bytes (about 232 MiB)
-  uncompressed as reported by `docker image inspect`; `CMD` is the parser
-  handler; no `User` is set;
+- image `linux/arm64`, 8 layers; `docker image inspect` reported a `Size` of
+  243,606,244 bytes for this build; `CMD` is the parser handler; no `User`
+  is set. **Correction (2026-10-16):** this figure was earlier called
+  "uncompressed"; that label is not supported. See the size figures in
+  the push record, whose relation to each other is unverified;
 - the image, the temporary builder (with its cache) and the BuildKit image
   it pulled were removed afterwards; no container was run.
 
-Not verified: the other three targets were not built; no image was started
-under the runtime interface emulator; nothing was pushed, so no ECR digest
-or scan result exists; the compressed size in ECR is unknown.
+The smoke build itself started no container and pushed nothing; the
+owner's build, push, emulator start and scans are in the push record.
 
 ### Image build runbook (owner)
 
@@ -1001,8 +1004,8 @@ INFRA-009 acceptance, not run here): the AWS base image includes it.
 docker run --rm --platform linux/arm64 -p 9000:8080 "ai-qa-copilot-lambda/api:<SHA>"
 ```
 
-To close the `boto3` precedence item, also print which copy is imported (it
-should be 1.43.113 from `/var/task`):
+To check which `boto3` copy is imported (done for the parser image on
+2026-10-16: 1.43.113 from `/var/task`):
 
 ```powershell
 docker run --rm --platform linux/arm64 --entrypoint python "ai-qa-copilot-lambda/api:<SHA>" -c "import boto3; print(boto3.__version__, boto3.__file__)"
@@ -1011,9 +1014,11 @@ docker run --rm --platform linux/arm64 --entrypoint python "ai-qa-copilot-lambda
 Then post `{}` to `http://localhost:9000/2015-03-31/functions/function/invocations`
 and stop the container. Without a database or the production settings the
 handlers are expected to fail at composition; the check is that the runtime
-starts and loads the handler. The parser additionally refuses to run as root
-or without its role and network variables, so its local start needs
-`--user 10001:10001` and those variables (OPEN until tried).
+starts and loads the handler. On 2026-10-16 the parser image started and an
+empty event returned `{"batchItemFailures": []}`; an empty event has no
+records, so the parser's root, role and network check was never reached.
+A run that reaches it needs `--user 10001:10001` and the parser's role and
+network variables (OPEN until tried).
 
 ### Image push runbook (owner, local credentials)
 
@@ -1027,7 +1032,7 @@ commits differ.
 
 ```powershell
 $Region = "us-east-1"
-$Registry = "<account-id>.dkr.ecr.$Region.amazonaws.com"
+$Registry = "<private ECR registry host for us-east-1, from the owner's private notes>"
 $Sha = git rev-parse HEAD
 aws ecr get-login-password --region $Region | docker login --username AWS --password-stdin $Registry
 foreach ($Function in "api", "parser", "general", "executor") {
@@ -1042,6 +1047,34 @@ docker logout $Registry
 - The password goes from `get-login-password` to `docker login` through the
   pipe only; do not echo it or paste it. The registry login token is valid
   for 12 hours; `docker logout` removes it from the local credential store.
+- Read the scan result per repository after the push. A single
+  `describe-image-scan-findings` call with a combined `--query` failed on
+  2026-10-16, so query the status and the counts separately:
+
+  ```powershell
+  aws ecr describe-image-scan-findings --region $Region --repository-name $Repository --image-id "imageTag=$Sha" --query "imageScanStatus.status" --output text
+  aws ecr describe-image-scan-findings --region $Region --repository-name $Repository --image-id "imageTag=$Sha" --query "imageScanFindings.findingSeverityCounts" --output json
+  ```
+
+- **Fallback if `docker login` fails on Windows** with "error saving
+  credentials ... The stub received bad data" from the Docker Desktop
+  credential helper (seen 2026-10-16; cause unconfirmed; the `ecr-login`
+  helper route did not work in that attempt). In a new PowerShell window
+  only:
+  1. Copy `%USERPROFILE%\.docker\config.json` into a new temporary folder
+     and remove its `credsStore` and `credHelpers` entries; set
+     `$env:DOCKER_CONFIG` to that folder.
+  2. Copy `docker.exe` to a second temporary folder, put that folder first
+     in `$env:PATH` and remove the Docker Desktop `resources\bin` directory
+     from `$env:PATH` for this window, so no credential helper is found.
+  3. Run `docker login` (as above), the push loop, then
+     `docker logout $Registry`.
+  4. Delete both temporary folders and close the window.
+
+  **Warning:** without a credential helper Docker writes the registry token
+  **unencrypted** into the temporary `config.json`; it stays there until
+  `docker logout` and the folder deletion. Do not skip step 4, and do not
+  use a folder inside the repository.
 - Expect `imageManifestMediaType` to be a single image manifest (Docker V2
   schema 2 or OCI), not a manifest list or index; stop if it is a list.
 - Pushing the same SHA again fails with `ImageTagAlreadyExistsException`
@@ -1049,13 +1082,80 @@ docker logout $Registry
   keeps the 5 most recent images per repository.
 - **OPEN:** that lifecycle rule counts pushes, not deployments, so after
   more than five newer pushes it could expire the digest a deployed function
-  still uses. What Lambda does when its image is deleted from ECR is not
-  verified here; until it is, do not push more than five images per
+  still uses. The Lambda guide (images-create, read 2026-10-16) says that if
+  the image no longer exists on Amazon ECR, "the function enters the
+  `Failed` state"
+  (<https://docs.aws.amazon.com/lambda/latest/dg/images-create.html>). Not
+  observed here; until it is, do not push more than five images per
   repository without deploying one of them, or revisit the rule.
 - Put the digests into `production.tfvars` (ignored by Git) as
   `<registry>/ai-qa-copilot-production-<function>@sha256:<digest>` for the
-  four `image_uris` keys. The compute apply waits for INFRA-008 and the
-  CloudFront decision.
+  four `image_uris` keys. When the compute apply is planned, the four
+  `image_uris` use the digests in the push record below. The compute apply
+  waits for INFRA-008 and the CloudFront decision.
+
+### Push record, 2026-10-16
+
+Owner-observed facts; the account ID and registry host are kept in the
+owner's private notes.
+
+**Build.** From `main` at commit `4fdbfc2` with
+`scripts/build_lambda_images.py` on Docker Desktop (amd64 engine, QEMU).
+The parser build took 130 s with a 1.35 MB build context; the other three
+targets reused the cached layers.
+
+**Push.** To the four immutable ECR repositories, tag = the commit SHA.
+Each is a single OCI image manifest
+(`application/vnd.oci.image.manifest.v1+json`), not an index. Each ECR
+digest equals the local manifest digest from the build.
+
+| Function | ECR digest | ECR size (bytes) |
+|---|---|---|
+| `api` | `sha256:1929cb044e1d5b2ac20225eba3d33b3bc99f42104f4baca611241aaf08aff3c8` | 243,604,258 |
+| `parser` | `sha256:e3d35d59be455f2b391e1e411a94b569a52eb6cb2ee70351df1813015925dadd` | 243,604,280 |
+| `general` | `sha256:220a3de9654d7ed23ce6cec998b907c6c7a4aba22a9973d023cc006528f6b34f` | 243,604,282 |
+| `executor` | `sha256:d441ceb2ad1e3083a0698b8068e182bdf67a0fe4c38afdd4df3adcb547a486e3` | 243,604,284 |
+
+**Size figures.** The parser image inspected at 243,606,100 bytes locally;
+ECR reports the sizes above (about 243.6 MB); after containers had run,
+`docker image ls` showed about 996 MB disk usage and 244 MB content size.
+The relation between these figures is **unverified**; none of them is
+labelled compressed or uncompressed here.
+
+**`boto3`.** `python -c` in the parser image printed `1.43.113` from
+`/var/task/boto3/__init__.py`: the locked copy loads, not the base copy.
+
+**Runtime interface emulator.** The parser image started and a POST of `{}`
+returned `200 {"batchItemFailures": []}`. Limit: an empty event has no
+records, so the handler never reached the parser's root, role and network
+check, the database or S3; this shows the handler loads, not that the
+parser works. The `api`, `general` and `executor` handlers were checked
+only by importing their modules inside their images (api ok, workers ok),
+not through the emulator.
+
+**ECR scan on push.** All four scans `COMPLETE` with identical counts, as
+expected for shared layers: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1. Every
+row listed for the parser is an Amazon Linux 2023 OS package (`curl-minimal`,
+`libcurl-minimal`, `openssl-fips-provider-latest`, `openssl-snapsafe-libs`,
+`pcre2`, `pcre2-syntax`, `rpm`, `rpm-libs`, `libxml2`, `krb5-libs`); no
+Python package appears. Not triaged beyond that: exploitability is not
+assessed and fixed versions are not checked. The scan type is not
+confirmed; it appears to cover OS packages only, so it says nothing about
+the Python dependencies (CI `pip-audit` covers the lock). Remediation path:
+refresh the base digest when AWS publishes a newer base (runbook above).
+On 2026-10-16 the `3.13-arm64` tag still resolved to the pinned digest, so
+the findings wait on AWS; whether a newer base will fix them is
+**unverified** and is not claimed.
+
+**Release gates (context, not a verdict).** The INFRA-009 acceptance sets no
+scan-findings threshold. [THREAT_MODEL](THREAT_MODEL.md) SG-07 requires zero
+unresolved Critical or High container findings and a documented disposition
+for Medium findings, and HARD-001 says unresolved critical or high findings
+block release; the 12 HIGH findings above are unresolved.
+
+**Unchanged.** The images still contain no Alembic and no migrations
+(INFRA-012 must add them, see above). Nothing is deployed: no Lambda
+function, HTTP API or event source mapping exists.
 
 ### Refresh the base image digest
 
@@ -1075,6 +1175,13 @@ Jun 30, 2029 (cited above). To take a newer base:
 3. Build from that new commit (`py scripts/build_lambda_images.py`) and push
    with the push runbook; the new SHA gives new tags, so immutability is not
    an issue. Then update the `image_uris` digests and apply.
+
+**Recurring check:** re-read the `3.13-arm64` digest weekly, and before any
+compute apply, with step 1. When it differs from the pinned digest, refresh
+with steps 2 and 3 and read the new scan results. On 2026-10-16 the tag
+still resolved to the pinned digest
+`sha256:beebf5d3bf90deef2a7620801edc811b7922163023358c8471fc4d92409e873f`,
+so there was no newer base to refresh to.
 
 No Terraform change was needed: `image_uris` already takes one URI per
 function and checks the four keys. A validation that rejects the all-zero
