@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 92428,
-      "sha256": "0267abce652935ac549fe65f23947d7ed92446c18a648d214e82cccfd7bd86b7"
+      "bytes": 92798,
+      "sha256": "f697680b346048005a3b9fd98ee73dd93a8623c7c60ab8290e8638b60d8a26bb"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 85398,
-      "sha256": "bb03b8481fa29ecc1790df3f69b7199b7b7f39fe9db068df2602e0b71a5a2ebd"
+      "bytes": 91490,
+      "sha256": "309b0c97e0e0cfd8a41b2df52c57e68e8e7fecde9cd541d39996e2b7fb14e89a"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 152351,
-      "sha256": "84dfdea8d25387d9a5a07b93e7177f67a3260c91e05dec64402a9db777307225"
+      "bytes": 154369,
+      "sha256": "7b775140373d4229b73bd93be866e91a7ae7e29a60b61bf239786f7d26708cd1"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",

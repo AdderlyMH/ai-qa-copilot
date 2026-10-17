@@ -1,10 +1,43 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-009 images pushed to ECR (owner record) — 2026-10-16
+
+**Status:** One docs-only commit on branch `docs/infra-009-push-record`, not
+yet merged. The images are pushed; **nothing is deployed**. INFRA-009 is
+**not Accepted**; acceptance is the owner's call on the facts below.
+
+Owner-observed on 2026-10-16: built from `main` at `4fdbfc2` (parser 130 s
+under QEMU, 1.35 MB context; the other three targets reused cached layers)
+and pushed to the four immutable ECR repositories, tagged with the commit
+SHA, as single OCI image manifests whose ECR digests equal the local
+manifest digests. Digests and sizes are in the INFRASTRUCTURE.md push
+record. `boto3` precedence is verified (1.43.113 from `/var/task`). The
+parser image started under the runtime interface emulator and returned an
+empty `batchItemFailures` for an empty event: the handler loads, but no
+parser check, database or S3 path ran. The other three handlers were only
+imported inside their images.
+
+ECR scan on push: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 in each image, all
+Amazon Linux 2023 OS packages; not triaged. The base tag still resolved to
+the pinned digest, so no refresh was available; a weekly digest check is
+added to the runbook. The INFRA-009 acceptance sets no scan threshold; SG-07
+and HARD-001 require zero unresolved Critical or High findings for release.
+The push runbook gains a Windows credential-helper fallback (token
+unencrypted in a temporary config until logout and deletion) and separate
+scan queries. Correction: the earlier "243,606,244 bytes uncompressed"
+label is withdrawn; how the local, ECR and disk-usage size figures relate
+is unverified. The ECR lifecycle risk stays OPEN (the Lambda guide says a
+function whose image is gone enters the `Failed` state; not observed). The
+Alembic/migrations gap (INFRA-012) is unchanged.
+
+Next action: owner decision on INFRA-009 acceptance; then INFRA-008 and
+INFRA-012. The compute apply waits for those and the October 20 CloudFront
+decision, and will use the four digests above.
+
 ## INFRA-009 Lambda container images: Dockerfile, build script, tests — 2026-10-16
 
-**Status:** Three commits on branch `feat/infra-009-lambda-images`, not yet
-merged. **No image is pushed; nothing is deployed.** INFRA-009 is not
-Accepted.
+**Status:** Merged to `main` in PR #193. Pushed by the owner on 2026-10-16
+(see the entry above); nothing is deployed. INFRA-009 is not Accepted.
 
 One multi-stage `apps/api/Dockerfile.lambda` on the AWS Lambda Python 3.13
 arm64 base image (pinned by digest) builds four images, `api`, `parser`,
