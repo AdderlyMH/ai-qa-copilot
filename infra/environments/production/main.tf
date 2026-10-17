@@ -134,6 +134,11 @@ variable "database_backup_retention_period" {
   default     = 7
 }
 
+variable "database_freeable_memory_alarm_threshold_mib" {
+  description = "FreeableMemory alarm threshold in MiB. No default: ADR-020 keeps the threshold OPEN, so the owner sets it in production.tfvars from the measured readings (INFRA-008). Every plan of this root needs it."
+  type        = number
+}
+
 variable "nat_replacement_generation" {
   description = "Change to replace the NAT instance with the current AL2023 AMI (monthly runbook in docs/INFRASTRUCTURE.md)."
   type        = string
@@ -184,6 +189,8 @@ module "database" {
   availability_zone         = var.compute_availability_zone
   engine_version            = var.database_engine_version
   backup_retention_period   = var.database_backup_retention_period
+
+  freeable_memory_alarm_threshold_mib = var.database_freeable_memory_alarm_threshold_mib
 }
 
 module "nat_instance" {
@@ -216,6 +223,7 @@ module "compute_api" {
   queue_arns                       = module.data_plane.queue_arns
   queue_urls                       = module.data_plane.queue_urls
   ecr_repositories                 = module.data_plane.ecr_repositories
+  application_secret_arns          = module.data_plane.application_secret_arns
   data_bucket_name                 = module.data_plane.data_bucket_name
   demo_bucket_name                 = module.data_plane.demo_bucket_name
   demo_bucket_regional_domain_name = module.data_plane.demo_bucket_regional_domain_name

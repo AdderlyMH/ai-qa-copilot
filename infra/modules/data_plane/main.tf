@@ -17,6 +17,12 @@ terraform {
 # execution role per function class. It creates no Lambda function, API
 # Gateway, CloudFront, KMS key, database resource, interface endpoint or flow
 # log. SSE uses AWS-owned keys (SSE-S3, SSE-SQS, AES256 for ECR).
+#
+# INFRA-008 Stage A adds two Secrets Manager secret containers (database-url,
+# openai-api-key) with no value: no aws_secretsmanager_secret_version exists, so
+# no secret value is in configuration, variables or state. The owner sets the
+# values with the AWS CLI after apply (docs/INFRASTRUCTURE.md). Only the API and
+# general roles may read them.
 
 variable "name_prefix" {
   description = "Resource name prefix from the naming module."
@@ -348,11 +354,37 @@ resource "aws_iam_role_policy_attachment" "vpc_access" {
   policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
+# ---------------------------------------------------------------- Secrets
+
+locals {
+  # Key = secret name suffix; the bootstrap reads the ARNs from
+  # DATABASE_URL_SECRET_ARN and OPENAI_API_KEY_SECRET_ARN (secrets_bootstrap.py).
+  application_secrets = {
+    "database-url"   = "DATABASE_URL for the API and general worker: a PostgreSQL URL for the application database user (created in INFRA-012). Value set by the owner, never in Terraform."
+    "openai-api-key" = "OPENAI_API_KEY for the API and general worker. Value set by the owner, never in Terraform."
+  }
+}
+
+# Containers only. Encrypted with the AWS managed key aws/secretsmanager (no
+# kms_key_id): a customer managed key is needed only for cross-account access
+# and has a monthly charge. No Anthropic secret (ADR-018).
+resource "aws_secretsmanager_secret" "application" {
+  #checkov:skip=CKV_AWS_149:Encrypted with the AWS managed key aws/secretsmanager; a customer managed key is required only for cross-account access (none here) and has a monthly charge (ADR-017 cost target, ADR-018).
+  #checkov:skip=CKV2_AWS_57:No automatic rotation in Stage A: rotation needs a rotation Lambda, the OpenAI key cannot be rotated by AWS, and the database-url value is a URL string, not the JSON a PostgreSQL rotation function expects. Rotation is manual (owner runbook); revisit in HARD-001.
+  for_each = local.application_secrets
+
+  name                    = "${var.name_prefix}/${each.key}"
+  description             = each.value
+  recovery_window_in_days = 30
+}
+
 locals {
   data_bucket_arn = aws_s3_bucket.this["data"].arn
   demo_bucket_arn = aws_s3_bucket.this["demo"].arn
 
   sqs_consume_actions = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+
+  application_secret_arns = [for secret in aws_secretsmanager_secret.application : secret.arn]
 }
 
 data "aws_iam_policy_document" "api" {
@@ -390,6 +422,13 @@ data "aws_iam_policy_document" "api" {
     sid       = "PublishDemoRevision"
     actions   = ["s3:PutObject"]
     resources = ["${local.demo_bucket_arn}/publications/*"]
+  }
+
+  # Cold-start secret bootstrap (ADR-018, INFRA-008): the two exact ARNs only.
+  statement {
+    sid       = "ReadApplicationSecrets"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = local.application_secret_arns
   }
 }
 
@@ -436,6 +475,13 @@ data "aws_iam_policy_document" "general" {
     sid       = "ReadWriteAcceptedAndExports"
     actions   = ["s3:GetObject", "s3:PutObject"]
     resources = ["${local.data_bucket_arn}/accepted/*", "${local.data_bucket_arn}/exports/*"]
+  }
+
+  # Cold-start secret bootstrap (ADR-018, INFRA-008): the two exact ARNs only.
+  statement {
+    sid       = "ReadApplicationSecrets"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = local.application_secret_arns
   }
 }
 
@@ -520,6 +566,14 @@ output "demo_bucket_name" {
 output "function_role_arns" {
   description = "Execution role ARN per function class."
   value       = { for k, r in aws_iam_role.function : k => r.arn }
+}
+
+output "application_secret_arns" {
+  description = "ARNs (not values) of the database-url and openai-api-key secrets."
+  value = {
+    database_url   = aws_secretsmanager_secret.application["database-url"].arn
+    openai_api_key = aws_secretsmanager_secret.application["openai-api-key"].arn
+  }
 }
 
 output "function_names" {

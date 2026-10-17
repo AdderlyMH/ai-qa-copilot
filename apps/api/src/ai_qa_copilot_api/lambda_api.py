@@ -10,16 +10,21 @@ process, on the first invocation, keeps it open for the life of the execution
 environment, and calls Mangum with lifespan "off". Shutdown never runs on
 Lambda; the NullPool engine holds no idle connection, so nothing leaks.
 
-Nothing here reads credentials, performs network I/O at import, or logs
-request bodies or headers. Missing configuration behaves exactly as in
-``create_app``: Unavailable defaults and 503 responses. Invalid configuration
-that ``create_app`` refuses at startup fails the invocation, and startup is
-retried on the next one.
+Before that startup, the cold-start secret bootstrap (``secrets_bootstrap``,
+INFRA-008) loads ``DATABASE_URL`` and ``OPENAI_API_KEY`` from Secrets Manager
+when the function is configured for it; in production a missing or unreadable
+secret fails the invocation before any request is served.
+
+Nothing here performs network I/O at import or logs request bodies or headers.
+Missing configuration behaves exactly as in ``create_app``: Unavailable
+defaults and 503 responses. Invalid configuration that ``create_app`` refuses
+at startup fails the invocation, and startup is retried on the next one.
 """
 
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from contextlib import AbstractAsyncContextManager
 import threading
 from typing import Any
@@ -28,6 +33,7 @@ from fastapi import FastAPI
 from mangum import Mangum
 
 from ai_qa_copilot_api.main import app as default_app
+from ai_qa_copilot_api.secrets_bootstrap import cold_start_secrets
 
 
 # The Terraform HTTP API uses the "$default" stage and route, so no stage path
@@ -38,8 +44,14 @@ API_GATEWAY_BASE_PATH = "/"
 class LambdaApiHandler:
     """One application, one lifespan startup and one Mangum adapter per process."""
 
-    def __init__(self, application: FastAPI) -> None:
+    def __init__(
+        self,
+        application: FastAPI,
+        *,
+        bootstrap: Callable[[], object] = cold_start_secrets,
+    ) -> None:
         self._application = application
+        self._bootstrap = bootstrap
         self._adapter = Mangum(
             application,
             lifespan="off",
@@ -66,6 +78,9 @@ class LambdaApiHandler:
         with self._lock:
             if self._lifespan is not None:
                 return
+            # Secrets first: the lifespan reads DATABASE_URL and the model key
+            # from the environment. A bootstrap error propagates and fails closed.
+            self._bootstrap()
             lifespan = self._application.router.lifespan_context(self._application)
             # Mangum runs requests on the thread's current event loop; start the
             # lifespan on the same loop. A startup error propagates, so the

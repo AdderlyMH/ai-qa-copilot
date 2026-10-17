@@ -21,6 +21,10 @@ database_subnet_cidrs       = ["10.20.10.0/24", "10.20.11.0/24"]
 # 17.11 offered in us-east-1 on 2026-10-16); it applies at creation only.
 # database_engine_version          = "17.10"
 # database_backup_retention_period = 7
+# Required, no default (INFRA-008): FreeableMemory alarm threshold in MiB. ADR-020
+# keeps it OPEN; the owner chooses it from the measured readings. No example
+# number is given on purpose. Every plan of this root needs it.
+# database_freeable_memory_alarm_threshold_mib = <owner-chosen MiB>
 
 # NAT instance (ADR-017). Change this value to replace the instance with the
 # current AL2023 AMI; see the monthly runbook in docs/INFRASTRUCTURE.md.

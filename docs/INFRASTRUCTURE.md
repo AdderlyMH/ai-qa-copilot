@@ -883,6 +883,199 @@ Deletion protection is on, so a destroy fails until it is turned off:
    needed.
 4. Restore deletion protection in code before any new database is created.
 
+## Secrets and the cold-start bootstrap (INFRA-008 Stage A, 2026-10-16)
+
+Code only: **not planned, not applied, no secret exists, no value is set.**
+Stage B (the parser database credential, the RDS CA bundle and
+`sslmode=verify-full`) is open.
+
+**Application code.** `apps/api/src/ai_qa_copilot_api/secrets_bootstrap.py`:
+
+- In production the API and general functions receive only two ARNs,
+  `DATABASE_URL_SECRET_ARN` and `OPENAI_API_KEY_SECRET_ARN`. Before the
+  composition is built, the bootstrap calls `GetSecretValue` once for each and
+  sets `DATABASE_URL` and `OPENAI_API_KEY` in `os.environ`. Every existing
+  reader (`main.py` lifespan, the repositories, `model_gateway.py`) reads
+  `os.environ` at startup, so none of them changed. The values stay in the
+  process for the life of the execution environment; a successful load is not
+  repeated.
+- Where it runs: the API handler (`lambda_api.py`) before the once-per-process
+  lifespan startup, and the general handler (`lambda_workers.py`) before its
+  composition. The parser and executor handlers never load secrets.
+- Fail closed (`SecretBootstrapError`, before any request or message is
+  served): in `APP_ENV=production` both ARN variables are required; a value
+  that is not a Secrets Manager ARN, a plain `DATABASE_URL` or
+  `OPENAI_API_KEY` already in the environment, a missing, empty or binary
+  secret, any AWS error (for example `ResourceNotFoundException`,
+  `AccessDeniedException`, `DecryptionFailure`), any transport error, a
+  database URL that is not PostgreSQL with host, database, user and password,
+  and a key that is not one printable token. Both values are written only
+  after both validate.
+- Sanitized: messages name only the logical secret (`database-url`,
+  `openai-api-key`) and the AWS error code or exception type; never a value,
+  an ARN or a response body, and the AWS exception is not chained into the
+  traceback. One log event, `secrets.loaded count=2`, with no value.
+- Client: standard retry mode with **3 attempts in total** (one request and
+  two retries), connect and read timeouts of 5 s. The boto3 default is legacy
+  mode with 5 attempts in total, so this retries less than the default.
+  Finding while testing: in a botocore `Config`, `retries={"max_attempts":
+  3}` means 3 *retries* (botocore stores `total_max_attempts: 4`); the
+  bootstrap uses `total_max_attempts` to avoid that. The existing S3 adapters
+  use `max_attempts: 3`, so they make up to 4 attempts; they are unchanged
+  here.
+- Local and test runs without the ARN variables are unchanged: the bootstrap
+  does nothing unless `APP_ENV` is `production` or an ARN variable is set.
+- Tests: `apps/api/tests/test_secrets_bootstrap.py` (fake client and botocore
+  `Stubber`, unsigned, no network).
+
+**Terraform.**
+
+- `infra/modules/data_plane`: two secret **containers**,
+  `ai-qa-copilot-production/database-url` and
+  `ai-qa-copilot-production/openai-api-key`, with no
+  `aws_secretsmanager_secret_version`, so no value is in configuration,
+  variables, tfvars or state. AWS managed key `aws/secretsmanager`; recovery
+  window 30 days. A `ReadApplicationSecrets` statement grants
+  `secretsmanager:GetSecretValue` on exactly those two ARNs to the **api** and
+  **general** roles only. The parser and executor roles get nothing, and no
+  function role may read the RDS-managed master secret. Output
+  `application_secret_arns` (ARNs, not values).
+- `infra/modules/compute_api`: input `application_secret_arns`; the api and
+  general environments gain `DATABASE_URL_SECRET_ARN` and
+  `OPENAI_API_KEY_SECRET_ARN`. No database endpoint and no password in any
+  environment. `MODEL_PROVIDER` is unchanged (unset on the API, which means
+  OpenAI; `openai` on the general worker).
+- `infra/modules/database`: alarm `<prefix>-postgres-freeable-memory-low` on
+  `FreeableMemory` (`AWS/RDS`, Bytes), statistic Minimum, below the threshold
+  for 3 consecutive 300 s periods, `treat_missing_data = missing`, **no alarm
+  action and no SNS topic** (console only, like the CPU alarm). The threshold
+  is `freeable_memory_alarm_threshold_mib`, a whole number of MiB from 1 to
+  1023 with **no default**; the production root passes
+  `database_freeable_memory_alarm_threshold_mib`, also without a default.
+  ADR-020 keeps the threshold OPEN, so no number is in code or in
+  `production.example.tfvars`; the owner sets it in `production.tfvars`.
+  Because it has no default, **every plan of the production root now needs
+  it**, including a targeted one.
+- Checkov (offline, 3.3.20): 334 passed, 0 failed, 53 skipped. New
+  suppressions, both on the two secrets: `CKV_AWS_149` (no customer managed
+  key: the AWS managed key works for same-account access, a customer managed
+  key is required only for cross-account access and has a monthly charge) and
+  `CKV2_AWS_57` (no automatic rotation in Stage A: AWS rotation needs a
+  rotation function, the OpenAI key cannot be rotated by AWS, and the
+  database-url value is a URL string, not the JSON a PostgreSQL rotation
+  function expects; rotation is manual, revisit in HARD-001). Passed fell
+  from 338 to 334 because Checkov no longer expands the
+  `aws_iam_role_policy.function` instances (their policies now depend on the
+  secret ARNs): `CKV_AWS_62` and `CKV_AWS_63` run once on that resource
+  instead of four times each and still pass, and `CKV2_AWS_40` on it and
+  `CKV_AWS_319` on the new alarm were added. No check that ran before fails.
+
+**Network.** The api and general functions are in the egress-compute subnet:
+its security group allows TCP 443 to `0.0.0.0/0`, and its route goes through
+the NAT instance, so Secrets Manager is reached at its public regional HTTPS
+endpoint. No VPC interface endpoint is created or assumed (ADR-018 rejected
+one for cost; the only endpoint is the S3 gateway). NAT forwarding for a
+client is still unproven (first apply, 2026-10-13).
+
+**Verified on 2026-10-16** (sources below):
+
+| Question | Result |
+|---|---|
+| `GetSecretValue` | `SecretId` takes the ARN or name; returns `SecretString` or `SecretBinary`; errors `DecryptionFailure`, `InternalServiceError`, `InvalidParameterException`, `InvalidRequestException` (for example scheduled for deletion), `ResourceNotFoundException`, plus the common errors such as `AccessDeniedException`. Requires `secretsmanager:GetSecretValue`, and `kms:Decrypt` only for a customer managed key. |
+| Price | AWS Price List `AWSSecretsManager` us-east-1, publication 2026-09-11 (re-read 2026-10-16): 0.40 USD per secret per month and 0.05 USD per 10,000 API requests; the pricing page shows the same and prorates partial months by the hour. |
+| Encryption | Default is the AWS managed key `aws/secretsmanager`; "you can't use the AWS managed key (`aws/secretsmanager`) for cross-account access", so a customer managed key is needed only for that. |
+| RDS-managed master secret | RDS generates and stores the master password and "rotates the secret every seven days by default". The JSON field names are not listed on the page read (OPEN; the GetSecretValue example shows `username` and `password`). The INFRA-012 migration runner, not the API, will read it. |
+| Provider 6.68.0 `aws_secretsmanager_secret` | Arguments include `name`, `description`, `kms_key_id` (default `aws/secretsmanager`) and `recovery_window_in_days` (0, or 7 to 30, default 30); the resource has no value argument, so without `aws_secretsmanager_secret_version` no value is in state. |
+| `FreeableMemory` | `AWS/RDS` instance metric, Bytes; for PostgreSQL it reports `MemAvailable` from `/proc/meminfo`. |
+| boto3 retries | Legacy mode is the default, with 5 attempts in total; standard mode defaults to 3. |
+
+**Cost.** Two secrets at 0.40 USD each: **+0.80 USD per month**. API calls:
+two per cold start of the API or general function at 0.05 USD per 10,000,
+for example 1,000 cold starts a month cost 0.01 USD. Against ADR-020's
+running total of 21.34 USD (NAT instance and database tier) this makes
+**22.14 USD per month plus API calls**, of the 35 USD target. This is not a
+total for everything: Lambda, logs, CloudFront, Cognito and transfer are not
+included. The alarm is one standard metric alarm; its price was not re-read
+here.
+
+### Secret values runbook (owner, local credentials)
+
+Run under the [local-credential apply exception](#local-credential-apply-exception),
+in a PowerShell window. The value is read from a prompt, written to a
+temporary ASCII file (no byte order mark: the AWS CLI reads `file://` content
+in the system locale encoding) and the file is deleted; it never appears on a
+command line, in history or in the repository.
+
+1. Create the two containers only (no other change). `production.tfvars` must
+   already contain `database_freeable_memory_alarm_threshold_mib`:
+
+   ```powershell
+   terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_secretsmanager_secret.application' "-out=tfplan"
+   ```
+
+   Expect **2 to add** (the two `aws_secretsmanager_secret.application`
+   instances), 0 to change, 0 to destroy. Stop if anything else appears. Then
+   `terraform apply tfplan`.
+
+2. Set the OpenAI key (repeat with `database-url` once INFRA-012 has created
+   the application database user):
+
+   ```powershell
+   $Region = "us-east-1"
+   $SecretId = "ai-qa-copilot-production/openai-api-key"
+   $Secure = Read-Host -AsSecureString "Value for $SecretId"
+   $File = Join-Path $env:TEMP ("secret-" + [guid]::NewGuid().ToString() + ".txt")
+   try {
+       $null = [System.IO.File]::WriteAllText($File, [System.Net.NetworkCredential]::new("", $Secure).Password, [System.Text.Encoding]::ASCII)
+       aws secretsmanager put-secret-value --region $Region --secret-id $SecretId --secret-string "file://$File" --query "VersionId" --output text
+   } finally {
+       Remove-Item -LiteralPath $File -Force -ErrorAction SilentlyContinue
+       Remove-Variable Secure
+   }
+   ```
+
+   The query prints only the new version ID, not the ARN. The
+   `database-url` value is a PostgreSQL URL for the **application** user, for
+   example `postgresql+psycopg://<user>:<url-encoded password>@<endpoint>:5432/ai_qa_copilot?sslmode=require`;
+   the endpoint comes from `terraform output database_endpoint_address` in
+   the owner's private notes. `verify-full` replaces `require` in Stage B.
+
+3. Check that a value exists without printing it:
+
+   ```powershell
+   aws secretsmanager describe-secret --region $Region --secret-id $SecretId --query "length(VersionIdsToStages)" --output text
+   ```
+
+**Plan expectations (in words; no plan was run).**
+
+- Targeted step 1 above: 2 secrets to add.
+- A plan of `module.database`: 1 alarm to add.
+- The two role policies (`api`, `general`) change in place when the data plane
+  is next applied, which happens with the compute apply (targeting
+  `module.data_plane` pulls in CloudFront, see the database runbook).
+- The compute apply creates the functions with the two ARN variables; the
+  API and general functions fail closed at cold start until both values are
+  set.
+
+**Stage B (open):** the parser database credential under the ADR-020
+decision rule (IAM authentication or the ADR-018 fallback); the RDS CA
+bundle copied into the `runtime` stage of `apps/api/Dockerfile.lambda` (the
+parser has no internet route) with `sslmode=verify-full`, which needs an
+image rebuild and a new push; parameter-group tuning. Not here either:
+creating database users or any SQL (INFRA-012) and the compute apply.
+
+Sources (read 2026-10-16):
+<https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html>;
+<https://aws.amazon.com/secrets-manager/pricing/>;
+<https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/current/us-east-1/index.json>;
+<https://docs.aws.amazon.com/secretsmanager/latest/userguide/security-encryption.html>;
+<https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_examples_cross.html>;
+<https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-secrets-manager.html>;
+<https://raw.githubusercontent.com/hashicorp/terraform-provider-aws/v6.68.0/website/docs/r/secretsmanager_secret.html.markdown>;
+<https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/rds-metrics.html>;
+<https://docs.aws.amazon.com/boto3/latest/guide/retries.html>;
+<https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-parameters-file.html>.
+
 ## Lambda container images (INFRA-009, 2026-10-16)
 
 **Pushed 2026-10-16, nothing deployed.** The owner built the four images

@@ -18,9 +18,10 @@ terraform {
 #
 # Deliberately absent (cost, ADR-020): Performance Insights, Enhanced
 # Monitoring, RDS Proxy, read replicas and storage autoscaling. Not created
-# here: database users, grants, extensions or any SQL (INFRA-012), the
-# FreeableMemory alarm and parameter tuning (INFRA-008, threshold OPEN), and
-# wiring the endpoint into the Lambda functions (INFRA-008). Not applied.
+# here: database users, grants, extensions or any SQL (INFRA-012), parameter
+# tuning, the RDS CA bundle and the parser credential (INFRA-008 Stage B), and
+# wiring the endpoint into the Lambda functions. The FreeableMemory alarm is
+# below; its threshold is an owner-set variable with no default (ADR-020).
 
 variable "name_prefix" {
   description = "Resource name prefix from the naming module."
@@ -82,6 +83,16 @@ variable "backup_retention_period" {
   validation {
     condition     = var.backup_retention_period >= 1 && var.backup_retention_period <= 35 && floor(var.backup_retention_period) == var.backup_retention_period
     error_message = "backup_retention_period must be a whole number of days from 1 to 35; 0 would disable automated backups."
+  }
+}
+
+variable "freeable_memory_alarm_threshold_mib" {
+  description = "FreeableMemory alarm threshold in MiB (INFRA-008). No default: ADR-020 leaves the threshold OPEN, so the owner sets it in production.tfvars from the measured readings; Terraform does not invent a number."
+  type        = number
+
+  validation {
+    condition     = var.freeable_memory_alarm_threshold_mib > 0 && var.freeable_memory_alarm_threshold_mib < 1024 && floor(var.freeable_memory_alarm_threshold_mib) == var.freeable_memory_alarm_threshold_mib
+    error_message = "freeable_memory_alarm_threshold_mib must be a whole number of MiB greater than 0 and below the 1 GiB of a db.t4g.micro."
   }
 }
 
@@ -207,6 +218,23 @@ resource "aws_cloudwatch_metric_alarm" "cpu_surplus_credits_charged" {
   comparison_operator = "GreaterThanThreshold"
   threshold           = 0
   treat_missing_data  = "notBreaching"
+}
+
+# FreeableMemory (AWS/RDS, Bytes) below the owner-set threshold for three
+# consecutive 5-minute periods (INFRA-008, ADR-020 decision rule). Same as the
+# CPU alarm: no alarm action and no SNS topic, console only.
+resource "aws_cloudwatch_metric_alarm" "freeable_memory_low" {
+  alarm_name          = "${local.identifier}-freeable-memory-low"
+  alarm_description   = "FreeableMemory below ${var.freeable_memory_alarm_threshold_mib} MiB on the db.t4g.micro instance (ADR-020 decision rule, threshold set by the owner). Console only; no notification."
+  namespace           = "AWS/RDS"
+  metric_name         = "FreeableMemory"
+  dimensions          = { DBInstanceIdentifier = aws_db_instance.this.identifier }
+  statistic           = "Minimum"
+  period              = 300
+  evaluation_periods  = 3
+  comparison_operator = "LessThanThreshold"
+  threshold           = var.freeable_memory_alarm_threshold_mib * 1048576
+  treat_missing_data  = "missing"
 }
 
 output "instance_identifier" {

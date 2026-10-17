@@ -85,6 +85,7 @@ from ai_qa_copilot_api.s3_quarantine import (
     DATA_BUCKET_ENVIRONMENT_VARIABLE,
     S3QuarantineReader,
 )
+from ai_qa_copilot_api.secrets_bootstrap import cold_start_secrets
 
 
 EXECUTION_WORKER_ENABLED_ENVIRONMENT_VARIABLE = "AI_QA_COPILOT_EXECUTION_WORKER_ENABLED"
@@ -285,9 +286,16 @@ def build_executor_composition(
 class SqsWorkerHandler:
     """Run one worker turn per wake-up and return a partial batch response."""
 
-    def __init__(self, name: str, build: Callable[[], WorkerComposition]) -> None:
+    def __init__(
+        self,
+        name: str,
+        build: Callable[[], WorkerComposition],
+        *,
+        bootstrap: Callable[[], object] | None = None,
+    ) -> None:
         self._name = name
         self._build = build
+        self._bootstrap = bootstrap
         self._composition: WorkerComposition | None = None
         self._lock = threading.Lock()
 
@@ -319,6 +327,10 @@ class SqsWorkerHandler:
         if self._composition is None:
             with self._lock:
                 if self._composition is None:
+                    # A bootstrap error propagates: the invocation fails before
+                    # any turn, and the message is retried by SQS.
+                    if self._bootstrap is not None:
+                        self._bootstrap()
                     self._composition = self._build()
         return self._composition
 
@@ -370,5 +382,9 @@ def _message_ids(event: Any) -> list[str] | None:
 
 
 parser_handler = SqsWorkerHandler("parser", build_parser_composition)
-general_handler = SqsWorkerHandler("general", build_general_composition)
+# Only the general worker loads secrets (ADR-018); the parser and executor never
+# call Secrets Manager.
+general_handler = SqsWorkerHandler(
+    "general", build_general_composition, bootstrap=cold_start_secrets
+)
 executor_handler = SqsWorkerHandler("executor", build_executor_composition)
