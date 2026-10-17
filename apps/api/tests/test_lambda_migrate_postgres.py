@@ -29,6 +29,7 @@ from ai_qa_copilot_api.lambda_migrate import (
     PsycopgMigrationDatabase,
     alembic_upgrade_to_head,
     app_user_statements,
+    grant_statements,
     head_revision,
     scram_sha256_verifier,
 )
@@ -74,6 +75,17 @@ def test_revision_reads_the_packaged_head(database: PsycopgMigrationDatabase) ->
     assert database.current_revision() == head_revision()
 
 
+def test_pgvector_version_is_read_from_pg_extension(
+    database: PsycopgMigrationDatabase,
+) -> None:
+    row = database._connection.execute(
+        "SELECT extversion FROM pg_extension WHERE extname = 'vector'"
+    ).fetchone()
+
+    assert row is not None
+    assert database.vector_version() == row[0]
+
+
 def test_the_advisory_lock_excludes_a_second_session(
     database_url: URL, database: PsycopgMigrationDatabase
 ) -> None:
@@ -94,6 +106,7 @@ def test_scram_verifier_login_and_grants(
     database_url: URL, database: PsycopgMigrationDatabase
 ) -> None:
     role = f"runner_test_{uuid4().hex[:12]}"
+    future_table = f"runner_future_probe_{uuid4().hex[:8]}"
     password = f"pw-{uuid4().hex}"
     master = database_url.username or ""
     tables = database.public_tables()
@@ -124,11 +137,50 @@ def test_scram_verifier_login_and_grants(
 
         for table in tables:
             assert privilege(table, "SELECT") and privilege(table, "INSERT")
-            mutable = table in MUTABLE_TABLES
-            assert privilege(table, "UPDATE") is mutable, table
-            assert privilege(table, "DELETE") is mutable, table
+            assert privilege(table, "UPDATE") is (table in MUTABLE_TABLES), table
+            assert not privilege(table, "DELETE"), table
             assert not privilege(table, "TRUNCATE")
         assert not privilege("alembic_version", "SELECT")
+
+        # The same rules, exercised as the application role itself.
+        with psycopg.connect(
+            conninfo(database_url, user=role, password=password), autocommit=True
+        ) as app:
+            app.execute(
+                "UPDATE public.projects SET archived_at = archived_at WHERE false"
+            )
+            with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                app.execute("UPDATE public.analysis_runs SET id = id WHERE false")
+            for table in ("projects", "parser_jobs", "analysis_runs"):
+                with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                    app.execute(
+                        sql.SQL("DELETE FROM {} WHERE false").format(
+                            sql.Identifier("public", table)
+                        )
+                    )
+
+        # A table created later by the master role gets SELECT, INSERT only,
+        # also after the grants are re-applied (apply_grants) while it is in
+        # neither list.
+        database._connection.execute(
+            sql.SQL("CREATE TABLE {} (id integer)").format(
+                sql.Identifier("public", future_table)
+            )
+        )
+        assert privilege(future_table, "SELECT") and privilege(future_table, "INSERT")
+        assert not privilege(future_table, "UPDATE")
+        assert not privilege(future_table, "DELETE")
+        database.execute_in_transaction(
+            grant_statements(
+                role=role,
+                database=database_url.database or "",
+                master_role=master,
+                tables=database.public_tables(),
+            )
+        )
+        assert privilege(future_table, "INSERT")
+        assert not privilege(future_table, "UPDATE")
+        assert not privilege(future_table, "DELETE")
         row = database._connection.execute(
             "SELECT has_schema_privilege(%s, 'public', 'CREATE'), "
             "rolsuper, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = %s",
@@ -156,6 +208,11 @@ def test_scram_verifier_login_and_grants(
             conninfo(database_url, user=role, password=new_password)
         ).close()
     finally:
+        database._connection.execute(
+            sql.SQL("DROP TABLE IF EXISTS {}").format(
+                sql.Identifier("public", future_table)
+            )
+        )
         role_id = sql.Identifier(role)
         master_id = sql.Identifier(master)
         for statement in (

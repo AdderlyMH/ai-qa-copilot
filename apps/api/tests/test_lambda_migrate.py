@@ -29,6 +29,7 @@ from ai_qa_copilot_api.lambda_migrate import (
     MigrationRunnerError,
     RunnerSettings,
     app_user_statements,
+    grant_statements,
     application_database_url,
     head_revision,
     scram_sha256_verifier,
@@ -98,11 +99,13 @@ class FakeDatabase:
         tables: Sequence[str] = TABLES,
         execute_error: Exception | None = None,
         events: list[str] | None = None,
+        vector: str | None = "0.8.2",
     ) -> None:
         self.revision = revision
         self.locked = locked
         self.role = role
         self.tables = list(tables)
+        self.vector = vector
         self.execute_error = execute_error
         self.events = events if events is not None else []
         self.statements: list[sql.Composable] = []
@@ -122,6 +125,9 @@ class FakeDatabase:
 
     def public_tables(self) -> list[str]:
         return list(self.tables)
+
+    def vector_version(self) -> str | None:
+        return self.vector
 
     def execute_in_transaction(self, statements: Sequence[sql.Composable]) -> None:
         self.events.append("execute")
@@ -396,9 +402,16 @@ def test_status_reads_the_revision_without_locking() -> None:
         "revision": "0020_review_packet_binding",
         "head": HEAD,
         "at_head": False,
+        "pgvector_version": "0.8.2",
     }
     assert database.events == ["close"]
     assert_clean(result)
+
+
+def test_status_reports_no_pgvector_version_before_the_extension_exists() -> None:
+    run, _ = runner(FakeDatabase(revision=None, vector=None))
+
+    assert run({"action": "status"})["pgvector_version"] is None
 
 
 def test_migrate_upgrades_under_the_lock_and_reads_the_revision_back() -> None:
@@ -420,6 +433,7 @@ def test_migrate_upgrades_under_the_lock_and_reads_the_revision_back() -> None:
         "head": HEAD,
         "at_head": True,
         "upgraded": True,
+        "pgvector_version": "0.8.2",
     }
     assert database.events == ["lock", "unlock", "close"]
     url = make_url(urls[0])
@@ -558,6 +572,93 @@ def test_rotate_without_an_existing_role_fails_closed() -> None:
     assert database.statements == []
 
 
+# --- apply_grants ---------------------------------------------------------------
+
+
+def test_apply_grants_reapplies_grants_without_password_or_secret(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    passwords: list[str] = []
+    database = FakeDatabase(role=True)
+    run, client = runner(database)
+
+    def generate_password() -> str:
+        passwords.append("called")
+        return APP_PASSWORD
+
+    run.generate_password = generate_password
+
+    result = run({"action": "apply_grants"})
+
+    assert result == {
+        "action": "apply_grants",
+        "tables_granted": len(TABLES),
+        "append_only_tables": len(APPEND_ONLY_TABLES),
+    }
+    assert database.events == ["lock", "execute", "unlock", "close"]
+    assert [kind for kind, _ in client.calls] == ["get"]  # no PutSecretValue
+    assert passwords == []
+    texts = statement_texts(database.statements)
+    assert texts == statement_texts(
+        grant_statements(
+            role="ai_qa_copilot_app",
+            database="ai_qa_copilot",
+            master_role="copilot_master",
+            tables=TABLES,
+        )
+    )
+    assert not any(text.startswith(("CREATE ROLE", "ALTER ROLE")) for text in texts)
+    assert not any("PASSWORD" in text for text in texts)
+    assert_clean(result)
+    for sensitive in SENSITIVE:
+        assert sensitive not in caplog.text
+
+
+def test_apply_grants_fails_closed_when_the_role_is_missing() -> None:
+    database = FakeDatabase(role=False)
+    run, client = runner(database)
+
+    error = failure(run, {"action": "apply_grants"})
+
+    assert str(error) == (
+        "The application role does not exist; run create_app_user first"
+    )
+    assert database.statements == []
+    assert database.events == ["lock", "unlock", "close"]
+    assert [kind for kind, _ in client.calls] == ["get"]
+
+
+def test_apply_grants_needs_the_advisory_lock() -> None:
+    database = FakeDatabase(role=True, locked=True)
+    run, _ = runner(database)
+
+    assert str(failure(run, {"action": "apply_grants"})) == (
+        "Another runner holds the migration lock"
+    )
+    assert database.statements == []
+    assert database.events == ["lock", "close"]
+
+
+def test_apply_grants_rejects_rotate() -> None:
+    run, client = runner(FakeDatabase(role=True))
+
+    assert str(failure(run, {"action": "apply_grants", "rotate": True})) == (
+        "rotate applies to create_app_user only"
+    )
+    assert client.calls == []
+
+
+def test_apply_grants_reports_a_failed_grant_without_detail() -> None:
+    database = FakeDatabase(role=True, execute_error=RuntimeError(f"denied {HOST}"))
+    run, client = runner(database)
+
+    assert str(failure(run, {"action": "apply_grants"})) == (
+        "Applying the grants failed (RuntimeError)"
+    )
+    assert [kind for kind, _ in client.calls] == ["get"]
+
+
 def test_create_app_user_requires_a_migrated_database() -> None:
     database = FakeDatabase(revision=None)
     run, _ = runner(database)
@@ -634,9 +735,10 @@ def test_grants_follow_the_append_only_split() -> None:
         'REVOKE ALL ON TABLE "public"."analysis_runs" FROM "ai_qa_copilot_app"',
         'GRANT SELECT, INSERT ON TABLE "public"."analysis_runs" TO "ai_qa_copilot_app"',
         'REVOKE ALL ON TABLE "public"."parser_jobs" FROM "ai_qa_copilot_app"',
-        'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE "public"."parser_jobs" TO "ai_qa_copilot_app"',
+        'GRANT SELECT, INSERT, UPDATE ON TABLE "public"."parser_jobs" TO "ai_qa_copilot_app"',
         'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "ai_qa_copilot_app"',
-        'ALTER DEFAULT PRIVILEGES FOR ROLE "copilot_master" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "ai_qa_copilot_app"',
+        'ALTER DEFAULT PRIVILEGES FOR ROLE "copilot_master" IN SCHEMA public REVOKE ALL ON TABLES FROM "ai_qa_copilot_app"',
+        'ALTER DEFAULT PRIVILEGES FOR ROLE "copilot_master" IN SCHEMA public GRANT SELECT, INSERT ON TABLES TO "ai_qa_copilot_app"',
         'ALTER DEFAULT PRIVILEGES FOR ROLE "copilot_master" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO "ai_qa_copilot_app"',
     ]
     assert texts[0] == (
@@ -651,6 +753,29 @@ def test_grants_follow_the_append_only_split() -> None:
         )
         for t in texts
     )
+
+
+def test_no_table_gets_delete_and_unknown_tables_get_select_insert_only() -> None:
+    texts = statement_texts(
+        grant_statements(
+            role="ai_qa_copilot_app",
+            database="ai_qa_copilot",
+            master_role="copilot_master",
+            tables=[*TABLES, "table_in_neither_list"],
+        )
+    )
+    grants = {
+        match.group(2): match.group(1)
+        for text in texts
+        if (match := re.fullmatch(r'GRANT (.+) ON TABLE "public"\."(\w+)" TO .+', text))
+    }
+
+    assert not any("DELETE" in text for text in texts)
+    assert grants["table_in_neither_list"] == "SELECT, INSERT"
+    for table in MUTABLE_TABLES:
+        assert grants[table] == "SELECT, INSERT, UPDATE"
+    for table in APPEND_ONLY_TABLES:
+        assert grants[table] == "SELECT, INSERT"
 
 
 def test_every_migrated_table_is_classified() -> None:

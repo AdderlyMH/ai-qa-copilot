@@ -11,18 +11,21 @@ Alembic under an advisory lock through the unchanged `env.py`, which applies
 all pending migrations in one transaction, so a failed run leaves the
 revision unchanged; it reads the revision back. It creates the application
 role (password sent only as a SCRAM-SHA-256 verifier, SQL composed with
-`psycopg.sql`), grants SELECT/INSERT on 20 append-only tables and also
-UPDATE/DELETE on the 7 the application updates or row-locks, and writes the
-`database-url` secret last. Errors are sanitized; responses carry revisions,
+`psycopg.sql`), grants SELECT/INSERT everywhere and UPDATE only on the 7
+tables the application updates or row-locks (DELETE nowhere; unlisted and
+future tables SELECT/INSERT), and writes the `database-url` secret last.
+`apply_grants` re-runs the grants without a password change or secret write.
+`status` and `migrate` report `pgvector_version` for ADR-020's drift item. Errors are sanitized; responses carry revisions,
 booleans and counts only. New `migrate` image target and `migrate`
 dependency group (Alembic); the four function images are unchanged.
 Terraform module `infra/modules/migration`: ECR repository always, the
 function and role only while `migration_enabled` (default false), reading
 only the master secret and writing only the `database-url` secret; no other
 role can read the master secret. Checkov 381 passed, 0 failed, 61 skipped.
-CI 1766 passed, 79 skipped (55 new tests; 4 PostgreSQL integration tests
-skip in `ci` and run in `db-check`, not run locally because Docker Desktop
-was not running). The parser user and `rds_iam` move to INFRA-008 Stage B.
+Follow-up commit (2026-10-17): the grant policy above (no DELETE, fail-closed
+default, SELECT/INSERT default privileges), `apply_grants`,
+`pgvector_version`; `db-check` run locally and passed, including the five
+runner integration tests. The parser user and `rds_iam` move to INFRA-008 Stage B.
 
 Next action: owner review and merge; then the runbook in INFRASTRUCTURE.md:
 secret containers, the migrate repository, build and push, runner on,

@@ -5,8 +5,9 @@ The owner invokes it manually; it has no API, event source or schedule.
 
 Actions (event field ``action``; an empty event means ``migrate``):
 
-- ``status``: read the revision in ``alembic_version`` and compare it with the
-  head of the packaged migration scripts.
+- ``status``: read the revision in ``alembic_version``, compare it with the
+  head of the packaged migration scripts, and report the installed pgvector
+  version (``pgvector_version``; ``migrate`` reports it too).
 - ``migrate``: take a PostgreSQL advisory lock (a second run fails instead of
   waiting), run ``alembic upgrade head`` and read the revision back. ``env.py``
   runs every pending migration in one transaction (``transaction_per_migration``
@@ -16,6 +17,13 @@ Actions (event field ``action``; an empty event means ``migrate``):
   generated password and least-privilege grants, then write its PostgreSQL URL
   to the ``database-url`` secret. If the role exists the action fails unless the
   event has ``"rotate": true``, which resets the password and rewrites the URL.
+- ``apply_grants``: under the same lock, re-apply the grants for the existing
+  role (no password change, no secret write); this is how a table added to
+  ``MUTABLE_TABLES`` gets UPDATE without a rotation.
+
+Grants: SELECT, INSERT on every table; UPDATE only on ``MUTABLE_TABLES``; DELETE
+nowhere; a table in neither list gets SELECT, INSERT (fail closed); future
+tables default to SELECT, INSERT.
 
 Credentials: the RDS-managed master secret (``MASTER_SECRET_ARN``) is read at
 invocation; host, port and database name come from non-secret environment
@@ -61,7 +69,7 @@ DB_NAME_ENVIRONMENT_VARIABLE = "DB_NAME"
 APP_DB_USER_ENVIRONMENT_VARIABLE = "APP_DB_USER"
 DEFAULT_APP_DB_USER = "ai_qa_copilot_app"
 
-ACTIONS = frozenset({"migrate", "status", "create_app_user"})
+ACTIONS = frozenset({"migrate", "status", "create_app_user", "apply_grants"})
 # Arbitrary fixed key for pg_try_advisory_lock; every runner action that writes
 # takes it, so two writing runs never overlap.
 ADVISORY_LOCK_KEY = 4_812_012_009
@@ -70,9 +78,10 @@ SCRAM_ITERATIONS = 4096
 CONNECT_TIMEOUT_SECONDS = 10
 
 # Tables the application updates at run time (ORM updates, row locks with
-# SELECT ... FOR UPDATE, which PostgreSQL allows only with UPDATE privilege).
-# Every other table is append-only for the application role: SELECT and INSERT.
-# A contract test keeps this split in step with the migrations.
+# SELECT ... FOR UPDATE, which PostgreSQL allows only with UPDATE privilege):
+# SELECT, INSERT, UPDATE. Every other table is append-only for the application
+# role: SELECT, INSERT. The application never deletes rows, so no table gets
+# DELETE. A contract test keeps this split in step with the migrations.
 MUTABLE_TABLES = frozenset(
     {
         "document_versions",  # parser promotion sets parser_version_id
@@ -81,7 +90,9 @@ MUTABLE_TABLES = frozenset(
         "indexing_jobs",  # claims and leases
         "parser_jobs",  # claims and leases
         "projects",  # archived_at
-        "quality_report_revisions",  # SELECT ... FOR UPDATE only; rows not updated
+        # Rows are never updated; UPDATE is needed only because the code takes
+        # SELECT ... FOR UPDATE locks. Immutability rests on application code.
+        "quality_report_revisions",
     }
 )
 APPEND_ONLY_TABLES = frozenset(
@@ -314,29 +325,25 @@ def scram_sha256_verifier(
     )
 
 
-def app_user_statements(
+def grant_statements(
     *,
     role: str,
-    password_verifier: str,
     database: str,
     master_role: str,
     tables: Sequence[str],
-    create: bool,
 ) -> list[sql.Composed]:
-    """Compose the role and grant statements; no value is interpolated as text."""
+    """Compose the least-privilege grants for an existing role.
+
+    No DELETE anywhere (the application never deletes rows). Tables in
+    ``MUTABLE_TABLES`` get SELECT, INSERT, UPDATE; every other table, including
+    one in neither list, gets SELECT, INSERT only (fail closed). Future tables
+    created by the master role default to SELECT, INSERT; a table that needs
+    UPDATE is added to ``MUTABLE_TABLES`` and the grants re-applied
+    (``apply_grants``).
+    """
 
     role_id = sql.Identifier(role)
-    if create:
-        role_statement = sql.SQL(
-            "CREATE ROLE {} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT "
-            "NOREPLICATION NOBYPASSRLS PASSWORD {}"
-        ).format(role_id, sql.Literal(password_verifier))
-    else:
-        role_statement = sql.SQL("ALTER ROLE {} WITH PASSWORD {}").format(
-            role_id, sql.Literal(password_verifier)
-        )
     statements = [
-        role_statement,
         sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
             sql.Identifier(database), role_id
         ),
@@ -344,10 +351,10 @@ def app_user_statements(
         sql.SQL("REVOKE CREATE ON SCHEMA public FROM {}").format(role_id),
     ]
     append_only_grant = sql.SQL("GRANT SELECT, INSERT ON TABLE {} TO {}")
-    mutable_grant = sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {} TO {}")
+    mutable_grant = sql.SQL("GRANT SELECT, INSERT, UPDATE ON TABLE {} TO {}")
     for table in sorted(tables):
         table_id = sql.Identifier("public", table)
-        grant = append_only_grant if table in APPEND_ONLY_TABLES else mutable_grant
+        grant = mutable_grant if table in MUTABLE_TABLES else append_only_grant
         statements.append(
             sql.SQL("REVOKE ALL ON TABLE {} FROM {}").format(table_id, role_id)
         )
@@ -359,7 +366,11 @@ def app_user_statements(
             ).format(role_id),
             sql.SQL(
                 "ALTER DEFAULT PRIVILEGES FOR ROLE {} IN SCHEMA public "
-                "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {}"
+                "REVOKE ALL ON TABLES FROM {}"
+            ).format(sql.Identifier(master_role), role_id),
+            sql.SQL(
+                "ALTER DEFAULT PRIVILEGES FOR ROLE {} IN SCHEMA public "
+                "GRANT SELECT, INSERT ON TABLES TO {}"
             ).format(sql.Identifier(master_role), role_id),
             sql.SQL(
                 "ALTER DEFAULT PRIVILEGES FOR ROLE {} IN SCHEMA public "
@@ -368,6 +379,39 @@ def app_user_statements(
         ]
     )
     return statements
+
+
+def app_user_statements(
+    *,
+    role: str,
+    password_verifier: str,
+    database: str,
+    master_role: str,
+    tables: Sequence[str],
+    create: bool,
+) -> list[sql.Composed]:
+    """Compose the role statement and the grants; no value is interpolated as text."""
+
+    role_id = sql.Identifier(role)
+    if create:
+        role_statement = sql.SQL(
+            "CREATE ROLE {} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT "
+            "NOREPLICATION NOBYPASSRLS PASSWORD {}"
+        ).format(role_id, sql.Literal(password_verifier))
+    else:
+        role_statement = sql.SQL("ALTER ROLE {} WITH PASSWORD {}").format(
+            role_id, sql.Literal(password_verifier)
+        )
+    return [
+        role_statement,
+        *grant_statements(
+            role=role, database=database, master_role=master_role, tables=tables
+        ),
+    ]
+
+
+def append_only_count(tables: Sequence[str]) -> int:
+    return sum(1 for table in tables if table not in MUTABLE_TABLES)
 
 
 # --- Database -------------------------------------------------------------------
@@ -383,6 +427,8 @@ class MigrationDatabase(Protocol):
     def role_exists(self, role: str) -> bool: ...
 
     def public_tables(self) -> list[str]: ...
+
+    def vector_version(self) -> str | None: ...
 
     def execute_in_transaction(self, statements: Sequence[sql.Composable]) -> None: ...
 
@@ -459,6 +505,12 @@ class PsycopgMigrationDatabase:
             )
         ).fetchall()
         return [str(row[0]) for row in rows if str(row[0]) not in _IGNORED_TABLES]
+
+    def vector_version(self) -> str | None:
+        version = self._scalar(
+            sql.SQL("SELECT extversion FROM pg_extension WHERE extname = 'vector'")
+        )
+        return None if version is None else str(version)
 
     def execute_in_transaction(self, statements: Sequence[sql.Composable]) -> None:
         with self._connection.transaction():
@@ -550,6 +602,8 @@ class MigrationRunner:
             return self._status(settings, credentials)
         if action == "migrate":
             return self._migrate(settings, credentials)
+        if action == "apply_grants":
+            return self._apply_grants(settings, credentials)
         return self._create_app_user(settings, credentials, client, rotate=rotate)
 
     def _head(self) -> str:
@@ -569,6 +623,7 @@ class MigrationRunner:
         database = self.connect(settings, credentials)
         try:
             revision = _read_revision(database)
+            vector = _read_vector_version(database)
         finally:
             database.close()
         return {
@@ -576,6 +631,7 @@ class MigrationRunner:
             "revision": revision,
             "head": head,
             "at_head": revision == head,
+            "pgvector_version": vector,
         }
 
     def _migrate(
@@ -602,6 +658,7 @@ class MigrationRunner:
                         f"{before or 'none'}, after {after}"
                     ) from None
                 after_upgrade = _read_revision(database)
+                vector = _read_vector_version(database)
             finally:
                 _release_lock(database)
         finally:
@@ -614,6 +671,48 @@ class MigrationRunner:
             "head": head,
             "at_head": after_upgrade == head,
             "upgraded": after_upgrade != before,
+            "pgvector_version": vector,
+        }
+
+    def _apply_grants(
+        self, settings: RunnerSettings, credentials: MasterCredentials
+    ) -> dict[str, object]:
+        """Re-apply the grants for the existing role: no password, no secret."""
+
+        if settings.app_user == credentials.username:
+            raise MigrationRunnerError("APP_DB_USER must differ from the master user")
+        database = self.connect(settings, credentials)
+        try:
+            _acquire_lock(database)
+            try:
+                if not _database_step(
+                    "Checking the application role",
+                    database.role_exists,
+                    settings.app_user,
+                ):
+                    raise MigrationRunnerError(
+                        "The application role does not exist; run create_app_user first"
+                    )
+                tables = _database_step("Listing tables", database.public_tables)
+                _database_step(
+                    "Applying the grants",
+                    database.execute_in_transaction,
+                    grant_statements(
+                        role=settings.app_user,
+                        database=settings.database,
+                        master_role=credentials.username,
+                        tables=tables,
+                    ),
+                )
+            finally:
+                _release_lock(database)
+        finally:
+            database.close()
+        _logger.info("migrate.grants tables=%d", len(tables))
+        return {
+            "action": "apply_grants",
+            "tables_granted": len(tables),
+            "append_only_tables": append_only_count(tables),
         }
 
     def _create_app_user(
@@ -682,7 +781,7 @@ class MigrationRunner:
                 _release_lock(database)
         finally:
             database.close()
-        append_only = sum(1 for table in tables if table in APPEND_ONLY_TABLES)
+        append_only = append_only_count(tables)
         _logger.info("migrate.app_user created=%s rotated=%s", not exists, exists)
         return {
             "action": "create_app_user",
@@ -725,6 +824,13 @@ def _database_step(step: str, operation: Callable[..., Any], *args: Any) -> Any:
 def _read_revision(database: MigrationDatabase) -> str | None:
     result: str | None = _database_step(
         "Reading the revision", database.current_revision
+    )
+    return result
+
+
+def _read_vector_version(database: MigrationDatabase) -> str | None:
+    result: str | None = _database_step(
+        "Reading the pgvector version", database.vector_version
     )
     return result
 

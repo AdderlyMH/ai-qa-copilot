@@ -910,9 +910,10 @@ build stays the four functions.
 
 | Action | What it does | Response |
 |---|---|---|
-| `status` | Reads `alembic_version` and the packaged head; no lock. | `revision`, `head`, `at_head` |
-| `migrate` (default, also for `{}`) | `pg_try_advisory_lock` (a second run fails instead of waiting), `alembic upgrade head` through the unchanged `env.py`, revision read back, lock released. | `revision_before`, `revision`, `head`, `at_head`, `upgraded` |
+| `status` | Reads `alembic_version`, the packaged head and the installed pgvector version; no lock. | `revision`, `head`, `at_head`, `pgvector_version` |
+| `migrate` (default, also for `{}`) | `pg_try_advisory_lock` (a second run fails instead of waiting), `alembic upgrade head` through the unchanged `env.py`, revision and pgvector version read back, lock released. | `revision_before`, `revision`, `head`, `at_head`, `upgraded`, `pgvector_version` |
 | `create_app_user` | Under the same lock: requires a migrated database; creates the application role (or, with `"rotate": true`, resets its password); grants; then writes the URL to the `database-url` secret. | `role_created`, `password_rotated`, `secret_written`, `tables_granted`, `append_only_tables` |
+| `apply_grants` | Under the same lock: requires the role to exist; re-runs the grant statements below (REVOKE, GRANT, default privileges). No password change, no secret write; `rotate` is refused. | `tables_granted`, `append_only_tables` |
 
 Unknown actions, unknown event fields, a non-boolean `rotate` and `rotate` on
 another action fail closed before any AWS or database call.
@@ -956,27 +957,38 @@ RDS (ADR-020).
 
   | Tables | Privileges | Why |
   |---|---|---|
-  | `document_versions`, `execution_approvals`, `execution_jobs`, `indexing_jobs`, `parser_jobs`, `projects` | SELECT, INSERT, UPDATE, DELETE | The application updates them (claims, leases, terminal states, `parser_version_id`, `archived_at`). |
-  | `quality_report_revisions` | SELECT, INSERT, UPDATE, DELETE | Rows are never updated, but the code locks them with `SELECT ... FOR UPDATE`, which PostgreSQL allows only with UPDATE privilege; immutability there stays enforced by the application. |
-  | The other 20 tables | SELECT, INSERT | Append-only for the application: no runtime UPDATE or DELETE was found. |
+  | `document_versions`, `execution_approvals`, `execution_jobs`, `indexing_jobs`, `parser_jobs`, `projects` | SELECT, INSERT, UPDATE | The application updates them (claims, leases, terminal states, `parser_version_id`, `archived_at`). |
+  | `quality_report_revisions` | SELECT, INSERT, UPDATE | Rows are never updated. UPDATE is granted **only** because the code locks rows with `SELECT ... FOR UPDATE`, which PostgreSQL allows only with UPDATE privilege; the table's immutability therefore rests on application code, not on the grant. |
+  | The other 20 tables | SELECT, INSERT | Append-only for the application. |
+  | Any table in neither list | SELECT, INSERT | Fail closed: never the mutable grant. |
   | `alembic_version` | none | Only the runner reads it. |
 
-  `USAGE, SELECT` on all sequences (there are none today), and
-  `ALTER DEFAULT PRIVILEGES FOR ROLE <master> IN SCHEMA public` grants SELECT,
-  INSERT, UPDATE, DELETE on future tables and USAGE, SELECT on future
-  sequences. **Choices to know:** the split was found by reading the code
-  (ORM updates, `update()` statements and row locks), not by running every
-  workflow as the role; **no table is ever deleted from at run time**, so
-  DELETE on the seven mutable tables is the owner's default rather than a
-  need; future tables get the mutable set by default, so a new immutable
-  table needs an explicit revoke in its migration or a later `rotate` run. A
-  contract test fails when a migration adds a table that is in neither list.
+  **No DELETE on any table:** no runtime DELETE was found in the code.
+  `USAGE, SELECT` on all sequences (there are none today).
+  `ALTER DEFAULT PRIVILEGES FOR ROLE <master> IN SCHEMA public` first revokes
+  all table defaults, then grants **SELECT, INSERT** on future tables (and
+  USAGE, SELECT on future sequences), so a table created by a later migration
+  starts append-only. **To give a new table UPDATE:** add it to
+  `MUTABLE_TABLES` in `lambda_migrate.py`, rebuild and push the migrate image,
+  run `migrate`, then `apply_grants` (runbook step d); no password rotation
+  is needed. The split was found by reading the code (ORM updates,
+  `update()` statements and row locks), not by running every workflow as
+  the role; the PostgreSQL integration test exercises it as the role
+  (UPDATE allowed on a mutable table, refused on an append-only one, DELETE
+  refused everywhere, a later table SELECT/INSERT only). A contract test
+  fails when a migration adds a table that is in neither list.
 - Order and failure window: the role change and all grants commit in one
   transaction **first**; the secret is written **last**. If the secret write
   fails, the database has the new password and the secret does not: the
-  error says so and the fix is to rerun with `"rotate": true`. While a rotate
-  runs, functions that are already warm keep the old URL until their next
-  cold start and their new connections fail with the old password.
+  error says so and the fix is to rerun with `"rotate": true`.
+- **A rotate breaks warm functions until their next cold start:** the API
+  and general functions read the URL once per execution environment, so
+  environments that are already warm keep the old password and their new
+  connections fail until Lambda replaces them. After a rotate,
+  `PutSecretValue` moves `AWSCURRENT` to the new version and `AWSPREVIOUS`
+  to the previous one, so the previous URL (with the old, now invalid
+  password) stays readable as `AWSPREVIOUS` (Secrets Manager
+  PutSecretValue reference).
 - The secret value is never read back or returned. If the role already
   exists, the action fails unless `rotate` is true; `rotate` on a role that
   does not exist also fails.
@@ -1031,10 +1043,16 @@ pages read (the runner requires `username` and `password` and fails closed
 otherwise); what happens to an open migration transaction when Lambda stops
 at its timeout is not documented (PostgreSQL rolls back an open transaction
 when its session ends; when the session ends after a Lambda timeout is
-unverified); the response does not report the installed pgvector version
-that ADR-020 asks to record; `db-check` with the new integration test was not
-run locally (Docker Desktop was not running) and runs in the required
-`migration-check` job.
+unverified).
+
+**pgvector drift.** `status` and `migrate` return `pgvector_version`
+(`extversion` of `vector` in `pg_extension`, or null). The owner records the
+value from the first production `migrate` in ADR-020's pgvector drift item
+(RDS at most 0.8.2, local Compose 0.8.6-pg17).
+
+**Tests run (2026-10-17):** `db-check` on local Docker passed with the five
+runner integration tests (SCRAM login, grants as the role, a later table,
+the pgvector read, the advisory lock and the failing probe migration).
 
 ### Migration runbook (owner, local credentials)
 
@@ -1096,7 +1114,9 @@ destroy. Check that the inline policy has exactly the three statements above.
 Apply.
 
 **d. Invoke** (repeat the block with each payload, in this order: status,
-migrate, status, create_app_user). The payload is written to a temporary
+migrate, status, create_app_user). `apply_grants` is for later: after a
+table is added to `MUTABLE_TABLES` and the new image is migrated, invoke it
+with `'{"action":"apply_grants"}'`. The payload is written to a temporary
 ASCII file; the response file holds only revisions, booleans and counts and is
 deleted afterwards. `AWS_MAX_ATTEMPTS=1` stops the CLI from retrying a long
 call, and the read timeout covers the 900 s function timeout.
@@ -1121,7 +1141,8 @@ try {
 The status code is 200 even when the function fails; a second column
 `Unhandled` means a `MigrationRunnerError`, whose sanitized message is in the
 response. Expected results: the first `status` shows `revision` null; `migrate`
-shows `revision_before` null, `revision` equal to `head` and `upgraded` true;
+shows `revision_before` null, `revision` equal to `head`, `upgraded` true and
+`pgvector_version` (record it in ADR-020's pgvector drift item);
 `create_app_user` shows `role_created` true and `secret_written` true. If
 `create_app_user` reports that the secret was not written, rerun it with
 `'{"action":"create_app_user","rotate":true}'`.
