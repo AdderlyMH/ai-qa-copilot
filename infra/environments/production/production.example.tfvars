@@ -26,6 +26,12 @@ database_subnet_cidrs       = ["10.20.10.0/24", "10.20.11.0/24"]
 # number is given on purpose. Every plan of this root needs it.
 # database_freeable_memory_alarm_threshold_mib = <owner-chosen MiB>
 
+# Migration runner (INFRA-012). Off by default; the ECR repository exists either
+# way. Turn on only to run migrations, with the pushed migrate image by digest,
+# then turn off again (runbook in docs/INFRASTRUCTURE.md).
+# migration_enabled   = true
+# migration_image_uri = "<terraform output migration_ecr_repository_url>@sha256:<digest>"
+
 # NAT instance (ADR-017). Change this value to replace the instance with the
 # current AL2023 AMI; see the monthly runbook in docs/INFRASTRUCTURE.md.
 nat_replacement_generation = "2026-10-13"

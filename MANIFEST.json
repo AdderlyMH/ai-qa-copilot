@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 94023,
-      "sha256": "59bc486bd6b2dca0821680b8efecb95273c4e66acc8f2633d974e19f0f7ccbb7"
+      "bytes": 96112,
+      "sha256": "df615fad26c0ea71c152e255030d258096b22280a6d525dd6eab34000d097c87"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 103814,
-      "sha256": "ac648bdef3ce8d4ce5c3320ebab239f2ee666fc2653a35ad7fffa41a2f4ac94c"
+      "bytes": 120059,
+      "sha256": "a4a81333e9675a963ff97edc4dd283c0109c53683cf20c2badaf4bce02d73214"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 156262,
-      "sha256": "c37db2aab9cb91d8e09a21cba2767e825286fc0eabcb4fab7ed0f469703366a6"
+      "bytes": 158297,
+      "sha256": "bc11a62e686e472f53f3237196c413a814ee28318f95ba60a18c55a9afe36d22"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -402,8 +402,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 1355,
-      "sha256": "79c05fb4e259db5a7f09d624c40314b57d52774d9c869c287379014be6c79a8c"
+      "bytes": 1542,
+      "sha256": "6dc6f45a5baa2ca9e937561266a19bf8b7ad691e6fcaf473a08e950d9a2899dd"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -417,8 +417,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 30703,
-      "sha256": "407e8cf7d8abd413111a5b1cd335dbdb5f298cee5a29c2203a6407e2d2b27293"
+      "bytes": 30765,
+      "sha256": "cc4e9ff9cdb0616e00e2101d70f0c77056452c060c58984b298cdb0c0bce1acd"
     },
     {
       "path": "scripts/validate_docs.py",
@@ -427,8 +427,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 91169,
-      "sha256": "5c935406b678ab3befc73a9748995ac2c2085c534b01d690cab795dc4bec8509"
+      "bytes": 91266,
+      "sha256": "d8892ad51768b5ccd42d9efa0a94ae1a4db8178dc7c4be4f63ef99d785cec6e5"
     }
   ]
 }

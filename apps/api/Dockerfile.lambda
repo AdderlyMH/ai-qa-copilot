@@ -1,6 +1,7 @@
 # INFRA-009: Lambda container images for the four function classes (ADR-017,
 # ADR-018). One Dockerfile, one target per function; each target differs only
-# in its CMD (the Lambda handler). Build for linux/arm64 with --provenance=false
+# in its CMD (the Lambda handler). The INFRA-012 "migrate" target at the end
+# adds Alembic and the migrations. Build for linux/arm64 with --provenance=false
 # through scripts/build_lambda_images.py; build context is the repository root.
 #
 # The base is the single-architecture arm64 manifest of the AWS Lambda Python
@@ -48,3 +49,31 @@ CMD ["ai_qa_copilot_api.lambda_workers.general_handler"]
 
 FROM runtime AS executor
 CMD ["ai_qa_copilot_api.lambda_workers.executor_handler"]
+
+# INFRA-012: the one-shot migration runner. Separate stages, so the four
+# function images above are unchanged: the runtime dependencies plus the locked
+# "migrate" group (Alembic), and the Alembic configuration and scripts under
+# migrations/ (a top-level alembic/ in the task root would shadow the installed
+# alembic package).
+FROM ${LAMBDA_PYTHON_BASE} AS migrate-dependencies
+
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+COPY apps/api/pyproject.toml apps/api/pyproject.toml
+
+RUN python -m pip install --disable-pip-version-check --no-cache-dir uv==0.11.16 \
+    && uv export --locked --no-dev --group migrate --no-emit-workspace --format requirements-txt --output-file /build/requirements.txt \
+    && python -m pip install --disable-pip-version-check --no-cache-dir \
+        --require-hashes --only-binary=:all: --no-deps \
+        --target /build/site-packages --requirement /build/requirements.txt
+
+FROM ${LAMBDA_PYTHON_BASE} AS migrate
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+COPY --from=migrate-dependencies /build/site-packages ${LAMBDA_TASK_ROOT}
+COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api
+COPY apps/api/alembic.ini ${LAMBDA_TASK_ROOT}/migrations/alembic.ini
+COPY apps/api/alembic ${LAMBDA_TASK_ROOT}/migrations/alembic
+CMD ["ai_qa_copilot_api.lambda_migrate.handler"]

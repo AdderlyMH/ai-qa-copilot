@@ -252,6 +252,11 @@ output "port" {
   value       = aws_db_instance.this.port
 }
 
+output "database_name" {
+  description = "Name of the application database (not a secret)."
+  value       = aws_db_instance.this.db_name
+}
+
 output "resource_id" {
   description = "DbiResourceId, needed for the rds-db:connect ARN (ADR-020)."
   value       = aws_db_instance.this.resource_id

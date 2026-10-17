@@ -1,12 +1,15 @@
 # Build context for apps/api/Dockerfile.lambda only (Dockerfile-specific ignore
 # file; it takes precedence over any root .dockerignore and does not affect the
 # parser-worker Compose build). Allowlist: everything is excluded, then only the
-# lock inputs and the application package are added back.
+# lock inputs, the application package and (for the migrate target only) the
+# Alembic configuration and scripts are added back.
 *
 !pyproject.toml
 !uv.lock
 !apps/api/pyproject.toml
 !apps/api/src/ai_qa_copilot_api/**
+!apps/api/alembic.ini
+!apps/api/alembic/**
 
 # Never in the context, even under an allowed path.
 **/__pycache__
