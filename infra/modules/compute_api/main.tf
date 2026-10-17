@@ -107,6 +107,14 @@ variable "ecr_repositories" {
   type        = map(object({ name = string, arn = string }))
 }
 
+variable "application_secret_arns" {
+  description = "ARNs (not values) of the database-url and openai-api-key secrets from the data plane; read at cold start by the API and general worker (INFRA-008)."
+  type = object({
+    database_url   = string
+    openai_api_key = string
+  })
+}
+
 variable "data_bucket_name" {
   description = "Private data bucket name."
   type        = string
@@ -192,9 +200,17 @@ locals {
   cognito_issuer = "https://cognito-idp.${local.region}.amazonaws.com/${aws_cognito_user_pool.owner.id}"
 
   # Non-secret settings only. Queue URLs and bucket names are provided for the
-  # Lambda adapters; the application does not read them yet (open item).
+  # Lambda adapters; the application does not read them yet (open item). The
+  # API and general worker get the two secret ARNs; the values are read at cold
+  # start (secrets_bootstrap.py) and never appear here. MODEL_PROVIDER stays
+  # unset on the API (OpenAI default) and openai on the general worker.
+  secret_arn_environment = {
+    DATABASE_URL_SECRET_ARN   = var.application_secret_arns.database_url
+    OPENAI_API_KEY_SECRET_ARN = var.application_secret_arns.openai_api_key
+  }
+
   environment = {
-    api = {
+    api = merge(local.secret_arn_environment, {
       APP_ENV                   = "production"
       COGNITO_ISSUER            = local.cognito_issuer
       COGNITO_CLIENT_ID         = aws_cognito_user_pool_client.web.id
@@ -205,7 +221,7 @@ locals {
       DATA_BUCKET_NAME          = var.data_bucket_name
       DEMO_BUCKET_NAME          = var.demo_bucket_name
       LOCAL_AUTH_BYPASS_ENABLED = "false"
-    }
+    })
     parser = {
       APP_ENV               = "production"
       PARSER_WORKER_ROLE    = "restricted-parser"
@@ -213,11 +229,11 @@ locals {
       GENERAL_QUEUE_URL     = var.queue_urls["general"]
       DATA_BUCKET_NAME      = var.data_bucket_name
     }
-    general = {
+    general = merge(local.secret_arn_environment, {
       APP_ENV          = "production"
       MODEL_PROVIDER   = var.model_provider
       DATA_BUCKET_NAME = var.data_bucket_name
-    }
+    })
     executor = {
       APP_ENV                                = "production"
       AI_QA_COPILOT_EXECUTION_WORKER_ENABLED = var.executor_enabled ? "true" : "false"
@@ -273,7 +289,7 @@ resource "aws_lambda_function" "this" {
   #checkov:skip=CKV_AWS_50:X-Ray tracing is off; ADR-011 structured tracing is application-level and X-Ray adds per-trace charges.
   #checkov:skip=CKV_AWS_115:No reserved concurrency; SQS event sources cap concurrency at 2 and the HTTP API is throttled, and reserving concurrency is not possible on accounts with the reduced new-account concurrency quota.
   #checkov:skip=CKV_AWS_116:No function DLQ; the functions are invoked synchronously (HTTP API, SQS event source mappings) and failed SQS messages go to the queue DLQs.
-  #checkov:skip=CKV_AWS_173:Environment variables hold only non-secret settings and use Lambda's default encryption; no customer managed KMS key.
+  #checkov:skip=CKV_AWS_173:Environment variables hold only non-secret settings (secret ARNs, never values; values come from Secrets Manager at cold start, INFRA-008) and use Lambda's default encryption; no customer managed KMS key.
   #checkov:skip=CKV_AWS_272:No code signing configuration yet; images are immutable, scanned on push and deployed by digest. Signing needs a signing profile and pipeline (INFRA-005).
   for_each = local.function_names
 
