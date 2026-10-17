@@ -1,10 +1,38 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-012 runner applied and run; INFRA-008 secret containers applied — 2026-10-17
+
+**Status:** One docs-only commit on branch `docs/infra-012-apply-record`, not
+yet merged. Owner-applied and owner-run; the runner is off again. INFRA-012
+and INFRA-008 are **not Accepted**. No function of the application exists.
+
+Owner-observed: targeted applies without CloudFront created the two secret
+containers (2), the migrate ECR repository and lifecycle policy (2), and the
+runner (6), which was destroyed again after use (6; repository and image
+kept). The migrate image from `main` at `a150616` is a single OCI manifest
+of 244,510,788 bytes; its scan matches the function images (HIGH 12, MEDIUM
+20, LOW 5, UNDEFINED 1; not triaged). One `docker login` returned HTTP 400
+and succeeded on retry (cause unknown).
+
+Invocations: `status` on the empty database (revision null), `migrate`
+(`0021_analysis_run_provider`, at head, pgvector 0.8.2), `create_app_user`
+(role created, `database-url` written, 27 tables, 20 append-only), final
+`status` at head. Verified: master-secret keys `username`/`password`, a plain
+`GetSecretValue` grant, Secrets Manager through the NAT instance, TLS to the
+database, and the pgvector drift value for ADR-020 (0.8.2 vs local 0.8.6).
+Not verified: the application role logging in to RDS, the API/general
+bootstrap, the Lambda-timeout effect on an open transaction;
+`openai-api-key` is still empty. A deleted secret name cannot be reused for
+30 days.
+
+Next action: the compute apply needs real image digests in `image_uris`,
+the `openai-api-key` value, INFRA-008 Stage B (parser credential, CA bundle
+and `verify-full`) and the CloudFront decision on October 20.
+
 ## INFRA-012 migration runner: Lambda, migrate image target, Terraform module — 2026-10-17
 
-**Status:** Three commits on branch `feat/infra-012-migration-runner`, not
-yet merged. **Not planned or applied; no image pushed; nothing invoked.**
-INFRA-012 is not Accepted.
+**Status:** Merged to `main` in PR #196. Applied and run by the owner on
+2026-10-17 (see the entry above). INFRA-012 is not Accepted.
 
 A manually invoked Lambda (`status`, `migrate`, `create_app_user`) runs
 Alembic under an advisory lock through the unchanged `env.py`, which applies

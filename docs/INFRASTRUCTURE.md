@@ -885,7 +885,9 @@ Deletion protection is on, so a destroy fails until it is turned off:
 
 ## Migration runner (INFRA-012, 2026-10-17)
 
-Code only: **not planned, not applied, no image pushed, nothing invoked.**
+**Applied and run by the owner on 2026-10-17, then turned off again** (see
+[Migration runner apply, 2026-10-17](#migration-runner-apply-2026-10-17)).
+INFRA-012 is not Accepted.
 
 **What it is.** A Lambda function, `ai-qa-copilot-production-migrate`, built
 from the `migrate` target of `apps/api/Dockerfile.lambda` (arm64) and invoked
@@ -1038,12 +1040,12 @@ material. No figure is claimed.
 Stage B, which moves that item from INFRA-012), the CA bundle and
 `verify-full`, parameter tuning, rotation automation, the compute apply.
 
-**OPEN:** the keys of the RDS-managed master secret are not listed on the
-pages read (the runner requires `username` and `password` and fails closed
-otherwise); what happens to an open migration transaction when Lambda stops
-at its timeout is not documented (PostgreSQL rolls back an open transaction
+**OPEN:** what happens to an open migration transaction when Lambda stops at
+its timeout is not documented (PostgreSQL rolls back an open transaction
 when its session ends; when the session ends after a Lambda timeout is
-unverified).
+unverified). **Closed on 2026-10-17 by the owner's run:** the RDS-managed
+master secret holds `username` and `password` keys, and a plain
+`secretsmanager:GetSecretValue` grant is enough to read it (no `kms:Decrypt`).
 
 **pgvector drift.** `status` and `migrate` return `pgvector_version`
 (`extversion` of `vector` in `pg_extension`, or null). The owner records the
@@ -1053,6 +1055,75 @@ value from the first production `migrate` in ADR-020's pgvector drift item
 **Tests run (2026-10-17):** `db-check` on local Docker passed with the five
 runner integration tests (SCRAM login, grants as the role, a later table,
 the pgvector read, the advisory lock and the failing probe migration).
+
+### Migration runner apply, 2026-10-17
+
+Owner-observed facts; the account ID, registry host, database endpoint and
+secret ARNs stay in the owner's private notes.
+
+**Applied** (targeted plans, no CloudFront in any of them):
+
+1. The two secret containers
+   (`module.data_plane.aws_secretsmanager_secret.application`): plan 2 to add,
+   applied.
+2. `module.migration` with `migration_enabled` false: the migrate ECR
+   repository and its lifecycle policy, plan 2 to add, applied.
+3. `module.migration` with `migration_enabled = true` and the image digest:
+   plan 6 to add, applied.
+4. After the invocations, `migration_enabled = false`: 6 destroyed. The ECR
+   repository and the image are kept.
+
+**Image.** Built from `main` at `a150616` with
+`scripts/build_lambda_images.py --function migrate` and pushed: digest
+`sha256:e6e1c0af953800fb6c04d005b00fdaeddd75a66121b7b7e7e4d8a3162c1e2092`,
+a single OCI image manifest, ECR size 244,510,788 bytes. ECR scan on push
+complete: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1, the same counts as the four
+function images (shared base layers). Not triaged; the SG-07 context in the
+INFRA-009 push record is unchanged. One `docker login` attempt returned HTTP
+400 and the same procedure succeeded on retry; the cause is unknown.
+
+**Invocations** (AWS CLI, `AWS_MAX_ATTEMPTS=1`, 960 s read timeout):
+
+| Action | Result |
+|---|---|
+| `status` (empty database) | `revision` null, `head` `0021_analysis_run_provider`, `at_head` false, `pgvector_version` null |
+| `migrate` | `revision_before` null, `revision` `0021_analysis_run_provider`, `at_head` true, `upgraded` true, `pgvector_version` `0.8.2` |
+| `create_app_user` | `role_created` true, `password_rotated` false, `secret_written` true, `tables_granted` 27, `append_only_tables` 20 |
+| `status` (final) | `at_head` true, `pgvector_version` `0.8.2` |
+
+The `database-url` secret's `LastChangedDate` changed after `create_app_user`;
+its value was never read.
+
+**What this verified:**
+
+- The RDS-managed master secret has `username` and `password` keys, and a plain
+  `GetSecretValue` grant on its ARN is enough to read it (the first `status`
+  call succeeded).
+- The function reaches Secrets Manager through the NAT instance and the
+  database over TLS (`sslmode=require`) from the egress subnet.
+- A clean production database was migrated to head and the revision read back
+  (the INFRA-012 acceptance's first part). `CREATE EXTENSION vector` ran as the
+  master user (`rds_superuser`) inside the single migration transaction.
+- **pgvector drift (ADR-020):** RDS installed **0.8.2**; local Compose runs
+  0.8.6-pg17. The difference is now recorded, not resolved; the retrieval
+  index behaviour on 0.8.2 is not yet tested.
+- The application role exists with the grants above (27 tables, 20
+  append-only) and its URL is in the `database-url` secret.
+
+**Not verified:**
+
+- That the application role logs in to RDS: the SCRAM verifier login was
+  verified only against local PostgreSQL (`db-check`).
+- That the API and general bootstrap reads the URL and connects: that needs
+  the compute apply.
+- What a Lambda timeout does to an open migration transaction.
+- The `openai-api-key` secret is still **empty**, so the API and general
+  functions would fail closed at cold start today.
+
+**Recovery window.** Both application secrets have a 30-day recovery window:
+if one is deleted (by Terraform or by hand), a secret with the same name cannot
+be created again for 30 days unless the deletion is cancelled with
+`restore-secret` first.
 
 ### Migration runbook (owner, local credentials)
 
@@ -1166,8 +1237,11 @@ ECR repository and its images stay. Apply.
 
 ## Secrets and the cold-start bootstrap (INFRA-008 Stage A, 2026-10-16)
 
-Code only: **not planned, not applied, no secret exists, no value is set.**
-Stage B (the parser database credential, the RDS CA bundle and
+**Secret containers applied on 2026-10-17** (targeted, 2 to add). The
+`database-url` value was written by the migration runner
+(`create_app_user`); `openai-api-key` is still **empty**. The bootstrap has
+not run in AWS yet (no function exists before the compute apply). Stage B
+(the parser database credential, the RDS CA bundle and
 `sslmode=verify-full`) is open.
 
 **Application code.** `apps/api/src/ai_qa_copilot_api/secrets_bootstrap.py`:
@@ -1216,7 +1290,8 @@ Stage B (the parser database credential, the RDS CA bundle and
   `ai-qa-copilot-production/openai-api-key`, with no
   `aws_secretsmanager_secret_version`, so no value is in configuration,
   variables, tfvars or state. AWS managed key `aws/secretsmanager`; recovery
-  window 30 days. A `ReadApplicationSecrets` statement grants
+  window 30 days, so a deleted secret's name cannot be reused for 30 days
+  unless the deletion is cancelled. A `ReadApplicationSecrets` statement grants
   `secretsmanager:GetSecretValue` on exactly those two ARNs to the **api** and
   **general** roles only. The parser and executor roles get nothing, and no
   function role may read the RDS-managed master secret. Output
