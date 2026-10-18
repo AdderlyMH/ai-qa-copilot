@@ -1,9 +1,28 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Optional guest-demo CloudFront; parser queue grant removed — 2026-10-18
+
+**Status:** Three commits on branch `feat/infra-cloudfront-optional-parser-sqs`,
+not yet merged. **Not planned or applied.**
+
+The parser role's `sqs:SendMessage` on the general queue and the parser's
+`GENERAL_QUEUE_URL` are removed: no parser code path uses SQS (ADR-018 option
+A). New `demo_cdn_enabled` flag (default true, unchanged behaviour): when
+false there is no CloudFront distribution, origin access control or data
+lookup, the demo bucket policy has no CloudFront statement and is known at
+plan time, the distribution outputs are null, and a targeted data-plane plan
+no longer plans CloudFront. The demo bucket stays private. While the flag is
+false the guest page has no HTTPS host. Checkov unchanged (381 passed, 0
+failed, 61 skipped). Five new Terraform text contract tests.
+
+Next action: owner review and merge; set `demo_cdn_enabled = false` in the
+private tfvars if CloudFront stays unavailable after the October 20
+decision; then the targeted role-policy plan (parser, api and general role
+policies updated in place) and, later, the compute apply.
+
 ## INFRA-012 runner applied and run; INFRA-008 secret containers applied — 2026-10-17
 
-**Status:** One docs-only commit on branch `docs/infra-012-apply-record`, not
-yet merged. Owner-applied and owner-run; the runner is off again. INFRA-012
+**Status:** Merged to `main` in PR #197. Owner-applied and owner-run; the runner is off again. INFRA-012
 and INFRA-008 are **not Accepted**. No function of the application exists.
 
 Owner-observed: targeted applies without CloudFront created the two secret
