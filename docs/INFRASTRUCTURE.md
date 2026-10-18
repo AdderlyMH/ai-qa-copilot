@@ -883,6 +883,85 @@ Deletion protection is on, so a destroy fails until it is turned off:
    needed.
 4. Restore deletion protection in code before any new database is created.
 
+## Optional guest-demo CloudFront and the parser queue grant (2026-10-18)
+
+Code only: **not planned, not applied.**
+
+### Parser `sqs:SendMessage` removed
+
+No parser code path sends to SQS or reads `GENERAL_QUEUE_URL`. The parser
+handler (`lambda_workers.build_parser_composition`) reads only the claim
+duration, `DATABASE_URL` and `DATA_BUCKET_NAME`, builds only an S3 client
+(`s3_quarantine.py`), and imports neither `general_wakeup`, `parser_wakeup`
+nor `main`; `GENERAL_QUEUE_URL` is read only by the API (`general_wakeup.py`,
+through `main.py`). ADR-018 option A keeps the parser-to-general handoff in
+the database and removes this grant.
+
+- `infra/modules/data_plane`: the parser policy document loses the
+  `EnqueueAcceptedGeneralJob` statement. It now has `WriteOwnLogs`,
+  `ConsumeParserQueue` and `ReadQuarantine` only. The API's `EnqueueJobs` and
+  the general policy are unchanged.
+- `infra/modules/compute_api`: `GENERAL_QUEUE_URL` is removed from the parser
+  environment as a leftover.
+- `apps/api/tests/test_infra_contracts.py` pins both.
+
+### `demo_cdn_enabled`
+
+**Why the CloudFront distribution reached data-plane plans.** The demo bucket
+policy (`aws_iam_policy_document.tls_only`) adds the CloudFront read statement
+with `for_each = ... var.demo_cloudfront_distribution_arn != null ...`, and the
+root fed that input from `module.compute_api.demo_distribution_arn`. Before
+the distribution exists its ARN is unknown, so the condition and the whole
+policy document were "known after apply", and a targeted `module.data_plane`
+plan included the distribution and its origin access control as dependencies.
+
+**The flag** (`compute_api` and the production root; bool, default **true**,
+not nullable):
+
+- `true` (default): unchanged. The distribution, its origin access control and
+  the two managed-policy data sources are created as before (now `[0]`
+  instances; `moved` blocks map the old addresses, which were never applied).
+  Checkov results are identical (381 passed, 0 failed, 61 skipped).
+- `false`: no `aws_cloudfront_*` resource and no CloudFront data-source lookup.
+  The origin access control is gated too, because only the distribution uses
+  it. The root passes `demo_cloudfront_distribution_arn = null`, a known value,
+  so the demo bucket policy contains only `DenyInsecureTransport` and is fully
+  known at plan time. The outputs `demo_distribution_domain_name` and
+  `demo_distribution_arn` (module and root) are null. The root still
+  references the compute module's output in that expression, so Terraform keeps
+  the edge, but it resolves to zero CloudFront instances: a targeted
+  `module.data_plane` plan no longer plans CloudFront.
+- Either way the demo bucket stays private with Block Public Access on; there
+  is no public-read alternative.
+
+**While the flag is false the guest page has no HTTPS host.** No hosting
+fallback is designed or built; INFRA-010 and INFRA-011 depend on the flag
+being true again. Any AWS support case about CloudFront access (ID, date,
+correspondence) stays in the owner's private notes, not in the repository.
+
+**Owner steps** (no plan was run for this change):
+
+1. In the private `production.tfvars`, set `demo_cdn_enabled = false` (the
+   example file has a commented line).
+2. Data-plane role policies, which carry this change and the INFRA-008 secret
+   grants that were not applied yet:
+
+   ```powershell
+   terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_iam_role_policy.function' "-out=tfplan"
+   ```
+
+   Expected in words: the parser role policy **updated in place** (the
+   `EnqueueAcceptedGeneralJob` statement removed), and the api and general
+   role policies updated in place (the `ReadApplicationSecrets` statement from
+   INFRA-008 Stage A); no resource added or destroyed and no `aws_cloudfront_*`
+   address. Stop on anything else.
+3. A targeted `module.data_plane` plan with the flag false should show the
+   demo bucket policy without a CloudFront statement and without "known after
+   apply" for its policy, and no `aws_cloudfront_*` address.
+4. In the later compute apply, the parser function is created without
+   `GENERAL_QUEUE_URL`, and with the flag false the plan has two fewer
+   resources (no distribution, no origin access control) than with it true.
+
 ## Migration runner (INFRA-012, 2026-10-17)
 
 **Applied and run by the owner on 2026-10-17, then turned off again** (see

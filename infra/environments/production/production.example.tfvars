@@ -49,3 +49,7 @@ image_uris = {
 cognito_owner_subject = "REPLACE_WITH_OWNER_SUB"
 model_provider        = "openai"
 executor_enabled      = false
+
+# Guest-demo CloudFront distribution (default true). Set false while CloudFront
+# is unavailable to the account; the guest page then has no HTTPS host.
+# demo_cdn_enabled = false

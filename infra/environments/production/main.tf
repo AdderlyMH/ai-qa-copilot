@@ -106,6 +106,13 @@ variable "model_provider" {
   default     = "openai"
 }
 
+variable "demo_cdn_enabled" {
+  description = "Create the guest-demo CloudFront distribution. Set false in production.tfvars while CloudFront is unavailable to the account; the guest page then has no HTTPS host."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "executor_enabled" {
   description = "Enable the executor trigger; keep false until SG-08 executor egress control exists (INFRA-004)."
   type        = bool
@@ -217,9 +224,11 @@ module "nat_instance" {
 }
 
 module "data_plane" {
-  source                           = "../../modules/data_plane"
-  name_prefix                      = module.naming.name_prefix
-  demo_cloudfront_distribution_arn = module.compute_api.demo_distribution_arn
+  source      = "../../modules/data_plane"
+  name_prefix = module.naming.name_prefix
+  # null while demo_cdn_enabled is false: a known value, so the demo bucket
+  # policy is fully known at plan time and has no CloudFront statement.
+  demo_cloudfront_distribution_arn = var.demo_cdn_enabled ? module.compute_api.demo_distribution_arn : null
 }
 
 module "migration" {
@@ -256,6 +265,7 @@ module "compute_api" {
   cognito_owner_subject            = var.cognito_owner_subject
   model_provider                   = var.model_provider
   executor_enabled                 = var.executor_enabled
+  demo_cdn_enabled                 = var.demo_cdn_enabled
 }
 
 output "http_api_endpoint" {

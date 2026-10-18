@@ -151,6 +151,13 @@ variable "model_provider" {
   }
 }
 
+variable "demo_cdn_enabled" {
+  description = "Create the guest-demo CloudFront distribution and its origin access control. False: no CloudFront resource, the demo bucket policy has no CloudFront statement, and the guest page has no HTTPS host."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
 variable "executor_enabled" {
   description = "Enable the execution queue trigger and the executor's explicit enable flag. Off until SG-08 executor egress control exists (INFRA-004)."
   type        = bool
@@ -226,7 +233,6 @@ locals {
       APP_ENV               = "production"
       PARSER_WORKER_ROLE    = "restricted-parser"
       PARSER_WORKER_NETWORK = "none"
-      GENERAL_QUEUE_URL     = var.queue_urls["general"]
       DATA_BUCKET_NAME      = var.data_bucket_name
     }
     general = merge(local.secret_arn_environment, {
@@ -398,15 +404,36 @@ resource "aws_lambda_permission" "http_api" {
 
 # ---------------------------------------------------------------- CloudFront
 
+# Everything below exists only while demo_cdn_enabled is true. The origin
+# access control serves only this distribution, so it is gated with it.
+locals {
+  demo_cdn_count = var.demo_cdn_enabled ? 1 : 0
+}
+
 data "aws_cloudfront_cache_policy" "optimized" {
-  name = "Managed-CachingOptimized"
+  count = local.demo_cdn_count
+  name  = "Managed-CachingOptimized"
 }
 
 data "aws_cloudfront_response_headers_policy" "security" {
-  name = "Managed-SecurityHeadersPolicy"
+  count = local.demo_cdn_count
+  name  = "Managed-SecurityHeadersPolicy"
+}
+
+# Addresses before the flag existed; nothing was applied under them, so these
+# are no-ops today and keep a future plan from replacing an applied resource.
+moved {
+  from = aws_cloudfront_origin_access_control.demo
+  to   = aws_cloudfront_origin_access_control.demo[0]
+}
+
+moved {
+  from = aws_cloudfront_distribution.demo
+  to   = aws_cloudfront_distribution.demo[0]
 }
 
 resource "aws_cloudfront_origin_access_control" "demo" {
+  count                             = local.demo_cdn_count
   name                              = "${var.name_prefix}-demo"
   description                       = "Guest-demo publications bucket"
   origin_access_control_origin_type = "s3"
@@ -422,6 +449,7 @@ resource "aws_cloudfront_distribution" "demo" {
   #checkov:skip=CKV2_AWS_42:No custom certificate; custom domain and ACM are deferred.
   #checkov:skip=CKV_AWS_310:No origin failover; a single private S3 origin in one Region (ADR-017).
   #checkov:skip=CKV_AWS_374:No geo restriction; the public demo is intended to be reachable worldwide.
+  count               = local.demo_cdn_count
   enabled             = true
   comment             = "Guest demo: static DemoPublication snapshots (publications/ only)"
   default_root_object = "index.html"
@@ -433,7 +461,7 @@ resource "aws_cloudfront_distribution" "demo" {
     origin_id                = "demo-publications"
     domain_name              = var.demo_bucket_regional_domain_name
     origin_path              = "/publications"
-    origin_access_control_id = aws_cloudfront_origin_access_control.demo.id
+    origin_access_control_id = aws_cloudfront_origin_access_control.demo[0].id
   }
 
   default_cache_behavior {
@@ -441,8 +469,8 @@ resource "aws_cloudfront_distribution" "demo" {
     viewer_protocol_policy     = "https-only"
     allowed_methods            = ["GET", "HEAD"]
     cached_methods             = ["GET", "HEAD"]
-    cache_policy_id            = data.aws_cloudfront_cache_policy.optimized.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security.id
+    cache_policy_id            = data.aws_cloudfront_cache_policy.optimized[0].id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security[0].id
     compress                   = true
   }
 
@@ -516,13 +544,13 @@ output "http_api_endpoint" {
 }
 
 output "demo_distribution_domain_name" {
-  description = "Default CloudFront domain of the guest demo."
-  value       = aws_cloudfront_distribution.demo.domain_name
+  description = "Default CloudFront domain of the guest demo, or null while demo_cdn_enabled is false."
+  value       = var.demo_cdn_enabled ? aws_cloudfront_distribution.demo[0].domain_name : null
 }
 
 output "demo_distribution_arn" {
-  description = "CloudFront distribution ARN, used by the demo bucket policy."
-  value       = aws_cloudfront_distribution.demo.arn
+  description = "CloudFront distribution ARN for the demo bucket policy, or null while demo_cdn_enabled is false."
+  value       = var.demo_cdn_enabled ? aws_cloudfront_distribution.demo[0].arn : null
 }
 
 output "cognito_user_pool_id" {
