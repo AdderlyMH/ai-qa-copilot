@@ -76,3 +76,54 @@ def test_the_parser_environment_has_no_queue_url() -> None:
         "PARSER_WORKER_NETWORK",
         "DATA_BUCKET_NAME",
     ]
+
+
+PRODUCTION_ROOT = ROOT / "infra/environments/production/main.tf"
+
+
+def test_demo_cdn_flag_defaults_to_today_and_gates_every_cloudfront_object() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    flag = code(block(compute, 'variable "demo_cdn_enabled"'))
+
+    assert "type        = bool" in flag
+    assert "default     = true" in flag
+    assert "nullable    = false" in flag
+    for header in (
+        'data "aws_cloudfront_cache_policy" "optimized"',
+        'data "aws_cloudfront_response_headers_policy" "security"',
+        'resource "aws_cloudfront_origin_access_control" "demo"',
+        'resource "aws_cloudfront_distribution" "demo"',
+    ):
+        assert re.search(
+            r"count\s+=\s+local\.demo_cdn_count", block(compute, header)
+        ), header
+    assert "demo_cdn_count = var.demo_cdn_enabled ? 1 : 0" in compute
+    for name in ("demo_distribution_domain_name", "demo_distribution_arn"):
+        assert "var.demo_cdn_enabled ?" in block(compute, f'output "{name}"')
+        assert ": null" in block(compute, f'output "{name}"')
+
+
+def test_the_demo_bucket_policy_gets_a_known_null_when_the_cdn_is_off() -> None:
+    root = PRODUCTION_ROOT.read_text(encoding="utf-8")
+    data_plane = DATA_PLANE.read_text(encoding="utf-8")
+
+    assert (
+        "demo_cloudfront_distribution_arn = var.demo_cdn_enabled ? "
+        "module.compute_api.demo_distribution_arn : null" in root
+    )
+    assert "demo_cdn_enabled                 = var.demo_cdn_enabled" in root
+    policy = block(data_plane, 'data "aws_iam_policy_document" "tls_only"')
+    assert "var.demo_cloudfront_distribution_arn != null" in policy
+    # The demo bucket stays private either way: Block Public Access is
+    # unconditional and no statement grants a public principal read access.
+    access = code(
+        block(data_plane, 'resource "aws_s3_bucket_public_access_block" "this"')
+    )
+    for setting in (
+        "block_public_acls",
+        "block_public_policy",
+        "ignore_public_acls",
+        "restrict_public_buckets",
+    ):
+        assert re.search(rf"{setting}\s+=\s+true", access), setting
+    assert "count" not in access
