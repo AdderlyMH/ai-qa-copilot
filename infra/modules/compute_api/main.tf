@@ -226,7 +226,6 @@ locals {
       APP_ENV               = "production"
       PARSER_WORKER_ROLE    = "restricted-parser"
       PARSER_WORKER_NETWORK = "none"
-      GENERAL_QUEUE_URL     = var.queue_urls["general"]
       DATA_BUCKET_NAME      = var.data_bucket_name
     }
     general = merge(local.secret_arn_environment, {

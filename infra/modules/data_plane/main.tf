@@ -445,11 +445,9 @@ data "aws_iam_policy_document" "parser" {
     resources = [aws_sqs_queue.source["parser"].arn]
   }
 
-  statement {
-    sid       = "EnqueueAcceptedGeneralJob"
-    actions   = ["sqs:SendMessage"]
-    resources = [aws_sqs_queue.source["general"].arn]
-  }
+  # No sqs:SendMessage: the parser never sends to the general queue. The
+  # handoff stays in the database and the API sends the general wake-up
+  # (ADR-018 option A, which removes this grant).
 
   statement {
     sid       = "ReadQuarantine"
