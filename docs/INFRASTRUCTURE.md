@@ -885,8 +885,14 @@ Deletion protection is on, so a destroy fails until it is turned off:
 
 ## Parser database credential and verify-full (INFRA-008 Stage B, 2026-10-19)
 
-Code only: **not planned, not applied, no image rebuilt or pushed, nothing
-invoked.** The decision is recorded in
+**Update (2026-10-19, owner run):** merged to `main` at `109a4e0`; all five
+images rebuilt and pushed, the parser secret container and the runner
+applied, `status`, `create_app_user` with `rotate` and `create_parser_user`
+invoked, runner off again. See
+[Stage B rollout, 2026-10-19](#stage-b-rollout-2026-10-19). Applied and run,
+**not Accepted**. The paragraphs below describe the code as merged.
+
+The decision is recorded in
 [ADR-021](adr/ADR-021-parser-database-credential.md) (owner decision
 2026-10-18): the ADR-018 fallback for the parser, no IAM database
 authentication.
@@ -922,10 +928,11 @@ authentication.
   `make_url` decodes. libpq `verify-full` checks the CA and the host name.
   Local Compose and test paths (no TLS) are unchanged. verify-full itself is
   **not testable locally**.
-- **The `database-url` value written on 2026-10-17 still says
-  `sslmode=require`.** Rewrite it with `create_app_user` and `"rotate": true`
-  (runbook step 6) before the compute apply; no API or general function
-  exists yet, so no warm environment holds the old password.
+- **The `database-url` value written on 2026-10-17 said
+  `sslmode=require`.** It was rewritten with `create_app_user` and
+  `"rotate": true` on 2026-10-19 (runbook step 6; see the rollout record); no
+  API or general function existed, so no warm environment held the old
+  password.
 
 ### Parser role (`create_parser_user`)
 
@@ -1024,9 +1031,38 @@ everything. No other new cost.
 
 Under the [local-credential apply exception](#local-credential-apply-exception).
 **Stop rule** for every plan: stop on any destroy or replace (except step 7),
-anything in `module.compute_api` before step 8, any IAM permission beyond the
-ones above, or `DATABASE_URL` in any function environment other than the
-parser's.
+anything in `module.compute_api` before step 8 (other than the three moved
+objects below, which must show as moved, not added, changed or destroyed),
+any IAM permission beyond the ones above, or `DATABASE_URL` in any function
+environment other than the parser's.
+
+#### Targeted plans while `demo_cdn_enabled` is true
+
+Owner-observed on 2026-10-19: the first targeted plan after the merge failed
+with "Moved resource instances excluded by targeting". The `demo_cdn_enabled`
+change moved three objects in state to `[0]` addresses: the CloudFront
+origin access control (applied on 2026-10-13) and the two managed-policy data
+sources. A targeted plan must include them. While `demo_cdn_enabled` is true,
+add these three options to every targeted plan of `module.migration` or
+`module.data_plane` (in this runbook, the migration runbook and the secret
+values runbook). These are the unindexed forms the owner ran successfully on
+2026-10-19:
+
+```powershell
+'-target=module.compute_api.data.aws_cloudfront_cache_policy.optimized' '-target=module.compute_api.data.aws_cloudfront_response_headers_policy.security' '-target=module.compute_api.aws_cloudfront_origin_access_control.demo'
+```
+
+For example, step 5 below becomes:
+
+```powershell
+terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_secretsmanager_secret.parser_database_url' '-target=module.migration' '-target=module.compute_api.data.aws_cloudfront_cache_policy.optimized' '-target=module.compute_api.data.aws_cloudfront_response_headers_policy.security' '-target=module.compute_api.aws_cloudfront_origin_access_control.demo' "-out=tfplan"
+```
+
+The plan must show the origin access control as moved, with no change,
+replace or destroy on it. Whether the extra options are still needed once
+the moves are in state is not verified; keep them while the flag is true.
+With `demo_cdn_enabled = false` the applied origin access control is
+destroyed; see the expected plan in the `demo_cdn_enabled` owner steps.
 
 1. **Verify the bundle** against a fresh download (repository root):
 
@@ -1062,7 +1098,9 @@ parser's.
    `'-target=module.migration'`: expect 6 to add (the runner was turned off
    on 2026-10-17), with the inline policy holding `WriteParserDatabaseUrlSecret`
    and the environment holding `PARSER_DATABASE_URL_SECRET_ARN` and
-   `PARSER_DB_USER`; apply.
+   `PARSER_DB_USER`; apply. Both plans need the three extra options above.
+   On 2026-10-19 the owner ran the two as one plan with
+   `migration_enabled = true` (the combined example above): 7 to add.
 6. **Invoke** with the [migration runbook](#migration-runbook-owner-local-credentials)
    step d block, in order: `'{"action":"status"}'`,
    `'{"action":"create_app_user","rotate":true}'` (rewrites `database-url`
@@ -1070,12 +1108,88 @@ parser's.
    connection), then `'{"action":"create_parser_user"}'` (expect
    `role_created` true, `secret_written` true, `tables_granted` 8,
    `read_only_tables` 2).
-7. **Runner off:** `migration_enabled = false`, plan `'-target=module.migration'`:
-   6 to destroy, nothing else; apply.
+7. **Runner off:** `migration_enabled = false`, plan `'-target=module.migration'`
+   with the three extra options: 6 to destroy, nothing else; apply.
 8. **At the compute apply:** set `parser_database_url_enabled = true`. The plan
    reads the parser secret; the parser function's environment shows a
    sensitive value and no other function shows `DATABASE_URL`. If the plan
    fails reading the secret, step 6 did not write it.
+
+### Stage B rollout, 2026-10-19
+
+Owner-observed facts; the account ID, registry host, database endpoint and
+secret ARNs stay in the owner's private notes.
+
+**Images.** All five rebuilt from `main` at `109a4e0` and pushed to the
+immutable ECR repositories, tag = the commit SHA. Each is a single OCI image
+manifest. In each image the file sha256 of `certs/rds-global-bundle.pem` is
+`90a6f1a7978a1b1b096dca6c57511ca48d3b8cf052f8e704baf358f34ea2f21b` (the
+recorded value).
+
+| Image | ECR digest | ECR size (bytes) |
+|---|---|---|
+| `api` | `sha256:372901723953f101f7adab966a58dcb23d9199a5e4f64c5b850782cf55d2545c` | 243,699,315 |
+| `parser` | `sha256:f68d4db394cb75989f8c7a2b03f7f459d71fbda5e48272628d277400fc0c22be` | 243,699,337 |
+| `general` | `sha256:6a5b4ff64111bd4704c3e9eb2cb311d696698d48e1b775e7e78db41610e96737` | 243,699,339 |
+| `executor` | `sha256:6a73d4ffe3079de5c85c23b0135ff3b988d2b36c7b4e72f37d3bed2086d6a245` | 243,699,341 |
+| `migrate` | `sha256:128a69b6cea549cf691f3c459b2491fc18c099c133baeb9bb34a92e0ebb7ecf1` | 244,594,205 |
+
+ECR scan on push complete on all five: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1
+each (shared base layers). Not triaged; the SG-07 context in the
+[INFRA-009 push record](#push-record-2026-10-16) is unchanged.
+
+**Plans and applies.**
+
+1. The first targeted plan after the merge failed with "Moved resource
+   instances excluded by targeting" (see
+   [Targeted plans while `demo_cdn_enabled` is true](#targeted-plans-while-demo_cdn_enabled-is-true)).
+2. With the three extra options: the parser secret container and the runner
+   (`migration_enabled = true`, new digest) in one targeted plan, 7 to add
+   (six runner resources plus the `parser-database-url` container); apply 7
+   added.
+3. After the invocations, `migration_enabled = false`: 0 to add, 0 to
+   change, 6 to destroy; applied. The ECR repositories, the secrets and the
+   images are kept.
+
+**Invocations:**
+
+| Action | Result |
+|---|---|
+| `status` | `at_head` true, `pgvector_version` `0.8.2` |
+| `create_app_user` with `rotate` | `role_created` false, `password_rotated` true, `secret_written` true, `tables_granted` 27, `append_only_tables` 20 |
+| `create_parser_user` | `role_created` true, `password_rotated` false, `secret_written` true, `tables_granted` 8, `read_only_tables` 2 |
+
+The `status` call was the first real `verify-full` connection to RDS, made
+from the migrate image (the runner's master connection). `create_app_user`
+rewrote `database-url` with `verify-full` and applied the tighter grants on
+RDS. The `parser-database-url` secret's `LastChangedDate` is set. No secret
+value was read.
+
+**Readings** (24 hourly points, no application connections, MiB = bytes /
+1,048,576): `FreeableMemory` hourly minimum about 77 to 122 MiB; `SwapUsage`
+hourly average about 191 to 217 MiB. Recorded, not a verdict; the ADR-020
+threshold stays OPEN.
+
+**Not verified:**
+
+- That the application and parser roles log in to RDS (their SCRAM logins
+  are verified only on local PostgreSQL).
+- `verify-full` from the api, general and parser images (only the migrate
+  image has connected).
+- What a Lambda timeout does to an open transaction.
+- `openai-api-key` is still **empty**.
+
+INFRA-008 Stage B and INFRA-012 are applied and run, **not Accepted** until
+the roles are shown to connect from functions.
+
+**Next actions:**
+
+- The compute apply needs the four function digests above in `image_uris`,
+  the `openai-api-key` value, `parser_database_url_enabled = true`, and the
+  CloudFront decision (October 20: `demo_cdn_enabled = false` if the case is
+  unresolved).
+- SG-07 disposition of the scan findings before the December 6 freeze.
+- The weekly base-digest check ([Refresh the base image digest](#refresh-the-base-image-digest)).
 
 ## Optional guest-demo CloudFront and the parser queue grant (2026-10-18)
 
@@ -1114,7 +1228,14 @@ not nullable):
 
 - `true` (default): unchanged. The distribution, its origin access control and
   the two managed-policy data sources are created as before (now `[0]`
-  instances; `moved` blocks map the old addresses, which were never applied).
+  instances; `moved` blocks map the old addresses).
+  **Correction (2026-10-19):** this said the old addresses were never
+  applied. The origin access control **was** applied on 2026-10-13 (with the
+  targeted `data_plane` apply), so its `moved` block does real work: it keeps
+  the existing origin access control from being replaced. It is not a no-op.
+  The distribution was never applied. Targeted plans must now include the
+  moved objects; see
+  [Targeted plans while `demo_cdn_enabled` is true](#targeted-plans-while-demo_cdn_enabled-is-true).
   Checkov results are identical (381 passed, 0 failed, 61 skipped).
 - `false`: no `aws_cloudfront_*` resource and no CloudFront data-source lookup.
   The origin access control is gated too, because only the distribution uses
@@ -1137,6 +1258,15 @@ correspondence) stays in the owner's private notes, not in the repository.
 
 1. In the private `production.tfvars`, set `demo_cdn_enabled = false` (the
    example file has a commented line).
+
+   **Expected plan while the flag is false (added 2026-10-19).** The origin
+   access control applied on 2026-10-13 is **destroyed**: exactly 1 destroy,
+   `module.compute_api.aws_cloudfront_origin_access_control.demo`. It has no
+   charge, and it is recreated if the flag is turned back on. Nothing else is
+   destroyed, and no `aws_cloudfront_distribution` appears (none was ever
+   applied). **Not verified:** how the `moved` blocks behave when the count
+   is 0. If Terraform reports "Moved resource instances excluded by
+   targeting", add the `-target` options it lists to that plan.
 2. Data-plane role policies, which carry this change and the INFRA-008 secret
    grants that were not applied yet:
 
@@ -1147,11 +1277,13 @@ correspondence) stays in the owner's private notes, not in the repository.
    Expected in words: the parser role policy **updated in place** (the
    `EnqueueAcceptedGeneralJob` statement removed), and the api and general
    role policies updated in place (the `ReadApplicationSecrets` statement from
-   INFRA-008 Stage A); no resource added or destroyed and no `aws_cloudfront_*`
-   address. Stop on anything else.
+   INFRA-008 Stage A); no resource added, no destroy other than the origin
+   access control above, and no `aws_cloudfront_distribution`. Stop on
+   anything else.
 3. A targeted `module.data_plane` plan with the flag false should show the
    demo bucket policy without a CloudFront statement and without "known after
-   apply" for its policy, and no `aws_cloudfront_*` address.
+   apply" for its policy; the only `aws_cloudfront_*` address is the origin
+   access control destroy above.
 4. In the later compute apply, the parser function is created without
    `GENERAL_QUEUE_URL`, and with the flag false the plan has two fewer
    resources (no distribution, no origin access control) than with it true.
@@ -1406,7 +1538,11 @@ PowerShell, from `infra/environments/production` unless noted, under the
 (every plan needs it). Read every plan in full. **Stop rule** for every plan
 below: stop if it shows any destroy or replace (except step f), anything in
 `module.compute_api`, or any IAM permission other than the ones listed in the
-migration section.
+migration section. **Since 2026-10-19**, while `demo_cdn_enabled` is true,
+every targeted plan below needs the three extra `-target` options in
+[Targeted plans while `demo_cdn_enabled` is true](#targeted-plans-while-demo_cdn_enabled-is-true);
+the three moved objects in `module.compute_api` are the only exception to the
+rule above, and must show as moved only.
 
 **a. Secret containers (INFRA-008 Stage A).** The two
 `aws_secretsmanager_secret.application` resources depend only on the name
@@ -1515,8 +1651,8 @@ ECR repository and its images stay. Apply.
 (`create_app_user`); `openai-api-key` is still **empty**. The bootstrap has
 not run in AWS yet (no function exists before the compute apply). Stage B
 (the parser database credential, the RDS CA bundle and
-`sslmode=verify-full`) is implemented in code, not applied (see the Stage B
-section).
+`sslmode=verify-full`) was applied and run on 2026-10-19 and is not
+Accepted (see the Stage B section).
 
 **Application code.** `apps/api/src/ai_qa_copilot_api/secrets_bootstrap.py`:
 
@@ -1667,8 +1803,8 @@ command line, in history or in the repository.
    The query prints only the new version ID, not the ARN. For reference, the
    runner writes `database-url` in the form
    `postgresql+psycopg://<application user>:<password>@<endpoint>:5432/ai_qa_copilot?sslmode=verify-full&sslrootcert=<bundle path>`
-   since Stage B (the value written on 2026-10-17 still has `sslmode=require`
-   until it is rewritten with `create_app_user` and `rotate`).
+   since Stage B (the value written on 2026-10-17 had `sslmode=require`; it
+   was rewritten with `create_app_user` and `rotate` on 2026-10-19).
 
 3. Check that a value exists without printing it:
 
@@ -1687,7 +1823,8 @@ command line, in history or in the repository.
   API and general functions fail closed at cold start until both values are
   set.
 
-**Stage B (implemented in code 2026-10-19, not applied):** the parser
+**Stage B (implemented 2026-10-19, applied and run by the owner the same
+day, not Accepted):** the parser
 credential (ADR-018 fallback, ADR-021) and the RDS CA bundle with
 `sslmode=verify-full`; see the Stage B section. Parameter-group tuning
 remains open.
@@ -2088,6 +2225,9 @@ in us-east-1. Facts only; account and resource identifiers are not recorded here
   63 resources.
 - `compute_api` was **not** applied (no Lambda functions, HTTP API, CloudFront
   distribution, demo bucket policy or Cognito user pool exist).
+  **Correction (2026-10-19):** the CloudFront origin access control in
+  `compute_api` **was** created on 2026-10-13 (owner-observed); see the
+  `demo_cdn_enabled` section.
 
 **What failed or drifted:**
 

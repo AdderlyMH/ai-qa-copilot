@@ -1,10 +1,56 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-008 Stage B rollout: images pushed, runner run, parser role created — 2026-10-19
+
+**Status:** Owner-applied and owner-run; the runner is off again.
+INFRA-008 Stage B and INFRA-012 are applied and run, **NOT Accepted** until
+the application and parser roles are shown to connect from functions. No
+function of the application exists.
+
+Owner-observed: all five images rebuilt from `main` at `109a4e0` and pushed
+to the immutable ECR repositories (tag = commit SHA), single OCI manifests;
+each image's `certs/rds-global-bundle.pem` has the recorded sha256. Full
+digests and ECR sizes (about 243.7 MB for the four function images, 244.6 MB
+for migrate) are in the INFRASTRUCTURE.md rollout record. ECR scan on all
+five: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 (shared base layers, not
+triaged; SG-07 context unchanged).
+
+The first targeted plan failed with "Moved resource instances excluded by
+targeting": `demo_cdn_enabled` moved the CloudFront origin access control
+and two managed-policy data sources to `[0]`. **Correction:** the origin
+access control was applied on 2026-10-13, so its `moved` block keeps it
+from being replaced (earlier text said the old addresses were never
+applied). The runbook's `module.migration` and `module.data_plane` targeted
+plans now add three `-target` options while the flag is true.
+
+Runner: targeted plan 7 to add (six runner resources plus the
+`parser-database-url` container), apply 7 added. `status`: at head,
+pgvector 0.8.2, the first real `verify-full` connection to RDS (migrate
+image). `create_app_user` with rotate: password rotated, `database-url`
+rewritten with `verify-full`, 27 tables, 20 append-only (tighter grants
+applied on RDS). `create_parser_user`: role created, secret written, 8
+tables, 2 read-only (values never read). Runner off: 6 destroyed;
+repositories, secrets and images kept.
+
+Readings 2026-10-19 (24 hourly points, no application connections):
+`FreeableMemory` hourly minimum about 77 to 122 MiB, `SwapUsage` hourly
+average about 191 to 217 MiB. Recorded, not a verdict; ADR-020 threshold
+OPEN.
+
+Not verified: the application and parser roles logging in to RDS;
+`verify-full` from the api, general and parser images; the Lambda-timeout
+effect on an open transaction. `openai-api-key` is still empty.
+
+Next action: the compute apply needs the four function digests in
+`image_uris`, the OpenAI key, `parser_database_url_enabled = true` and the
+CloudFront decision (October 20: `demo_cdn_enabled = false` if the case is
+unresolved); SG-07 disposition before the December 6 freeze; the weekly
+base-digest check.
+
 ## INFRA-008 Stage B: parser credential, RDS CA bundle, verify-full — 2026-10-19
 
-**Status:** Three commits on branch `feat/infra-008-stage-b`, not yet merged.
-**Not planned or applied; no image rebuilt or pushed; nothing invoked.**
-INFRA-008 is not Accepted.
+**Status:** Merged to `main` in PR #199; applied and run by the owner the
+same day (see the entry above). INFRA-008 is not Accepted.
 
 Owner decision 2026-10-18 (ADR-021): the parser uses the ADR-018 fallback, a
 restricted role whose URL is in its Lambda environment; no IAM database
