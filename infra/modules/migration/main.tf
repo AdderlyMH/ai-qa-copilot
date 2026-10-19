@@ -82,6 +82,22 @@ variable "database_url_secret_arn" {
   type        = string
 }
 
+variable "parser_database_url_secret_arn" {
+  description = "ARN of the parser-database-url secret (INFRA-008 Stage B); the runner may write new versions only, never read it."
+  type        = string
+}
+
+variable "parser_db_user" {
+  description = "Name of the restricted parser database role the runner creates (create_parser_user)."
+  type        = string
+  default     = "ai_qa_copilot_parser"
+
+  validation {
+    condition     = can(regex("^[a-z_][a-z0-9_]{0,62}$", var.parser_db_user))
+    error_message = "parser_db_user must be a lower-case SQL identifier."
+  }
+}
+
 variable "app_db_user" {
   description = "Name of the non-superuser application database role the runner creates."
   type        = string
@@ -249,6 +265,13 @@ data "aws_iam_policy_document" "migrate" {
     actions   = ["secretsmanager:PutSecretValue"]
     resources = [var.database_url_secret_arn]
   }
+
+  # Write only: the runner never reads the parser URL back.
+  statement {
+    sid       = "WriteParserDatabaseUrlSecret"
+    actions   = ["secretsmanager:PutSecretValue"]
+    resources = [var.parser_database_url_secret_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "migrate" {
@@ -282,13 +305,15 @@ resource "aws_lambda_function" "migrate" {
 
   environment {
     variables = {
-      APP_ENV                 = "production"
-      DB_HOST                 = var.db_host
-      DB_PORT                 = tostring(var.db_port)
-      DB_NAME                 = var.db_name
-      MASTER_SECRET_ARN       = var.master_secret_arn
-      DATABASE_URL_SECRET_ARN = var.database_url_secret_arn
-      APP_DB_USER             = var.app_db_user
+      APP_ENV                        = "production"
+      DB_HOST                        = var.db_host
+      DB_PORT                        = tostring(var.db_port)
+      DB_NAME                        = var.db_name
+      MASTER_SECRET_ARN              = var.master_secret_arn
+      DATABASE_URL_SECRET_ARN        = var.database_url_secret_arn
+      APP_DB_USER                    = var.app_db_user
+      PARSER_DATABASE_URL_SECRET_ARN = var.parser_database_url_secret_arn
+      PARSER_DB_USER                 = var.parser_db_user
     }
   }
 

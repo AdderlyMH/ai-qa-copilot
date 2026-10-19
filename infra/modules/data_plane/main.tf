@@ -378,6 +378,20 @@ resource "aws_secretsmanager_secret" "application" {
   recovery_window_in_days = 30
 }
 
+# INFRA-008 Stage B (ADR-018 fallback): the parser's DATABASE_URL. A separate
+# container, deliberately outside application_secrets, so the api and general
+# roles cannot read it. No function role reads it: Terraform reads it at plan
+# time into the parser's environment (compute_api), and only the migration
+# runner may write it. No value here, no version, nothing in state from this
+# resource.
+resource "aws_secretsmanager_secret" "parser_database_url" {
+  #checkov:skip=CKV_AWS_149:Encrypted with the AWS managed key aws/secretsmanager; a customer managed key is required only for cross-account access (none here) and has a monthly charge (ADR-017 cost target, ADR-018).
+  #checkov:skip=CKV2_AWS_57:No automatic rotation: rotation needs a rotation Lambda and the value is a URL string, not the JSON a PostgreSQL rotation function expects. Rotation is manual (create_parser_user with rotate, then a re-apply); revisit in HARD-001.
+  name                    = "${var.name_prefix}/parser-database-url"
+  description             = "DATABASE_URL for the parser (ADR-018 fallback): a PostgreSQL URL for the restricted parser role, written by the migration runner. Value never in Terraform configuration."
+  recovery_window_in_days = 30
+}
+
 locals {
   data_bucket_arn = aws_s3_bucket.this["data"].arn
   demo_bucket_arn = aws_s3_bucket.this["demo"].arn
@@ -572,6 +586,11 @@ output "application_secret_arns" {
     database_url   = aws_secretsmanager_secret.application["database-url"].arn
     openai_api_key = aws_secretsmanager_secret.application["openai-api-key"].arn
   }
+}
+
+output "parser_database_url_secret_arn" {
+  description = "ARN (not value) of the parser-database-url secret."
+  value       = aws_secretsmanager_secret.parser_database_url.arn
 }
 
 output "function_names" {

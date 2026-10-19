@@ -53,3 +53,8 @@ executor_enabled      = false
 # Guest-demo CloudFront distribution (default true). Set false while CloudFront
 # is unavailable to the account; the guest page then has no HTTPS host.
 # demo_cdn_enabled = false
+
+# Parser DATABASE_URL (INFRA-008 Stage B, ADR-018 fallback; default false). Set
+# true only after the migration runner's create_parser_user wrote the
+# parser-database-url secret; the value then lands in Terraform state.
+# parser_database_url_enabled = true

@@ -106,6 +106,13 @@ variable "model_provider" {
   default     = "openai"
 }
 
+variable "parser_database_url_enabled" {
+  description = "Give the parser its DATABASE_URL from the parser-database-url secret (ADR-018 fallback; the value lands in Terraform state). Set true only after create_parser_user has written the secret; false leaves the parser without a database URL (it fails closed)."
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
 variable "demo_cdn_enabled" {
   description = "Create the guest-demo CloudFront distribution. Set false in production.tfvars while CloudFront is unavailable to the account; the guest page then has no HTTPS host."
   type        = bool
@@ -243,6 +250,8 @@ module "migration" {
   db_name                 = module.database.database_name
   master_secret_arn       = module.database.master_user_secret_arn
   database_url_secret_arn = module.data_plane.application_secret_arns.database_url
+
+  parser_database_url_secret_arn = module.data_plane.parser_database_url_secret_arn
 }
 
 module "compute_api" {
@@ -266,6 +275,8 @@ module "compute_api" {
   model_provider                   = var.model_provider
   executor_enabled                 = var.executor_enabled
   demo_cdn_enabled                 = var.demo_cdn_enabled
+  parser_database_url_enabled      = var.parser_database_url_enabled
+  parser_database_url_secret_arn   = module.data_plane.parser_database_url_secret_arn
 }
 
 output "http_api_endpoint" {

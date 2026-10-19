@@ -151,6 +151,18 @@ variable "model_provider" {
   }
 }
 
+variable "parser_database_url_enabled" {
+  description = "Give the parser function its DATABASE_URL from the parser-database-url secret (ADR-018 fallback). False: the parser has no DATABASE_URL and fails closed. True: the secret must already hold a value, or the plan fails."
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
+variable "parser_database_url_secret_arn" {
+  description = "ARN of the parser-database-url secret from the data plane."
+  type        = string
+}
+
 variable "demo_cdn_enabled" {
   description = "Create the guest-demo CloudFront distribution and its origin access control. False: no CloudFront resource, the demo bucket policy has no CloudFront statement, and the guest page has no HTTPS host."
   type        = bool
@@ -197,6 +209,23 @@ data "aws_partition" "current" {}
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
+# ADR-018 fallback (INFRA-008 Stage B), accepted exposure for the parser only:
+# Terraform reads the parser's database URL at plan time, so the value is
+# stored in Terraform state (S3 state bucket, SSE-S3, versioned) and in the
+# Lambda function configuration. The provider marks secret_string sensitive,
+# so plans redact it; state does not. Rotation: run the migration runner's
+# create_parser_user with rotate=true, then re-apply this module.
+data "aws_secretsmanager_secret_version" "parser_database_url" {
+  count     = var.parser_database_url_enabled ? 1 : 0
+  secret_id = var.parser_database_url_secret_arn
+}
+
+locals {
+  parser_database_url_environment = var.parser_database_url_enabled ? {
+    DATABASE_URL = sensitive(data.aws_secretsmanager_secret_version.parser_database_url[0].secret_string)
+  } : {}
+}
+
 locals {
   region     = data.aws_region.current.region
   account_id = data.aws_caller_identity.current.account_id
@@ -229,12 +258,14 @@ locals {
       DEMO_BUCKET_NAME          = var.demo_bucket_name
       LOCAL_AUTH_BYPASS_ENABLED = "false"
     })
-    parser = {
+    # The parser is the only function whose environment holds a database URL
+    # (ADR-018 fallback, INFRA-008 Stage B): it cannot reach Secrets Manager.
+    parser = merge({
       APP_ENV               = "production"
       PARSER_WORKER_ROLE    = "restricted-parser"
       PARSER_WORKER_NETWORK = "none"
       DATA_BUCKET_NAME      = var.data_bucket_name
-    }
+    }, local.parser_database_url_environment)
     general = merge(local.secret_arn_environment, {
       APP_ENV          = "production"
       MODEL_PROVIDER   = var.model_provider
@@ -295,7 +326,7 @@ resource "aws_lambda_function" "this" {
   #checkov:skip=CKV_AWS_50:X-Ray tracing is off; ADR-011 structured tracing is application-level and X-Ray adds per-trace charges.
   #checkov:skip=CKV_AWS_115:No reserved concurrency; SQS event sources cap concurrency at 2 and the HTTP API is throttled, and reserving concurrency is not possible on accounts with the reduced new-account concurrency quota.
   #checkov:skip=CKV_AWS_116:No function DLQ; the functions are invoked synchronously (HTTP API, SQS event source mappings) and failed SQS messages go to the queue DLQs.
-  #checkov:skip=CKV_AWS_173:Environment variables hold only non-secret settings (secret ARNs, never values; values come from Secrets Manager at cold start, INFRA-008) and use Lambda's default encryption; no customer managed KMS key.
+  #checkov:skip=CKV_AWS_173:The api, general and executor environments hold only non-secret settings (secret ARNs, never values). The parser environment holds one credential, its restricted DATABASE_URL, only while parser_database_url_enabled is true, by the accepted ADR-018 fallback (the parser has no route to Secrets Manager; the value is also in Terraform state). Lambda's default encryption; no customer managed KMS key.
   #checkov:skip=CKV_AWS_272:No code signing configuration yet; images are immutable, scanned on push and deployed by digest. Signing needs a signing profile and pipeline (INFRA-005).
   for_each = local.function_names
 
