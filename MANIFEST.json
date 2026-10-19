@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 146420,
-      "sha256": "064ee419c0e429708d2a3b30c0949ac625d68415ae117d8e03615071f8df2858"
+      "bytes": 147027,
+      "sha256": "ff04b496901161b048410ab4ec30f01e07e9dd56f1616beb580ee57b0910f765"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",

@@ -1045,25 +1045,24 @@ origin access control (applied on 2026-10-13) and the two managed-policy data
 sources. A targeted plan must include them. While `demo_cdn_enabled` is true,
 add these three options to every targeted plan of `module.migration` or
 `module.data_plane` (in this runbook, the migration runbook and the secret
-values runbook):
+values runbook). These are the unindexed forms the owner ran successfully on
+2026-10-19:
 
 ```powershell
-'-target=module.compute_api.aws_cloudfront_origin_access_control.demo[0]' '-target=module.compute_api.data.aws_cloudfront_cache_policy.optimized[0]' '-target=module.compute_api.data.aws_cloudfront_response_headers_policy.security[0]'
+'-target=module.compute_api.data.aws_cloudfront_cache_policy.optimized' '-target=module.compute_api.data.aws_cloudfront_response_headers_policy.security' '-target=module.compute_api.aws_cloudfront_origin_access_control.demo'
 ```
 
 For example, step 5 below becomes:
 
 ```powershell
-terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_secretsmanager_secret.parser_database_url' '-target=module.migration' '-target=module.compute_api.aws_cloudfront_origin_access_control.demo[0]' '-target=module.compute_api.data.aws_cloudfront_cache_policy.optimized[0]' '-target=module.compute_api.data.aws_cloudfront_response_headers_policy.security[0]' "-out=tfplan"
+terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_secretsmanager_secret.parser_database_url' '-target=module.migration' '-target=module.compute_api.data.aws_cloudfront_cache_policy.optimized' '-target=module.compute_api.data.aws_cloudfront_response_headers_policy.security' '-target=module.compute_api.aws_cloudfront_origin_access_control.demo' "-out=tfplan"
 ```
 
 The plan must show the origin access control as moved, with no change,
 replace or destroy on it. Whether the extra options are still needed once
 the moves are in state is not verified; keep them while the flag is true.
-With `demo_cdn_enabled = false` the code has zero origin access control
-instances, so a plan would destroy the one applied on 2026-10-13; the
-`demo_cdn_enabled` owner steps below did not anticipate that destroy, so
-review it under the stop rule before setting the flag false.
+With `demo_cdn_enabled = false` the applied origin access control is
+destroyed; see the expected plan in the `demo_cdn_enabled` owner steps.
 
 1. **Verify the bundle** against a fresh download (repository root):
 
@@ -1259,6 +1258,15 @@ correspondence) stays in the owner's private notes, not in the repository.
 
 1. In the private `production.tfvars`, set `demo_cdn_enabled = false` (the
    example file has a commented line).
+
+   **Expected plan while the flag is false (added 2026-10-19).** The origin
+   access control applied on 2026-10-13 is **destroyed**: exactly 1 destroy,
+   `module.compute_api.aws_cloudfront_origin_access_control.demo`. It has no
+   charge, and it is recreated if the flag is turned back on. Nothing else is
+   destroyed, and no `aws_cloudfront_distribution` appears (none was ever
+   applied). **Not verified:** how the `moved` blocks behave when the count
+   is 0. If Terraform reports "Moved resource instances excluded by
+   targeting", add the `-target` options it lists to that plan.
 2. Data-plane role policies, which carry this change and the INFRA-008 secret
    grants that were not applied yet:
 
@@ -1269,11 +1277,13 @@ correspondence) stays in the owner's private notes, not in the repository.
    Expected in words: the parser role policy **updated in place** (the
    `EnqueueAcceptedGeneralJob` statement removed), and the api and general
    role policies updated in place (the `ReadApplicationSecrets` statement from
-   INFRA-008 Stage A); no resource added or destroyed and no `aws_cloudfront_*`
-   address. Stop on anything else.
+   INFRA-008 Stage A); no resource added, no destroy other than the origin
+   access control above, and no `aws_cloudfront_distribution`. Stop on
+   anything else.
 3. A targeted `module.data_plane` plan with the flag false should show the
    demo bucket policy without a CloudFront statement and without "known after
-   apply" for its policy, and no `aws_cloudfront_*` address.
+   apply" for its policy; the only `aws_cloudfront_*` address is the origin
+   access control destroy above.
 4. In the later compute apply, the parser function is created without
    `GENERAL_QUEUE_URL`, and with the flag false the plan has two fewer
    resources (no distribution, no origin access control) than with it true.
