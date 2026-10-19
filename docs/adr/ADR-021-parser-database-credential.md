@@ -12,7 +12,10 @@ The parser runs in the parser subnet, which has no route except the S3 gateway e
 Readings recorded so far, with no application connections:
 
 - 2026-10-16: `FreeableMemory` about 65 to 70 MiB at idle after the first 15 minutes (about 223 MiB right after creation); `SwapUsage` about 129 to 138 MiB, rising slowly.
-- 2026-10-18: `FreeableMemory` hourly minimum about 74 to 97 MiB; `SwapUsage` about 175 to 217 MiB.
+- 2026-10-18: `FreeableMemory` hourly minimum about 74 to 97 MiB; `SwapUsage` about 175 to 207 MiB.
+- 2026-10-19 (owner-run, 24 hourly points, no application connections, bytes / 1,048,576): `FreeableMemory` hourly minimum about 77 to 122 MiB; `SwapUsage` hourly average about 191 to 217 MiB; swap daily peak about 163 MiB (Oct 17), 207 MiB (Oct 18) and 217 MiB (Oct 19), growth slowing.
+
+These are recorded readings, not a verdict. The memory cost of IAM authentication itself remains unmeasured (AWS: 300 to 1000 MiB of extra memory).
 
 ## Decision
 

@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 100409,
-      "sha256": "e9b8c312d1e4cba1560a7fb4587a825b552b7c9beeeff66c85dd88b1c1131db5"
+      "bytes": 100970,
+      "sha256": "41945bc68aa88308debb7e7a7b598327ad550b0fd2ab275935e68f139db58bc1"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 138323,
-      "sha256": "aeca6869d6e23e678c9efd2ea036b02bff37424a8f8b8024b1c504fbf5b9e428"
+      "bytes": 139206,
+      "sha256": "84f784c5c394c46bad63c7ff33d9627ba410f9726b3bb2507f2d794fffb9e08f"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 162521,
-      "sha256": "85eb6319a338afb36677d9c14846f98af3dfc5718ee619627fa1e9e4069f342d"
+      "bytes": 163046,
+      "sha256": "a36583b867fdca2c308272d877575da116e09f757bc676bf2777507e30060f1d"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -272,8 +272,8 @@
     },
     {
       "path": "docs/adr/ADR-021-parser-database-credential.md",
-      "bytes": 6278,
-      "sha256": "94e1f3aab874ba2f19f8af7b7fb1c030d04f3a60bcce186eb1fb55de36e59de7"
+      "bytes": 6715,
+      "sha256": "7eb1e4e3bbaf7ec17752aef29251c44cca3535358a8aaeee8cf8db8031cc7c73"
     },
     {
       "path": "docs/adr/README.md",

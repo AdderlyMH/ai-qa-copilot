@@ -15,9 +15,18 @@ copied into all five images and every runner URL and connection uses
 DELETE) writes a new `parser-database-url` secret; Terraform puts it into
 the parser environment only when `parser_database_url_enabled` is true, so
 the value lands in state (accepted exposure). Checkov 381 passed, 0 failed,
-63 skipped. CI 1795 passed, 81 skipped (17 new unit tests; the parser-role
-PostgreSQL integration test was not run locally, Docker Desktop was not
-running). Cost +0.40 USD per month (22.54 USD plus API calls).
+63 skipped. CI 1795 passed, 81 skipped (17 new unit tests). Owner checks on
+2026-10-19: `db-check` passed locally (151 passed, including the
+parser-role integration test) and a fresh download of the bundle matched
+its sha256. Cost +0.40 USD per month (22.54 USD plus API calls).
+
+Readings (no application connections): 2026-10-18 `FreeableMemory` hourly
+minimum about 74 to 97 MiB, `SwapUsage` about 175 to 207 MiB; 2026-10-19
+(24 hourly points) `FreeableMemory` hourly minimum about 77 to 122 MiB,
+`SwapUsage` hourly average about 191 to 217 MiB, swap daily peak about 163,
+207 and 217 MiB on October 17, 18 and 19, growth slowing. Recorded, not a
+verdict; the threshold stays OPEN and IAM authentication's memory cost is
+unmeasured.
 
 Next action: owner review and merge; then the Stage B runbook: verify the
 bundle, rebuild and push all five images, update the digests, apply the

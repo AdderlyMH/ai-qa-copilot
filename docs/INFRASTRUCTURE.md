@@ -901,7 +901,8 @@ authentication.
   `Amazon RDS us-east-1 Root CA RSA2048 G1` (valid 2021-05-25 to 2061-05-25),
   which is the CA of `rds-ca-rsa2048-g1`, the default CA for new instances.
   **sha256 `90a6f1a7978a1b1b096dca6c57511ca48d3b8cf052f8e704baf358f34ea2f21b`**,
-  asserted by `test_lambda_images.py`. `.gitattributes` keeps it byte-exact
+  asserted by `test_lambda_images.py`; **on 2026-10-19 the owner's fresh
+  download matched this sha256** (runbook step 1). `.gitattributes` keeps it byte-exact
   (`-text`) and one `.gitignore` exception allows it (all other `*.pem` stay
   ignored).
 - Why the global bundle: RDS documents it for any commercial Region and says
@@ -955,8 +956,16 @@ the response has booleans and counts only (`tables_granted` 8,
 `read_only_tables` 2). `apply_grants` never touches the parser role; its
 grants are re-applied only by `create_parser_user` with `rotate` (a deliberate
 choice: no separate parser grants action). The PostgreSQL integration test
-runs as the parser role and checks the allowed and refused statements
-(`db-check`; it was **not run locally**, Docker Desktop was not running).
+runs as the parser role and checks the allowed and refused statements;
+**`db-check` passed locally on 2026-10-19 (owner run: 151 passed, including
+this test)**.
+
+**Adding a parser table later.** If a future migration adds a table the
+parser writes, add it to `PARSER_TABLE_GRANTS` and run `create_parser_user`
+with `"rotate": true` to grant it: `apply_grants` does not touch the parser
+role. A rotate also changes the parser password and rewrites the
+`parser-database-url` secret, so the compute module must be re-applied for
+the parser to receive the new `DATABASE_URL`.
 
 ### Terraform
 
@@ -992,9 +1001,17 @@ runs as the parser role and checks the allowed and refused statements
 setting (left as is; whether it costs memory is unmeasured, OPEN), rotation
 automation, the compute apply, any API/general bootstrap change.
 
-**Readings, 2026-10-18** (owner, no application connections):
-`FreeableMemory` hourly minimum about 74 to 97 MiB; `SwapUsage` about 175 to
-217 MiB. Recorded, not a verdict; the threshold stays OPEN.
+**Readings** (owner, no application connections):
+
+- 2026-10-18: `FreeableMemory` hourly minimum about 74 to 97 MiB; `SwapUsage`
+  about 175 to 207 MiB.
+- 2026-10-19 (24 hourly points, converted as bytes / 1,048,576):
+  `FreeableMemory` hourly minimum about 77 to 122 MiB; `SwapUsage` hourly
+  average about 191 to 217 MiB; swap daily peak about 163 MiB (Oct 17), 207
+  MiB (Oct 18) and 217 MiB (Oct 19), growth slowing.
+
+Recorded readings, not a verdict; the threshold stays OPEN. The memory cost
+of IAM authentication remains unmeasured (AWS: 300 to 1000 MiB extra).
 
 **Cost.** One more secret: **+0.40 USD per month** (AWS Price List
 `AWSSecretsManager` us-east-1, publication 2026-09-11, re-read 2026-10-19:
