@@ -29,7 +29,9 @@ from ai_qa_copilot_api.lambda_migrate import (
     PsycopgMigrationDatabase,
     alembic_upgrade_to_head,
     app_user_statements,
+    PARSER_TABLE_GRANTS,
     grant_statements,
+    parser_user_statements,
     head_revision,
     scram_sha256_verifier,
 )
@@ -229,6 +231,83 @@ def test_scram_verifier_login_and_grants(
         ):
             if database.role_exists(role):
                 database._connection.execute(statement)
+
+
+def test_parser_role_can_do_only_what_the_parser_does(
+    database_url: URL, database: PsycopgMigrationDatabase
+) -> None:
+    """INFRA-008 Stage B. sslmode=verify-full is not testable here (no TLS)."""
+
+    role = f"runner_parser_{uuid4().hex[:12]}"
+    password = f"pw-{uuid4().hex}"
+    tables = database.public_tables()
+    statements = parser_user_statements(
+        role=role,
+        password_verifier=scram_sha256_verifier(password),
+        database=database_url.database or "",
+        tables=tables,
+        create=True,
+    )
+
+    def privilege(table: str, kind: str) -> bool:
+        row = database._connection.execute(
+            "SELECT has_table_privilege(%s, %s, %s)",
+            (role, f"public.{table}", kind),
+        ).fetchone()
+        return bool(row and row[0])
+
+    expected = {
+        "parser_jobs": {"SELECT", "UPDATE"},
+        "document_versions": {"SELECT", "UPDATE"},
+        "parser_versions": {"SELECT", "INSERT"},
+        "source_locations": {"SELECT", "INSERT"},
+        "document_sections": {"SELECT", "INSERT"},
+        "indexing_jobs": {"SELECT", "INSERT"},
+        "document_intakes": {"SELECT"},
+        "documents": {"SELECT"},
+    }
+    assert set(expected) == set(PARSER_TABLE_GRANTS)
+    try:
+        database.execute_in_transaction(statements)
+        for table in tables:
+            granted = {
+                kind
+                for kind in ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE")
+                if privilege(table, kind)
+            }
+            assert granted == expected.get(table, set()), table
+
+        with psycopg.connect(
+            conninfo(database_url, user=role, password=password), autocommit=True
+        ) as parser:
+            parser.execute("UPDATE public.parser_jobs SET state = state WHERE false")
+            parser.execute(
+                "UPDATE public.document_versions "
+                "SET parser_version_id = parser_version_id WHERE false"
+            )
+            parser.execute(
+                "INSERT INTO public.parser_versions "
+                "SELECT * FROM public.parser_versions WHERE false"
+            )
+            parser.execute("SELECT count(*) FROM public.document_intakes")
+            for statement in (
+                "DELETE FROM public.parser_jobs WHERE false",
+                "INSERT INTO public.parser_jobs SELECT * FROM public.parser_jobs WHERE false",
+                "UPDATE public.documents SET id = id WHERE false",
+                "SELECT count(*) FROM public.projects",
+                "SELECT count(*) FROM public.alembic_version",
+                "CREATE TABLE public.parser_probe (id integer)",
+            ):
+                with pytest.raises(psycopg.errors.InsufficientPrivilege):
+                    parser.execute(statement)
+    finally:
+        role_id = sql.Identifier(role)
+        for cleanup in (
+            sql.SQL("DROP OWNED BY {}").format(role_id),
+            sql.SQL("DROP ROLE IF EXISTS {}").format(role_id),
+        ):
+            if database.role_exists(role):
+                database._connection.execute(cleanup)
 
 
 @pytest.fixture

@@ -29,7 +29,9 @@ from ai_qa_copilot_api.lambda_migrate import (
     MigrationRunnerError,
     RunnerSettings,
     app_user_statements,
+    PARSER_TABLE_GRANTS,
     grant_statements,
+    parser_user_statements,
     application_database_url,
     head_revision,
     scram_sha256_verifier,
@@ -44,10 +46,25 @@ URL_ARN = (
     "arn:aws:secretsmanager:us-east-1:000000000000:secret:"
     "ai-qa-copilot-production/database-url-ArnSuffixUrl"
 )
+PARSER_URL_ARN = (
+    "arn:aws:secretsmanager:us-east-1:000000000000:secret:"
+    "ai-qa-copilot-production/parser-database-url-ArnSuffixParser"
+)
 MASTER_PASSWORD = "unit-test-master-sentinel"
 APP_PASSWORD = "unit-test-app-password-sentinel-0123456789"
 HOST = "database.invalid"
-SENSITIVE = (MASTER_PASSWORD, APP_PASSWORD, "ArnSuffixMaster", "ArnSuffixUrl", HOST)
+SENSITIVE = (
+    MASTER_PASSWORD,
+    APP_PASSWORD,
+    "ArnSuffixMaster",
+    "ArnSuffixUrl",
+    "ArnSuffixParser",
+    HOST,
+)
+VERIFY_FULL = {
+    "sslmode": "verify-full",
+    "sslrootcert": "/var/task/certs/rds-global-bundle.pem",
+}
 HEAD = "0021_analysis_run_provider"
 ENVIRONMENT = {
     "APP_ENV": "production",
@@ -57,6 +74,8 @@ ENVIRONMENT = {
     "DB_PORT": "5432",
     "DB_NAME": "ai_qa_copilot",
     "APP_DB_USER": "ai_qa_copilot_app",
+    "PARSER_DATABASE_URL_SECRET_ARN": PARSER_URL_ARN,
+    "PARSER_DB_USER": "ai_qa_copilot_parser",
 }
 TABLES = sorted(MUTABLE_TABLES | APPEND_ONLY_TABLES)
 
@@ -195,7 +214,7 @@ def assert_clean(value: object) -> None:
         ({"action": "migrate", "extra": 1}, "The event has unknown fields"),
         (
             {"action": "migrate", "rotate": True},
-            "rotate applies to create_app_user only",
+            "rotate applies to create_app_user and create_parser_user only",
         ),
         (
             {"action": "create_app_user", "rotate": "yes"},
@@ -439,7 +458,7 @@ def test_migrate_upgrades_under_the_lock_and_reads_the_revision_back() -> None:
     url = make_url(urls[0])
     assert url.drivername == "postgresql+psycopg"
     assert url.password == MASTER_PASSWORD
-    assert url.query == {"sslmode": "require", "connect_timeout": "10"}
+    assert url.query == {**VERIFY_FULL, "connect_timeout": "10"}
     assert_clean(result)
 
 
@@ -519,15 +538,19 @@ def test_create_app_user_creates_the_role_then_writes_the_secret(
     texts = statement_texts(database.statements)
     assert texts[0].startswith('CREATE ROLE "ai_qa_copilot_app" WITH LOGIN NOSUPERUSER')
     put_calls = [kwargs for kind, kwargs in secrets_client.calls if kind == "put"]
-    assert put_calls == [
-        {
-            "SecretId": URL_ARN,
-            "SecretString": (
-                f"postgresql+psycopg://ai_qa_copilot_app:{APP_PASSWORD}@{HOST}:5432/"
-                "ai_qa_copilot?sslmode=require"
-            ),
-        }
-    ]
+    assert [call["SecretId"] for call in put_calls] == [URL_ARN]
+    written = make_url(put_calls[0]["SecretString"])
+    assert (written.drivername, written.username, written.password) == (
+        "postgresql+psycopg",
+        "ai_qa_copilot_app",
+        APP_PASSWORD,
+    )
+    assert (written.host, written.port, written.database) == (
+        HOST,
+        5432,
+        "ai_qa_copilot",
+    )
+    assert written.query == VERIFY_FULL
     assert_clean(result)
     for text in texts:
         assert APP_PASSWORD not in text
@@ -644,7 +667,7 @@ def test_apply_grants_rejects_rotate() -> None:
     run, client = runner(FakeDatabase(role=True))
 
     assert str(failure(run, {"action": "apply_grants", "rotate": True})) == (
-        "rotate applies to create_app_user only"
+        "rotate applies to create_app_user and create_parser_user only"
     )
     assert client.calls == []
 
@@ -674,7 +697,7 @@ def test_create_app_user_refuses_the_master_user_name() -> None:
     )
 
     assert str(failure(run, {"action": "create_app_user"})) == (
-        "APP_DB_USER must differ from the master user"
+        "The application role name must differ from the master user"
     )
 
 
@@ -849,4 +872,212 @@ def test_application_url_is_accepted_by_the_secrets_bootstrap() -> None:
 
     assert load_secrets_into_environment(environ, client_factory=Client)
     assert environ["DATABASE_URL"] == url
-    assert make_url(url).query == {"sslmode": "require"}
+    assert make_url(url).query == VERIFY_FULL
+
+
+# --- create_parser_user (INFRA-008 Stage B) -------------------------------------
+
+PARSER_GRANTS_EXPECTED = [
+    'GRANT SELECT ON TABLE "public"."document_intakes" TO "ai_qa_copilot_parser"',
+    'GRANT SELECT, INSERT ON TABLE "public"."document_sections" TO "ai_qa_copilot_parser"',
+    'GRANT SELECT, UPDATE ON TABLE "public"."document_versions" TO "ai_qa_copilot_parser"',
+    'GRANT SELECT ON TABLE "public"."documents" TO "ai_qa_copilot_parser"',
+    'GRANT SELECT, INSERT ON TABLE "public"."indexing_jobs" TO "ai_qa_copilot_parser"',
+    'GRANT SELECT, UPDATE ON TABLE "public"."parser_jobs" TO "ai_qa_copilot_parser"',
+    'GRANT SELECT, INSERT ON TABLE "public"."parser_versions" TO "ai_qa_copilot_parser"',
+    'GRANT SELECT, INSERT ON TABLE "public"."source_locations" TO "ai_qa_copilot_parser"',
+]
+
+
+def test_create_parser_user_creates_the_role_then_writes_the_parser_secret(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    events: list[str] = []
+    database = FakeDatabase(events=events)
+    secrets_client = FakeSecrets()
+    original_put = secrets_client.put_secret_value
+
+    def put(**kwargs: Any) -> Mapping[str, Any]:
+        events.append("put")
+        return original_put(**kwargs)
+
+    secrets_client.put_secret_value = put  # type: ignore[method-assign]
+    run, _ = runner(database, secrets_client)
+
+    result = run({"action": "create_parser_user"})
+
+    assert result == {
+        "action": "create_parser_user",
+        "role_created": True,
+        "password_rotated": False,
+        "secret_written": True,
+        "tables_granted": 8,
+        "read_only_tables": 2,
+    }
+    assert events == ["lock", "execute", "put", "unlock", "close"]
+    put_calls = [kwargs for kind, kwargs in secrets_client.calls if kind == "put"]
+    assert [call["SecretId"] for call in put_calls] == [PARSER_URL_ARN]
+    written = make_url(put_calls[0]["SecretString"])
+    assert (written.username, written.password, written.host) == (
+        "ai_qa_copilot_parser",
+        APP_PASSWORD,
+        HOST,
+    )
+    assert written.query == VERIFY_FULL
+    texts = statement_texts(database.statements)
+    assert texts[0].startswith(
+        'CREATE ROLE "ai_qa_copilot_parser" WITH LOGIN NOSUPERUSER'
+    )
+    for text in texts:
+        assert APP_PASSWORD not in text
+    assert_clean(result)
+    for sensitive in SENSITIVE:
+        assert sensitive not in caplog.text
+
+
+def test_parser_grants_are_exactly_the_tables_the_parser_uses() -> None:
+    texts = statement_texts(
+        parser_user_statements(
+            role="ai_qa_copilot_parser",
+            password_verifier="SCRAM-SHA-256$4096:c2FsdA==$a2V5:a2V5",
+            database="ai_qa_copilot",
+            tables=TABLES,
+            create=True,
+        )
+    )
+
+    assert texts[1:4] == [
+        'GRANT CONNECT ON DATABASE "ai_qa_copilot" TO "ai_qa_copilot_parser"',
+        'GRANT USAGE ON SCHEMA public TO "ai_qa_copilot_parser"',
+        'REVOKE CREATE ON SCHEMA public FROM "ai_qa_copilot_parser"',
+    ]
+    revokes = [text for text in texts if text.startswith("REVOKE ALL ON TABLE")]
+    assert len(revokes) == len(TABLES)
+    table_grants = [
+        text for text in texts if text.startswith("GRANT") and " ON TABLE " in text
+    ]
+    assert table_grants == PARSER_GRANTS_EXPECTED
+    assert set(PARSER_TABLE_GRANTS) <= set(TABLES)
+    assert not any("DELETE" in text or "DEFAULT PRIVILEGES" in text for text in texts)
+    assert not any(" INSERT" in text and '"parser_jobs"' in text for text in texts)
+
+
+def test_an_existing_parser_role_without_rotate_fails_closed() -> None:
+    database = FakeDatabase(role=True)
+    run, client = runner(database)
+
+    error = failure(run, {"action": "create_parser_user"})
+
+    assert str(error) == (
+        "The parser role already exists; send rotate=true to reset its password"
+    )
+    assert database.statements == []
+    assert [kind for kind, _ in client.calls] == ["get"]
+
+
+def test_parser_rotate_resets_the_password_and_rewrites_the_parser_secret() -> None:
+    database = FakeDatabase(role=True)
+    run, client = runner(database)
+
+    result = run({"action": "create_parser_user", "rotate": True})
+
+    assert result["password_rotated"] is True and result["role_created"] is False
+    assert statement_texts(database.statements)[0].startswith(
+        'ALTER ROLE "ai_qa_copilot_parser" WITH PASSWORD \'SCRAM-SHA-256$4096:'
+    )
+    assert [kwargs["SecretId"] for kind, kwargs in client.calls if kind == "put"] == [
+        PARSER_URL_ARN
+    ]
+
+
+def test_a_failed_parser_secret_write_comes_after_the_role_change() -> None:
+    put_error = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": PARSER_URL_ARN}},
+        "PutSecretValue",
+    )
+    database = FakeDatabase()
+    run, _ = runner(database, FakeSecrets(put_error=put_error))
+
+    error = failure(run, {"action": "create_parser_user"})
+
+    assert str(error) == (
+        "Writing the parser-database-url secret failed (AccessDeniedException); the "
+        "role was created but the secret was not written, so rerun with rotate=true"
+    )
+    assert database.events == ["lock", "execute", "unlock", "close"]
+
+
+def test_create_parser_user_needs_its_secret_arn() -> None:
+    environ = {
+        key: value
+        for key, value in ENVIRONMENT.items()
+        if key != "PARSER_DATABASE_URL_SECRET_ARN"
+    }
+    database = FakeDatabase()
+    run, _ = runner(database, environ=environ)
+
+    assert str(failure(run, {"action": "create_parser_user"})) == (
+        "PARSER_DATABASE_URL_SECRET_ARN must be configured"
+    )
+    assert database.events == []
+    # The other actions do not need it.
+    assert run({"action": "status"})["action"] == "status"
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        (
+            {"PARSER_DATABASE_URL_SECRET_ARN": "parser-database-url-ArnSuffixParser"},
+            "PARSER_DATABASE_URL_SECRET_ARN is not a Secrets Manager secret ARN",
+        ),
+        (
+            {"PARSER_DB_USER": "ai_qa_copilot_app"},
+            "PARSER_DB_USER must differ from APP_DB_USER",
+        ),
+        (
+            {"PARSER_DB_USER": "Parser"},
+            "PARSER_DB_USER is not a lower-case SQL identifier",
+        ),
+    ],
+)
+def test_invalid_parser_settings_fail_closed(
+    overrides: dict[str, str], message: str
+) -> None:
+    run, client = runner(FakeDatabase(), environ={**ENVIRONMENT, **overrides})
+
+    assert str(failure(run, {"action": "create_parser_user"})) == message
+    assert client.calls == []
+
+
+def test_the_parser_role_needs_its_tables() -> None:
+    database = FakeDatabase(tables=[t for t in TABLES if t != "indexing_jobs"])
+    run, client = runner(database)
+
+    assert str(failure(run, {"action": "create_parser_user"})) == (
+        "The database lacks a table the parser role needs; run migrate first"
+    )
+    assert database.statements == []
+    assert [kind for kind, _ in client.calls] == ["get"]
+
+
+def test_apply_grants_never_touches_the_parser_role() -> None:
+    database = FakeDatabase(role=True)
+    run, _ = runner(database)
+
+    run({"action": "apply_grants"})
+
+    assert not any(
+        "ai_qa_copilot_parser" in text for text in statement_texts(database.statements)
+    )
+
+
+def test_the_written_url_keeps_the_bundle_path_after_url_encoding() -> None:
+    from ai_qa_copilot_api.lambda_migrate import parser_database_url
+
+    settings = RunnerSettings.from_environment(ENVIRONMENT)
+    url = parser_database_url(settings, APP_PASSWORD)
+
+    assert "sslrootcert=%2Fvar%2Ftask%2Fcerts%2Frds-global-bundle.pem" in url
+    assert make_url(url).query["sslrootcert"] == "/var/task/certs/rds-global-bundle.pem"

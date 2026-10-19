@@ -75,3 +75,6 @@ artifacts/
 *.key
 *.p12
 *.pfx
+# The one exception: the public RDS CA bundle (INFRA-008 Stage B), whose sha256
+# is asserted by apps/api/tests/test_lambda_images.py.
+!apps/api/certs/rds-global-bundle.pem

@@ -7,8 +7,8 @@
   "files": [
     {
       "path": ".gitattributes",
-      "bytes": 1533,
-      "sha256": "47cb8fac1f542f1e6f2a1046699cba49f25ac6ec8bee3f2e402463631ed0d737"
+      "bytes": 1703,
+      "sha256": "6387c7b5bca6fcabd9687a1c67aca3bcf101980387af8ee63dc1cb2356751838"
     },
     {
       "path": ".githooks/pre-commit",

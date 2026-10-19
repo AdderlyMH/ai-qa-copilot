@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import importlib.util
 import re
@@ -114,6 +115,7 @@ def test_the_function_images_are_unchanged_by_the_migrate_target() -> None:
     assert [line for line in stages["runtime"][1] if line.startswith("COPY ")] == [
         "COPY --from=dependencies /build/site-packages ${LAMBDA_TASK_ROOT}",
         "COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api",
+        "COPY apps/api/certs/rds-global-bundle.pem ${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem",
     ]
     dependencies = " ".join(stages["dependencies"][1])
     assert RUNTIME_EXPORT in dependencies
@@ -131,6 +133,7 @@ def test_the_migrate_target_adds_alembic_and_the_migrations_only() -> None:
         "COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api",
         "COPY apps/api/alembic.ini ${LAMBDA_TASK_ROOT}/migrations/alembic.ini",
         "COPY apps/api/alembic ${LAMBDA_TASK_ROOT}/migrations/alembic",
+        "COPY apps/api/certs/rds-global-bundle.pem ${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem",
     ]
     assert stages["migrate"][1][-1] == f'CMD ["{MIGRATE_HANDLER}"]'
     # The scripts must not land in ${LAMBDA_TASK_ROOT}/alembic, where they would
@@ -174,7 +177,7 @@ def test_dependencies_are_installed_from_the_lock_without_dev_or_compilation() -
     assert "--group dev" not in text and "--all-groups" not in text
 
 
-def test_only_lock_inputs_application_package_and_migrations_are_copied() -> None:
+def test_only_lock_inputs_package_migrations_and_ca_bundle_are_copied() -> None:
     copies = [line for line in dockerfile_instructions() if line.startswith("COPY ")]
 
     assert copies == [
@@ -182,12 +185,14 @@ def test_only_lock_inputs_application_package_and_migrations_are_copied() -> Non
         "COPY apps/api/pyproject.toml apps/api/pyproject.toml",
         "COPY --from=dependencies /build/site-packages ${LAMBDA_TASK_ROOT}",
         "COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api",
+        "COPY apps/api/certs/rds-global-bundle.pem ${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem",
         "COPY pyproject.toml uv.lock ./",
         "COPY apps/api/pyproject.toml apps/api/pyproject.toml",
         "COPY --from=migrate-dependencies /build/site-packages ${LAMBDA_TASK_ROOT}",
         "COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api",
         "COPY apps/api/alembic.ini ${LAMBDA_TASK_ROOT}/migrations/alembic.ini",
         "COPY apps/api/alembic ${LAMBDA_TASK_ROOT}/migrations/alembic",
+        "COPY apps/api/certs/rds-global-bundle.pem ${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem",
     ]
     assert not any(line.startswith("ADD ") for line in dockerfile_instructions())
 
@@ -202,8 +207,16 @@ def test_no_secret_credential_or_database_setting_is_baked_in() -> None:
         assert not SECRET_NAME.search(line.split("=", 1)[0]), line
     assert not any(".env" in line for line in instructions if line.startswith("COPY "))
     assert not any(
-        token in " ".join(instructions)
-        for token in ("/.aws", "credentials", "rds-ca", "global-bundle", ".pem")
+        token in " ".join(instructions) for token in ("/.aws", "credentials", ".key")
+    )
+    # The only certificate is the public RDS CA bundle, at one fixed path.
+    pem_lines = [line for line in instructions if ".pem" in line]
+    assert (
+        pem_lines
+        == [
+            "COPY apps/api/certs/rds-global-bundle.pem ${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem"
+        ]
+        * 2
     )
 
 
@@ -230,7 +243,13 @@ def test_dockerignore_is_an_allowlist_that_excludes_local_and_repository_noise()
         "!apps/api/src/ai_qa_copilot_api/**",
         "!apps/api/alembic.ini",
         "!apps/api/alembic/**",
+        "!apps/api/certs/rds-global-bundle.pem",
     ]
+    # The last matching line wins, so the bundle exception must follow *.pem.
+    assert lines.index("**/*.pem") < lines.index(
+        "!apps/api/certs/rds-global-bundle.pem"
+    )
+    assert lines[-1] == "!apps/api/certs/rds-global-bundle.pem"
     for excluded in (
         "**/.env",
         "**/.env.*",
@@ -291,10 +310,47 @@ def test_build_inputs_cover_every_copied_source() -> None:
         "apps/api/src",
         "apps/api/alembic.ini",
         "apps/api/alembic",
+        "apps/api/certs/rds-global-bundle.pem",
         "apps/api/Dockerfile.lambda",
         "apps/api/Dockerfile.lambda.dockerignore",
     ):
         assert path in script.BUILD_INPUTS
+
+
+# Downloaded on 2026-10-19 from the RDS global bundle URL in
+# docs/INFRASTRUCTURE.md; the owner re-downloads it and compares this sha256
+# before building. A changed file must be re-verified and this updated.
+RDS_CA_BUNDLE = ROOT / "apps/api/certs/rds-global-bundle.pem"
+RDS_CA_BUNDLE_SHA256 = (
+    "90a6f1a7978a1b1b096dca6c57511ca48d3b8cf052f8e704baf358f34ea2f21b"
+)
+
+
+def test_the_rds_ca_bundle_is_the_recorded_file() -> None:
+    raw = RDS_CA_BUNDLE.read_bytes()
+
+    assert hashlib.sha256(raw).hexdigest() == RDS_CA_BUNDLE_SHA256
+    assert b"\r" not in raw
+    assert raw.count(b"-----BEGIN CERTIFICATE-----") == 114
+    assert b"PRIVATE KEY" not in raw
+
+
+def test_the_bundle_holds_only_roots_including_the_us_east_1_default_ca() -> None:
+    from cryptography import x509
+
+    certificates = x509.load_pem_x509_certificates(RDS_CA_BUNDLE.read_bytes())
+    subjects = {c.subject.rfc4514_string() for c in certificates}
+
+    assert all(c.subject == c.issuer for c in certificates)
+    assert any(
+        "Amazon RDS us-east-1 Root CA RSA2048 G1" in subject for subject in subjects
+    )
+
+
+def test_the_runner_points_at_the_copied_bundle() -> None:
+    from ai_qa_copilot_api.lambda_migrate import RDS_CA_BUNDLE_PATH
+
+    assert RDS_CA_BUNDLE_PATH == "/var/task/certs/rds-global-bundle.pem"
 
 
 def test_build_refuses_uncommitted_build_inputs(

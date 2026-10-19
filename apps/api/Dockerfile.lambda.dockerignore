@@ -25,3 +25,7 @@ docs
 infra
 node_modules
 HANDOFF*.md
+
+# The one exception to the *.pem rule above: the public RDS CA bundle
+# (INFRA-008 Stage B). It must come last, because the last matching line wins.
+!apps/api/certs/rds-global-bundle.pem
