@@ -49,3 +49,7 @@ packages/**/*.md text eol=lf
 
 # Terraform sources, examples and provider lock files.
 infra/** text eol=lf
+
+# The RDS CA bundle is committed byte-for-byte as downloaded; its sha256 is
+# asserted by a test, so Git must never convert its line endings.
+apps/api/certs/*.pem -text

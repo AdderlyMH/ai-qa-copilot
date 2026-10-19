@@ -1,9 +1,43 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-008 Stage B: parser credential, RDS CA bundle, verify-full — 2026-10-19
+
+**Status:** Three commits on branch `feat/infra-008-stage-b`, not yet merged.
+**Not planned or applied; no image rebuilt or pushed; nothing invoked.**
+INFRA-008 is not Accepted.
+
+Owner decision 2026-10-18 (ADR-021): the parser uses the ADR-018 fallback, a
+restricted role whose URL is in its Lambda environment; no IAM database
+authentication. The RDS global CA bundle (114 roots, sha256 asserted) is
+copied into all five images and every runner URL and connection uses
+`sslmode=verify-full`, so every image digest changes. New runner action
+`create_parser_user` with exact per-table grants (8 tables, 2 read-only, no
+DELETE) writes a new `parser-database-url` secret; Terraform puts it into
+the parser environment only when `parser_database_url_enabled` is true, so
+the value lands in state (accepted exposure). Checkov 381 passed, 0 failed,
+63 skipped. CI 1795 passed, 81 skipped (17 new unit tests). Owner checks on
+2026-10-19: `db-check` passed locally (151 passed, including the
+parser-role integration test) and a fresh download of the bundle matched
+its sha256. Cost +0.40 USD per month (22.54 USD plus API calls).
+
+Readings (no application connections): 2026-10-18 `FreeableMemory` hourly
+minimum about 74 to 97 MiB, `SwapUsage` about 175 to 207 MiB; 2026-10-19
+(24 hourly points) `FreeableMemory` hourly minimum about 77 to 122 MiB,
+`SwapUsage` hourly average about 191 to 217 MiB, swap daily peak about 163,
+207 and 217 MiB on October 17, 18 and 19, growth slowing. Recorded, not a
+verdict; the threshold stays OPEN and IAM authentication's memory cost is
+unmeasured.
+
+Next action: owner review and merge; then the Stage B runbook: verify the
+bundle, rebuild and push all five images, update the digests, apply the
+parser secret and the runner, `create_app_user` with rotate (verify-full)
+and `create_parser_user`, runner off. The compute apply then sets
+`parser_database_url_enabled = true` and still waits for the
+`openai-api-key` value and the CloudFront decision.
+
 ## Optional guest-demo CloudFront; parser queue grant removed — 2026-10-18
 
-**Status:** Three commits on branch `feat/infra-cloudfront-optional-parser-sqs`,
-not yet merged. **Not planned or applied.**
+**Status:** Merged to `main` in PR #198. **Not planned or applied.**
 
 The parser role's `sqs:SendMessage` on the general queue and the parser's
 `GENERAL_QUEUE_URL` are removed: no parser code path uses SQS (ADR-018 option

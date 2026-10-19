@@ -19,16 +19,22 @@ Actions (event field ``action``; an empty event means ``migrate``):
   event has ``"rotate": true``, which resets the password and rewrites the URL.
 - ``apply_grants``: under the same lock, re-apply the grants for the existing
   role (no password change, no secret write); this is how a table added to
-  ``MUTABLE_TABLES`` gets UPDATE without a rotation.
+  ``MUTABLE_TABLES`` gets UPDATE without a rotation. It never touches the
+  parser role.
+- ``create_parser_user`` (INFRA-008 Stage B, ADR-018 fallback): the same flow
+  for the parser role (``PARSER_DB_USER``), with only the grants in
+  ``PARSER_TABLE_GRANTS``; its URL goes to the secret named by
+  ``PARSER_DATABASE_URL_SECRET_ARN``. ``rotate`` also re-applies its grants.
 
-Grants: SELECT, INSERT on every table; UPDATE only on ``MUTABLE_TABLES``; DELETE
-nowhere; a table in neither list gets SELECT, INSERT (fail closed); future
-tables default to SELECT, INSERT.
+Application-role grants: SELECT, INSERT on every table; UPDATE only on
+``MUTABLE_TABLES``; DELETE nowhere; a table in neither list gets SELECT, INSERT
+(fail closed); future tables default to SELECT, INSERT.
 
 Credentials: the RDS-managed master secret (``MASTER_SECRET_ARN``) is read at
 invocation; host, port and database name come from non-secret environment
-variables; TLS is required (``sslmode=require``; ``verify-full`` with the RDS CA
-bundle is INFRA-008 Stage B). The master password reaches Alembic only through
+variables. Every connection and every URL written uses
+``sslmode=verify-full`` against the RDS CA bundle at ``RDS_CA_BUNDLE_PATH``,
+which every Lambda image contains. The master password reaches Alembic only through
 ``DATABASE_URL`` in this process for the duration of the upgrade, because the
 unchanged ``env.py`` reads it from there.
 
@@ -68,8 +74,16 @@ DB_PORT_ENVIRONMENT_VARIABLE = "DB_PORT"
 DB_NAME_ENVIRONMENT_VARIABLE = "DB_NAME"
 APP_DB_USER_ENVIRONMENT_VARIABLE = "APP_DB_USER"
 DEFAULT_APP_DB_USER = "ai_qa_copilot_app"
+PARSER_DATABASE_URL_SECRET_ARN_ENVIRONMENT_VARIABLE = "PARSER_DATABASE_URL_SECRET_ARN"
+PARSER_DB_USER_ENVIRONMENT_VARIABLE = "PARSER_DB_USER"
+DEFAULT_PARSER_DB_USER = "ai_qa_copilot_parser"
+# The public RDS CA bundle copied into every Lambda image (Dockerfile.lambda).
+# Every URL this runner builds or writes verifies the server against it.
+RDS_CA_BUNDLE_PATH = "/var/task/certs/rds-global-bundle.pem"
 
-ACTIONS = frozenset({"migrate", "status", "create_app_user", "apply_grants"})
+ACTIONS = frozenset(
+    {"migrate", "status", "create_app_user", "apply_grants", "create_parser_user"}
+)
 # Arbitrary fixed key for pg_try_advisory_lock; every runner action that writes
 # takes it, so two writing runs never overlap.
 ADVISORY_LOCK_KEY = 4_812_012_009
@@ -121,6 +135,26 @@ APPEND_ONLY_TABLES = frozenset(
 )
 _IGNORED_TABLES = frozenset({"alembic_version"})
 
+# The parser role (ADR-018 fallback, INFRA-008 Stage B): exactly what the parser
+# handler's code path does (parser_job_claims.py, parser_evidence_promotion.py),
+# and nothing on any other table. No DELETE, no default privileges.
+PARSER_TABLE_GRANTS = {
+    # claim, lease renewal, accept/reject/fail, reaping
+    "parser_jobs": sql.SQL("GRANT SELECT, UPDATE ON TABLE {} TO {}"),
+    # parser_version_id set on promotion
+    "document_versions": sql.SQL("GRANT SELECT, UPDATE ON TABLE {} TO {}"),
+    # first-use insert of the parser version row
+    "parser_versions": sql.SQL("GRANT SELECT, INSERT ON TABLE {} TO {}"),
+    # evidence rows (an existence check reads them first)
+    "source_locations": sql.SQL("GRANT SELECT, INSERT ON TABLE {} TO {}"),
+    "document_sections": sql.SQL("GRANT SELECT, INSERT ON TABLE {} TO {}"),
+    # the queued indexing job created with the promotion
+    "indexing_jobs": sql.SQL("GRANT SELECT, INSERT ON TABLE {} TO {}"),
+    # read only: source checks
+    "document_intakes": sql.SQL("GRANT SELECT ON TABLE {} TO {}"),
+    "documents": sql.SQL("GRANT SELECT ON TABLE {} TO {}"),
+}
+
 _SAFE_ERROR_CODE = re.compile(r"[A-Za-z0-9.]{1,64}")
 _SECRET_ARN = re.compile(r"arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:\d{12}:secret:.+")
 _HOST = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?")
@@ -145,6 +179,8 @@ class RunnerSettings:
     port: int
     database: str
     app_user: str
+    parser_database_url_secret_arn: str | None = None
+    parser_user: str = DEFAULT_PARSER_DB_USER
 
     @classmethod
     def from_environment(cls, environ: Mapping[str, str]) -> RunnerSettings:
@@ -184,13 +220,39 @@ class RunnerSettings:
             environ.get(APP_DB_USER_ENVIRONMENT_VARIABLE, "").strip()
             or DEFAULT_APP_DB_USER
         )
+        parser_user = (
+            environ.get(PARSER_DB_USER_ENVIRONMENT_VARIABLE, "").strip()
+            or DEFAULT_PARSER_DB_USER
+        )
         for name, value in (
             (DB_NAME_ENVIRONMENT_VARIABLE, database),
             (APP_DB_USER_ENVIRONMENT_VARIABLE, app_user),
+            (PARSER_DB_USER_ENVIRONMENT_VARIABLE, parser_user),
         ):
             if not _IDENTIFIER.fullmatch(value):
                 raise MigrationRunnerError(f"{name} is not a lower-case SQL identifier")
-        return cls(master_arn, url_arn, host, port, database, app_user)
+        if parser_user == app_user:
+            raise MigrationRunnerError("PARSER_DB_USER must differ from APP_DB_USER")
+        # Required only by create_parser_user; validated whenever it is set.
+        parser_arn = (
+            environ.get(PARSER_DATABASE_URL_SECRET_ARN_ENVIRONMENT_VARIABLE, "").strip()
+            or None
+        )
+        if parser_arn is not None and not _SECRET_ARN.fullmatch(parser_arn):
+            raise MigrationRunnerError(
+                f"{PARSER_DATABASE_URL_SECRET_ARN_ENVIRONMENT_VARIABLE} is not a "
+                "Secrets Manager secret ARN"
+            )
+        return cls(
+            master_arn,
+            url_arn,
+            host,
+            port,
+            database,
+            app_user,
+            parser_database_url_secret_arn=parser_arn,
+            parser_user=parser_user,
+        )
 
 
 @dataclass(frozen=True)
@@ -260,15 +322,13 @@ def read_master_credentials(
     return MasterCredentials(username=username, password=password)
 
 
-def write_database_url(
-    client: SecretsManagerClient, settings: RunnerSettings, url: str
+def write_secret_url(
+    client: SecretsManagerClient, secret_arn: str, label: str, url: str
 ) -> None:
     try:
-        client.put_secret_value(
-            SecretId=settings.database_url_secret_arn, SecretString=url
-        )
+        client.put_secret_value(SecretId=secret_arn, SecretString=url)
     except Exception as error:
-        raise _aws_failure("Writing the database-url secret", error) from None
+        raise _aws_failure(f"Writing the {label} secret", error) from None
 
 
 # --- URLs and SQL ---------------------------------------------------------------
@@ -279,7 +339,7 @@ def _postgresql_url(
 ) -> str:
     from sqlalchemy.engine import URL
 
-    query = {"sslmode": "require"}
+    query = {"sslmode": "verify-full", "sslrootcert": RDS_CA_BUNDLE_PATH}
     if connect_timeout:
         query["connect_timeout"] = str(CONNECT_TIMEOUT_SECONDS)
     return URL.create(
@@ -297,6 +357,14 @@ def application_database_url(settings: RunnerSettings, password: str) -> str:
     """The URL the API and general worker load from the database-url secret."""
 
     return _postgresql_url(settings, settings.app_user, password, connect_timeout=False)
+
+
+def parser_database_url(settings: RunnerSettings, password: str) -> str:
+    """The URL the parser function receives as DATABASE_URL (ADR-018 fallback)."""
+
+    return _postgresql_url(
+        settings, settings.parser_user, password, connect_timeout=False
+    )
 
 
 def scram_sha256_verifier(
@@ -392,22 +460,61 @@ def app_user_statements(
 ) -> list[sql.Composed]:
     """Compose the role statement and the grants; no value is interpolated as text."""
 
-    role_id = sql.Identifier(role)
-    if create:
-        role_statement = sql.SQL(
-            "CREATE ROLE {} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT "
-            "NOREPLICATION NOBYPASSRLS PASSWORD {}"
-        ).format(role_id, sql.Literal(password_verifier))
-    else:
-        role_statement = sql.SQL("ALTER ROLE {} WITH PASSWORD {}").format(
-            role_id, sql.Literal(password_verifier)
-        )
     return [
-        role_statement,
+        _role_statement(role, password_verifier, create=create),
         *grant_statements(
             role=role, database=database, master_role=master_role, tables=tables
         ),
     ]
+
+
+def _role_statement(role: str, password_verifier: str, *, create: bool) -> sql.Composed:
+    role_id = sql.Identifier(role)
+    if create:
+        return sql.SQL(
+            "CREATE ROLE {} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT "
+            "NOREPLICATION NOBYPASSRLS PASSWORD {}"
+        ).format(role_id, sql.Literal(password_verifier))
+    return sql.SQL("ALTER ROLE {} WITH PASSWORD {}").format(
+        role_id, sql.Literal(password_verifier)
+    )
+
+
+def parser_user_statements(
+    *,
+    role: str,
+    password_verifier: str,
+    database: str,
+    tables: Sequence[str],
+    create: bool,
+) -> list[sql.Composed]:
+    """Compose the parser role and its grants (ADR-018 fallback).
+
+    Every existing table first loses all privileges for the role, then only the
+    tables in ``PARSER_TABLE_GRANTS`` get their exact privileges. No default
+    privileges, no schema CREATE, no DELETE.
+    """
+
+    role_id = sql.Identifier(role)
+    statements = [
+        _role_statement(role, password_verifier, create=create),
+        sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
+            sql.Identifier(database), role_id
+        ),
+        sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(role_id),
+        sql.SQL("REVOKE CREATE ON SCHEMA public FROM {}").format(role_id),
+    ]
+    for table in sorted(tables):
+        statements.append(
+            sql.SQL("REVOKE ALL ON TABLE {} FROM {}").format(
+                sql.Identifier("public", table), role_id
+            )
+        )
+    for table in sorted(PARSER_TABLE_GRANTS):
+        statements.append(
+            PARSER_TABLE_GRANTS[table].format(sql.Identifier("public", table), role_id)
+        )
+    return statements
 
 
 def append_only_count(tables: Sequence[str]) -> int:
@@ -454,7 +561,8 @@ class PsycopgMigrationDatabase:
                 dbname=settings.database,
                 user=credentials.username,
                 password=credentials.password,
-                sslmode="require",
+                sslmode="verify-full",
+                sslrootcert=RDS_CA_BUNDLE_PATH,
                 connect_timeout=CONNECT_TIMEOUT_SECONDS,
                 application_name="ai-qa-copilot-migrate",
                 autocommit=True,
@@ -604,6 +712,10 @@ class MigrationRunner:
             return self._migrate(settings, credentials)
         if action == "apply_grants":
             return self._apply_grants(settings, credentials)
+        if action == "create_parser_user":
+            return self._create_parser_user(
+                settings, credentials, client, rotate=rotate
+            )
         return self._create_app_user(settings, credentials, client, rotate=rotate)
 
     def _head(self) -> str:
@@ -715,16 +827,32 @@ class MigrationRunner:
             "append_only_tables": append_only_count(tables),
         }
 
-    def _create_app_user(
+    def _create_login_role(
         self,
         settings: RunnerSettings,
         credentials: MasterCredentials,
         client: SecretsManagerClient,
         *,
         rotate: bool,
-    ) -> dict[str, object]:
-        if settings.app_user == credentials.username:
-            raise MigrationRunnerError("APP_DB_USER must differ from the master user")
+        role: str,
+        kind: str,
+        secret_arn: str,
+        secret_label: str,
+        statements_for: Callable[[str, list[str], bool], list[sql.Composed]],
+        url_for: Callable[[str], str],
+        required_tables: frozenset[str] = frozenset(),
+    ) -> tuple[bool, list[str]]:
+        """Create or re-password one login role, then write its URL secret.
+
+        Role and grants commit first, in one transaction; the secret is written
+        last. If the secret write fails, the database already has the new
+        password and the secret does not: the error says to rerun with rotate.
+        """
+
+        if role == credentials.username:
+            raise MigrationRunnerError(
+                f"The {kind} role name must differ from the master user"
+            )
         database = self.connect(settings, credentials)
         try:
             _acquire_lock(database)
@@ -734,41 +862,35 @@ class MigrationRunner:
                         "The database is not migrated; run migrate first"
                     )
                 exists = _database_step(
-                    "Checking the application role",
-                    database.role_exists,
-                    settings.app_user,
+                    f"Checking the {kind} role", database.role_exists, role
                 )
                 if exists and not rotate:
                     raise MigrationRunnerError(
-                        "The application role already exists; send rotate=true to reset its password"
+                        f"The {kind} role already exists; send rotate=true to reset its password"
                     )
                 if rotate and not exists:
                     raise MigrationRunnerError(
-                        "rotate=true was sent but the application role does not exist"
+                        f"rotate=true was sent but the {kind} role does not exist"
                     )
                 tables = _database_step("Listing tables", database.public_tables)
+                if not required_tables <= set(tables):
+                    raise MigrationRunnerError(
+                        f"The database lacks a table the {kind} role needs; run migrate first"
+                    )
                 password = self.generate_password()
-                statements = app_user_statements(
-                    role=settings.app_user,
-                    password_verifier=scram_sha256_verifier(password),
-                    database=settings.database,
-                    master_role=credentials.username,
-                    tables=tables,
-                    create=not exists,
+                statements = statements_for(
+                    scram_sha256_verifier(password), tables, not exists
                 )
-                # Role and grants first, in one transaction; the secret last. If
-                # the secret write fails, the database already has the new
-                # password and the secret does not: rerun with rotate=true.
                 _database_step(
-                    "Creating the application role"
+                    f"Creating the {kind} role"
                     if not exists
-                    else "Rotating the application password",
+                    else f"Rotating the {kind} password",
                     database.execute_in_transaction,
                     statements,
                 )
                 try:
-                    write_database_url(
-                        client, settings, application_database_url(settings, password)
+                    write_secret_url(
+                        client, secret_arn, secret_label, url_for(password)
                     )
                 except MigrationRunnerError as error:
                     raise MigrationRunnerError(
@@ -781,15 +903,88 @@ class MigrationRunner:
                 _release_lock(database)
         finally:
             database.close()
-        append_only = append_only_count(tables)
-        _logger.info("migrate.app_user created=%s rotated=%s", not exists, exists)
+        _logger.info("migrate.%s_role created=%s rotated=%s", kind, not exists, exists)
+        return exists, tables
+
+    def _create_app_user(
+        self,
+        settings: RunnerSettings,
+        credentials: MasterCredentials,
+        client: SecretsManagerClient,
+        *,
+        rotate: bool,
+    ) -> dict[str, object]:
+        exists, tables = self._create_login_role(
+            settings,
+            credentials,
+            client,
+            rotate=rotate,
+            role=settings.app_user,
+            kind="application",
+            secret_arn=settings.database_url_secret_arn,
+            secret_label="database-url",
+            statements_for=lambda verifier, tables, create: app_user_statements(
+                role=settings.app_user,
+                password_verifier=verifier,
+                database=settings.database,
+                master_role=credentials.username,
+                tables=tables,
+                create=create,
+            ),
+            url_for=lambda password: application_database_url(settings, password),
+        )
         return {
             "action": "create_app_user",
             "role_created": not exists,
             "password_rotated": exists,
             "secret_written": True,
             "tables_granted": len(tables),
-            "append_only_tables": append_only,
+            "append_only_tables": append_only_count(tables),
+        }
+
+    def _create_parser_user(
+        self,
+        settings: RunnerSettings,
+        credentials: MasterCredentials,
+        client: SecretsManagerClient,
+        *,
+        rotate: bool,
+    ) -> dict[str, object]:
+        if settings.parser_database_url_secret_arn is None:
+            raise MigrationRunnerError(
+                f"{PARSER_DATABASE_URL_SECRET_ARN_ENVIRONMENT_VARIABLE} must be configured"
+            )
+        exists, _ = self._create_login_role(
+            settings,
+            credentials,
+            client,
+            rotate=rotate,
+            role=settings.parser_user,
+            kind="parser",
+            secret_arn=settings.parser_database_url_secret_arn,
+            secret_label="parser-database-url",
+            statements_for=lambda verifier, tables, create: parser_user_statements(
+                role=settings.parser_user,
+                password_verifier=verifier,
+                database=settings.database,
+                tables=tables,
+                create=create,
+            ),
+            url_for=lambda password: parser_database_url(settings, password),
+            required_tables=frozenset(PARSER_TABLE_GRANTS),
+        )
+        read_only = sum(
+            1
+            for grant in PARSER_TABLE_GRANTS.values()
+            if grant.as_string().startswith("GRANT SELECT ON")
+        )
+        return {
+            "action": "create_parser_user",
+            "role_created": not exists,
+            "password_rotated": exists,
+            "secret_written": True,
+            "tables_granted": len(PARSER_TABLE_GRANTS),
+            "read_only_tables": read_only,
         }
 
 
@@ -807,8 +1002,10 @@ def _parse_event(event: object) -> tuple[str, bool]:
     rotate = event.get("rotate", False)
     if not isinstance(rotate, bool):
         raise MigrationRunnerError("rotate must be true or false")
-    if rotate and action != "create_app_user":
-        raise MigrationRunnerError("rotate applies to create_app_user only")
+    if rotate and action not in {"create_app_user", "create_parser_user"}:
+        raise MigrationRunnerError(
+            "rotate applies to create_app_user and create_parser_user only"
+        )
     return action, rotate
 
 

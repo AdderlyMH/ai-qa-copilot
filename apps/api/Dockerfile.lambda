@@ -8,8 +8,9 @@
 # 3.13 base image (Amazon Linux 2023), pinned by digest (read 2026-10-16).
 # Lambda runs the function as its own least-privileged default user, so no
 # USER is set (AWS Lambda Developer Guide, images-create). No secret, .env,
-# credential, AWS configuration, database setting or CA bundle is copied in:
-# settings come from the function environment at run time (INFRA-008).
+# credential, AWS configuration or database setting is copied in: settings come
+# from the function environment at run time (INFRA-008). The only certificate
+# is the public RDS CA bundle, copied into every target.
 ARG LAMBDA_PYTHON_BASE=public.ecr.aws/lambda/python:3.13-arm64@sha256:beebf5d3bf90deef2a7620801edc811b7922163023358c8471fc4d92409e873f
 
 FROM ${LAMBDA_PYTHON_BASE} AS dependencies
@@ -37,6 +38,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 COPY --from=dependencies /build/site-packages ${LAMBDA_TASK_ROOT}
 COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api
+# RDS global CA bundle (INFRA-008 Stage B) for sslmode=verify-full; committed
+# in the repository with its sha256 asserted by a test, never downloaded here.
+COPY apps/api/certs/rds-global-bundle.pem ${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem
 
 FROM runtime AS api
 CMD ["ai_qa_copilot_api.lambda_api.handler"]
@@ -76,4 +80,5 @@ COPY --from=migrate-dependencies /build/site-packages ${LAMBDA_TASK_ROOT}
 COPY apps/api/src/ai_qa_copilot_api ${LAMBDA_TASK_ROOT}/ai_qa_copilot_api
 COPY apps/api/alembic.ini ${LAMBDA_TASK_ROOT}/migrations/alembic.ini
 COPY apps/api/alembic ${LAMBDA_TASK_ROOT}/migrations/alembic
+COPY apps/api/certs/rds-global-bundle.pem ${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem
 CMD ["ai_qa_copilot_api.lambda_migrate.handler"]

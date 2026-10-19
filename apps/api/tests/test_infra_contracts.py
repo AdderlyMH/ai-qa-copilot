@@ -63,9 +63,8 @@ def test_the_api_keeps_its_enqueue_grant() -> None:
 
 
 def test_the_parser_environment_has_no_queue_url() -> None:
-    parser_environment = code(
-        block(COMPUTE_API.read_text(encoding="utf-8"), "    parser = {")
-    )
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    parser_environment = code(block(compute, "    parser = merge({"))
 
     body = parser_environment.split("{", 1)[1]
 
@@ -76,6 +75,47 @@ def test_the_parser_environment_has_no_queue_url() -> None:
         "PARSER_WORKER_NETWORK",
         "DATA_BUCKET_NAME",
     ]
+    assert "}, local.parser_database_url_environment)" in compute
+
+
+def test_only_the_parser_environment_can_hold_a_database_url() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    environments = code(block(compute, "  environment = {"))
+
+    assert environments.count("DATABASE_URL =") == 0
+    assert (
+        code(block(compute, "locals {\n  parser_database_url_environment")).count(
+            "DATABASE_URL = sensitive("
+        )
+        == 1
+    )
+    flag = code(block(compute, 'variable "parser_database_url_enabled"'))
+    assert "default     = false" in flag and "nullable    = false" in flag
+    source = code(
+        block(compute, 'data "aws_secretsmanager_secret_version" "parser_database_url"')
+    )
+    assert "count     = var.parser_database_url_enabled ? 1 : 0" in source
+
+
+def test_no_function_role_can_read_the_parser_secret() -> None:
+    data_plane = DATA_PLANE.read_text(encoding="utf-8")
+    migration = (ROOT / "infra/modules/migration/main.tf").read_text(encoding="utf-8")
+
+    assert "parser-database-url" not in code(
+        block(data_plane, "  application_secrets = {")
+    )
+    assert "parser_database_url" not in code(
+        block(data_plane, 'data "aws_iam_policy_document" "parser"')
+    )
+    runner = code(block(migration, 'data "aws_iam_policy_document" "migrate"'))
+    # The only statement naming the parser secret is a PutSecretValue.
+    assert runner.count("var.parser_database_url_secret_arn") == 1
+    assert re.search(
+        r'sid\s+=\s+"WriteParserDatabaseUrlSecret"\s*\n'
+        r'\s+actions\s+=\s+\["secretsmanager:PutSecretValue"\]\s*\n'
+        r"\s+resources\s+=\s+\[var\.parser_database_url_secret_arn\]",
+        runner,
+    )
 
 
 PRODUCTION_ROOT = ROOT / "infra/environments/production/main.tf"

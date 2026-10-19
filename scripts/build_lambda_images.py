@@ -42,6 +42,7 @@ BUILD_INPUTS = (
     "apps/api/src",
     "apps/api/alembic.ini",
     "apps/api/alembic",
+    "apps/api/certs/rds-global-bundle.pem",
     DOCKERFILE,
     f"{DOCKERFILE}.dockerignore",
 )

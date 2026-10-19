@@ -7,8 +7,8 @@
   "files": [
     {
       "path": ".gitattributes",
-      "bytes": 1533,
-      "sha256": "47cb8fac1f542f1e6f2a1046699cba49f25ac6ec8bee3f2e402463631ed0d737"
+      "bytes": 1703,
+      "sha256": "6387c7b5bca6fcabd9687a1c67aca3bcf101980387af8ee63dc1cb2356751838"
     },
     {
       "path": ".githooks/pre-commit",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 98837,
-      "sha256": "a25823bb5d1cb803974b0e4a30908617bfedc2bdd2ad05ae30bc5b6dcd994795"
+      "bytes": 100970,
+      "sha256": "41945bc68aa88308debb7e7a7b598327ad550b0fd2ab275935e68f139db58bc1"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 128294,
-      "sha256": "e35cf5415b533fcd23bd6b7d43c4acf4aa9e4b983676cc74ccb9b399b58182b4"
+      "bytes": 139206,
+      "sha256": "84f784c5c394c46bad63c7ff33d9627ba410f9726b3bb2507f2d794fffb9e08f"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 161039,
-      "sha256": "d12269ec2c4e84957860169e00f398e3f76335ec0727b18c83b12bab8b23739f"
+      "bytes": 163046,
+      "sha256": "a36583b867fdca2c308272d877575da116e09f757bc676bf2777507e30060f1d"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -271,9 +271,14 @@
       "sha256": "6cefc3bd1ec143a125203283e13db7d4932e72489b16f143b0785783da66a7b0"
     },
     {
+      "path": "docs/adr/ADR-021-parser-database-credential.md",
+      "bytes": 6715,
+      "sha256": "7eb1e4e3bbaf7ec17752aef29251c44cca3535358a8aaeee8cf8db8031cc7c73"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 4906,
-      "sha256": "dbf17379ea2e0dfad2cecb09d4452fa8be07fc622b512737641bc1725e88c6f4"
+      "bytes": 5076,
+      "sha256": "f05453b3259badc52a468079b9c2050fed72b3581eb23e2437cc5dcbedbcf4d2"
     },
     {
       "path": "docs/evidence/github-ruleset-2026-10-12/README.md",
