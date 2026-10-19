@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 98837,
-      "sha256": "a25823bb5d1cb803974b0e4a30908617bfedc2bdd2ad05ae30bc5b6dcd994795"
+      "bytes": 100409,
+      "sha256": "e9b8c312d1e4cba1560a7fb4587a825b552b7c9beeeff66c85dd88b1c1131db5"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 128294,
-      "sha256": "e35cf5415b533fcd23bd6b7d43c4acf4aa9e4b983676cc74ccb9b399b58182b4"
+      "bytes": 138323,
+      "sha256": "aeca6869d6e23e678c9efd2ea036b02bff37424a8f8b8024b1c504fbf5b9e428"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 161039,
-      "sha256": "d12269ec2c4e84957860169e00f398e3f76335ec0727b18c83b12bab8b23739f"
+      "bytes": 162521,
+      "sha256": "85eb6319a338afb36677d9c14846f98af3dfc5718ee619627fa1e9e4069f342d"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -271,9 +271,14 @@
       "sha256": "6cefc3bd1ec143a125203283e13db7d4932e72489b16f143b0785783da66a7b0"
     },
     {
+      "path": "docs/adr/ADR-021-parser-database-credential.md",
+      "bytes": 6278,
+      "sha256": "94e1f3aab874ba2f19f8af7b7fb1c030d04f3a60bcce186eb1fb55de36e59de7"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 4906,
-      "sha256": "dbf17379ea2e0dfad2cecb09d4452fa8be07fc622b512737641bc1725e88c6f4"
+      "bytes": 5076,
+      "sha256": "f05453b3259badc52a468079b9c2050fed72b3581eb23e2437cc5dcbedbcf4d2"
     },
     {
       "path": "docs/evidence/github-ruleset-2026-10-12/README.md",

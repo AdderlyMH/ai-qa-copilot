@@ -883,6 +883,183 @@ Deletion protection is on, so a destroy fails until it is turned off:
    needed.
 4. Restore deletion protection in code before any new database is created.
 
+## Parser database credential and verify-full (INFRA-008 Stage B, 2026-10-19)
+
+Code only: **not planned, not applied, no image rebuilt or pushed, nothing
+invoked.** The decision is recorded in
+[ADR-021](adr/ADR-021-parser-database-credential.md) (owner decision
+2026-10-18): the ADR-018 fallback for the parser, no IAM database
+authentication.
+
+### RDS CA bundle and `sslmode=verify-full`
+
+- File: `apps/api/certs/rds-global-bundle.pem`, the RDS global bundle for all
+  commercial Regions, downloaded on 2026-10-19 from
+  <https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem>.
+  174,560 bytes, 114 certificates, all self-signed root CAs, none expired;
+  earliest expiry 2061-05-18, latest 2126-09-02. It contains the us-east-1
+  `Amazon RDS us-east-1 Root CA RSA2048 G1` (valid 2021-05-25 to 2061-05-25),
+  which is the CA of `rds-ca-rsa2048-g1`, the default CA for new instances.
+  **sha256 `90a6f1a7978a1b1b096dca6c57511ca48d3b8cf052f8e704baf358f34ea2f21b`**,
+  asserted by `test_lambda_images.py`. `.gitattributes` keeps it byte-exact
+  (`-text`) and one `.gitignore` exception allows it (all other `*.pem` stay
+  ignored).
+- Why the global bundle: RDS documents it for any commercial Region and says
+  the trust store needs only the root CAs, which is all it contains. The
+  instance's CA identifier was not read from AWS (no AWS call); RDS documents
+  `rds-ca-rsa2048-g1` as the default, and the bundle holds all three us-east-1
+  roots (RSA2048, RSA4096, ECC384).
+- `Dockerfile.lambda` copies it into **all five images** (api, parser,
+  general, executor, migrate) at `/var/task/certs/rds-global-bundle.pem`;
+  nothing is downloaded during a build. **Every image digest changes.**
+- Every URL the runner builds or writes, and its own master connection, now
+  use `sslmode=verify-full&sslrootcert=/var/task/certs/rds-global-bundle.pem`:
+  the application URL (`create_app_user`), the parser URL
+  (`create_parser_user`), the Alembic URL and the psycopg master connection.
+  SQLAlchemy 2.0.51 passes both query parameters unchanged to psycopg (checked
+  with `create_connect_args`); the URL shows the path percent-encoded, which
+  `make_url` decodes. libpq `verify-full` checks the CA and the host name.
+  Local Compose and test paths (no TLS) are unchanged. verify-full itself is
+  **not testable locally**.
+- **The `database-url` value written on 2026-10-17 still says
+  `sslmode=require`.** Rewrite it with `create_app_user` and `"rotate": true`
+  (runbook step 6) before the compute apply; no API or general function
+  exists yet, so no warm environment holds the old password.
+
+### Parser role (`create_parser_user`)
+
+The parser handler reads `DATABASE_URL` in
+`lambda_workers.build_parser_composition`. A `DATABASE_URL` in its environment
+passes the ADR-009 runtime check unchanged: the check forbids only
+`OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and the AWS key variables (the latter
+relaxed under the ADR-018 conditions), so `parser_worker.py` is unchanged.
+
+New runner action `{"action": "create_parser_user"}` (role from
+`PARSER_DB_USER`, default `ai_qa_copilot_parser`; `"rotate": true` resets the
+password and re-applies the grants): a non-superuser login role, password sent
+only as a SCRAM verifier, every table first `REVOKE ALL`, then only:
+
+| Table | Privileges | Parser code path |
+|---|---|---|
+| `parser_jobs` | SELECT, UPDATE | claim, lease, accept/reject/fail, reaping (`parser_job_claims.py`, `parser_evidence_promotion.py`) |
+| `document_versions` | SELECT, UPDATE | `parser_version_id` set on promotion |
+| `parser_versions` | SELECT, INSERT | first-use insert of the parser version |
+| `source_locations`, `document_sections` | SELECT, INSERT | evidence rows, after an existence check |
+| `indexing_jobs` | SELECT, INSERT | the queued indexing job created with the promotion |
+| `document_intakes`, `documents` | SELECT | source checks |
+
+No DELETE, no default privileges, no schema CREATE, nothing on any other table
+(including `alembic_version`). The URL goes to the new `parser-database-url`
+secret (`PARSER_DATABASE_URL_SECRET_ARN`), role and grants first, secret last;
+the response has booleans and counts only (`tables_granted` 8,
+`read_only_tables` 2). `apply_grants` never touches the parser role; its
+grants are re-applied only by `create_parser_user` with `rotate` (a deliberate
+choice: no separate parser grants action). The PostgreSQL integration test
+runs as the parser role and checks the allowed and refused statements
+(`db-check`; it was **not run locally**, Docker Desktop was not running).
+
+### Terraform
+
+- `data_plane`: a new secret container `ai-qa-copilot-production/parser-database-url`
+  (no version, no value; `CKV_AWS_149` and `CKV2_AWS_57` suppressed with the
+  same reasons as the other two). It is **not** in `application_secrets`, so
+  the api and general roles cannot read it; no function role can.
+- `migration`: `secretsmanager:PutSecretValue` on that exact ARN for the
+  migrate role (write only, no read), and `PARSER_DATABASE_URL_SECRET_ARN`
+  and `PARSER_DB_USER` in its environment.
+- `compute_api`: `parser_database_url_enabled` (bool, default **false**, not
+  nullable). **False:** the parser has no `DATABASE_URL` and fails closed
+  (its composition reports the pre-claim unavailable error, so SQS retries).
+  **True:** `data aws_secretsmanager_secret_version.parser_database_url`
+  reads the secret at plan time and the parser environment gets
+  `DATABASE_URL` (wrapped in `sensitive()`); the secret must already hold a
+  value, **otherwise the plan fails**. The parser is the only function whose
+  environment holds a database URL.
+- **Accepted exposure (ADR-018, ADR-021):** the parser URL, including its
+  password, is stored in **Terraform state** and in the **Lambda function
+  configuration**. The provider schema marks `secret_string` sensitive, so
+  plans redact it; `aws_lambda_function.environment.variables` is not itself
+  marked sensitive and state is not encrypted beyond the bucket's SSE-S3.
+  Rotation: `create_parser_user` with `rotate`, then a re-apply of the compute
+  module.
+- `CKV_AWS_173` reason updated: the parser environment holds that one
+  credential, by ADR-018, only while the flag is true.
+- Checkov 3.3.20: 381 passed, 0 failed, 63 skipped; the only change against
+  `main` is the two suppressions on the new secret (passed count unchanged).
+
+**Not in this stage:** the memory alarm threshold (ADR-020 stays OPEN), any
+`rds_iam` grant, the instance's `iam_database_authentication_enabled`
+setting (left as is; whether it costs memory is unmeasured, OPEN), rotation
+automation, the compute apply, any API/general bootstrap change.
+
+**Readings, 2026-10-18** (owner, no application connections):
+`FreeableMemory` hourly minimum about 74 to 97 MiB; `SwapUsage` about 175 to
+217 MiB. Recorded, not a verdict; the threshold stays OPEN.
+
+**Cost.** One more secret: **+0.40 USD per month** (AWS Price List
+`AWSSecretsManager` us-east-1, publication 2026-09-11, re-read 2026-10-19:
+0.40 USD per secret, 0.05 USD per 10,000 API requests). Running total
+against the 22.14 USD recorded for INFRA-008 Stage A: **22.54 USD per month
+plus API calls**; the parser makes no Secrets Manager call. Not a total for
+everything. No other new cost.
+
+### Stage B runbook (owner, local credentials, PowerShell)
+
+Under the [local-credential apply exception](#local-credential-apply-exception).
+**Stop rule** for every plan: stop on any destroy or replace (except step 7),
+anything in `module.compute_api` before step 8, any IAM permission beyond the
+ones above, or `DATABASE_URL` in any function environment other than the
+parser's.
+
+1. **Verify the bundle** against a fresh download (repository root):
+
+   ```powershell
+   $Url = "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
+   $File = Join-Path $env:TEMP ("rds-global-bundle-" + [guid]::NewGuid().ToString() + ".pem")
+   try {
+       Invoke-WebRequest -Uri $Url -OutFile $File -UseBasicParsing
+       (Get-FileHash -Algorithm SHA256 -LiteralPath $File).Hash.ToLower()
+       (Get-FileHash -Algorithm SHA256 -LiteralPath "apps\api\certs\rds-global-bundle.pem").Hash.ToLower()
+   } finally {
+       Remove-Item -LiteralPath $File -Force -ErrorAction SilentlyContinue
+   }
+   ```
+
+   Both lines must print the recorded sha256. If AWS has published a new
+   bundle, stop: replacing the file is a code change (file, test, docs).
+2. **Rebuild all five images** from the merged commit:
+   `py scripts/build_lambda_images.py`, then
+   `py scripts/build_lambda_images.py --function migrate`.
+3. **Push all five** with the [image push runbook](#image-push-runbook-owner-local-credentials)
+   (the `foreach` list becomes `"api", "parser", "general", "executor",
+   "migrate"`), and read the five digests back.
+4. **Private tfvars:** the four `image_uris` and `migration_image_uri` take the
+   new digests.
+5. **Parser secret container and runner:**
+
+   ```powershell
+   terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_secretsmanager_secret.parser_database_url' "-out=tfplan"
+   ```
+
+   Expect 1 to add; apply. Then set `migration_enabled = true` and plan
+   `'-target=module.migration'`: expect 6 to add (the runner was turned off
+   on 2026-10-17), with the inline policy holding `WriteParserDatabaseUrlSecret`
+   and the environment holding `PARSER_DATABASE_URL_SECRET_ARN` and
+   `PARSER_DB_USER`; apply.
+6. **Invoke** with the [migration runbook](#migration-runbook-owner-local-credentials)
+   step d block, in order: `'{"action":"status"}'`,
+   `'{"action":"create_app_user","rotate":true}'` (rewrites `database-url`
+   with `verify-full`; also proves the runner's own `verify-full` master
+   connection), then `'{"action":"create_parser_user"}'` (expect
+   `role_created` true, `secret_written` true, `tables_granted` 8,
+   `read_only_tables` 2).
+7. **Runner off:** `migration_enabled = false`, plan `'-target=module.migration'`:
+   6 to destroy, nothing else; apply.
+8. **At the compute apply:** set `parser_database_url_enabled = true`. The plan
+   reads the parser secret; the parser function's environment shows a
+   sensitive value and no other function shows `DATABASE_URL`. If the plan
+   fails reading the secret, step 6 did not write it.
+
 ## Optional guest-demo CloudFront and the parser queue grant (2026-10-18)
 
 Code only: **not planned, not applied.**
@@ -1014,9 +1191,9 @@ raises: the revision stays at head and the table does not exist.
 **Credentials.** The RDS-managed master secret (`MASTER_SECRET_ARN`) is read
 at invocation; it must hold `username` and `password` (other keys are
 ignored). Host, port and database come from `DB_HOST`, `DB_PORT`, `DB_NAME`.
-Connections use `sslmode=require`; `verify-full` with the RDS CA bundle is
-INFRA-008 Stage B (the bundle would be copied into the `runtime` and
-`migrate` stages, and `sslrootcert` added to both URLs). The master user is a
+Connections used `sslmode=require` until INFRA-008 Stage B (2026-10-19), which
+copies the RDS CA bundle into every image and switches every runner URL and
+connection to `sslmode=verify-full` (see the Stage B section). The master user is a
 member of `rds_superuser`, which `CREATE EXTENSION vector` in
 `0001_enable_pgvector` needs because pgvector is not a trusted extension on
 RDS (ADR-020).
@@ -1321,7 +1498,8 @@ ECR repository and its images stay. Apply.
 (`create_app_user`); `openai-api-key` is still **empty**. The bootstrap has
 not run in AWS yet (no function exists before the compute apply). Stage B
 (the parser database credential, the RDS CA bundle and
-`sslmode=verify-full`) is open.
+`sslmode=verify-full`) is implemented in code, not applied (see the Stage B
+section).
 
 **Application code.** `apps/api/src/ai_qa_copilot_api/secrets_bootstrap.py`:
 
@@ -1471,8 +1649,9 @@ command line, in history or in the repository.
 
    The query prints only the new version ID, not the ARN. For reference, the
    runner writes `database-url` in the form
-   `postgresql+psycopg://<application user>:<password>@<endpoint>:5432/ai_qa_copilot?sslmode=require`;
-   `verify-full` replaces `require` in Stage B.
+   `postgresql+psycopg://<application user>:<password>@<endpoint>:5432/ai_qa_copilot?sslmode=verify-full&sslrootcert=<bundle path>`
+   since Stage B (the value written on 2026-10-17 still has `sslmode=require`
+   until it is rewritten with `create_app_user` and `rotate`).
 
 3. Check that a value exists without printing it:
 
@@ -1491,12 +1670,10 @@ command line, in history or in the repository.
   API and general functions fail closed at cold start until both values are
   set.
 
-**Stage B (open):** the parser database credential under the ADR-020
-decision rule (IAM authentication or the ADR-018 fallback); the RDS CA
-bundle copied into the `runtime` stage of `apps/api/Dockerfile.lambda` (the
-parser has no internet route) with `sslmode=verify-full`, which needs an
-image rebuild and a new push; parameter-group tuning. Not here either:
-creating database users or any SQL (INFRA-012) and the compute apply.
+**Stage B (implemented in code 2026-10-19, not applied):** the parser
+credential (ADR-018 fallback, ADR-021) and the RDS CA bundle with
+`sslmode=verify-full`; see the Stage B section. Parameter-group tuning
+remains open.
 
 Sources (read 2026-10-16):
 <https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html>;
@@ -1560,12 +1737,9 @@ gets no network from the image: its isolation is the parser subnet with no
 route except the S3 gateway endpoint (ADR-017) and the ADR-009/ADR-018
 runtime check in `parser_worker.py`, which is unchanged.
 
-**RDS CA bundle (INFRA-008, not done here).** The parser has no internet
-route, so it cannot download the bundle at run time. When INFRA-008 adds
-`verify-full`, the bundle belongs in the `runtime` stage as a file copied
-from the repository (with its source and checksum recorded) under
-`${LAMBDA_TASK_ROOT}`, and the connection setting that points at it belongs
-in the function environment, not in the image.
+**RDS CA bundle (INFRA-008 Stage B, 2026-10-19).** Now copied into all five
+targets at `${LAMBDA_TASK_ROOT}/certs/rds-global-bundle.pem`, from the
+repository with its sha256 asserted by a test; see the Stage B section.
 
 **Migrations are not in the images (INFRA-012).** The ignore-file allowlist
 and the `COPY` lines include only `apps/api/src/ai_qa_copilot_api`. The
