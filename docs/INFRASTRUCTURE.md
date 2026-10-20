@@ -499,6 +499,10 @@ Owner-observed measurement of the API function:
 Max memory used stayed about 176 to 180 MB in both settings, so the cause was
 CPU, not memory: Lambda allocates CPU in proportion to configured memory.
 
+After the owner-subject apply the cold start was 2.8 s (`Init Duration`
+1422.54 ms) and a second warm request took 6.57 ms; see the
+[compute apply record](#compute-apply-and-owner-api-check-2026-10-20).
+
 The API memory was first set to 1769 MB manually with the AWS CLI on
 2026-10-20. It is now in Terraform: `memory_mb` in `compute_api` defaults to
 api 1769, parser 512, general 1024, executor 512, and its validation requires
@@ -1219,6 +1223,174 @@ the roles are shown to connect from functions.
   unresolved).
 - SG-07 disposition of the scan findings before the December 6 freeze.
 - The weekly base-digest check ([Refresh the base image digest](#refresh-the-base-image-digest)).
+
+**Update (2026-10-20):** the compute apply ran and the application role
+connected from the API function over `verify-full`; see
+[Compute apply and owner API check, 2026-10-20](#compute-apply-and-owner-api-check-2026-10-20).
+
+## Compute apply and owner API check, 2026-10-20
+
+Owner-observed facts. The account ID, API endpoint, user pool and client IDs,
+the owner's email address and `sub`, and any AWS support case or request ID
+stay in the owner's private notes.
+
+### Targeted apply with `demo_cdn_enabled = false`
+
+The AWS CloudFront verification case was still open, so the owner set
+`demo_cdn_enabled = false` in the private tfvars. Targeted apply: **2 added,
+3 changed, 1 destroyed**:
+
+- destroyed: the CloudFront origin access control applied on 2026-10-13;
+- added: the two `tls_only` bucket policies;
+- changed in place: the parser, api and general role policies.
+
+`aws iam get-role-policy` on the parser role shows exactly the statements
+`WriteOwnLogs`, `ConsumeParserQueue` and `ReadQuarantine`. The parser role no
+longer has `sqs:SendMessage`, which closes that ADR-018 precondition in AWS.
+
+### Secret value, tfvars and the compute apply
+
+- `openai-api-key` set with the [secret values runbook](#secret-values-runbook-owner-local-credentials)
+  secure prompt; version `AWSCURRENT`; the value was never read back.
+- The private tfvars received the four function digests from the
+  [Stage B rollout](#stage-b-rollout-2026-10-19) and
+  `parser_database_url_enabled = true`.
+- Full compute apply: **plan 20 to add, apply 20 added**: the four
+  functions, the HTTP API (API Gateway), the Cognito user pool and client,
+  the ECR pull policies, three event source mappings (the execution mapping
+  disabled), the API invoke permission and the `FreeableMemory` alarm. No
+  CloudFront resource.
+
+### First requests and API memory
+
+- `/health` returned 200.
+- The first cold start at 512 MB hit the 10 s Lambda init limit
+  (`INIT_REPORT` `Init Duration` 9999.62 ms, status timeout); the request
+  took about 10.3 s.
+- After the owner raised the API to 1769 MB with the CLI, a cold request
+  took 2.7 s (`Init Duration` 1357.77 ms, `Duration` 598.21 ms). Max Memory
+  Used stayed about 176 to 180 MB, so the cause was CPU. This was then
+  codified in Terraform (PR #201; see
+  [API memory, 2026-10-20](#api-memory-2026-10-20)).
+- After the owner-subject apply below: cold start 2.8 s, `Init Duration`
+  1422.54 ms. Warm requests 4.65 ms and 6.57 ms.
+
+### Owner user
+
+- Created in the Cognito pool with `admin-create-user` and
+  `--message-action SUPPRESS` (no invitation email).
+- A permanent password set with `admin-set-user-password`, read from a
+  secure prompt. **Known weakness:** the password was then passed to the AWS
+  CLI as a command-line argument, so it may be visible to other processes on
+  the workstation while the command runs and may be kept in shell history.
+  Use a password that is unique to this account and used nowhere else, and
+  change it if the workstation is shared or the history is kept.
+- `UserStatus` `CONFIRMED`.
+- Its `sub` was set as `cognito_owner_subject` in the private tfvars and
+  applied: 1 changed (the API function's environment).
+
+### Owner API check results
+
+- Without a token: `/projects` returned **401** "Invalid or missing
+  credentials".
+- With an SRP login (procedure below): `/projects` returned **200 `[]`** on a
+  cold request (`Init Duration` 1429.33 ms, `Duration` 1332.41 ms).
+
+**What this shows:** the owner check passes (a validated Cognito access
+token whose subject matches `cognito_owner_subject`); the secrets bootstrap
+loaded both secrets at cold start; the application role logged in to RDS
+over `sslmode=verify-full` from the API function and ran a SELECT.
+
+**Not shown:** INSERT or UPDATE by the application role; any connection by
+the parser or general roles; the OpenAI call; `verify-full` from the parser
+and general images; what a Lambda timeout does to an open transaction.
+
+**CloudFront:** the AWS case had no reply as of 2026-10-20. While
+`demo_cdn_enabled` is false the guest page has no HTTPS host.
+
+**Status:** INFRA-012 acceptance evidence is recorded (the application role
+connected from a function); acceptance is the owner's call, so INFRA-012
+stays **not Accepted** until the owner records it. INFRA-008 Stage B stays
+**not Accepted**: the parser's own login is not yet shown.
+
+**Next actions:**
+
+- Create a project and upload a synthetic Markdown file, to exercise INSERT,
+  the quarantine, the SQS wake-up and the parser's database login.
+- Measure parser and general cold starts (parser timeout 15 s; the init
+  limit is 10 s for every function).
+- SG-07 disposition of the scan findings before the December 6 freeze.
+- The weekly base-image digest check
+  ([Refresh the base image digest](#refresh-the-base-image-digest)).
+
+### Owner API check (owner, local credentials, PowerShell)
+
+Written from the owner's 2026-10-20 run; this exact text has not been re-run.
+It signs in with SRP, calls one owner route and keeps the token in memory
+only.
+
+- `pycognito` 2024.5.1 runs through `uv run --no-project --with`, so it is
+  installed in a throwaway environment, not in the repository's lock.
+- **Dummy AWS credentials** are set for that process only. SRP
+  `InitiateAuth` needs no AWS signature, but boto3 still resolves
+  credentials; without the dummies it tried the `aws login` credential
+  provider, and the first attempt failed with `MissingDependencyException`
+  for `botocore[crt]`.
+- The password is read with `getpass`; the access token is used in-process
+  and nothing is written to disk except the temporary script, which is
+  deleted afterwards.
+
+From `infra/environments/production`:
+
+```powershell
+$Region = "us-east-1"
+$PoolId = terraform output -raw cognito_user_pool_id
+$ApiUrl = terraform output -raw http_api_endpoint
+$ClientId = aws cognito-idp list-user-pool-clients --region $Region --user-pool-id $PoolId --query "UserPoolClients[0].ClientId" --output text
+$Owner = Read-Host "Owner sign-in email"
+$Script = Join-Path $env:TEMP ("owner-api-check-" + [guid]::NewGuid().ToString() + ".py")
+@'
+import getpass
+import sys
+import urllib.error
+import urllib.request
+
+from pycognito import Cognito
+
+pool_id, client_id, api_url, owner = sys.argv[1:5]
+user = Cognito(pool_id, client_id, username=owner)
+user.authenticate(password=getpass.getpass("Owner password: "))
+request = urllib.request.Request(
+    api_url.rstrip("/") + "/projects",
+    headers={"Authorization": "Bearer " + user.access_token},
+)
+try:
+    with urllib.request.urlopen(request, timeout=35) as response:
+        print(response.status, response.read().decode())
+except urllib.error.HTTPError as error:
+    print(error.code, error.read().decode())
+'@ | Set-Content -Encoding utf8 -LiteralPath $Script
+$Saved = @{ Id = $env:AWS_ACCESS_KEY_ID; Key = $env:AWS_SECRET_ACCESS_KEY; Profile = $env:AWS_PROFILE; Region = $env:AWS_DEFAULT_REGION }
+try {
+    Remove-Item Env:AWS_PROFILE -ErrorAction SilentlyContinue
+    $env:AWS_ACCESS_KEY_ID = "dummy"
+    $env:AWS_SECRET_ACCESS_KEY = "dummy"
+    $env:AWS_DEFAULT_REGION = $Region
+    uv run --no-project --with "pycognito==2024.5.1" python $Script $PoolId $ClientId $ApiUrl $Owner
+} finally {
+    $env:AWS_ACCESS_KEY_ID = $Saved.Id
+    $env:AWS_SECRET_ACCESS_KEY = $Saved.Key
+    $env:AWS_PROFILE = $Saved.Profile
+    $env:AWS_DEFAULT_REGION = $Saved.Region
+    Remove-Item -LiteralPath $Script -Force -ErrorAction SilentlyContinue
+}
+```
+
+Expected: `200 []` before any project exists. A `401` means the token was
+refused (wrong client, expired token, or a `sub` that does not match
+`cognito_owner_subject`). The check without a token is the same request with
+no `Authorization` header (`Invoke-WebRequest "$ApiUrl/projects"`), which
+must return 401. Do not print or save the token.
 
 ## Optional guest-demo CloudFront and the parser queue grant (2026-10-18)
 

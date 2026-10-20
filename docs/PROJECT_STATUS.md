@@ -1,9 +1,55 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Compute apply; owner API check passes against RDS — 2026-10-20
+
+**Status:** Owner-applied and owner-run. INFRA-002, INFRA-008 and INFRA-012
+are **not Accepted**.
+
+Owner-observed: with `demo_cdn_enabled = false` (the AWS CloudFront case was
+still open, no reply as of 2026-10-20), a targeted apply added 2 (the
+`tls_only` bucket policies), changed 3 (parser, api and general role
+policies) and destroyed 1 (the origin access control). `get-role-policy`
+shows the parser role with only `WriteOwnLogs`, `ConsumeParserQueue` and
+`ReadQuarantine`: no `sqs:SendMessage`, closing that ADR-018 precondition
+in AWS. `openai-api-key` set by secure prompt (`AWSCURRENT`, never read);
+the four digests and `parser_database_url_enabled = true` in the private
+tfvars. Full compute apply: plan 20 to add, apply 20 added (four functions,
+HTTP API, Cognito, ECR pull policies, three event source mappings with
+execution disabled, invoke permission, `FreeableMemory` alarm); no
+CloudFront.
+
+First requests: `/health` 200. At 512 MB the API's init hit the 10 s limit
+(`Init Duration` 9999.62 ms, timeout; about 10.3 s); at 1769 MB, set with
+the CLI and then codified in PR #201, a cold request took 2.7 s (`Init
+Duration` 1357.77 ms) with Max Memory Used about 176 to 180 MB (CPU-bound).
+After the owner-subject apply: cold 2.8 s (`Init Duration` 1422.54 ms);
+warm 4.65 and 6.57 ms.
+
+Owner user created with `--message-action SUPPRESS`; permanent password
+via `admin-set-user-password` from a secure prompt but passed on the
+command line (a known weakness; use a unique password); `CONFIRMED`; its
+`sub` applied as `cognito_owner_subject` (1 changed). `/projects` without a
+token: 401. With an SRP login (pycognito 2024.5.1 in a throwaway `uv`
+environment, dummy AWS credentials so boto3 skips the `aws login` provider,
+password from `getpass`, token in memory only): **200 `[]`** on a cold
+request (`Init Duration` 1429.33 ms, `Duration` 1332.41 ms).
+
+Shown: the owner check passes; the secrets bootstrap loaded both secrets;
+the application role logged in to RDS over `verify-full` from the API and
+ran a SELECT (INFRA-012 acceptance evidence; acceptance is the owner's
+call). Not shown: INSERT/UPDATE by the application role; anything by the
+parser or general roles (INFRA-008 Stage B stays open); the OpenAI call.
+The guest page has no HTTPS host while `demo_cdn_enabled` is false.
+
+Next action: create a project and upload a synthetic Markdown file
+(INSERT, quarantine, SQS wake-up, the parser's database login); measure
+parser and general cold starts (parser timeout 15 s, init limit 10 s);
+SG-07 disposition; weekly base-image digest check.
+
 ## API Lambda memory raised to 1769 MB in Terraform — 2026-10-20
 
-**Status:** One commit on branch `fix/infra-api-memory`, not yet merged.
-Infra and docs only; no plan or apply was run for this change.
+**Status:** Merged to `main` in PR #201. Infra and docs only; no plan or
+apply was run for this change.
 
 Owner-observed: at 512 MB the API's init phase hit Lambda's 10 s init limit
 (`Init Duration` 9999.62 ms, status timeout) and the first request took
