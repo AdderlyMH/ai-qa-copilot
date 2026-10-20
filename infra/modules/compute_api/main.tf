@@ -36,13 +36,23 @@ variable "image_uris" {
 }
 
 variable "memory_mb" {
-  description = "Memory per function class in MB."
+  description = "Memory per function class in MB. Lambda allocates CPU in proportion to memory. The API is 1769 MB: at 512 MB its init phase hit the 10-second Lambda init limit (owner measurement 2026-10-20, CPU-bound). The other three are unmeasured."
   type        = map(number)
   default = {
-    api      = 512
+    api      = 1769
     parser   = 512
     general  = 1024
     executor = 512
+  }
+
+  validation {
+    condition     = toset(keys(var.memory_mb)) == toset(["api", "parser", "general", "executor"])
+    error_message = "memory_mb must have exactly the keys api, parser, general and executor."
+  }
+
+  validation {
+    condition     = alltrue([for mb in values(var.memory_mb) : mb >= 128 && mb <= 10240 && floor(mb) == mb])
+    error_message = "Each memory_mb value must be a whole number of MB from 128 to 10240 (the Lambda range)."
   }
 }
 

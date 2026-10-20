@@ -482,8 +482,37 @@ digests), the stage 3 roles and log groups, and VPC attachment: the API,
 general worker and executor in the egress-compute subnet with the
 egress-compute security group, the parser in the parser subnet with the parser
 security group. Timeouts: API 29 s (under the 30 s HTTP API limit), parser 15 s,
-general 300 s (assumption), executor 60 s. Memory: 512 MB, except the general
-worker at 1,024 MB.
+general 300 s (assumption), executor 60 s. Memory (`memory_mb`, one value per
+function): API 1,769 MB (since 2026-10-20; see below), parser 512 MB, general
+worker 1,024 MB, executor 512 MB.
+
+#### API memory, 2026-10-20
+
+Owner-observed measurement of the API function:
+
+| Memory | Phase | Result |
+|---|---|---|
+| 512 MB | Cold start | `INIT_REPORT` `Init Duration` 9999.62 ms, status **timeout** (Lambda's 10 s init limit); the first request took about 10.3 s |
+| 1769 MB | Cold request | 2.7 s end to end; `Init Duration` 1357.77 ms, `Duration` 598.21 ms |
+| 1769 MB | Warm request | 4.65 ms |
+
+Max memory used stayed about 176 to 180 MB in both settings, so the cause was
+CPU, not memory: Lambda allocates CPU in proportion to configured memory.
+
+The API memory was first set to 1769 MB manually with the AWS CLI on
+2026-10-20. It is now in Terraform: `memory_mb` in `compute_api` defaults to
+api 1769, parser 512, general 1024, executor 512, and its validation requires
+exactly those four keys and a whole number from 128 to 10240 MB for each. The
+production root passes no `memory_mb`, so the module default applies and the
+next compute plan should show no memory change for the API.
+
+**Unmeasured:** the parser, general and executor functions. The 10 s init
+limit applies to every function; the parser has a 15 s timeout, so measure
+its `Init Duration` at the first parser message and raise its memory the same
+way if it is close to the limit.
+
+**Cost:** no figure is recorded for this change. The Lambda Arm price above
+was read on 2026-10-12 and was not re-read for it.
 
 **Environment variables** (non-secret only): `APP_ENV=production` everywhere;
 the API also gets `COGNITO_ISSUER`, `COGNITO_CLIENT_ID`,
