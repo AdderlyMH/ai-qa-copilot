@@ -118,6 +118,40 @@ def test_no_function_role_can_read_the_parser_secret() -> None:
     )
 
 
+FUNCTIONS = ("api", "parser", "general", "executor")
+
+
+def memory_defaults(compute: str) -> dict[str, int]:
+    """Read the ``memory_mb`` default map from the module text."""
+
+    default = block(code(block(compute, 'variable "memory_mb"')), "default = {")
+    return {
+        name: int(value)
+        for name, value in re.findall(
+            r"^\s+(\w+)\s*=\s*(\d+)\s*$", default, re.MULTILINE
+        )
+    }
+
+
+def test_every_function_has_a_memory_value_in_the_lambda_range() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    memory = memory_defaults(compute)
+
+    assert sorted(memory) == sorted(FUNCTIONS)
+    assert all(128 <= mb <= 10240 for mb in memory.values())
+    variable = code(block(compute, 'variable "memory_mb"'))
+    assert 'toset(["api", "parser", "general", "executor"])' in variable
+    assert "mb >= 128 && mb <= 10240" in variable
+    assert "memory_size   = var.memory_mb[each.key]" in compute
+
+
+def test_the_api_has_enough_memory_to_finish_its_init_phase() -> None:
+    # At 512 MB the API init hit Lambda's 10-second limit (owner, 2026-10-20).
+    memory = memory_defaults(COMPUTE_API.read_text(encoding="utf-8"))
+
+    assert memory["api"] >= 1024
+
+
 PRODUCTION_ROOT = ROOT / "infra/environments/production/main.tf"
 
 

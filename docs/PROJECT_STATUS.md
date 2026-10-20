@@ -1,5 +1,30 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## API Lambda memory raised to 1769 MB in Terraform — 2026-10-20
+
+**Status:** One commit on branch `fix/infra-api-memory`, not yet merged.
+Infra and docs only; no plan or apply was run for this change.
+
+Owner-observed: at 512 MB the API's init phase hit Lambda's 10 s init limit
+(`Init Duration` 9999.62 ms, status timeout) and the first request took
+about 10.3 s. After the owner set 1769 MB with the CLI, a cold request took
+2.7 s end to end (`Init Duration` 1357.77 ms, `Duration` 598.21 ms) and a
+warm one 4.65 ms. Max memory used stayed about 176 to 180 MB, so the cause
+was CPU, not memory.
+
+`compute_api` `memory_mb` now defaults to api 1769, parser 512, general
+1024, executor 512 (only the API raised), with validation for exactly those
+keys and 128 to 10240 MB each. Two new contract tests: every function has a
+value in the Lambda range, and the API has at least 1024 MB. Checkov
+unchanged (381 passed, 0 failed, 63 skipped).
+
+Not measured: the parser, general and executor. The parser has a 15 s
+timeout and the 10 s init limit applies; measure at its first message. No
+cost figure is recorded for this change.
+
+Next action: owner review and merge; the next compute plan should show no
+memory change for the API (the CLI value now matches Terraform).
+
 ## INFRA-008 Stage B rollout: images pushed, runner run, parser role created — 2026-10-19
 
 **Status:** Owner-applied and owner-run; the runner is off again.
