@@ -1,5 +1,32 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## ADR-019 amended: demo-only fixture and deterministic build (docs only) — 2026-10-21
+
+**Status:** ADR-019 stays **Proposed**; documentation only. No code,
+Terraform, tfvars, fixture or evaluation file changed. INFRA-011 is not
+started.
+
+The amendment adds Decisions 8 to 12 to
+[ADR-019](adr/ADR-019-guest-demo-snapshot.md): a new demo-only synthetic
+fixture in its own directory with a demo manifest of raw-bytes SHA-256 values
+(the evaluation seeds and overlays are not used); a local build in memory or
+in a throwaway SQLite database that reuses the end-to-end test composition,
+with no production database, no new infrastructure and no provider call;
+citations by the rule "one per parsed requirement unit, in document order"
+and author-written test seeds; a fixed provenance statement that says the
+demo is not a model result; and an import and path contract test that keeps
+the demo build away from evaluation code and artifacts. Publish check 2 now
+compares against the demo manifest. The page states that the report's own
+traceability section is not available in v1.
+
+Facts recorded from code reading (nothing was run): a `QualityReportV1`
+contains no model output, production cannot build a demo report today, and
+the evaluation requirements seed parses to zero units in Markdown mode
+(unverified by a run; recorded as a finding, no fix).
+
+Next action: owner review and acceptance (or amendment) of ADR-019; then
+INFRA-011 writes the demo fixture.
+
 ## ADR-019 guest demo snapshot proposed (docs only) — 2026-10-21
 
 **Status:** Proposed; documentation only. No code, Terraform or tfvars
