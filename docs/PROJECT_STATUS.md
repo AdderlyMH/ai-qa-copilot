@@ -1,5 +1,30 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## ADR-019 guest demo snapshot proposed (docs only) — 2026-10-21
+
+**Status:** Proposed; documentation only. No code, Terraform or tfvars
+changed. INFRA-011 is not started and waits for the owner to accept ADR-019.
+
+[ADR-019](adr/ADR-019-guest-demo-snapshot.md) proposes: v1 snapshot contents
+(report summary, a traceability table derived from claim evidence links, and
+redacted citation excerpts); sanitization by an explicit allowlist projection
+from `QualityReportV1` and its referenced citations, with opaque public
+identifiers derived from the content hash; a `publications/<content-hash>/`
+layout with `current.json` as the only mutable object; a local owner publish
+script that runs the ADR-006 checks before writing to the demo bucket and
+emits the same bytes for any static host; a standalone static viewer with a
+strict CSP; and rollback per ADR-006.
+
+Facts recorded while writing it: no snapshot generator, publish script or
+viewer exists; the report's `traceability` section is always
+`not_available` in v1, and citation excerpts live outside the report.
+
+Open: the source fixture (candidates listed, none chosen), the static host
+and the ADR-017/ADR-018 amendment it would need, and the API role's unused
+`PublishDemoRevision` grant (removal recommended, not changed).
+
+Next action: owner review and acceptance (or amendment) of ADR-019.
+
 ## First end-to-end uploads; parser wake-up applied; certifi risk accepted — 2026-10-20
 
 **Status:** Owner-applied and owner-run. INFRA-002, INFRA-008 and INFRA-012
