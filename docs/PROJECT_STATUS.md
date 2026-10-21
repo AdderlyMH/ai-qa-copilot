@@ -1,5 +1,26 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## ADR-019 accepted (docs only) — 2026-10-21
+
+**Status:** Owner decision. [ADR-019](adr/ADR-019-guest-demo-snapshot.md)
+is **Accepted** by the project owner on 2026-10-21, with Decisions 1 to 12
+unchanged. Documentation only: no code, Terraform, fixture or validator
+change.
+
+This meets the ADR-018 condition that ADR-019 be accepted before the guest
+page ships, so INFRA-011 implementation can start: the demo-only fixture and
+its manifest, the generator and allowlist projection, the separation
+contract test, the viewer and the local publish script. INFRA-011 is not
+started and nothing is published.
+
+Still open: the static host choice, and the ADR-017/ADR-018 amendment if the
+host is not CloudFront (`demo_cdn_enabled = false` stays); the ADR-019 open
+items (demo fixture content and path, excerpt bound and redaction patterns,
+entry-URL mapping, the unused `PublishDemoRevision` grant).
+
+Next action: INFRA-011, starting with the demo-only fixture and the
+separation contract test.
+
 ## ADR-019 amended: demo-only fixture and deterministic build (docs only) — 2026-10-21
 
 **Status:** ADR-019 stays **Proposed**; documentation only. No code,

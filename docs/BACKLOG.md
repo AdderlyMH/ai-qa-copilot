@@ -1024,12 +1024,12 @@ of this backlog.
 
 - **Priority:** P0
 - **Estimate:** 10 h
-- **Dependencies:** ADR-019 (to be written and accepted first), INFRA-010, REP-001 to REP-004
+- **Dependencies:** ADR-019 (Accepted 2026-10-21), INFRA-010, REP-001 to REP-004
 - **Deliverable:** ADR-019 defining the snapshot schema, the sanitization policy and the static "server-selected" rule; a sanitizer and a local publish script that write a pre-sanitized snapshot to a new immutable key under `publications/` in the demo bucket with the owner's local credentials; a guest page that renders it from CloudFront. There is no owner publish API in this item.
 - **Acceptance:** A published snapshot passes the ADR-006 data policy checks and content-hash verification; the guest page loads over HTTPS with no database connection and no write route; a second publication does not overwrite the first; the script refuses unsanitized input. Completes milestone M3.
 
 - **Dependency note (2026-10-18):** the guest page is served by the CloudFront distribution, which exists only while `demo_cdn_enabled` is true. While it is false the guest page has no HTTPS host, so the acceptance ("loads over HTTPS") cannot be met; publishing to the private demo bucket is unaffected.
-- **Dependency note (2026-10-21):** [ADR-019](adr/ADR-019-guest-demo-snapshot.md) is written with status **Proposed** and is host-neutral (static files over HTTPS). INFRA-011 implementation waits for the owner to accept it. The static host choice, and the ADR-017/ADR-018 amendment if that host is not CloudFront, stay open; the publish step writes to the demo bucket as the record either way.
+- **Dependency note (2026-10-21, updated on acceptance):** [ADR-019](adr/ADR-019-guest-demo-snapshot.md) is **Accepted** (2026-10-21, project owner) and host-neutral (static files over HTTPS). The ADR-018 condition "ADR-019, which must be accepted before the guest page ships" is met, so INFRA-011 implementation can start. Still open: the static host choice, and the ADR-017/ADR-018 amendment if that host is not CloudFront; the publish step writes to the demo bucket as the record either way.
 - **Amendment note (2026-10-21):** [ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decisions 8 to 12 (still Proposed): a new demo-only synthetic fixture with its own raw-bytes SHA-256 manifest instead of the evaluation seeds, a local in-memory or throwaway SQLite build with no provider call, one citation per parsed requirement unit, a fixed provenance statement ("not a model result"), and an import and path contract that keeps the demo build away from evaluation code and artifacts.
 
 #### INFRA-012 — Migration runner
