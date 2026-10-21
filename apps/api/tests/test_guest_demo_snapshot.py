@@ -54,27 +54,46 @@ FORBIDDEN_MODULE_NAMES = frozenset(
 )
 FORBIDDEN_PATH_FRAGMENTS = ("evaluation/", "fixtures/")
 
-# Runs in a fresh interpreter: audits sockets and file writes, builds, writes.
-CHILD_BUILD = """
-import json, sys
+# Prelude for every child interpreter: audits sockets and file writes, and
+# ``report(**extra)`` prints the audit as the child's last line of JSON.
+AUDIT_HOOK = """
+import json, os, sys
 events = []
+descriptor_reopens = []
+WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_APPEND | os.O_TRUNC
 def audit(name, args):
     if name.startswith("socket."):
         events.append([name, repr(args)])
-    elif name == "open" and isinstance(args[1], str) and set(args[1]) & set("wax+"):
-        events.append([name, str(args[0])])
+    elif name == "open":
+        path, mode, flags = args
+        if isinstance(path, int):
+            # Wrapping an already-open descriptor creates no file; a path that
+            # created one was audited by its own os.open or open event.
+            descriptor_reopens.append(path)
+            return
+        if isinstance(mode, str):
+            writes = bool(set(mode) & set("wax+"))
+        else:
+            writes = isinstance(flags, int) and bool(flags & WRITE_FLAGS)
+        if writes:
+            events.append([name, os.fsdecode(path)])
 sys.addaudithook(audit)
+def report(**extra):
+    print(json.dumps({"events": events, "descriptor_reopens": descriptor_reopens, **extra}))
+"""
+
+# Builds and writes the snapshot in a fresh interpreter under the audit hook.
+CHILD_BUILD = (
+    AUDIT_HOOK
+    + """
 from pathlib import Path
 from ai_qa_copilot_api.guest_demo_build import build_demo
 from ai_qa_copilot_api.guest_demo_snapshot import render_snapshot, write_snapshot
 output = render_snapshot(build_demo(Path(sys.argv[1])))
 write_snapshot(output, Path(sys.argv[2]))
-print(json.dumps({
-    "content_hash": output.content_hash,
-    "modules": sorted(sys.modules),
-    "events": events,
-}))
+report(content_hash=output.content_hash, modules=sorted(sys.modules))
 """
+)
 
 
 @cache
@@ -92,19 +111,18 @@ def snapshot() -> dict[str, Any]:
     return payload
 
 
-@pytest.fixture(scope="module")
-def child_build(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
-    workdir = tmp_path_factory.mktemp("child-cwd")
-    output_dir = tmp_path_factory.mktemp("child-out") / "snapshot"
+def run_child(code: str, workdir: Path, *args: str) -> dict[str, Any]:
+    """Run ``code`` in a fresh interpreter and return its final JSON line."""
+
     completed = subprocess.run(  # nosec B603 - fixed argv, no shell
         [
             sys.executable,
+            "-B",  # no bytecode caches: only the child's own writes are audited
             "-W",
             "ignore",
             "-c",
-            CHILD_BUILD,
-            str(DEMO_FIXTURE),
-            str(output_dir),
+            code,
+            *args,
         ],
         cwd=workdir,
         capture_output=True,
@@ -114,6 +132,33 @@ def child_build(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     )
     result: dict[str, Any] = json.loads(completed.stdout.strip().splitlines()[-1])
     result["workdir"] = workdir
+    return result
+
+
+def reported_writes(child: dict[str, Any]) -> set[Path]:
+    """Resolve every write the audit hook reported, relative to the child cwd."""
+
+    workdir: Path = child["workdir"]
+    return {
+        (path if path.is_absolute() else workdir / path).resolve()
+        for path in (Path(event[1]) for event in child["events"] if event[0] == "open")
+    }
+
+
+def expected_build_writes(output_dir: Path) -> set[Path]:
+    """The only files a build may create."""
+
+    return {
+        (output_dir / "snapshot.json").resolve(),
+        (output_dir / "manifest.json").resolve(),
+    }
+
+
+@pytest.fixture(scope="module")
+def child_build(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
+    workdir = tmp_path_factory.mktemp("child-cwd")
+    output_dir = tmp_path_factory.mktemp("child-out") / "snapshot"
+    result = run_child(CHILD_BUILD, workdir, str(DEMO_FIXTURE), str(output_dir))
     result["output_dir"] = output_dir
     return result
 
@@ -351,15 +396,7 @@ def test_a_fresh_build_writes_only_into_its_output_directory(
     child_build: dict[str, Any],
 ) -> None:
     output_dir: Path = child_build["output_dir"]
-    writes = [Path(event[1]) for event in child_build["events"] if event[0] == "open"]
-    resolved = {
-        (child_build["workdir"] / path if not path.is_absolute() else path).resolve()
-        for path in writes
-    }
-    assert resolved == {
-        (output_dir / "snapshot.json").resolve(),
-        (output_dir / "manifest.json").resolve(),
-    }
+    assert reported_writes(child_build) == expected_build_writes(output_dir)
     assert sorted(item.name for item in output_dir.iterdir()) == [
         "manifest.json",
         "snapshot.json",
@@ -368,3 +405,74 @@ def test_a_fresh_build_writes_only_into_its_output_directory(
     assert json.loads((output_dir / "snapshot.json").read_bytes())["content_class"] == (
         CONTENT_CLASS
     )
+
+
+# Self-tests of the write-audit hook: each child runs the real AUDIT_HOOK.
+UNEXPECTED_WRITES_IN_OUTPUT = (
+    AUDIT_HOOK
+    + """
+from pathlib import Path
+output_dir = Path(sys.argv[1])
+output_dir.mkdir(parents=True)
+with open(output_dir / "unexpected.txt", "w") as handle:
+    handle.write("x")
+os.close(os.open(output_dir / "unexpected.bin", os.O_CREAT | os.O_WRONLY))
+report()
+"""
+)
+WRITE_OUTSIDE_OUTPUT = (
+    AUDIT_HOOK
+    + """
+from pathlib import Path
+with open(Path(sys.argv[1]), "w") as handle:
+    handle.write("x")
+report()
+"""
+)
+DESCRIPTOR_REOPEN_ONLY = (
+    AUDIT_HOOK
+    + """
+read_fd, write_fd = os.pipe()
+with open(write_fd, "w") as handle:
+    handle.write("")
+os.close(read_fd)
+report(write_fd=write_fd)
+"""
+)
+
+
+def test_audit_hook_reports_unexpected_files_written_into_the_output_directory(
+    tmp_path: Path,
+) -> None:
+    workdir = tmp_path / "cwd"
+    workdir.mkdir()
+    output_dir = tmp_path / "out"
+    child = run_child(UNEXPECTED_WRITES_IN_OUTPUT, workdir, str(output_dir))
+    writes = reported_writes(child)
+    assert writes == {
+        (output_dir / "unexpected.txt").resolve(),
+        (output_dir / "unexpected.bin").resolve(),
+    }
+    assert writes != expected_build_writes(output_dir)
+
+
+def test_audit_hook_reports_a_write_outside_the_output_directory(
+    tmp_path: Path,
+) -> None:
+    workdir = tmp_path / "cwd"
+    workdir.mkdir()
+    outside = tmp_path / "elsewhere.txt"
+    child = run_child(WRITE_OUTSIDE_OUTPUT, workdir, str(outside))
+    assert reported_writes(child) == {outside.resolve()}
+    assert not reported_writes(child) <= expected_build_writes(tmp_path / "out")
+
+
+def test_audit_hook_ignores_a_reopened_descriptor_that_writes_no_new_file(
+    tmp_path: Path,
+) -> None:
+    workdir = tmp_path / "cwd"
+    workdir.mkdir()
+    child = run_child(DESCRIPTOR_REOPEN_ONLY, workdir)
+    assert reported_writes(child) == set()
+    assert child["descriptor_reopens"] == [child["write_fd"]]
+    assert list(workdir.iterdir()) == []
