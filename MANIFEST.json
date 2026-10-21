@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 109928,
-      "sha256": "7d16da53938d9311afdbeb5a369797695f22f9a9ddf3fe18ac6396a180786633"
+      "bytes": 110630,
+      "sha256": "82cddc8c46c74260404bff4acdd977e340b3138ee780d96131b5eddebea5a8ca"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 166497,
-      "sha256": "15f7b9c846f5d9e94478577e5950839b788b576a1345acf5a54f365f1b190f39"
+      "bytes": 167755,
+      "sha256": "f7f46323a2bb90ea7a5b235a96a77917af2162e5b474f75243779a700ea39fbb"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 177504,
-      "sha256": "063e030a314893719f37efb90578e7935a0367982e09e2a09d1e80ebf213be4e"
+      "bytes": 179379,
+      "sha256": "dba964e25568be72a11bf2c5bb9402bd385bb650225c3a9aaff6ff2d8c75b204"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -267,8 +267,8 @@
     },
     {
       "path": "docs/adr/ADR-019-guest-demo-snapshot.md",
-      "bytes": 34675,
-      "sha256": "700b9a6d9694ba7e46864fb972db026e5983959bf9487f9cbe44925ec48414e2"
+      "bytes": 37245,
+      "sha256": "d20098f41f67801b69401cf360589bd53bc61703e7d2ede5dd1b2612723d6126"
     },
     {
       "path": "docs/adr/ADR-020-production-database-rds-postgresql.md",
