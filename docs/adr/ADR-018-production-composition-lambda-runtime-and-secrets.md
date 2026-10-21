@@ -59,7 +59,7 @@ The owner made the production scope decisions recorded below on 2026-10-13. Fact
 | Run the parser with no AWS credentials | Not possible | Lambda injects execution-role credentials into every function. |
 | Secrets in Lambda environment variables for the API and general worker | Rejected | Secret values in state and function configuration when a secret store is available to those functions. |
 | Interface endpoint to Secrets Manager for the parser | Rejected | About 7.30 USD per month per AZ. |
-| Amplify Hosting or an external static host | Not chosen | S3 and CloudFront is near zero cost and already partly in Terraform; Amplify pricing was not read. |
+| Amplify Hosting or an external static host | Not chosen | S3 and CloudFront is near zero cost and already partly in Terraform; Amplify pricing was not read. *Amended 2026-10-21:* the guest demo now uses an external static host, Cloudflare Pages ([ADR-019](ADR-019-guest-demo-snapshot.md) Decision 13), because AWS declined the account's CloudFront verification request. The owner-app frontend hosting question (INFRA-010) is unchanged and still open; Amplify pricing is still not read. |
 | Custom Cognito login form (SRP) | Not chosen | Owner decision: Hosted UI with PKCE. |
 | Owner publish API for the demo | Deferred | Owner decision: local script in the minimum. |
 | Claude in production now | Deferred | 60 s timeout exceeds the 29 s API limit (INFRA-014). |

@@ -624,6 +624,11 @@ the API Lambda, so the diagram's guest read path through `LambdaAPI` is
 superseded for guests. The database provider shown as PostgreSQL + pgvector is
 still undecided (ADR-005 database gate, INFRA-003).
 
+**Note (2026-10-21):** while CloudFront is unavailable to the account, the
+guest static snapshot is served from an external static host
+([ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decision 13); guest traffic
+still opens no database connection.
+
 ### 12.2 Workload identity and network boundaries
 
 The following deployment roles are separate IAM identities, queue policies, database roles, object-store prefixes, network policies, and telemetry namespaces. A shared code repository or container base image must not merge these permissions.
