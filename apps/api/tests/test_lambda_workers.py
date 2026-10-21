@@ -23,7 +23,11 @@ from ai_qa_copilot_api.claim_durations import (
     claim_duration_from_environment,
 )
 from ai_qa_copilot_api.database_engine import create_shared_engine
-from ai_qa_copilot_api.documents import IndexingJobRecord, ParserJobRecord
+from ai_qa_copilot_api.documents import (
+    DocumentIntakeRecord,
+    IndexingJobRecord,
+    ParserJobRecord,
+)
 from ai_qa_copilot_api.execution_jobs import ExecutionJobQueueUnavailable
 from ai_qa_copilot_api.indexing import EmbeddingConfiguration
 from ai_qa_copilot_api.indexing_job_claims import IndexingJobUnavailable
@@ -41,6 +45,7 @@ from ai_qa_copilot_api.lambda_workers import (
     build_general_composition,
     build_parser_composition,
 )
+from ai_qa_copilot_api.parser_promotion_worker import PARSER_OUTCOME_LOGGER_NAME
 from ai_qa_copilot_api.parser_queue import (
     ParserJob,
     ParserJobQueueUnavailable,
@@ -101,14 +106,16 @@ class Database:
             .id
         )
 
-    def queue_parser_job(self, content: bytes = RAW) -> UUID:
+    def queue_parser_job(
+        self, content: bytes = RAW, filename: str = "requirements.md"
+    ) -> UUID:
         key = f"quarantine/{self.project_id}/{uuid4()}/raw"
         self.storage.put(
             key=key, content=BytesIO(content), content_type="text/markdown"
         )
         intake = SqlAlchemyDocumentIntakeRepository(self.sessions).create_quarantined(
             project_id=self.project_id,
-            metadata=UploadMetadata("requirements.md", "text/markdown", "identity"),
+            metadata=UploadMetadata(filename, "text/markdown", "identity"),
             document_type="markdown",
             byte_size=len(content),
             content_sha256=sha256(content).hexdigest(),
@@ -493,6 +500,151 @@ def test_logs_never_contain_bodies_or_receipt_handles(
     assert "hostile-body-marker-55" not in caplog.text
     assert "receipt-handle-marker" not in caplog.text
     assert "parser.batch records=1 failures=0" in caplog.text
+
+
+# --- Parser outcome line --------------------------------------------------------
+
+
+def outcome_messages(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == PARSER_OUTCOME_LOGGER_NAME
+    ]
+
+
+def test_parser_logs_the_real_zero_requirement_rejection(
+    caplog: pytest.LogCaptureFixture, database: Database
+) -> None:
+    intake_id = database.queue_parser_job(b"# Checkout\nQuantity must be positive.\n")
+    handler = parser_handler(parser_environment(database), database.storage)
+
+    assert handler(sqs_event("m1"), None) == {"batchItemFailures": []}
+
+    assert database.parser_states() == {intake_id: "rejected"}
+    assert outcome_messages(caplog) == [
+        "event=parser.outcome outcome=rejected reason=PARSER_EVIDENCE_INVALID "
+        "sections=0 requirements=0 exc_type=none"
+    ]
+
+
+def test_parser_accepted_job_logs_its_counts(
+    caplog: pytest.LogCaptureFixture, database: Database
+) -> None:
+    database.queue_parser_job()
+    handler = parser_handler(parser_environment(database), database.storage)
+
+    handler(sqs_event("m1"), None)
+
+    assert outcome_messages(caplog) == [
+        "event=parser.outcome outcome=accepted reason=none "
+        "sections=2 requirements=2 exc_type=none"
+    ]
+
+
+def test_parser_post_claim_error_is_the_outcome_line_not_the_bare_event(
+    caplog: pytest.LogCaptureFixture, database: Database
+) -> None:
+    intake_id = database.queue_parser_job()
+
+    class FailingReader:
+        def read(self, *, key: str) -> tuple[bytes, str]:
+            del key
+            raise RuntimeError("exception-message-marker-12")
+
+    handler = parser_handler(parser_environment(database), FailingReader())
+
+    assert handler(sqs_event("m1"), None) == {"batchItemFailures": []}
+
+    assert database.parser_states() == {intake_id: "failed"}
+    assert outcome_messages(caplog) == [
+        "event=parser.outcome outcome=failed reason=PARSER_WORKER_EXCEPTION "
+        "sections=0 requirements=none exc_type=RuntimeError"
+    ]
+    assert "post_claim_error" not in caplog.text
+    assert "exception-message-marker-12" not in caplog.text
+
+
+def test_other_workers_keep_the_post_claim_error_line(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    handler, _ = scripted_handler(["post_claim_error"])
+
+    with caplog.at_level(logging.WARNING, logger="ai_qa_copilot_api"):
+        assert handler(sqs_event("a"), None) == {"batchItemFailures": []}
+
+    assert "scripted.post_claim_error" in caplog.text
+
+
+def test_parser_outcome_lines_carry_no_content_names_ids_or_messages(
+    caplog: pytest.LogCaptureFixture, database: Database
+) -> None:
+    filename = "filename-marker-4821.md"
+    content_marker = b"content-marker-7319"
+    accepted = database.queue_parser_job(
+        b"# Heading-marker-5530\nREQ-MARKER-9: " + content_marker + b" one.\n",
+        filename=filename,
+    )
+    rejected = database.queue_parser_job(
+        b"# Heading-marker-5530\n" + content_marker + b" prose only.\n",
+        filename=filename,
+    )
+    failing = database.queue_parser_job(RAW + content_marker, filename=filename)
+    environ = {"DATABASE_URL": database.url, "DATA_BUCKET_NAME": "bucket-marker-6604"}
+
+    class SelectiveReader:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def read(self, *, key: str) -> tuple[bytes, str]:
+            self.calls += 1
+            if self.calls == 3:
+                raise RuntimeError(f"message-marker-2208 {key}")
+            return database.storage.read(key=key)
+
+    handler = parser_handler(environ, SelectiveReader())
+    with caplog.at_level(logging.DEBUG, logger="ai_qa_copilot_api"):
+        for message_id in ("m1", "m2", "m3"):
+            handler(sqs_event(message_id), None)
+
+    assert database.parser_states() == {
+        accepted: "accepted",
+        rejected: "rejected",
+        failing: "failed",
+    }
+    assert len(outcome_messages(caplog)) == 3
+
+    forbidden = {
+        filename,
+        "filename-marker-4821",
+        "content-marker-7319",
+        "Heading-marker-5530",
+        "REQ-MARKER-9",
+        "bucket-marker-6604",
+        "message-marker-2208",
+        "quarantine/",
+        str(database.project_id),
+        database.project_id.hex,
+    }
+    with database.sessions() as session:
+        for intake in session.scalars(select(DocumentIntakeRecord)):
+            forbidden |= {
+                str(intake.id),
+                str(intake.document_id),
+                str(intake.document_version_id),
+                str(intake.quarantine_key),
+                str(intake.content_sha256),
+            }
+        for job in session.scalars(select(ParserJobRecord)):
+            forbidden |= {str(job.id), str(job.claim_token)}
+    leaked = sorted(marker for marker in forbidden if marker in caplog.text)
+    assert leaked == []
+    vocabulary = re.compile(
+        r"event=parser\.outcome outcome=(accepted|rejected|failed|not_published) "
+        r"reason=[A-Za-z_]+ sections=\d+ requirements=(\d+|none) "
+        r"exc_type=[A-Za-z_][A-Za-z0-9_]*"
+    )
+    assert all(vocabulary.fullmatch(line) for line in outcome_messages(caplog))
 
 
 # --- General handler ----------------------------------------------------------

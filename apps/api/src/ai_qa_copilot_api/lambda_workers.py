@@ -19,7 +19,10 @@ shared NullPool engine. Missing ``DATABASE_URL`` (or, for the parser,
 ``DATA_BUCKET_NAME``) fails closed: the turn raises the worker's pre-claim
 unavailable error, so the message is reported and retried. Other startup or
 pre-claim errors (invalid configuration, the parser runtime check) fail the
-whole invocation. Only fixed event names and counts are logged.
+whole invocation. Only fixed event names and counts are logged. The parser
+worker logs one sanitized ``event=parser.outcome`` line per claimed job
+(``parser_promotion_worker.log_parser_outcome``), which replaces the bare
+``parser.post_claim_error`` line.
 
 The parser's runtime check (``verify_runtime``) accepts the credentials Lambda
 injects only under the four ADR-018 conditions for the ``restricted-parser``
@@ -148,6 +151,9 @@ class WorkerComposition:
     unavailable: type[Exception]
     disabled_event: str = ""
     reap: Callable[[], object] | None = None
+    # True when the worker logs its own sanitized outcome line, including the
+    # exception class, so the handler's bare post-claim error line is skipped.
+    logs_outcomes: bool = False
 
 
 def _unavailable_turn(error: type[Exception]) -> Callable[[], object]:
@@ -193,6 +199,7 @@ def build_parser_composition(
         flag=flag,
         unavailable=ParserJobQueueUnavailable,
         reap=claims.expire_claims,
+        logs_outcomes=True,
     )
 
 
@@ -353,7 +360,8 @@ class SqsWorkerHandler:
             return False
         except Exception:
             if composition.flag.claimed:
-                _logger.warning("%s.post_claim_error", self._name)
+                if not composition.logs_outcomes:
+                    _logger.warning("%s.post_claim_error", self._name)
                 return True
             raise
         return True
