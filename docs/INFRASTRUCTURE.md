@@ -1575,7 +1575,34 @@ closed.
 - Measure parser and general memory under load.
 - The general worker's first message.
 - The CloudFront case: `demo_cdn_enabled = false` stays until it is
-  resolved.
+  resolved. **Resolved 2026-10-21:** declined; see
+  [CloudFront verification declined; guest demo host, 2026-10-21](#cloudfront-verification-declined-guest-demo-host-2026-10-21).
+
+## CloudFront verification declined; guest demo host, 2026-10-21
+
+Owner decision, documentation only: no Terraform, tfvars or AWS change. The
+case number, account ID and correspondence stay in the owner's private notes.
+
+- **AWS decision.** AWS declined the account's CloudFront verification
+  request "at this time". The account can ask for a re-evaluation after it
+  has established a history of paid billing.
+- **`demo_cdn_enabled = false` is the intended state**, not a temporary one.
+- **The CloudFront resources stay gated** behind the flag in Terraform,
+  unchanged (distribution, origin access control, the two managed-policy data
+  sources and the demo bucket policy statement; see
+  [`demo_cdn_enabled`](#demo_cdn_enabled)), for a later re-evaluation.
+- **Re-evaluation condition:** a history of paid billing on the account. **Do
+  not open a second request until paid billing history exists.**
+- **Guest demo host:** Cloudflare Pages, Direct Upload with
+  `wrangler pages deploy <folder>` run locally by the owner after an
+  interactive `wrangler login`, on the default `*.pages.dev` HTTPS address
+  ([ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decision 13). The demo
+  bucket stays private and remains the record. The headers in
+  [Headers a host must send for the guest demo](#headers-a-host-must-send-for-the-guest-demo)
+  are set through a `_headers` file; its generator, the publish script and the
+  entry page are INFRA-011 stage 4, and the first deploy is stage 5.
+- **Owner-app frontend (INFRA-010):** still has no HTTPS host; its hosting
+  question is open and not decided here.
 
 ## Optional guest-demo CloudFront and the parser queue grant (2026-10-18)
 
@@ -1639,6 +1666,10 @@ not nullable):
 fallback is designed or built; INFRA-010 and INFRA-011 depend on the flag
 being true again. Any AWS support case about CloudFront access (ID, date,
 correspondence) stays in the owner's private notes, not in the repository.
+**Update (2026-10-21):** the request was declined and the guest demo moves to
+an external static host; see
+[CloudFront verification declined; guest demo host, 2026-10-21](#cloudfront-verification-declined-guest-demo-host-2026-10-21).
+INFRA-010 still depends on a host.
 
 **Owner steps** (no plan was run for this change):
 

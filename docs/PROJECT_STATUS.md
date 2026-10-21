@@ -1,5 +1,35 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Guest demo host: Cloudflare Pages; CloudFront declined (docs only) — 2026-10-21
+
+**Status:** Owner decision, documentation only. No code, Terraform, tfvars,
+fixture or validator change; no AWS or Cloudflare access. INFRA-011 is
+**not Accepted** and nothing is published.
+
+AWS declined the account's CloudFront verification request "at this time";
+a re-evaluation can be requested after the account has a history of paid
+billing, and no second request is to be opened before then.
+`demo_cdn_enabled = false` is therefore the intended state; the gated
+CloudFront resources stay in Terraform unchanged (INFRASTRUCTURE.md).
+
+The owner chose **Cloudflare Pages** by Direct Upload (`wrangler pages
+deploy <folder>` after an interactive `wrangler login`, run locally; no CI
+secret) on the default `*.pages.dev` HTTPS address as the guest demo host,
+recorded as [ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decision 13 with
+the documentation pages checked on 2026-10-21 during the host review and the
+hosts not chosen (Netlify, Vercel Hobby, GitHub Pages); items marked
+unverified were not checked. Dated notes added to ADR-017, ADR-018 (the "Amplify Hosting or an
+external static host" row), ARCHITECTURE.md 12.1 and BACKLOG INFRA-011. The
+owner-app frontend host (INFRA-010) stays open.
+
+Open (verify on the first deploy): whether a deploy replaces the whole site,
+HSTS on `pages.dev`, immutable and short cache headers through `_headers`,
+the entry page that reads `current.json`, and a recheck of Cloudflare's
+Pages-versus-Workers guidance.
+
+Next action: INFRA-011 stage 4 (local publish script, entry page, `_headers`
+generator); stage 5 is the first Cloudflare deploy by the owner.
+
 ## pypdf bumped to 6.21.1 for a new pip-audit advisory — 2026-10-21
 
 **Status:** Lockfile change on a branch; the deployed images are unchanged.

@@ -4,9 +4,10 @@
 - **Date:** 2026-10-21
 - **Amended:** 2026-10-21 (demo source fixture, input path, citation rule, provenance statement, separation from evaluation; Decisions 8 to 12), while Proposed
 - **Accepted:** 2026-10-21 by the project owner (Decisions 1 to 12 as written; the open items below stay open)
+- **Amended:** 2026-10-21, after acceptance: Decision 13 (host: Cloudflare Pages Direct Upload), an owner decision. Decisions 1 to 12 are unchanged.
 - **Decision owner:** Project owner
 - **Decision trigger:** INFRA-011 cannot start until the snapshot schema, the sanitization policy and the static "server-selected" rule are accepted ([ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) Decision, "Demo publication"). The owner accepts or amends this ADR before any generator, viewer or publish script is written. **Met 2026-10-21:** the owner accepted this ADR, so INFRA-011 can start.
-- **Scope:** What a public guest-demo snapshot contains, how it is projected from a canonical quality report, its file layout, the publish step, the viewer, immutability, and rollback. It does not choose a static host and does not amend ADR-017 or ADR-018 (see [Open items](#open-items)).
+- **Scope:** What a public guest-demo snapshot contains, how it is projected from a canonical quality report, its file layout, the publish step, the viewer, immutability, and rollback. It does not choose a static host and does not amend ADR-017 or ADR-018 (see [Open items](#open-items)). *(Amended 2026-10-21: Decision 13 chooses the host, and ADR-017 and ADR-018 carry dated notes pointing to it.)*
 
 ## Context
 
@@ -19,7 +20,7 @@ Facts read from the repository on 2026-10-21:
 - **Which fields are unsafe for the public.** Every UUID (report, project, catalog, provenance, claim and evidence IDs) is an internal identifier or derived from one, and `created_at` is an internal timestamp. Statements, state reasons and unsupported reasons are fixed generator templates; the only interpolated values are finding severity and category enum values, the execution outcome string and integer counts. No filename, source text or model prose is in the report, and no hash of private content is in the report itself (the stored revision and the owner export add report and snapshot SHA-256 values and the project ID).
 - **The report does not hold the guest content the PRD names.** The `traceability` section is always `not_available` in v1 ("Immutable traceability-link revisions are not available yet."), and citation excerpts are not in the report: they live in `Citation` records (`citations.py`), which also carry `project_id`, `retrieval_trace_id`, `document_chunk_id`, `document_version_id`, `display_name` (a filename), `document_type`, a source location (`heading`, line and page ranges, `json_pointer`), `passage` (source text) and `created_at`.
 - **The candidate source material is synthetic but deliberately hostile.** The committed seeds "intentionally contain contradictions, omissions, and hostile metadata" (`fixtures/benchmark/README.md`), including prompt-injection and adversarial OpenAPI metadata overlays. Their text must be treated as untrusted at the rendering boundary even though it is publishable by classification.
-- **Hosting is not settled.** CloudFront is unavailable to the account for now and `demo_cdn_enabled` is false, so the guest page has no HTTPS host ([INFRASTRUCTURE.md](../INFRASTRUCTURE.md), INFRA-011 dependency note in [BACKLOG.md](../BACKLOG.md)). This ADR is therefore written host-neutral: static files over HTTPS.
+- **Hosting is not settled.** CloudFront is unavailable to the account for now and `demo_cdn_enabled` is false, so the guest page has no HTTPS host ([INFRASTRUCTURE.md](../INFRASTRUCTURE.md), INFRA-011 dependency note in [BACKLOG.md](../BACKLOG.md)). This ADR is therefore written host-neutral: static files over HTTPS. *(Amended 2026-10-21: AWS declined the CloudFront verification request; Decision 13 records the host.)*
 
 Facts added by the amendment (read from the code on 2026-10-21; nothing was run):
 
@@ -256,6 +257,47 @@ A contract test enforces it: it parses the demo build modules with `ast` and fai
 
 **Consequences.** The demo build cannot reuse evaluation helpers, even harmless ones; anything shared must live in product modules.
 
+### 13. Host *(amendment, 2026-10-21)*
+
+**Decision.** The guest demo is served from **Cloudflare Pages** by **Direct Upload**: the owner runs `wrangler pages deploy <folder>` locally after an interactive `wrangler login`. There is no CI deploy and no stored CI secret. The default `*.pages.dev` address and its HTTPS are used; no custom domain is required. The demo bucket stays the **record** (Decision 4) and the uploaded folder is derived from the same bytes. The response headers of Decision 5 and the caching of Decision 3 are set with a `_headers` file in the uploaded folder. This is an owner decision of 2026-10-21.
+
+**Context.** AWS declined the account's CloudFront verification request "at this time"; the account can ask for a re-evaluation after it has established a history of paid billing, and the owner will not open a second request now. `demo_cdn_enabled = false` is therefore the intended state, and the gated CloudFront resources stay in Terraform unchanged for a later re-evaluation ([INFRASTRUCTURE.md](../INFRASTRUCTURE.md)). Without a host the guest page has no HTTPS address and INFRA-011 cannot meet its acceptance.
+
+Evidence: the pages below were checked on 2026-10-21 during the host review; each claim names the page that supports it. Items marked **not checked** or **not confirmed** were not checked and are unverified.
+
+- *Cloudflare Pages headers* (<https://developers.cloudflare.com/pages/configuration/headers/>): a `_headers` file applies to static asset responses; up to 100 rules and 2,000 characters per line; redirects are applied before headers.
+- *Cloudflare Pages limits* (<https://developers.cloudflare.com/pages/platform/limits>): on the Free plan 20,000 files per site and 25 MiB per file.
+- *Cloudflare Pages Direct Upload* (<https://developers.cloudflare.com/pages/get-started/direct-upload/>): an upload through Wrangler allows 20,000 files from a single folder; zip upload is not used.
+- *Cloudflare Pages Functions pricing* (<https://developers.cloudflare.com/pages/functions/pricing/>): requests to static assets are free and unlimited on Free and paid plans.
+- *Wrangler deprecations* (<https://developers.cloudflare.com/workers/wrangler/deprecations/>), together with the Pages pages above: no deprecation of Pages is described.
+- *Cloudflare, migrate from Pages to Workers static assets* (<https://developers.cloudflare.com/workers/static-assets/migrate-from-pages/>): `_headers` is also supported natively by Workers with static assets, which is the documented fallback if Pages is ever retired.
+
+**Alternatives rejected.**
+
+| Alternative | Reason |
+|---|---|
+| CloudFront (`demo_cdn_enabled = true`) | Declined by AWS for the account for now; deferred until a re-evaluation after a history of paid billing. Not removed from Terraform. |
+| Netlify free plan | Netlify documents custom headers (*Netlify custom headers*, <https://docs.netlify.com/manage/routing/headers/>), but the free plan is credit-based (*Netlify credit-based plans*, <https://docs.netlify.com/manage/accounts-and-billing/billing/billing-for-credit-based-plans/credit-based-pricing-plans/>) and a project is paused and offline when its credits run out (*Netlify paused projects*, <https://docs.netlify.com/manage/accounts-and-billing/billing/resume-paused-projects/>). Not chosen. |
+| Vercel Hobby | Restricted to non-commercial personal use, and an exceeded limit imposes a 30-day wait (*Vercel Hobby plan*, <https://vercel.com/docs/plans/hobby>). Not chosen. Its custom header support was **not checked**. |
+| GitHub Pages | *GitHub Pages limits* (<https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits>) says nothing about custom response headers, so the Decision 5 headers could not be shown to be possible. Not chosen; **not confirmed** either way. |
+| Make the demo bucket public | Decision 6 and INFRASTRUCTURE.md keep the bucket private with Block Public Access on; there is no public-read alternative. |
+
+**Consequences.**
+
+- A non-AWS provider and the owner's Cloudflare account join the publish trust path. The Cloudflare login stays on the owner's machine; no Cloudflare token, account identifier or project identifier is stored in the repository or in CI.
+- The `pages.dev` copy is derived from the bucket record; an operator of that host could replace a file, which the viewer's hash check makes visible (Decision 6).
+- Rollback (Decision 7) on this host means deploying a site without the affected directory, pointing `current.json` at a known-good publication or the "demo unavailable" state.
+- INFRA-011 stage 4 adds the local publish script, the root entry page and a `_headers` generator; stage 5 is the first Cloudflare deploy. No code, Terraform or tfvars changes in this amendment.
+- The owner-app frontend (INFRA-010) is not covered: its host question stays open (ADR-018).
+
+**Open items for stage 4 and 5, to verify on the first deploy** (all OPEN):
+
+1. Whether a new deploy replaces the whole site, in which case the publish script must upload every earlier publication directory in each deploy so no published path disappears (Decision 3).
+2. Whether HSTS is sent on the `pages.dev` name, by the platform or through `_headers`.
+3. Whether `_headers` can set `Cache-Control: public, max-age=31536000, immutable` on the hash-named paths and a short cache lifetime on the entry page and `current.json`.
+4. How the root entry page maps visitors to the current publication: an entry page that reads `current.json`, with its own CSP and tests.
+5. A recheck of Cloudflare's Pages-versus-Workers guidance before the first deploy.
+
 ## Alternatives considered
 
 The alternatives for each proposed decision are listed in its subsection above. At the ADR level:
@@ -264,7 +306,7 @@ The alternatives for each proposed decision are listed in its subsection above. 
 |---|---|---|
 | Serve the guest demo through the `/demo` API route | Rejected | ADR-017 moved guest reads to a static snapshot so guests never reach the API or database. |
 | Defer the schema until a host is chosen | Rejected | The schema, sanitization and publish rules are host-independent and block INFRA-011. |
-| Choose a host in this ADR | Deferred | Host choice and the ADR-017/ADR-018 amendment wait for the CloudFront outcome or an owner decision. |
+| Choose a host in this ADR | Deferred | Host choice and the ADR-017/ADR-018 amendment wait for the CloudFront outcome or an owner decision. *(Amended 2026-10-21: decided in Decision 13, Cloudflare Pages Direct Upload.)* |
 
 ## Consequences
 
@@ -329,14 +371,14 @@ Planned acceptance conditions; this ADR records no executed validation evidence.
 |---|---|---|
 | Source fixture for the first publication. *(Amended 2026-10-21: decided as a new demo-only fixture, Decision 8; the earlier candidates, the evaluation seeds, their overlays and the inline test data, are no longer candidates.)* Open: the fixture's content, its directory path and the demo manifest format. | OPEN (content) | INFRA-011 |
 | Finding, recorded 2026-10-21, no fix: the evaluation requirements seed `fixtures/sample-requirements.md` writes requirements as Markdown headings (`### REQ-… — title`). The parser matches the heading pattern first, and in Markdown mode only `REQ-<ID>:` lines become units, so the parser reports **zero units** for that file. This is from code reading of `markdown_parser.py` and has **not been verified by a run**. The seed must not be changed (fixture guide); the demo avoids it (Decision 8). | RECORDED | Owner |
-| Static host choice, and the amendment of ADR-017 ("behind CloudFront") and ADR-018 ("Amplify Hosting or an external static host" not chosen) if a non-AWS host is chosen | OPEN, deferred until a host is chosen | Owner |
+| Static host choice, and the amendment of ADR-017 ("behind CloudFront") and ADR-018 ("Amplify Hosting or an external static host" not chosen) if a non-AWS host is chosen. *(Amended 2026-10-21: host chosen in Decision 13; dated notes added to ADR-017 and ADR-018.)* | DECIDED 2026-10-21 (Decision 13); its deploy-time items stay OPEN there | Owner |
 | The API execution role's `PublishDemoRevision` grant (`s3:PutObject` on `publications/*`): no code uses it and ADR-018 defers any publish API. Recommendation: remove it in a later Terraform change, since it gives the internet-facing role write access to the public-bound prefix. Not changed here. | OPEN | INFRA-011 or a Terraform change under INFRA-002 |
 | Excerpt length bound and the exact redaction patterns for `sanitization_policy_version` 1. *Proposed in stage 2b, owner to confirm (`guest-demo-sanitization/v1`):* at most 500 characters per excerpt and 100 excerpts, and an excerpt over the cap **refuses the build** (never truncated); control characters refuse; secret-like text refuses (cloud access-key IDs, `sk-` keys, private-key headers, JWT-like tokens, hex runs of 32 or more, `password`/`secret`/`api_key`/`token` assignments, bearer tokens); URLs, e-mail addresses, host names and phone numbers become fixed placeholders (`[redacted-url]`, `[redacted-email]`, `[redacted-host]`, `[redacted-phone]`); the serialized snapshot is re-scanned and refused on any remaining match. | **CONFIRMED** by the owner on 2026-10-21 | Owner |
 | Allowlist field set. *Proposed in stage 2b, owner to confirm:* schema and sanitization versions, the demo-not-evaluation marker, fixture id, version and classification, the Decision 11 provenance fields, summary counts (with severity and category enum values), per section its name, state, state reason and claims (public ID, kind, template statement, unsupported flag and reason, evidence as public IDs), the derived traceability rows, and excerpts (public ID, location kind, line and page range, redacted text). Dropped: every internal identifier, `project_id`, report `id`, `created_at` and every other timestamp, the `provenance` block, `generator_version`, evidence-catalog UUIDs, execution evidence, citation `display_name`, `heading`, `json_pointer`, `document_type` and finding `observed_fact`/`analysis`/`recommendation` text. | **CONFIRMED** by the owner on 2026-10-21 | Owner |
 | Publication date and content hash on the page (Decision 11). *Proposed in stage 2b, owner to confirm:* neither is inside `snapshot.json`; the content hash is the SHA-256 of that file (it cannot contain itself, Decision 3) and a date would break byte-identical rebuilds (Decision 9, Validation). The snapshot states where each comes from; the viewer reads the hash from the directory name and the date from the publish manifest. | **CONFIRMED** by the owner on 2026-10-21 | Owner |
 | Execution composition. *Recorded in stage 2b, owner to confirm:* the approval service and SQL job queue re-validate plans against the default target registry, which holds the hosted sandbox origin. To keep that origin out of the build, the restricted executor and worker run with a demo-only registry (reserved, non-resolvable `.invalid` host) and an in-memory approval, claimed job and result record built by the script. The executor's plan, approval-claim, target and transport checks still run; `ExecutionApprovalService.approve()` and the durable queue do not. | **CONFIRMED** by the owner on 2026-10-21 | Owner |
 | Viewer release in each publication (Decisions 3 and 6). *Recorded in stage 3, owner to confirm:* the viewer is `index.html` plus one same-origin `viewer.js` and one `viewer.css` (the meta CSP allows scripts and styles from `'self'` only, so neither can be inline), copied from `demo/viewer/` into `<content-hash>/` next to `snapshot.json`. The build manifest (`guest-demo-build-manifest/v2`) records `viewer_version` `guest-demo-viewer/v1` and the SHA-256 of all four files; the snapshot bytes and content hash do not depend on the viewer. The viewer takes the expected hash only from its own directory name (a URL path ending in `/<64 hex>/` or `/<64 hex>/index.html`) and fetches nothing else; `manifest.json` is not used by the page. | OPEN (recorded) | Owner |
-| Entry-URL mapping to `current.json` (host redirect or versioned bootstrap page) | OPEN, depends on host | INFRA-011 |
+| Entry-URL mapping to `current.json` (host redirect or versioned bootstrap page). *(Amended 2026-10-21: the host is chosen; the planned answer is an entry page that reads `current.json`, Decision 13 open item 4.)* | OPEN, INFRA-011 stage 4 | INFRA-011 |
 
 ## Links
 
