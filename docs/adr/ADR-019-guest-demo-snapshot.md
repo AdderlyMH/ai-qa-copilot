@@ -2,6 +2,7 @@
 
 - **Status:** Proposed
 - **Date:** 2026-10-21
+- **Amended:** 2026-10-21 (demo source fixture, input path, citation rule, provenance statement, separation from evaluation; Decisions 8 to 12), still Proposed
 - **Decision owner:** Project owner
 - **Decision trigger:** INFRA-011 cannot start until the snapshot schema, the sanitization policy and the static "server-selected" rule are accepted ([ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) Decision, "Demo publication"). The owner accepts or amends this ADR before any generator, viewer or publish script is written.
 - **Scope:** What a public guest-demo snapshot contains, how it is projected from a canonical quality report, its file layout, the publish step, the viewer, immutability, and rollback. It does not choose a static host and does not amend ADR-017 or ADR-018 (see [Open items](#open-items)).
@@ -19,6 +20,14 @@ Facts read from the repository on 2026-10-21:
 - **The candidate source material is synthetic but deliberately hostile.** The committed seeds "intentionally contain contradictions, omissions, and hostile metadata" (`fixtures/benchmark/README.md`), including prompt-injection and adversarial OpenAPI metadata overlays. Their text must be treated as untrusted at the rendering boundary even though it is publishable by classification.
 - **Hosting is not settled.** CloudFront is unavailable to the account for now and `demo_cdn_enabled` is false, so the guest page has no HTTPS host ([INFRASTRUCTURE.md](../INFRASTRUCTURE.md), INFRA-011 dependency note in [BACKLOG.md](../BACKLOG.md)). This ADR is therefore written host-neutral: static files over HTTPS.
 
+Facts added by the amendment (read from the code on 2026-10-21; nothing was run):
+
+- **A report contains no model output.** Findings come from the rule-based analyzer `analyze_citations` (`requirements_analysis.py`, `ANALYZER_VERSION` `requirement-quality-rules/v1`); test proposals come from the deterministic `GroundedTestGenerationService` (`grounded-test-generator/v1`) applied to caller-supplied seeds; failure analysis is deterministic. The only product model call, the synthetic-text analysis run (`analysis_runs.py`), is not collected into the report.
+- **Production cannot build a demo report today.** The default retrieval service is unavailable, no production embedding adapter exists, there is no test-generation route, the database evidence collector always omits generated tests, and the executor is disabled.
+- **A deterministic composition already exists in a test.** `apps/api/tests/test_end_to_end_workflow.py` builds a real `QualityReportV1` on a temporary SQLite database with a hand-built citation, an author-written test seed, the restricted executor against the in-process `mock_order_api` through a fake resolver and transport, and a collector wrapper that adds the citation and generated test.
+- **The evaluation seeds are shared with every evaluation split.** All evaluation cases, including validation and holdout, are built on `fixtures/sample-requirements.md` and `fixtures/sample-openapi.yaml`, so a public analysis of them would be a public artifact about the evaluation documents.
+- **The fixture manifest does not record the hash a document version stores.** `fixture-manifest.v1.yaml` records a git blob SHA-1; a document version stores the SHA-256 of the raw bytes.
+
 The PRD lets a guest view "the explicitly published sanitized demo report, traceability, and redacted citation excerpts" ([PRODUCT_REQUIREMENTS.md](../PRODUCT_REQUIREMENTS.md), FR-AUTH-004, FR-REP-010, FR-REP-011, NFR-PRIV-001, NFR-UX-005).
 
 ## Decision
@@ -30,7 +39,7 @@ The following decisions are **proposed**. Each states its context, the alternati
 **Decision.** A v1 snapshot (`guest-demo-snapshot/v1`) contains exactly three parts and nothing else:
 
 1. **Report summary:** the snapshot counts (source document versions, analysis runs, findings, finding counts by severity and category, generated tests, executions by outcome, failure analyses), the state and state reason of each of the eleven report sections, and the claims of each section (kind, statement, unsupported flag and reason).
-2. **Traceability table:** rows linking a finding to the generated test proposals and citations that reference it, derived only from the evidence references of the `findings` and `generated_tests` claims. The report's own `traceability` section state is shown verbatim (`not_available` in v1), so the table is never presented as an immutable traceability revision.
+2. **Traceability table:** rows linking a finding to the generated test proposals and citations that reference it, derived only from the evidence references of the `findings` and `generated_tests` claims. The report's own `traceability` section state is shown verbatim (`not_available` in v1), so the table is never presented as an immutable traceability revision. *(Amended 2026-10-21.)* The page labels the table as derived from claim evidence links and states, next to it, that the report's own traceability section is not available in v1.
 3. **Redacted citation excerpts:** for each citation referenced by an included claim, the redacted passage and its location kind and line or page range.
 
 **Context.** The PRD names report, traceability and redacted excerpts; ADR-006 forbids raw documents, model usage, evidence and anything beyond the selected publication.
@@ -99,7 +108,7 @@ publications/
 **Decision.** A **local script run by the owner** with the owner's own credentials. It refuses to write unless all of these pass, in order:
 
 1. The input validates as a `quality-report/v1` evidence snapshot and its recorded content hash matches.
-2. Synthetic-data inspection: the source document versions trace to a committed fixture whose hash matches its fixture-manifest entry and whose classification is synthetic or public; anything else is refused.
+2. Synthetic-data inspection *(amended 2026-10-21)*: every source document version's stored SHA-256 equals the raw-bytes SHA-256 recorded for that file in the **demo manifest** of the demo-only fixture (Decision 8), and the demo manifest declares the classification synthetic; anything else, including any evaluation seed or overlay, is refused.
 3. The allowlist projection succeeds with no unknown field, template or enum value ("refuses unsanitized input").
 4. A secret scan of every output byte finds nothing.
 5. A PII check finds no e-mail address, phone number, URL or host name outside the fixed placeholders, and the owner records a manual review.
@@ -124,7 +133,7 @@ It then writes the directory to the demo bucket under `publications/` as the **r
 
 **Decision.** A **standalone static page**, separate from `apps/web`: `GET` only, no API call, no authentication, no cookies or other storage, no third-party script, font or analytics. It renders every snapshot string as escaped text or a strict Markdown subset, never as HTML ([ARCHITECTURE.md](../ARCHITECTURE.md), rendering boundary). The host must send a strict Content-Security-Policy (default deny; scripts, styles and connections from the same origin only; no framing), HSTS, `X-Content-Type-Options: nosniff`, a restrictive referrer policy, and must refuse framing. The page explains the scenario and its limitations (NFR-UX-005).
 
-**Context.** ARCHITECTURE requires "Content-security policy, safe download headers, and stored/reflected-XSS regression fixtures" for every public-demo surface, and the candidate fixtures contain hostile metadata.
+**Context.** ARCHITECTURE requires "Content-security policy, safe download headers, and stored/reflected-XSS regression fixtures" for every public-demo surface, and any source text, including the demo fixture's, is untrusted at the rendering boundary.
 
 **Alternatives rejected.**
 
@@ -132,9 +141,9 @@ It then writes the directory to the demo bucket under `publications/` as the **r
 |---|---|
 | A route inside `apps/web` | Couples the guest page to the owner app's build, hosting and auth (INFRA-010), which is not hosted yet. |
 | Server-rendered page | Needs a runtime and breaks "no database connection" and zero guest spend. |
-| Rendering Markdown or HTML from the snapshot as markup | XSS through hostile fixture text (TM-AI-005). |
+| Rendering Markdown or HTML from the snapshot as markup | XSS through hostile source text (TM-AI-005). |
 
-**Consequences.** The viewer needs its own XSS fixtures built from the hostile overlays. Security headers depend on host support, which becomes a host-selection requirement.
+**Consequences.** The viewer's XSS and escaping tests use hostile test strings authored in the demo's own test directory; they read no evaluation overlay, seed or label. Security headers depend on host support, which becomes a host-selection requirement.
 
 ### 6. Immutability
 
@@ -154,6 +163,97 @@ It then writes the directory to the demo bucket under `publications/` as the **r
 **Decision.** Following ADR-006 rollback criteria: on any sanitization, authorization or spend-control defect, point `current.json` to a known-good publication or to a fixed "demo unavailable" state, and remove the affected directory from every external host; the bucket record and its audit trail are kept for investigation. Never substitute employer, customer, confidential or production material. Re-enable only after a **new** sanitized publication passes all seven publish checks; a withdrawn publication is never re-pointed.
 
 **Consequences.** A withdrawn publication may remain in caches or archives outside the owner's control, which is why the checks run before the first write.
+
+### 8. Demo source fixture *(amendment, 2026-10-21)*
+
+**Decision.** The demo is built from a **new demo-only synthetic fixture** kept in its own directory, separate from `fixtures/` and from every evaluation path. The directory holds the requirement document(s), the author-written test-generation seeds (Decision 10) and a **demo manifest** that records, for each file, its path, its classification (synthetic) and the **SHA-256 of its raw bytes**, which is the same value a document version stores at upload. Requirements in the demo fixture use the `REQ-<ID>: <statement>` line format that the Markdown parser accepts. Its content must exercise operations that the in-process mock target implements. The evaluation seeds (`fixtures/sample-requirements.md`, `fixtures/sample-openapi.yaml`) and their overlay families are **not used**, and nothing derived from them is published. The fixture itself is written and reviewed in INFRA-011, not in this ADR.
+
+**Context.** Every evaluation case, in every split, is built on the two evaluation seeds; a public analysis of them would be a public artifact about the evaluation documents. The fixture manifest records git blob SHA-1 values, which a document version does not store. The evaluation requirements seed writes requirements as headings, which the Markdown parser does not turn into units (Open items).
+
+**Alternatives rejected.**
+
+| Alternative | Reason |
+|---|---|
+| Use the evaluation seeds or an overlay | Publishes analysis of the documents behind every evaluation split, including holdout; any reformatting to fit the parser would also break the hash match. |
+| Use the inline data of `test_end_to_end_workflow.py` | Test data with no manifest or review; one requirement is too thin to demonstrate the product. |
+| Record the demo hashes in `fixture-manifest.v1.yaml` | That manifest is an approved evaluation contract; adding demo entries mixes the two and changes an evaluation file. |
+
+**Consequences.** One more synthetic fixture to write, review against ADR-006 and keep hash-stable. The demo cannot claim anything about the evaluation benchmark.
+
+### 9. Input path *(amendment, 2026-10-21)*
+
+**Decision.** The generator and publish script build the `QualityReportSnapshotInput` **in memory or in a throwaway local SQLite database**, reusing the composition proven by `test_end_to_end_workflow.py`: the product's parser, rule-based analyzer, grounded test generator, restricted executor and report builder, with fakes only for embeddings and for DNS resolution and HTTP transport, and the in-process `mock_order_api` as the target. Because the database collector omits generated tests, the script supplies the citations and generated tests to the snapshot input, as the test's collector wrapper does. There is **no production database connection, no new infrastructure and no provider call**; no model adapter is constructed. Citation, report and other internal IDs in the throwaway build are generated deterministically from the demo manifest hash and ordinals, so a rebuild of the same fixture yields the same public snapshot.
+
+**Context.** ADR-018 makes publishing a local owner script with no publish API; production cannot build a demo report today (Context); the test composition already yields a real `QualityReportV1` without network or model.
+
+**Alternatives rejected.**
+
+| Alternative | Reason |
+|---|---|
+| Read a stored revision from the production database | Puts the private database and its credentials into the publish path, and production cannot produce the evidence anyway. |
+| Run the synthetic-text analysis run during the build | Its output is not in the report, and it would add a provider call and spend. |
+| Random IDs as in the test | The rule-based analyzer orders citations by ID, so random IDs make finding order, and therefore the public hash, vary between builds. |
+
+**Consequences.** The demo exercises real product code paths except retrieval, indexing and network transport, and the page must say so (Decision 11). A product change to any reused component changes the demo output and needs a new publication.
+
+### 10. Citation selection and test seeds *(amendment, 2026-10-21)*
+
+**Decision.** Citations are selected by one documented mechanical rule: **one citation per parsed requirement unit, in document order.** No citation is chosen by hand. Test-generation seeds are **author-written**, stored as files in the demo fixture directory and listed in the demo manifest; the page says that the seeds are author-written.
+
+**Context.** Production retrieval is unavailable, so the script stands in for it; an unstated or manual choice would read as curation.
+
+**Alternatives rejected.**
+
+| Alternative | Reason |
+|---|---|
+| Hand-pick citations that produce interesting findings | Curation presented as product behavior. |
+| Run the product retrieval with a fake embedding adapter | Fake vectors make the ranking meaningless while appearing to be retrieval. |
+| Generate seeds with a model | Adds a provider call and spend; the product's test generator does not use a model. |
+
+**Consequences.** Every requirement unit becomes a citation, so the fixture's size directly sets the excerpt count; it must stay within the projection's excerpt bound.
+
+### 11. Provenance statement *(amendment, 2026-10-21)*
+
+**Decision.** The page shows a provenance statement built from fixed text and the build's version constants, with exactly these categories and no other wording:
+
+| Category | Statement content |
+|---|---|
+| Findings | Rule-based analyzer, with its `analyzer_version`; no model. |
+| Citations | Selected by the publishing script: one per parsed requirement unit, in document order. |
+| Test proposals | Deterministic generator, with its generator version, from author-written seeds. |
+| Execution | Restricted executor against an in-process synthetic mock target. |
+| Failure analysis | Deterministic. |
+| Publication | Publication date and content hash. |
+
+The statement says explicitly: **this is not a model result.** The version constants come from the build's snapshot input, not from user text, and are allowlisted like every other field (Decision 2).
+
+**Context.** The demo would otherwise be read as an AI result, while nothing in the report comes from a model.
+
+**Alternatives rejected.**
+
+| Alternative | Reason |
+|---|---|
+| No provenance statement | A reader would assume a model produced the findings. |
+| Free-form or promotional description | Not checkable against the build; invites claims the evidence does not support. |
+
+**Consequences.** A later demo that includes model output needs a new schema version and new provenance categories, not an edit of these.
+
+### 12. Separation from evaluation evidence *(amendment, 2026-10-21)*
+
+**Decision.** Rule: the demo build **must not** import `evaluation_runner`, any `b1_*` module, any provenance module (`evaluation_run_provenance`, `informed_run_provenance`) or any other `evaluation_*` module; must not read or write any path under `evaluation/` or `fixtures/`; must not write evaluation artifacts; and names its outputs so they can never be mistaken for B1, B2 or gate evidence (schema `guest-demo-snapshot/v1`, files only under the demo output directory, and a manifest field stating the output is demo content and not evaluation evidence).
+
+A contract test enforces it: it parses the demo build modules with `ast` and fails on any forbidden import or on a string literal containing `evaluation/` or `fixtures/`; it imports the build in a fresh interpreter and fails if a forbidden module appears in `sys.modules`; and it runs the build on the demo fixture into a temporary directory and fails if any file is written outside it or if the manifest lacks the demo-not-evaluation field.
+
+**Context.** The evaluation rules forbid holdout use and keep B1 evidence strict; the demo shares the report code with the product and must not become an evaluation input or output by accident.
+
+**Alternatives rejected.**
+
+| Alternative | Reason |
+|---|---|
+| Rely on B1 assembly's strict validation alone | It rejects foreign inputs to B1 but does not stop the demo build from reading evaluation material. |
+| Review-only separation | Not enforceable; a later change could add an import silently. |
+
+**Consequences.** The demo build cannot reuse evaluation helpers, even harmless ones; anything shared must live in product modules.
 
 ## Alternatives considered
 
@@ -208,8 +308,13 @@ Planned acceptance conditions; this ADR records no executed validation evidence.
 | PII check | A canary e-mail address, phone number or URL in an excerpt is replaced by a placeholder or the publish is refused. |
 | Immutability | Publishing to an existing `<content-hash>/` is refused; a second publication leaves the first byte-identical. |
 | Hash verification | The viewer shows an error when `snapshot.json` does not match its directory hash. |
-| Viewer XSS | Hostile-overlay text renders as inert text under the required CSP. |
+| Viewer XSS | Hostile test strings authored in the demo's own test directory render as inert text under the required CSP; the tests read no evaluation overlay, seed or label. |
 | Zero guest spend | Loading the viewer makes requests only to its own directory and `current.json`; no API, model, queue or database activity occurs. |
+| Demo fixture hash *(amendment)* | A source file whose raw-bytes SHA-256 differs from the demo manifest, or any evaluation seed, is refused. |
+| Reproducible build *(amendment)* | Two builds of the same demo fixture produce byte-identical `snapshot.json`; the build makes no network connection and constructs no model adapter. |
+| Citation rule *(amendment)* | The citation count equals the parsed requirement unit count, in document order. |
+| Provenance statement *(amendment)* | The page shows every Decision 11 category and the "not a model result" sentence; a build without them is refused. |
+| Separation contract *(amendment)* | The Decision 12 contract test fails on a forbidden import, an evaluation or fixtures path literal, a write outside the output directory, or a missing demo-not-evaluation field. |
 
 ## Rollback criteria
 
@@ -221,7 +326,8 @@ Planned acceptance conditions; this ADR records no executed validation evidence.
 
 | Item | Status | Owner |
 |---|---|---|
-| Source fixture for the first publication. Candidates (no choice made): the requirement seed `fixtures/sample-requirements.md` (REQ-BASE-001, synthetic, deliberate defects and hostile metadata); the OpenAPI seed `fixtures/sample-openapi.yaml` (OAS-BASE-001, synthetic, reserved `.invalid` domains, adversarial metadata); their declared overlays in `fixtures/benchmark/fixture-manifest.v1.yaml` (for example the clean-control family); the inline synthetic data in `apps/api/tests/test_end_to_end_workflow.py`. Evaluation case files, ground truth, review records and holdout material are not candidates. | OPEN | Owner |
+| Source fixture for the first publication. *(Amended 2026-10-21: decided as a new demo-only fixture, Decision 8; the earlier candidates, the evaluation seeds, their overlays and the inline test data, are no longer candidates.)* Open: the fixture's content, its directory path and the demo manifest format. | OPEN (content) | INFRA-011 |
+| Finding, recorded 2026-10-21, no fix: the evaluation requirements seed `fixtures/sample-requirements.md` writes requirements as Markdown headings (`### REQ-… — title`). The parser matches the heading pattern first, and in Markdown mode only `REQ-<ID>:` lines become units, so the parser reports **zero units** for that file. This is from code reading of `markdown_parser.py` and has **not been verified by a run**. The seed must not be changed (fixture guide); the demo avoids it (Decision 8). | RECORDED | Owner |
 | Static host choice, and the amendment of ADR-017 ("behind CloudFront") and ADR-018 ("Amplify Hosting or an external static host" not chosen) if a non-AWS host is chosen | OPEN, deferred until a host is chosen | Owner |
 | The API execution role's `PublishDemoRevision` grant (`s3:PutObject` on `publications/*`): no code uses it and ADR-018 defers any publish API. Recommendation: remove it in a later Terraform change, since it gives the internet-facing role write access to the public-bound prefix. Not changed here. | OPEN | INFRA-011 or a Terraform change under INFRA-002 |
 | Excerpt length bound and the exact redaction patterns for `sanitization_policy_version` 1 | OPEN | INFRA-011 |

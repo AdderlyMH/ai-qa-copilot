@@ -1030,6 +1030,7 @@ of this backlog.
 
 - **Dependency note (2026-10-18):** the guest page is served by the CloudFront distribution, which exists only while `demo_cdn_enabled` is true. While it is false the guest page has no HTTPS host, so the acceptance ("loads over HTTPS") cannot be met; publishing to the private demo bucket is unaffected.
 - **Dependency note (2026-10-21):** [ADR-019](adr/ADR-019-guest-demo-snapshot.md) is written with status **Proposed** and is host-neutral (static files over HTTPS). INFRA-011 implementation waits for the owner to accept it. The static host choice, and the ADR-017/ADR-018 amendment if that host is not CloudFront, stay open; the publish step writes to the demo bucket as the record either way.
+- **Amendment note (2026-10-21):** [ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decisions 8 to 12 (still Proposed): a new demo-only synthetic fixture with its own raw-bytes SHA-256 manifest instead of the evaluation seeds, a local in-memory or throwaway SQLite build with no provider call, one citation per parsed requirement unit, a fixed provenance statement ("not a model result"), and an import and path contract that keeps the demo build away from evaluation code and artifacts.
 
 #### INFRA-012 — Migration runner
 
