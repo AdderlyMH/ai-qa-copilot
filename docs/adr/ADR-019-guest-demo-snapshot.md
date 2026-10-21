@@ -1,10 +1,11 @@
 # ADR-019 — Guest demo snapshot
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-21
-- **Amended:** 2026-10-21 (demo source fixture, input path, citation rule, provenance statement, separation from evaluation; Decisions 8 to 12), still Proposed
+- **Amended:** 2026-10-21 (demo source fixture, input path, citation rule, provenance statement, separation from evaluation; Decisions 8 to 12), while Proposed
+- **Accepted:** 2026-10-21 by the project owner (Decisions 1 to 12 as written; the open items below stay open)
 - **Decision owner:** Project owner
-- **Decision trigger:** INFRA-011 cannot start until the snapshot schema, the sanitization policy and the static "server-selected" rule are accepted ([ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) Decision, "Demo publication"). The owner accepts or amends this ADR before any generator, viewer or publish script is written.
+- **Decision trigger:** INFRA-011 cannot start until the snapshot schema, the sanitization policy and the static "server-selected" rule are accepted ([ADR-018](ADR-018-production-composition-lambda-runtime-and-secrets.md) Decision, "Demo publication"). The owner accepts or amends this ADR before any generator, viewer or publish script is written. **Met 2026-10-21:** the owner accepted this ADR, so INFRA-011 can start.
 - **Scope:** What a public guest-demo snapshot contains, how it is projected from a canonical quality report, its file layout, the publish step, the viewer, immutability, and rollback. It does not choose a static host and does not amend ADR-017 or ADR-018 (see [Open items](#open-items)).
 
 ## Context

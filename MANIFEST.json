@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 109230,
-      "sha256": "c184206f9fa4913682c3c5406e0a837d2c9b64b5bd8de77cbc23e7dc128a105a"
+      "bytes": 109318,
+      "sha256": "3ba1f2d24919e22ce39891d6573b92e408df95f428372e6696100623bc9f9cbf"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 174922,
-      "sha256": "ab49b1ff9e4c0b145a45df047de9cde297449483f13e0c5701ff9362cd5bcf5d"
+      "bytes": 175914,
+      "sha256": "cf29b88baa9f212dcfe9080b611989daa2348ea55834a4f7352f2dba82bf5471"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -267,8 +267,8 @@
     },
     {
       "path": "docs/adr/ADR-019-guest-demo-snapshot.md",
-      "bytes": 34491,
-      "sha256": "9a6f70d896890a72987261d050b78283a267928139dc0be438e2ded42719bc35"
+      "bytes": 34675,
+      "sha256": "700b9a6d9694ba7e46864fb972db026e5983959bf9487f9cbe44925ec48414e2"
     },
     {
       "path": "docs/adr/ADR-020-production-database-rds-postgresql.md",
@@ -283,7 +283,7 @@
     {
       "path": "docs/adr/README.md",
       "bytes": 5235,
-      "sha256": "0f4f0f6b1f642a3dd86d5b3c04a9a7b453170a4510cb74008fad394d62fab002"
+      "sha256": "7c49a0f82defdcdef6ccaf33090f5fca5e1c9d7c75f5dd48cb67258aac5ac060"
     },
     {
       "path": "docs/evidence/github-ruleset-2026-10-12/README.md",
