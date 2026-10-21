@@ -2762,22 +2762,94 @@ injected resolver and transport.
 uv run python scripts/build_demo_snapshot.py <output-dir>
 ```
 
-- `<output-dir>` must be outside the repository and must not already hold
-  `snapshot.json` or `manifest.json`; nothing is overwritten.
-- It writes exactly `snapshot.json` (canonical JSON, schema
-  `guest-demo-snapshot/v1`) and `manifest.json` (its SHA-256 and size), and
-  prints the content hash and the two file names.
+- `<output-dir>` must be outside the repository. Since stage 3 the build
+  writes one publication directory, `<output-dir>/<content-hash>/` (ADR-019
+  Decision 3), and refuses if it already exists; nothing is overwritten.
+- The directory holds `snapshot.json` (canonical JSON, schema
+  `guest-demo-snapshot/v1`), the viewer (`index.html`, `viewer.js`,
+  `viewer.css`, copied from `demo/viewer/`) and `manifest.json`
+  (`guest-demo-build-manifest/v2`: the viewer version and the SHA-256 and size
+  of the four files). It prints the content hash and the five file names.
 - A failed check (fixture hash, template text, redaction, allowlist, internal
-  identifier in the output) stops the build with `Build refused: …` and
-  writes nothing.
-- The same fixture always gives the same bytes and the same content hash.
+  identifier in the output, viewer version) stops the build with
+  `Build refused: …` and writes nothing.
+- The same fixture always gives the same bytes and the same content hash; the
+  viewer files never change the snapshot or its hash.
 
 Code: `apps/api/src/ai_qa_copilot_api/guest_demo_build.py` (build) and
-`guest_demo_snapshot.py` (allowlist projection, redaction, canonical writer)
-and `guest_demo_cli.py` (the command the script launches; the script loads it
-at run time so `scripts/` still type-checks with dev dependencies only);
-contract tests in `apps/api/tests/test_guest_demo_snapshot.py`. There is no
-viewer (stage 3), no `current.json` and no publish step (stage 4) yet.
+`guest_demo_snapshot.py` (allowlist projection, redaction, canonical writer,
+viewer copy) and `guest_demo_cli.py` (the command the script launches; the
+script loads it at run time so `scripts/` still type-checks with dev
+dependencies only); contract tests in
+`apps/api/tests/test_guest_demo_snapshot.py` and `test_guest_demo_viewer.py`.
+There is no `current.json` and no publish step (stage 4) yet.
+
+### Guest demo viewer (INFRA-011 stage 3)
+
+`demo/viewer/` is a standalone static page, separate from `apps/web`: no
+framework, no dependency, no cookie or storage, no form, no API call. On load
+it fetches `snapshot.json` from its own directory (same-origin `GET`),
+computes its SHA-256 with WebCrypto, and compares it with the directory name.
+On a mismatch, a page not served from a hash-named directory, or any fetch,
+parse or schema error, it shows an error and renders nothing from the data.
+Otherwise it renders, with `textContent` only, the provenance statement
+(including "This is not a model result."), the file check, summary counts,
+the findings per requirement in document order, the derived traceability
+table (labelled as derived, with the report's own traceability section stated
+as not available), and the state of each report section. The scenario and its
+limits are static text in `index.html`. WebCrypto needs a secure context:
+HTTPS on a host, or `127.0.0.1` locally.
+
+- **Theme.** The page follows `prefers-color-scheme`. A button at the top
+  ("Switch to dark theme" / "Switch to light theme") sets `data-theme` on the
+  root element for the current visit; the attribute wins over the media query,
+  and the label follows a system change until the visitor chooses. Nothing is
+  persisted by design: no cookie, `localStorage`, `sessionStorage` or
+  IndexedDB, so a reload follows the system theme again. Severity and section
+  state badges take their class from a fixed table in `viewer.js`, never from
+  the data; both themes were checked at WCAG AA or better for body text,
+  badges and the button.
+- **Layout.** The container grows up to 72rem with 16 px side gutters; prose
+  keeps a measure of about 75 characters (`max-width: 66ch`), while the
+  tables and requirement cards use the full container width. There is no
+  horizontal page scroll at any width; wide tables scroll inside their own
+  region.
+
+### Headers a host must send for the guest demo
+
+`index.html` carries a meta CSP baseline:
+`default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'`.
+A meta CSP cannot set `frame-ancestors` and cannot replace response headers,
+so any host must send these (host-neutral; names and values only):
+
+| Header | Value |
+|---|---|
+| `Content-Security-Policy` | `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `no-referrer` |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()` |
+| `Strict-Transport-Security` | `max-age=31536000` (only where the host serves HTTPS on its own name; add `includeSubDomains` only if the whole domain is HTTPS) |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+| `Content-Type` | `text/html; charset=utf-8`, `text/javascript; charset=utf-8`, `text/css; charset=utf-8`, `application/json` by file |
+
+Caching (ADR-019 Decision 3): files under a `<content-hash>/` path can be
+cached as immutable; `current.json` (stage 4) must have a short lifetime.
+
+### Preview the viewer locally
+
+`file://` does not work (the page fetches `snapshot.json`, and WebCrypto needs
+a secure context). Build into a directory outside the repository and serve it
+on the loopback address only:
+
+```powershell
+uv run python scripts/build_demo_snapshot.py $env:TEMP\guest-demo-site
+py -m http.server 8765 --bind 127.0.0.1 --directory $env:TEMP\guest-demo-site
+```
+
+Then open `http://127.0.0.1:8765/<content-hash>/` (the hash the build printed;
+keep the trailing slash). The Python server sends none of the headers above,
+so it is for local preview only.
 
 ## Local-credential apply exception
 

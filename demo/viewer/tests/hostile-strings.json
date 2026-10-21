@@ -1,0 +1,19 @@
+{
+  "note": "Hostile test strings authored for the guest demo viewer tests. Each must render as inert text.",
+  "strings": [
+    "<script>alert(1)</script>",
+    "<img src=x onerror=alert(1)>",
+    "\" onmouseover=\"alert(1)\" data-x=\"",
+    "' onfocus='alert(1)' autofocus='",
+    "javascript:alert(1)",
+    "</td></tr><tr><td>injected row</td>",
+    "&lt;b&gt;not bold&lt;/b&gt; &amp; &#60;i&#62; &#x3C;svg onload=alert(1)&#x3E;",
+    "<svg><foreignObject><iframe srcdoc=\"<script>alert(1)</script>\"></iframe></foreignObject></svg>",
+    "‮evil.exe‬ gpj.txt",
+    "‏‫right-to-left embedding‬‏",
+    "{{constructor.constructor('alert(1)')()}}",
+    "${alert(1)}",
+    "\u0000null and \ttab and \nnewline"
+  ],
+  "long_string_length": 20000
+}

@@ -1,0 +1,332 @@
+/* Light tokens are the default. Dark tokens apply when the visitor's system
+   prefers dark and no explicit choice was made, or when the theme toggle set
+   data-theme="dark"; data-theme="light" keeps the light tokens even on a dark
+   system, so the explicit attribute always wins over the media query. */
+:root,
+:root[data-theme="light"] {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --text: #1c1f23;
+  --muted: #4f5660;
+  --border: #d8d4cc;
+  --accent: #1f5f8b;
+  --quote-bg: #f2efe8;
+  --error-bg: #fbe9e7;
+  --error-text: #8a1c12;
+  --ok-bg: #e8f3ec;
+  --ok-text: #1d5b34;
+  --focus: #1f5f8b;
+  --button-bg: #ffffff;
+  --button-text: #1c1f23;
+  --badge-high-bg: #fbe4e1;
+  --badge-high-text: #8a1c12;
+  --badge-medium-bg: #fdf0d5;
+  --badge-medium-text: #6b4300;
+  --badge-low-bg: #e6eef7;
+  --badge-low-text: #1f4f75;
+  --badge-ok-bg: #e3f1e7;
+  --badge-ok-text: #1d5b34;
+  --badge-neutral-bg: #ececec;
+  --badge-neutral-text: #3d4248;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a;
+    --surface: #1d2024;
+    --text: #e8e6e1;
+    --muted: #a9adb3;
+    --border: #3a3e44;
+    --accent: #8cc3ea;
+    --quote-bg: #23272c;
+    --error-bg: #3b1a17;
+    --error-text: #f4b4aa;
+    --ok-bg: #18301f;
+    --ok-text: #a8dcb8;
+    --focus: #8cc3ea;
+    --button-bg: #23272c;
+    --button-text: #e8e6e1;
+    --badge-high-bg: #4a1d18;
+    --badge-high-text: #ffc9c0;
+    --badge-medium-bg: #45330f;
+    --badge-medium-text: #ffdc9a;
+    --badge-low-bg: #1d3346;
+    --badge-low-text: #b9dcf5;
+    --badge-ok-bg: #173323;
+    --badge-ok-text: #b4e3c4;
+    --badge-neutral-bg: #2c3036;
+    --badge-neutral-text: #d3d6da;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #15171a;
+  --surface: #1d2024;
+  --text: #e8e6e1;
+  --muted: #a9adb3;
+  --border: #3a3e44;
+  --accent: #8cc3ea;
+  --quote-bg: #23272c;
+  --error-bg: #3b1a17;
+  --error-text: #f4b4aa;
+  --ok-bg: #18301f;
+  --ok-text: #a8dcb8;
+  --focus: #8cc3ea;
+  --button-bg: #23272c;
+  --button-text: #e8e6e1;
+  --badge-high-bg: #4a1d18;
+  --badge-high-text: #ffc9c0;
+  --badge-medium-bg: #45330f;
+  --badge-medium-text: #ffdc9a;
+  --badge-low-bg: #1d3346;
+  --badge-low-text: #b9dcf5;
+  --badge-ok-bg: #173323;
+  --badge-ok-text: #b4e3c4;
+  --badge-neutral-bg: #2c3036;
+  --badge-neutral-text: #d3d6da;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-size: 1rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+/* Prose keeps a comfortable measure (66ch of "0" is about 75 average
+   characters); tables and requirement cards use the full container width. */
+main > section > p,
+main > section > ul,
+.requirement > p,
+.requirement > ul,
+.requirement > blockquote,
+.status {
+  max-width: 66ch;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip-link:focus {
+  position: static;
+  display: inline-block;
+  margin-top: 8px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+a {
+  color: var(--accent);
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 32px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-title {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.theme-toggle {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+.theme-toggle[hidden] {
+  display: none;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+h1 {
+  margin: 4px 0 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 40px 0 12px;
+  font-size: 1.35rem;
+}
+
+h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+main:focus {
+  outline: none;
+}
+
+.status {
+  margin: 32px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.status-error {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.statement {
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.hash {
+  font-family: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+}
+
+.requirement {
+  margin: 0 0 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.requirement ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+blockquote {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 4px solid var(--accent);
+  background: var(--quote-bg);
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.badge-high {
+  background: var(--badge-high-bg);
+  color: var(--badge-high-text);
+}
+
+.badge-medium {
+  background: var(--badge-medium-bg);
+  color: var(--badge-medium-text);
+}
+
+.badge-low {
+  background: var(--badge-low-bg);
+  color: var(--badge-low-text);
+}
+
+.badge-ok {
+  background: var(--badge-ok-bg);
+  color: var(--badge-ok-text);
+}
+
+.badge-neutral {
+  background: var(--badge-neutral-bg);
+  color: var(--badge-neutral-text);
+}
+
+.table-wrap {
+  max-width: 100%;
+  margin: 12px 0 20px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  padding: 10px 12px 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th {
+  border-top: none;
+  font-size: 0.9rem;
+}
+
+tbody th {
+  font-weight: 600;
+}
