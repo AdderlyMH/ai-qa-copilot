@@ -1,5 +1,45 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## First end-to-end uploads; parser wake-up applied; certifi risk accepted — 2026-10-20
+
+**Status:** Owner-applied and owner-run. INFRA-002, INFRA-008 and INFRA-012
+are **not Accepted** (acceptance is the owner's call).
+
+Owner-observed: the compute stack runs the four function images from
+`109a4e0`; API 1769 MB (Terraform-codified), parser 512 MB, general
+1024 MB. Owner SRP sign-in works and `GET /projects` returned 200 `[]` for
+the new owner. The application role and the **parser role** both log in to
+RDS over `verify-full`; the parser claims `parser_jobs` and writes its
+results (INFRA-008 Stage B evidence for the parser login).
+
+Uploads: a Markdown file with no `REQ-…:` lines ended `parse_failed` /
+`rejected`, which is correct; its reason is not stored, logged or returned
+(the stored code is fixed by `ck_parser_jobs_failure_code`, so surfacing it
+needs a log line or a migration). Valid files reached `parsed` / `accepted`
+with `indexing_not_enabled`. After the parser wake-up flag (PR #204) was
+applied with a targeted plan (0 add, 1 change, 0 destroy), status moved
+`parser_queued` to `parsed` in about 6 s with no manual wake-up; the manual
+`aws sqs send-message` stays the fallback. Intake deduplicates by a
+project-scoped content hash, so a re-test needs changed bytes.
+
+Single readings, not a baseline: API max 176 MB of 1769 MB; parser max
+197 MB of 512 MB, parser init about 1.4 to 3.1 s; general not measured.
+
+Security: PYSEC-2026-4320 (certifi, emSign ECC Root CA - G3). `uv.lock` is
+fixed on `main` (certifi 2026.10.19, PR #204); the five deployed images
+still contain certifi 2026.7.22. **Owner decision: risk accepted** until the
+next image rebuild, combined with SG-07 (waiting on the AWS base-image
+refresh), at the base-image refresh or before the December 6 freeze,
+whichever comes first; the rebuild must verify the certifi version in each
+image. Recorded in the SG-07 disposition register in INFRASTRUCTURE.md. An
+accepted risk is still unresolved for SG-07.
+
+Next action: rebuild all five images (certifi and SG-07) and verify certifi
+in each; a sanitized parser outcome log line (outcome, fixed reason code,
+section counts, exception type; no content, filenames or IDs); parser and
+general memory under load; the general worker's first message; the
+CloudFront case (`demo_cdn_enabled = false` stays).
+
 ## Compute apply; owner API check passes against RDS — 2026-10-20
 
 **Status:** Owner-applied and owner-run. INFRA-002, INFRA-008 and INFRA-012
@@ -37,8 +77,13 @@ request (`Init Duration` 1429.33 ms, `Duration` 1332.41 ms).
 Shown: the owner check passes; the secrets bootstrap loaded both secrets;
 the application role logged in to RDS over `verify-full` from the API and
 ran a SELECT (INFRA-012 acceptance evidence; acceptance is the owner's
-call). Not shown: INSERT/UPDATE by the application role; anything by the
-parser or general roles (INFRA-008 Stage B stays open); the OpenAI call.
+call). Not shown by this check: INSERT/UPDATE by the application role;
+anything by the parser or general roles; the OpenAI call. **Update (later on
+2026-10-20, entry above):** the application role's INSERT is now shown by the
+accepted uploads (the intake inserted the document and version rows), and the
+parser role's writes by the `parsed` / `accepted` results. Still not shown:
+UPDATE by the application role, anything by the general role, the OpenAI
+call.
 The guest page has no HTTPS host while `demo_cdn_enabled` is false.
 
 Next action: create a project and upload a synthetic Markdown file

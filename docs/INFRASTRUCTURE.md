@@ -749,7 +749,9 @@ security review of the relaxation assumes it.
   off) with the existing `PARSER_QUEUE_URL` on the API function. **Production
   must set the flag**; without it uploads are stored and queued in the
   database but the parser function is never invoked.
-  **In Terraform since 2026-10-20 (not yet applied):** `compute_api` sets
+  **In Terraform since 2026-10-20 and applied the same day** (targeted plan
+  0 to add, 1 to change, 0 to destroy; see
+  [First end-to-end uploads](#first-end-to-end-uploads-2026-10-20)): `compute_api` sets
   `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED = "true"` on the API function only,
   next to the existing `PARSER_QUEUE_URL`. Once applied, every accepted
   upload wakes the parser automatically. The API role already has
@@ -1317,9 +1319,20 @@ token whose subject matches `cognito_owner_subject`); the secrets bootstrap
 loaded both secrets at cold start; the application role logged in to RDS
 over `sslmode=verify-full` from the API function and ran a SELECT.
 
-**Not shown:** INSERT or UPDATE by the application role; any connection by
-the parser or general roles; the OpenAI call; `verify-full` from the parser
-and general images; what a Lambda timeout does to an open transaction.
+**Not shown by this check:** INSERT or UPDATE by the application role; any
+connection by the parser or general roles; the OpenAI call; `verify-full`
+from the parser and general images; what a Lambda timeout does to an open
+transaction.
+
+**Update (later on 2026-10-20):** the
+[first end-to-end uploads](#first-end-to-end-uploads-2026-10-20) show two of
+these. The application role's INSERT is shown by the accepted uploads: the
+intake inserted the document and version rows. The parser role's writes are
+shown by the `parsed` / `accepted` results, which the parser role wrote after
+logging in over `verify-full` from the parser image. Still not shown:
+UPDATE by the application role; any connection by the general role or
+`verify-full` from the general image; the OpenAI call; what a Lambda timeout
+does to an open transaction.
 
 **CloudFront:** the AWS case had no reply as of 2026-10-20. While
 `demo_cdn_enabled` is false the guest page has no HTTPS host.
@@ -1338,6 +1351,10 @@ stays **not Accepted** until the owner records it. INFRA-008 Stage B stays
 - SG-07 disposition of the scan findings before the December 6 freeze.
 - The weekly base-image digest check
   ([Refresh the base image digest](#refresh-the-base-image-digest)).
+
+**Update:** the upload, the parser's login and the wake-up were exercised
+later on 2026-10-20; see
+[First end-to-end uploads, 2026-10-20](#first-end-to-end-uploads-2026-10-20).
 
 ### Owner API check (owner, local credentials, PowerShell)
 
@@ -1407,6 +1424,90 @@ refused (wrong client, expired token, or a `sub` that does not match
 `cognito_owner_subject`). The check without a token is the same request with
 no `Authorization` header (`Invoke-WebRequest "$ApiUrl/projects"`), which
 must return 401. Do not print or save the token.
+
+## First end-to-end uploads, 2026-10-20
+
+Owner-observed facts. Project, document and version IDs, the API endpoint,
+queue URLs and the owner's sign-in stay in the owner's private notes.
+
+**Deployed state.** The compute stack is applied: the four function images
+from `109a4e0` ([Stage B rollout](#stage-b-rollout-2026-10-19) digests), the
+API at 1769 MB (in Terraform since PR #201), the parser at 512 MB and the
+general worker at 1024 MB. Owner sign-in with Cognito SRP works, and
+`GET /projects` returned 200 with an empty list for the new owner (see
+[Owner API check results](#owner-api-check-results)).
+
+### Database logins
+
+- The application role and the parser role both log in to RDS over
+  `sslmode=verify-full`.
+- The parser claims `parser_jobs` rows and writes its results (accepted
+  evidence, or the rejected terminal state).
+
+### Upload results
+
+| Upload | Outcome | Reading |
+|---|---|---|
+| Markdown with no `REQ-…:` lines | `status` `parse_failed`, `parser_stage` `rejected` | Correct behaviour: for Markdown the parser keeps only requirement lines, and promotion rejects an empty result. |
+| Valid Markdown and text files | `status` `parsed`, `parser_stage` `accepted`, `indexing` `indexing_not_enabled` | Expected until INFRA-013. |
+| A valid file after the wake-up flag was applied | `parser_queued` to `parsed` in about 6 s, no manual wake-up | The API's wake-up reached the parser. |
+
+**Known diagnosability gap.** The specific rejection reason is not stored,
+logged or returned. `claims.reject()` writes only the generic
+`PARSER_DOCUMENT_REJECTED`, and the `ck_parser_jobs_failure_code` constraint
+allows only that value for `rejected`; no API route returns
+`parser_jobs.failure_code`; and the parser handler logs only a batch count.
+The status's `rejection_code` is the intake's own code, so it is null for any
+parser-stage outcome. Surfacing the reason needs a log line or a migration.
+
+**Deduplication.** Intake deduplicates by a project-scoped content hash: the
+same bytes uploaded again to the same project return the existing intake
+instead of a new one. A re-test needs changed bytes.
+
+### Parser wake-up applied
+
+The `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED` change (PR #204) was applied with
+a targeted plan: **0 to add, 1 to change, 0 to destroy** (the API function's
+environment). Uploads now wake the parser automatically. The manual
+`aws sqs send-message ... --message-body "wake-up"` remains the fallback
+([Parser wake-up](#parser-wake-up-infra-007-stage-3-2026-10-15)).
+
+### Memory readings
+
+Single readings, **not a baseline**:
+
+| Function | Configured | Max Memory Used | Init Duration |
+|---|---|---|---|
+| API | 1769 MB | 176 MB | see [First requests and API memory](#first-requests-and-api-memory) |
+| Parser | 512 MB | 197 MB | about 1.4 to 3.1 s |
+| General | 1024 MB | not measured | not measured |
+
+The parser's init stays well under the 10 s Lambda init limit at 512 MB in
+these readings; its timeout is 15 s. Measure the parser and general worker
+under load before changing either.
+
+### SG-07 disposition register
+
+Dispositions of scan and dependency findings against
+[SG-07](THREAT_MODEL.md#14-security-release-gates). An accepted risk is
+still an **unresolved** finding for SG-07 and blocks release until it is
+closed.
+
+| # | Finding | Scope | Disposition (2026-10-20) | Close condition |
+|---|---|---|---|---|
+| 1 | PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2): `certifi` trusts the emSign ECC Root CA - G3, under which compromised intermediates were revoked; fixed in 2026.10.19 | `uv.lock` fixed on `main` (certifi 2026.10.19, PR #204). The five deployed images (`109a4e0`) still contain certifi 2026.7.22 | **Risk accepted by the owner** until the next image rebuild, which is combined with SG-07 item 2 | All five images rebuilt and redeployed at the AWS base-image refresh or before the December 6 freeze, whichever comes first. The rebuild must verify the certifi version inside each built image |
+| 2 | ECR scan on all five images: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each (Amazon Linux 2023 OS packages in the shared base layers) | Deployed images | Open, not triaged; waiting on an AWS base-image refresh ([Refresh the base image digest](#refresh-the-base-image-digest)) | The same rebuild, then a re-scan and a documented disposition of any remaining Medium findings |
+
+### Next actions
+
+- Rebuild all five images from `main` (certifi and SG-07 together), verify
+  the certifi version in each image, push, and update the digests.
+- A sanitized parser outcome log line: outcome, fixed reason code, section
+  counts and exception type; no content, filenames or IDs.
+- Measure parser and general memory under load.
+- The general worker's first message.
+- The CloudFront case: `demo_cdn_enabled = false` stays until it is
+  resolved.
 
 ## Optional guest-demo CloudFront and the parser queue grant (2026-10-18)
 
