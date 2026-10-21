@@ -1,5 +1,24 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## pypdf bumped to 6.20.1 for four pip-audit advisories — 2026-10-21
+
+**Status:** Lockfile change on a branch; the deployed images are unchanged.
+
+The application-CI `security-scans` job (pip-audit on the locked runtime
+dependencies) failed on every branch: `pypdf` 6.19.0 has GHSA-qfv9-64jg-mh7p,
+GHSA-7mh2-4gg2-979f, GHSA-9mx8-4j7g-633p and GHSA-39mj-jf6j-2qj3. The pin in
+`apps/api/pyproject.toml` moves to 6.20.1, the lowest release fixing all four
+(not yanked); `uv.lock` changes for pypdf only. The upstream changelog for
+6.19.0 to 6.20.1 lists no API change to the `PdfReader`, `PdfReadError` or
+generic objects the PDF parser uses; its tests pass on 6.20.1.
+
+The deployed images (`109a4e0`) still contain pypdf 6.19.0 until the next
+image rebuild. Recorded as SG-07 disposition register item 3 in
+INFRASTRUCTURE.md, open with no risk acceptance.
+
+Next action: merge, then verify the pypdf version in each image at the
+planned five-image rebuild.
+
 ## INFRA-011 stage 2a: demo-only fixture — 2026-10-21
 
 **Status:** Implemented on a branch; data and one test only. INFRA-011 is
