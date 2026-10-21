@@ -118,6 +118,36 @@ def test_no_function_role_can_read_the_parser_secret() -> None:
     )
 
 
+def test_only_the_api_sends_parser_wake_ups() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    environments = code(block(compute, "  environment = {"))
+    api = code(block(compute, "    api = merge(local.secret_arn_environment, {"))
+
+    assert re.search(r'AI_QA_COPILOT_PARSER_WAKEUP_ENABLED\s*=\s*"true"', api)
+    assert re.search(r'PARSER_QUEUE_URL\s*=\s*var\.queue_urls\["parser"\]', api)
+    # Set exactly once, in the API map: never on parser, general or executor.
+    assert environments.count("AI_QA_COPILOT_PARSER_WAKEUP_ENABLED") == 1
+    for header in ("    parser = merge({", "    general = merge(", "    executor = {"):
+        assert "WAKEUP" not in code(block(compute, header)), header
+
+    data_plane = DATA_PLANE.read_text(encoding="utf-8")
+    sender = code(block(data_plane, 'data "aws_iam_policy_document" "api"'))
+    assert re.search(
+        r'actions\s*=\s*\["sqs:SendMessage"\]\s*\n'
+        r'\s*resources\s*=\s*\[\s*\n\s*aws_sqs_queue\.source\["parser"\]\.arn',
+        sender,
+    )
+    parser_role = code(block(data_plane, 'data "aws_iam_policy_document" "parser"'))
+    assert "sqs:SendMessage" not in parser_role
+
+
+def test_the_general_wake_up_stays_off_until_infra_013() -> None:
+    for path in sorted((ROOT / "infra").rglob("*.tf")):
+        assert "AI_QA_COPILOT_GENERAL_WAKEUP_ENABLED" not in code(
+            path.read_text(encoding="utf-8")
+        ), path
+
+
 FUNCTIONS = ("api", "parser", "general", "executor")
 
 

@@ -245,11 +245,13 @@ locals {
 
   cognito_issuer = "https://cognito-idp.${local.region}.amazonaws.com/${aws_cognito_user_pool.owner.id}"
 
-  # Non-secret settings only. Queue URLs and bucket names are provided for the
-  # Lambda adapters; the application does not read them yet (open item). The
-  # API and general worker get the two secret ARNs; the values are read at cold
-  # start (secrets_bootstrap.py) and never appear here. MODEL_PROVIDER stays
-  # unset on the API (OpenAI default) and openai on the general worker.
+  # Non-secret settings only. The API and general worker get the two secret
+  # ARNs; the values are read at cold start (secrets_bootstrap.py) and never
+  # appear here. MODEL_PROVIDER stays unset on the API (OpenAI default) and
+  # openai on the general worker. The API sends one parser wake-up per
+  # accepted upload (parser_wakeup.py, PARSER_QUEUE_URL); the general wake-up
+  # flag stays unset until INFRA-013 gives the general worker an embedding
+  # adapter.
   secret_arn_environment = {
     DATABASE_URL_SECRET_ARN   = var.application_secret_arns.database_url
     OPENAI_API_KEY_SECRET_ARN = var.application_secret_arns.openai_api_key
@@ -267,6 +269,8 @@ locals {
       DATA_BUCKET_NAME          = var.data_bucket_name
       DEMO_BUCKET_NAME          = var.demo_bucket_name
       LOCAL_AUTH_BYPASS_ENABLED = "false"
+
+      AI_QA_COPILOT_PARSER_WAKEUP_ENABLED = "true"
     })
     # The parser is the only function whose environment holds a database URL
     # (ADR-018 fallback, INFRA-008 Stage B): it cannot reach Secrets Manager.

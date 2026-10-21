@@ -748,8 +748,24 @@ security review of the relaxation assumes it.
 - **Flag:** `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED` (exactly `true`; default
   off) with the existing `PARSER_QUEUE_URL` on the API function. **Production
   must set the flag**; without it uploads are stored and queued in the
-  database but the parser function is never invoked. Not yet in Terraform
-  (INFRA-008/INFRA-009).
+  database but the parser function is never invoked.
+  **In Terraform since 2026-10-20 (not yet applied):** `compute_api` sets
+  `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED = "true"` on the API function only,
+  next to the existing `PARSER_QUEUE_URL`. Once applied, every accepted
+  upload wakes the parser automatically. The API role already has
+  `sqs:SendMessage` on the parser queue (`EnqueueJobs`); the parser role
+  still has none. No image rebuild is needed: the images from `109a4e0`
+  already contain the sender. `AI_QA_COPILOT_GENERAL_WAKEUP_ENABLED` stays
+  unset until INFRA-013 (the general worker has no embedding adapter yet).
+- **Manual fallback:** if a wake-up is lost or the flag is off, send one by
+  hand, as the owner did on 2026-10-20 (`$ParserQueueUrl` from the private
+  notes or `aws sqs get-queue-url`):
+
+  ```powershell
+  aws sqs send-message --region us-east-1 --queue-url $ParserQueueUrl --message-body "wake-up"
+  ```
+
+  The body is never read; each message lets the parser claim one queued job.
 - **Send:** after an accepted upload, once the parser job row is committed,
   the API sends one message with the fixed body `wake-up`, no identifiers and
   `DelaySeconds=0` (S5). It runs in the threadpool with a 2 s connect and 3 s
