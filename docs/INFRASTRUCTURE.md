@@ -2771,7 +2771,9 @@ uv run python scripts/build_demo_snapshot.py <output-dir>
 - The same fixture always gives the same bytes and the same content hash.
 
 Code: `apps/api/src/ai_qa_copilot_api/guest_demo_build.py` (build) and
-`guest_demo_snapshot.py` (allowlist projection, redaction, canonical writer);
+`guest_demo_snapshot.py` (allowlist projection, redaction, canonical writer)
+and `guest_demo_cli.py` (the command the script launches; the script loads it
+at run time so `scripts/` still type-checks with dev dependencies only);
 contract tests in `apps/api/tests/test_guest_demo_snapshot.py`. There is no
 viewer (stage 3), no `current.json` and no publish step (stage 4) yet.
 

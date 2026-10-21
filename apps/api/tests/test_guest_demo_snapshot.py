@@ -38,6 +38,7 @@ DEMO_FIXTURE = ROOT / "demo/fixture"
 BUILD_MODULES = (
     ROOT / "apps/api/src/ai_qa_copilot_api/guest_demo_build.py",
     ROOT / "apps/api/src/ai_qa_copilot_api/guest_demo_snapshot.py",
+    ROOT / "apps/api/src/ai_qa_copilot_api/guest_demo_cli.py",
     ROOT / "scripts/build_demo_snapshot.py",
 )
 FORBIDDEN_MODULE_NAMES = frozenset(
