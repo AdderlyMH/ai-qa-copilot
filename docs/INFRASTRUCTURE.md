@@ -2750,6 +2750,34 @@ The ADR-005 database gate still applies: no database resource, subnet group or
 connectivity resource for a database is created until the provider selection is
 recorded in an ADR-005 amendment or a new ADR.
 
+## Guest demo snapshot builder (INFRA-011 stage 2b, local)
+
+Builds the ADR-019 guest-demo snapshot from `demo/fixture/` on a workstation.
+It needs no AWS access, provider key, database or network: the restricted
+executor reaches a fresh in-process mock order API per seed through an
+injected resolver and transport.
+
+```powershell
+uv run python scripts/build_demo_snapshot.py <output-dir>
+```
+
+- `<output-dir>` must be outside the repository and must not already hold
+  `snapshot.json` or `manifest.json`; nothing is overwritten.
+- It writes exactly `snapshot.json` (canonical JSON, schema
+  `guest-demo-snapshot/v1`) and `manifest.json` (its SHA-256 and size), and
+  prints the content hash and the two file names.
+- A failed check (fixture hash, template text, redaction, allowlist, internal
+  identifier in the output) stops the build with `Build refused: …` and
+  writes nothing.
+- The same fixture always gives the same bytes and the same content hash.
+
+Code: `apps/api/src/ai_qa_copilot_api/guest_demo_build.py` (build) and
+`guest_demo_snapshot.py` (allowlist projection, redaction, canonical writer)
+and `guest_demo_cli.py` (the command the script launches; the script loads it
+at run time so `scripts/` still type-checks with dev dependencies only);
+contract tests in `apps/api/tests/test_guest_demo_snapshot.py`. There is no
+viewer (stage 3), no `current.json` and no publish step (stage 4) yet.
+
 ## Local-credential apply exception
 
 Until INFRA-005 (plan and apply path) is accepted, the only permitted applies

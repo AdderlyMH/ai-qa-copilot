@@ -19,6 +19,40 @@ INFRASTRUCTURE.md, open with no risk acceptance.
 Next action: merge, then verify the pypdf version in each image at the
 planned five-image rebuild.
 
+## INFRA-011 stage 2b: guest demo snapshot builder — 2026-10-21
+
+**Status:** Implemented on a branch. INFRA-011 is **not Accepted**: no viewer
+(stage 3), no `current.json` and no publish step (stage 4); nothing is
+published.
+
+`scripts/build_demo_snapshot.py <output-dir>` builds the ADR-019 snapshot
+offline from `demo/fixture/`. The build (`guest_demo_build.py`) runs the
+product's parser, rule-based analyzer, grounded test generator, restricted
+executor and report builder in memory, with a fresh in-process mock order API
+per seed and deterministic internal IDs. The projection
+(`guest_demo_snapshot.py`) is an explicit allowlist into
+`guest-demo-snapshot/v1`, with template-checked text, redacted excerpts,
+public IDs derived from the body hash, the Decision 11 provenance statement
+("This is not a model result."), and the derived traceability table labelled
+as derived. Output is `snapshot.json` plus `manifest.json`; two builds give
+the same bytes.
+
+Recorded for owner confirmation in ADR-019 Open items: the excerpt cap and
+redaction patterns, the allowlist field set, why the publication date and
+content hash are not inside `snapshot.json`, and the execution composition
+(a demo-only target registry and in-memory approval, job and result, because
+the approval service and durable queue only accept the hosted sandbox origin).
+
+Evidence: `test_guest_demo_snapshot.py` (14 offline tests) covers in-process
+and fresh-interpreter reproducibility, no internal ID or timestamp in the
+output, the key allowlist, excerpts equal to the fixture lines, redaction
+including refusals, unknown-template refusal, provenance, traceability, fresh
+mocks per seed, and the Decision 12 contract (imports, path strings, loaded
+modules, no DNS or non-loopback socket, writes only into the output
+directory).
+
+Next action: stage 3, the static viewer page for one snapshot directory.
+
 ## INFRA-011 stage 2a: demo-only fixture — 2026-10-21
 
 **Status:** Implemented on a branch; data and one test only. INFRA-011 is
