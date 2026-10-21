@@ -1,0 +1,168 @@
+{
+  "schema_version": "guest-demo-test-seeds/v1",
+  "note": "Author-written test-generation seeds for the guest demo. Synthetic. Each seed names the requirement(s) and the finding category it is bound to; the demo build binds it to the finding the rule-based analyzer produces for those requirements. Order and product identifiers are the synthetic values seeded by the in-process mock order API.",
+  "seeds": [
+    {
+      "seed_id": "SEED-ORD-002-NEGATIVE",
+      "requirement_ids": ["REQ-ORD-002"],
+      "finding_category": "ambiguity",
+      "kind": "negative",
+      "request": {
+        "method": "POST",
+        "path": "/orders",
+        "query": [],
+        "headers": [{ "name": "Content-Type", "value": "application/json" }],
+        "json_body": {
+          "currency": "USD",
+          "shippingAddress": {
+            "line1": "1 Demo Lane",
+            "city": "Sample Town",
+            "countryCode": "US",
+            "postalCode": "00000"
+          },
+          "items": [
+            {
+              "productId": "00000000-0000-0000-0000-00000000c999",
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "assertions": [
+        {
+          "target": "status_code",
+          "selector": null,
+          "operator": "equals",
+          "expected_value": 400
+        },
+        {
+          "target": "json_body",
+          "selector": "/errorCode",
+          "operator": "equals",
+          "expected_value": "ORDER_INPUT_INVALID"
+        },
+        {
+          "target": "json_body",
+          "selector": "/message",
+          "operator": "exists",
+          "expected_value": null
+        }
+      ]
+    },
+    {
+      "seed_id": "SEED-ORD-003-NEGATIVE",
+      "requirement_ids": ["REQ-ORD-003"],
+      "finding_category": "error_handling_gap",
+      "kind": "negative",
+      "request": {
+        "method": "PATCH",
+        "path": "/orders/00000000-0000-0000-0000-00000000b999",
+        "query": [],
+        "headers": [{ "name": "Content-Type", "value": "application/json" }],
+        "json_body": {
+          "shippingAddress": {
+            "line1": "2 Demo Lane",
+            "city": "Sample Town",
+            "countryCode": "US",
+            "postalCode": "00000"
+          }
+        }
+      },
+      "assertions": [
+        {
+          "target": "status_code",
+          "selector": null,
+          "operator": "equals",
+          "expected_value": 404
+        },
+        {
+          "target": "json_body",
+          "selector": "/errorCode",
+          "operator": "equals",
+          "expected_value": "ORDER_NOT_FOUND"
+        }
+      ]
+    },
+    {
+      "seed_id": "SEED-ORD-004-STATE",
+      "requirement_ids": ["REQ-ORD-004"],
+      "finding_category": "missing_acceptance_criteria",
+      "kind": "state",
+      "request": {
+        "method": "POST",
+        "path": "/orders/00000000-0000-0000-0000-00000000b101/cancel",
+        "query": [],
+        "headers": [{ "name": "Content-Type", "value": "application/json" }],
+        "json_body": { "reason": "Customer changed their mind" }
+      },
+      "assertions": [
+        {
+          "target": "status_code",
+          "selector": null,
+          "operator": "equals",
+          "expected_value": 200
+        },
+        {
+          "target": "json_body",
+          "selector": "/status",
+          "operator": "equals",
+          "expected_value": "CANCELED"
+        }
+      ]
+    },
+    {
+      "seed_id": "SEED-ORD-005-006-STATE",
+      "requirement_ids": ["REQ-ORD-005", "REQ-ORD-006"],
+      "finding_category": "contradiction",
+      "kind": "state",
+      "request": {
+        "method": "POST",
+        "path": "/orders/00000000-0000-0000-0000-00000000b102/cancel",
+        "query": [],
+        "headers": [],
+        "json_body": null
+      },
+      "assertions": [
+        {
+          "target": "status_code",
+          "selector": null,
+          "operator": "equals",
+          "expected_value": 409
+        },
+        {
+          "target": "json_body",
+          "selector": "/errorCode",
+          "operator": "equals",
+          "expected_value": "ORDER_CANCELLATION_INELIGIBLE"
+        }
+      ]
+    },
+    {
+      "seed_id": "SEED-ORD-008-NEGATIVE",
+      "requirement_ids": ["REQ-ORD-008"],
+      "finding_category": "error_handling_gap",
+      "kind": "negative",
+      "request": {
+        "method": "PATCH",
+        "path": "/orders/00000000-0000-0000-0000-00000000b102",
+        "query": [],
+        "headers": [{ "name": "Content-Type", "value": "application/json" }],
+        "json_body": {}
+      },
+      "assertions": [
+        {
+          "target": "status_code",
+          "selector": null,
+          "operator": "equals",
+          "expected_value": 400
+        },
+        {
+          "target": "json_body",
+          "selector": "/errorCode",
+          "operator": "equals",
+          "expected_value": "ORDER_UPDATE_INVALID"
+        }
+      ]
+    }
+  ]
+}

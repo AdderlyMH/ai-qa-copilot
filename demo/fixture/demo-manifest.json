@@ -1,0 +1,22 @@
+{
+  "schema_version": "guest-demo-fixture-manifest/v1",
+  "fixture_id": "DEMO-ORDERS-001",
+  "fixture_version": 1,
+  "classification": "synthetic",
+  "purpose": "Guest demo source (ADR-019 Decision 8). Authored for the demo; not derived from any evaluation fixture. Demo content, not evaluation evidence.",
+  "hash_algorithm": "sha256-raw-bytes",
+  "files": [
+    {
+      "path": "requirements.md",
+      "role": "requirements",
+      "media_type": "text/markdown",
+      "sha256": "da29d606ebb6f7002996aef80003e897d0af095bd8e6c4e7f1752f8948cfc215"
+    },
+    {
+      "path": "seeds.json",
+      "role": "test_generation_seeds",
+      "media_type": "application/json",
+      "sha256": "68455b30551590c7241cd5434a9b5287c8cc505c362f94e66e044fb6a21df9cb"
+    }
+  ]
+}

@@ -47,6 +47,10 @@ packages/**/*.md text eol=lf
 # Git executes hooks through a POSIX shell, including on Git for Windows.
 .githooks/pre-commit text eol=lf
 
+# The guest-demo fixture records the raw-bytes SHA-256 of each file in its
+# own manifest (ADR-019 Decision 8), so its bytes must match on every OS.
+demo/** text eol=lf
+
 # Terraform sources, examples and provider lock files.
 infra/** text eol=lf
 
