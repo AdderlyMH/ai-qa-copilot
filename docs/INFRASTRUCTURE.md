@@ -779,6 +779,72 @@ security review of the relaxation assumes it.
   reads, which re-send at most once per 60 s while any listed document is
   `parser_queued`; each re-send lets one more queued job be parsed.
 
+## Parser outcome log line (2026-10-21)
+
+Code only: **not in a deployed image yet** (the deployed images are from
+`109a4e0`; it ships with the next rebuild).
+
+**Why.** In production the parser logged nothing on success or on a normal
+rejection, and a rejection's reason was lost: `reject()` stores only the
+generic `PARSER_DOCUMENT_REJECTED` (the `ck_parser_jobs_failure_code`
+constraint allows nothing else), and no route returns it. The stored code,
+states, schema and API are unchanged; the reason now reaches the log only.
+
+**Why INFO lines were missing.** The functions use the Text log format with no
+application log level. The Lambda Python runtime then attaches its handler to
+the root logger without setting a level, so the root stays at Python's default
+WARNING and INFO records from loggers without their own level are dropped;
+that is why `parser.batch` never appeared. The outcome line uses its own
+logger, `ai_qa_copilot_api.parser_outcome`, whose level is set to INFO in
+code, so its INFO records reach the runtime's handler. Failed outcomes are
+logged at WARNING. `parser.batch` and the other INFO lines are unchanged and
+still not visible.
+
+**One line per claimed job**, when its outcome is final (an idle turn logs
+nothing):
+
+```text
+event=parser.outcome outcome=<outcome> reason=<reason> sections=<n> requirements=<n|none> exc_type=<class|none>
+```
+
+| Field | Values |
+|---|---|
+| `outcome` | `accepted`, `rejected`, `failed`, `not_published` (the claim was lost; the reaper later records `PARSER_CLAIM_EXPIRED`) |
+| `reason` | `none` (accepted), or one code from the closed set below |
+| `sections` | sections stored; 0 unless accepted |
+| `requirements` | requirement units the parser found; `none` when parsing did not run (rejected or failed before it). `0` with `PARSER_EVIDENCE_INVALID` means a file with no `REQ-…:` lines |
+| `exc_type` | the exception class name for failed outcomes, else `none` |
+
+**Closed reason set** (`ParserOutcomeReason`):
+
+- Rejections, the codes the parser, reader and promotion raise:
+  `PARSER_DOCUMENT_TYPE_UNSUPPORTED`, `PARSER_TEXT_ENCODING_INVALID`,
+  `PARSER_TEXT_CODEPOINT_LIMIT`, `PARSER_LINE_COUNT_LIMIT`,
+  `PARSER_LINE_SIZE_LIMIT`, `PARSER_SOURCE_PROVENANCE_INVALID`,
+  `PARSER_SOURCE_INTEGRITY_INVALID`, `PARSER_EVIDENCE_INVALID`,
+  `PARSER_VERSION_NOT_PENDING`, `PARSER_EVIDENCE_ALREADY_EXISTS`, and
+  `PARSER_REJECTED_UNCLASSIFIED` for any other rejection text (which is
+  compared, never logged).
+- Failures: `PARSER_SOURCE_UNAVAILABLE` (quarantine read),
+  `PARSER_DATABASE_UNAVAILABLE`, `PARSER_WORKER_EXCEPTION` (any other
+  exception after the claim; replaces the bare `parser.post_claim_error`),
+  `PARSER_OUTCOME_NOT_STORED` (the terminal state could not be written).
+- Lost claim: `PARSER_CLAIM_NOT_ACTIVE`.
+
+**Never logged:** document content or line text, filenames, project,
+document, version, intake or job IDs, claim tokens, S3 keys, bucket names,
+user identifiers, or exception messages. Tests feed distinctive values for
+each and assert none reaches the log. A logging error is swallowed and never
+fails or retries a job; SQS partial-batch behaviour is unchanged.
+
+CloudWatch Logs Insights query for the parser log group (not run yet):
+
+```text
+filter @message like /event=parser\.outcome/
+| parse @message "outcome=* reason=* " as outcome, reason
+| stats count() by outcome, reason
+```
+
 ## Production database, RDS for PostgreSQL (INFRA-003, 2026-10-16)
 
 Code in `infra/modules/database`, plus the database subnets, route table,
