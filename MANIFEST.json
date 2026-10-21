@@ -7,8 +7,8 @@
   "files": [
     {
       "path": ".gitattributes",
-      "bytes": 1703,
-      "sha256": "6387c7b5bca6fcabd9687a1c67aca3bcf101980387af8ee63dc1cb2356751838"
+      "bytes": 1873,
+      "sha256": "89fced5903a42ff1f757ef8469afb7b87727175b6c05319e770b49c4782f31fa"
     },
     {
       "path": ".githooks/pre-commit",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 109318,
-      "sha256": "3ba1f2d24919e22ce39891d6573b92e408df95f428372e6696100623bc9f9cbf"
+      "bytes": 109928,
+      "sha256": "7d16da53938d9311afdbeb5a369797695f22f9a9ddf3fe18ac6396a180786633"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 175914,
-      "sha256": "cf29b88baa9f212dcfe9080b611989daa2348ea55834a4f7352f2dba82bf5471"
+      "bytes": 177504,
+      "sha256": "063e030a314893719f37efb90578e7935a0367982e09e2a09d1e80ebf213be4e"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",

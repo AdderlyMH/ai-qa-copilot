@@ -1,5 +1,36 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-011 stage 2a: demo-only fixture — 2026-10-21
+
+**Status:** Implemented on a branch; data and one test only. INFRA-011 is
+**not Accepted**: no generator, allowlist projection, viewer or publish
+script exists, and nothing is published.
+
+`demo/fixture/` holds the ADR-019 Decision 8 fixture, authored for the demo
+and not derived from any evaluation material:
+
+- `requirements.md`: eight requirements for a fictional order service
+  (`REQ-ORD-001` to `REQ-ORD-008`), one clear, the rest deliberately vague,
+  incomplete or contradictory.
+- `seeds.json`: five author-written test-generation seeds, each bound to a
+  requirement and finding category and limited to operations the in-process
+  mock order API implements.
+- `demo-manifest.json`: fixture id, classification synthetic, schema version
+  and the raw-bytes SHA-256 of both files. `.gitattributes` pins `demo/**`
+  to LF so the hashes match on every OS.
+
+`apps/api/tests/test_demo_fixture.py` (7 tests) checks the manifest hashes,
+that the Markdown parser yields the eight IDs in order, that the rule-based
+analyzer reports exactly 14 expected findings (none for `REQ-ORD-001`), that
+every seed validates as a generated test, is bound to a real finding and
+holds when sent to a fresh in-process mock, and that the demo files contain
+no URL, e-mail address, key-like string, non-synthetic identifier or
+evaluation path. It imports no evaluation module and makes no network or
+model call.
+
+Next action: INFRA-011 stage 2b, the deterministic build and allowlist
+projection with the ADR-019 Decision 12 separation contract test.
+
 ## ADR-019 accepted (docs only) — 2026-10-21
 
 **Status:** Owner decision. [ADR-019](adr/ADR-019-guest-demo-snapshot.md)
