@@ -1,5 +1,26 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## pypdf bumped to 6.21.1 for a new pip-audit advisory — 2026-10-21
+
+**Status:** Lockfile change on a branch; the deployed images are unchanged.
+
+Later on 2026-10-21 the application-CI `security-scans` job failed again:
+GHSA-5hx5-vpf9-5wcv ("Unvalidated JPEG image data loading", severity low,
+published that day) affects `pypdf` below 6.21.1, so the 6.20.1 pin from
+PR #212 is flagged. The pin in `apps/api/pyproject.toml` moves to 6.21.1, the
+lowest fixed release (not yanked; released 2026-10-17); `uv.lock` changes for
+pypdf only. The upstream changelog for 6.20.1 to 6.21.1 adds stream and field
+work limits and opens /DCTDecode data only with the Pillow JPEG plugin;
+Pillow is not a dependency here, and no API the PDF parser uses changed. The
+PDF parser and parser adversarial tests pass on 6.21.1.
+
+The deployed images (`109a4e0`) still contain pypdf 6.19.0. Recorded as SG-07
+disposition register item 4 in INFRASTRUCTURE.md, open with no risk
+acceptance.
+
+Next action: merge, update open branches from `main`, then verify pypdf
+6.21.1 or later in each image at the planned five-image rebuild.
+
 ## INFRA-011 stage 3: static guest demo viewer — 2026-10-21
 
 **Status:** Implemented on a branch. INFRA-011 is **not Accepted**: no
