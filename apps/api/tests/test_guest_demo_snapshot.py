@@ -22,6 +22,7 @@ from ai_qa_copilot_api.guest_demo_snapshot import (
     MAX_EXCERPT_CHARACTERS,
     NOT_A_MODEL_RESULT,
     PROVENANCE_KEYS,
+    VIEWER_FILES,
     SnapshotRejected,
     project_snapshot,
     redact_excerpt,
@@ -35,6 +36,8 @@ from ai_qa_copilot_api.test_generation import GROUNDED_TEST_GENERATOR_VERSION
 
 ROOT = Path(__file__).resolve().parents[3]
 DEMO_FIXTURE = ROOT / "demo/fixture"
+VIEWER_DIR = ROOT / "demo/viewer"
+BUILD_OUTPUT_FILES = ("snapshot.json", *VIEWER_FILES, "manifest.json")
 BUILD_MODULES = (
     ROOT / "apps/api/src/ai_qa_copilot_api/guest_demo_build.py",
     ROOT / "apps/api/src/ai_qa_copilot_api/guest_demo_snapshot.py",
@@ -89,8 +92,12 @@ CHILD_BUILD = (
     + """
 from pathlib import Path
 from ai_qa_copilot_api.guest_demo_build import build_demo
-from ai_qa_copilot_api.guest_demo_snapshot import render_snapshot, write_snapshot
-output = render_snapshot(build_demo(Path(sys.argv[1])))
+from ai_qa_copilot_api.guest_demo_snapshot import (
+    load_viewer, render_snapshot, write_snapshot,
+)
+output = render_snapshot(
+    build_demo(Path(sys.argv[1])), load_viewer(Path(sys.argv[3]))
+)
 write_snapshot(output, Path(sys.argv[2]))
 report(content_hash=output.content_hash, modules=sorted(sys.modules))
 """
@@ -147,19 +154,18 @@ def reported_writes(child: dict[str, Any]) -> set[Path]:
 
 
 def expected_build_writes(output_dir: Path) -> set[Path]:
-    """The only files a build may create."""
+    """The only files a build may create: the snapshot, the viewer, the manifest."""
 
-    return {
-        (output_dir / "snapshot.json").resolve(),
-        (output_dir / "manifest.json").resolve(),
-    }
+    return {(output_dir / name).resolve() for name in BUILD_OUTPUT_FILES}
 
 
 @pytest.fixture(scope="module")
 def child_build(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     workdir = tmp_path_factory.mktemp("child-cwd")
     output_dir = tmp_path_factory.mktemp("child-out") / "snapshot"
-    result = run_child(CHILD_BUILD, workdir, str(DEMO_FIXTURE), str(output_dir))
+    result = run_child(
+        CHILD_BUILD, workdir, str(DEMO_FIXTURE), str(output_dir), str(VIEWER_DIR)
+    )
     result["output_dir"] = output_dir
     return result
 
@@ -190,13 +196,18 @@ def test_a_fresh_interpreter_build_matches(child_build: dict[str, Any]) -> None:
     assert child_build["content_hash"] == sha256(written).hexdigest()
     manifest = json.loads((output_dir / "manifest.json").read_bytes())
     assert manifest["content_hash"] == child_build["content_hash"]
-    assert manifest["files"] == [
-        {
-            "path": "snapshot.json",
-            "sha256": child_build["content_hash"],
-            "bytes": len(written),
+    assert manifest["files"][0] == {
+        "path": "snapshot.json",
+        "sha256": child_build["content_hash"],
+        "bytes": len(written),
+    }
+    for entry in manifest["files"][1:]:
+        data = (output_dir / entry["path"]).read_bytes()
+        assert entry == {
+            "path": entry["path"],
+            "sha256": sha256(data).hexdigest(),
+            "bytes": len(data),
         }
-    ]
 
 
 def test_no_internal_identifier_or_timestamp_reaches_the_output() -> None:
@@ -398,10 +409,9 @@ def test_a_fresh_build_writes_only_into_its_output_directory(
 ) -> None:
     output_dir: Path = child_build["output_dir"]
     assert reported_writes(child_build) == expected_build_writes(output_dir)
-    assert sorted(item.name for item in output_dir.iterdir()) == [
-        "manifest.json",
-        "snapshot.json",
-    ]
+    assert sorted(item.name for item in output_dir.iterdir()) == sorted(
+        BUILD_OUTPUT_FILES
+    )
     assert list(child_build["workdir"].iterdir()) == []
     assert json.loads((output_dir / "snapshot.json").read_bytes())["content_class"] == (
         CONTENT_CLASS

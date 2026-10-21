@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="guest-demo-viewer-version" content="guest-demo-viewer/v1" />
+    <title>Guest demo report</title>
+    <link rel="stylesheet" href="viewer.css" />
+    <script src="viewer.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to the report</a>
+    <header class="page-header">
+      <div class="page-title">
+        <p class="eyebrow">AI Quality Engineering Copilot</p>
+        <h1>Guest demo: a quality report on synthetic requirements</h1>
+      </div>
+      <button id="theme-toggle" class="theme-toggle" type="button" hidden>
+        Switch to dark theme
+      </button>
+    </header>
+    <main id="main" tabindex="-1">
+      <section aria-labelledby="about-heading">
+        <h2 id="about-heading">About this demo</h2>
+        <p>
+          This page shows a quality report for a fictional order service. The
+          eight requirements were written for this demo and are synthetic. Some
+          of them are deliberately flawed: vague, incomplete or contradictory.
+        </p>
+        <p>
+          The report was produced offline, once, and published as a fixed file.
+          Nothing on this page is live: you cannot upload, change or re-run
+          anything, and the page sends no data anywhere. The section "How this
+          was produced" below says exactly which steps made each part.
+        </p>
+      </section>
+
+      <section aria-labelledby="limits-heading">
+        <h2 id="limits-heading">Limits</h2>
+        <ul>
+          <li>
+            The findings come from a rule-based analyzer, not from a language
+            model.
+          </li>
+          <li>
+            The analyzer matches lowercase word fragments, so different wording
+            can add findings or miss real problems.
+          </li>
+          <li>
+            The findings describe these synthetic requirements only. They say
+            nothing about how the analyzer performs on real documents.
+          </li>
+          <li>
+            The report is not a release decision, and the tests ran against a
+            simulated order service inside the build, not a real system.
+          </li>
+        </ul>
+      </section>
+
+      <div id="status" class="status" role="status" aria-live="polite">
+        Checking the report file…
+      </div>
+      <noscript>
+        <p class="status status-error">
+          This page needs JavaScript to check the report file and display it.
+        </p>
+      </noscript>
+      <div id="report"></div>
+    </main>
+  </body>
+</html>

@@ -34,7 +34,13 @@ from ai_qa_copilot_api.quality_reports import (
 
 
 SNAPSHOT_SCHEMA_VERSION: Final = "guest-demo-snapshot/v1"
-BUILD_MANIFEST_SCHEMA_VERSION: Final = "guest-demo-build-manifest/v1"
+BUILD_MANIFEST_SCHEMA_VERSION: Final = "guest-demo-build-manifest/v2"
+VIEWER_VERSION: Final = "guest-demo-viewer/v1"
+VIEWER_INDEX_FILE: Final = "index.html"
+VIEWER_FILES: Final = (VIEWER_INDEX_FILE, "viewer.js", "viewer.css")
+_VIEWER_VERSION_META: Final = (
+    f'<meta name="guest-demo-viewer-version" content="{VIEWER_VERSION}" />'
+)
 SANITIZATION_POLICY_VERSION: Final = "guest-demo-sanitization/v1"
 CONTENT_CLASS: Final = "demo-content-not-evaluation-evidence"
 SNAPSHOT_FILE: Final = "snapshot.json"
@@ -219,6 +225,7 @@ class SnapshotOutput:
     snapshot_bytes: bytes
     manifest_bytes: bytes
     content_hash: str
+    viewer_files: tuple[tuple[str, bytes], ...] = ()
 
 
 class _Key(str):
@@ -393,8 +400,27 @@ def canonical_json_bytes(value: object) -> bytes:
     ).encode("ascii")
 
 
-def render_snapshot(build: DemoBuild) -> SnapshotOutput:
-    """Project, check and serialize; refuse on any failed check."""
+def load_viewer(viewer_dir: Path) -> tuple[tuple[str, bytes], ...]:
+    """Read the viewer release (D3: each publication pins its own viewer)."""
+
+    files = tuple((name, (viewer_dir / name).read_bytes()) for name in VIEWER_FILES)
+    for name, data in files:
+        if b"\r" in data:
+            raise SnapshotRejected(f"Viewer file {name} must use LF line endings")
+    index = dict(files)[VIEWER_INDEX_FILE].decode("utf-8")
+    if _VIEWER_VERSION_META not in index:
+        raise SnapshotRejected("The viewer does not declare the expected version")
+    return files
+
+
+def render_snapshot(
+    build: DemoBuild,
+    viewer: Sequence[tuple[str, bytes]] = (),
+) -> SnapshotOutput:
+    """Project, check and serialize; refuse on any failed check.
+
+    The snapshot bytes, and so the content hash, never depend on the viewer.
+    """
 
     snapshot = project_snapshot(build)
     validate_snapshot_schema(snapshot)
@@ -402,33 +428,37 @@ def render_snapshot(build: DemoBuild) -> SnapshotOutput:
     _scan_output(snapshot_bytes, build.internal_identifiers)
 
     content_hash = sha256(snapshot_bytes).hexdigest()
+    viewer_files = tuple(viewer)
+    if viewer_files and tuple(name for name, _ in viewer_files) != VIEWER_FILES:
+        raise SnapshotRejected("The viewer release must be exactly its three files")
+    files = ((SNAPSHOT_FILE, snapshot_bytes), *viewer_files)
     manifest = {
         "schema_version": BUILD_MANIFEST_SCHEMA_VERSION,
         "content_class": CONTENT_CLASS,
         "content_hash": content_hash,
         "snapshot_schema_version": SNAPSHOT_SCHEMA_VERSION,
         "sanitization_policy_version": SANITIZATION_POLICY_VERSION,
+        "viewer_version": VIEWER_VERSION if viewer_files else None,
         "files": [
-            {
-                "path": SNAPSHOT_FILE,
-                "sha256": content_hash,
-                "bytes": len(snapshot_bytes),
-            }
+            {"path": name, "sha256": sha256(data).hexdigest(), "bytes": len(data)}
+            for name, data in files
         ],
     }
     return SnapshotOutput(
         snapshot_bytes=snapshot_bytes,
         manifest_bytes=canonical_json_bytes(manifest),
         content_hash=content_hash,
+        viewer_files=viewer_files,
     )
 
 
 def write_snapshot(output: SnapshotOutput, output_dir: Path) -> tuple[Path, ...]:
-    """Write exactly the snapshot and its manifest; never overwrite."""
+    """Write the snapshot, the viewer and the manifest; never overwrite."""
 
     output_dir.mkdir(parents=True, exist_ok=True)
     targets = (
         (output_dir / SNAPSHOT_FILE, output.snapshot_bytes),
+        *((output_dir / name, data) for name, data in output.viewer_files),
         (output_dir / BUILD_MANIFEST_FILE, output.manifest_bytes),
     )
     for path, _ in targets:

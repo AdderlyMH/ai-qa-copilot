@@ -1,5 +1,48 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-011 stage 3: static guest demo viewer — 2026-10-21
+
+**Status:** Implemented on a branch. INFRA-011 is **not Accepted**: no
+`current.json`, no publish step and no host (stage 4); nothing is published.
+
+Owner decisions recorded in ADR-019 Open items: the four stage 2b proposals
+(demo-only executor registry with in-memory approval, job and result; the
+`guest-demo-sanitization/v1` excerpt rules; the allowlist and dropped fields;
+the content hash naming the directory with the date in the publish manifest)
+are **confirmed** on 2026-10-21.
+
+`demo/viewer/` is a standalone static page (`index.html`, `viewer.js`,
+`viewer.css`; no dependency). It fetches `snapshot.json` from its own
+directory, checks its SHA-256 against the directory name with WebCrypto, and
+renders nothing from the data on a mismatch or any error. It renders with
+`textContent` only under a strict meta CSP, shows the scenario, the limits,
+the provenance statement ("This is not a model result."), the summary, the
+findings per requirement in document order, the derived traceability table and
+the section states, and prints no evidence-ID lists. The builder now writes
+`<output-dir>/<content-hash>/` with the viewer and a v2 manifest recording the
+viewer version and file hashes. The snapshot content hash is unchanged
+(`a29b6274…26faac`). The headers a host must send and the local preview are
+documented in INFRASTRUCTURE.md.
+
+Owner review fixes (same day): a theme toggle that sets `data-theme` for the
+visit only (no storage of any kind), severity and state badges with fixed
+classes, and a wider layout (up to 72rem, prose at about 75 characters, tables
+and cards at full width).
+
+Evidence: `test_guest_demo_viewer.py` (static scans, exact CSP, unchanged
+hash, manifest and output layout, and nine Node DOM tests: hostile test
+strings from `demo/viewer/tests/`, mismatch and error paths, the theme toggle
+with storage traps, and the badge classes); the stage 2b write audit now
+covers the viewer files. Previewed locally over `127.0.0.1` at 375, 768, 1366,
+1920 and 2560 px in both themes: no horizontal scroll; container 343, 721 and
+1120 px; prose about 77 characters per line from 768 px; contrast text 15.85
+(light) and 14.4 (dark), badges at least 6.93 and 9.1, toggle 16.54 and 12.04.
+The toggle is the second Tab stop with a visible focus ring and works with
+Enter and Space; a copy under a wrong directory name showed the error and no
+data.
+
+Next action: stage 4, the publish script, `current.json` and the host choice.
+
 ## pypdf bumped to 6.20.1 for four pip-audit advisories — 2026-10-21
 
 **Status:** Lockfile change on a branch; the deployed images are unchanged.
