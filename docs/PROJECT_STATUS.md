@@ -1,5 +1,41 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Next.js bumped to 16.4.2 for a critical npm advisory — 2026-10-22
+
+**Status:** Lockfile change on a branch; nothing deployed contains Next.js.
+
+On 2026-10-22 the application-CI `security-scans` job failed on
+`npm audit --omit=dev --audit-level=high`. Re-run against the `main`
+lockfile, the audit printed package `next`, range `16.0.0 - 16.4.0`,
+severity critical, with exactly two advisories, each `>=16.0.0 <=16.4.0`:
+GHSA-2464-fhr4-w9xw (critical, remote code execution in the Image
+Optimization API with SVG files) and GHSA-p3m5-59mp-jv5r (high, denial of
+service in the App Router through Server Actions). The public release notes
+were not read here, so whether they list more advisories than the audit
+printed is to be checked against the Next.js advisory. No public reports of
+exploitation as of 2026-10-15, according to a news report.
+
+`main` locks `next` 16.3.8. The first fixed release is 16.4.1; the branch
+moves the lockfile to 16.4.2 (owner choice, the latest 16.x patch), which
+adds no security fixes according to a third-party report (reported by a
+third party; verify against the Next.js advisory). `apps/web/package.json`
+declares `^16.4.2`, and only `next` and its `@next/*` packages change in the
+lockfile; `eslint-config-next` stays at 16.2.11. The web build passes and the
+production audit reports 0 vulnerabilities.
+
+Exposure evidence only: the owner web app is not deployed (INFRA-010), and
+the guest demo is not a Next.js app. The advisories require Cache Components
+with `use cache`, SVG processing through the image optimizer or `next/og`, or
+a Server Action. A grep of `apps/web` finds none of `use cache`, `use server`,
+`cacheComponents`, `dangerouslyAllowSVG`, `next/og`, `ImageResponse` or
+`<Image`; the only `next/image` match is the generated type reference in
+`apps/web/next-env.d.ts:2`. Recorded as SG-07 register item 5 in
+INFRASTRUCTURE.md; it closes when the bump is merged to `main` and
+`security-scans` passes there.
+
+Next action: merge, then update open branches from `main` so
+`security-scans` passes on them.
+
 ## Five-image rebuild done; SG-07 items 1, 3 and 4 closed — 2026-10-22
 
 **Status:** Owner-run on 2026-10-22 UTC; recorded in documentation only.
