@@ -2882,6 +2882,142 @@ Then open `http://127.0.0.1:8765/<content-hash>/` (the hash the build printed;
 keep the trailing slash). The Python server sends none of the headers above,
 so it is for local preview only.
 
+## Guest demo publish and deploy runbook (INFRA-011 stage 4, 2026-10-21)
+
+`scripts/publish_demo_site.py` assembles the Cloudflare Pages site folder
+([ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decisions 3, 4, 7 and 13). It
+is offline: no network, no AWS, no Cloudflare, no subprocess. It **never
+deploys**; the owner runs every upload below by hand. Code:
+`apps/api/src/ai_qa_copilot_api/guest_demo_publish.py`; tests:
+`apps/api/tests/test_guest_demo_publish.py`.
+
+Two directories, both outside the repository:
+
+- **Archive** (keep it, back it up): every publication as `<hash>/` and the
+  append-only `publish-history.jsonl` (one line per publish or rollback, with
+  its UTC date). It may be empty or absent before the first publication. The
+  script refuses any other entry, any link or junction, and any publication
+  that no longer matches its manifest.
+- **Site**: a new, empty folder for every run. It receives every publication
+  that is not withdrawn, `current.json`, `_redirects`, `_headers` and
+  `404.html`.
+
+### Publish
+
+1. Review the build. Build into a scratch folder and preview it as in
+   [Preview the viewer locally](#preview-the-viewer-locally); read the page.
+   This is the ADR-019 D4 check 5 manual review.
+2. Publish. `--owner-reviewed` records that review in the history; the script
+   cannot verify it.
+
+   ```powershell
+   uv run python scripts/publish_demo_site.py $env:USERPROFILE\guest-demo-archive $env:TEMP\guest-demo-site-<date> --owner-reviewed --project-name <project-name>
+   ```
+
+   The script builds twice and compares the bytes, checks the fixture hashes,
+   every manifest, the viewer release and the scanners, and writes nothing if
+   any check fails (`Publish refused: …`). It prints the content hash, the
+   counts and the deploy command. Re-publishing the current publication is a
+   no-op for the archive.
+3. S3 record (D4: the bucket is the record, so it goes **before** the
+   Cloudflare deploy). See [S3 record](#s3-record).
+4. Deploy: run the printed command yourself after `npx wrangler login`:
+
+   ```powershell
+   npx wrangler pages deploy <site-folder> --project-name <project-name>
+   ```
+
+### S3 record
+
+Run from the archive with the owner's local credentials. Each file is a
+conditional put that S3 refuses if the key already exists; there is no
+`sync` and no `--delete`, and only `publications/<hash>/` and
+`publications/current.json` are written. The bucket name comes from the
+Terraform output and is not recorded here.
+
+**UNVERIFIED:** whether the installed AWS CLI accepts `--if-none-match` on
+`put-object`, and how a conditional put behaves on the versioned demo bucket.
+Before first use, run `aws --version` and
+`aws s3api put-object help | Select-String if-none-match`; if the option is
+missing, use the fallback.
+
+```powershell
+$archive = "$env:USERPROFILE\guest-demo-archive"
+$hash = '<content-hash>'
+$bucket = '<demo-bucket-name>'
+foreach ($name in 'snapshot.json', 'index.html', 'viewer.js', 'viewer.css', 'manifest.json') {
+  aws s3api put-object --bucket $bucket --key "publications/$hash/$name" --body "$archive\$hash\$name" --if-none-match '*'
+  if ($LASTEXITCODE -ne 0) { throw "put refused or failed for $name; stop" }
+}
+aws s3api put-object --bucket $bucket --key 'publications/current.json' --body '<site-folder>\current.json'
+```
+
+`current.json` is the only object that is replaced, and it goes last. A
+`PreconditionFailed` error means the key exists: stop and compare it with the
+archive; never force it.
+
+**Fallback (no conditional put):** check each key before putting it, and put
+only on "Not Found". The check is not atomic; it is safe here because the
+owner is the only writer.
+
+```powershell
+foreach ($name in 'snapshot.json', 'index.html', 'viewer.js', 'viewer.css', 'manifest.json') {
+  $key = "publications/$hash/$name"
+  aws s3api head-object --bucket $bucket --key $key 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { throw "$key already exists; stop" }
+  aws s3api put-object --bucket $bucket --key $key --body "$archive\$hash\$name"
+  if ($LASTEXITCODE -ne 0) { throw "put failed for $name; stop" }
+}
+```
+
+### Verify after a deploy
+
+On `https://<project-name>.pages.dev` (`curl.exe -sI <url>`):
+
+- `/` answers `302` with `Location: /<hash>/`.
+- `/<hash>/` serves `index.html`, and the viewer renders its "Report file
+  check" section with the content hash (no error message).
+- Every path, including `/<hash>/snapshot.json`, `/current.json` and an
+  unknown path, carries the `/*` security headers.
+- `/<hash>/*` carries `Cache-Control: public, max-age=31536000, immutable`,
+  once and without other values joined to it; `/current.json` carries
+  `no-cache`.
+- Earlier publications that are not withdrawn are still served.
+
+### First deploy: also test
+
+These are ADR-019 Decision 13 open items, not yet known:
+
+- Whether `Strict-Transport-Security` is sent on `pages.dev` (the generated
+  `_headers` leaves it out until this is known).
+- What `Content-Type` Pages sends per file (left to the platform).
+- Whether `/<hash>/index.html` redirects to `/<hash>/`; the viewer accepts both.
+- An unknown path returns `404` with `404.html`, not the root or a viewer.
+  That Pages falls back to single-page-app behaviour without a top-level
+  `404.html` is from memory, not from the 2026-10-21 host review.
+- Whether a deploy replaces the whole site (the script uploads every
+  non-withdrawn publication each time, so either way nothing disappears).
+- Recheck Cloudflare's Pages-versus-Workers guidance.
+
+### Roll back (ADR-019 Decision 7)
+
+```powershell
+uv run python scripts/publish_demo_site.py $env:USERPROFILE\guest-demo-archive $env:TEMP\guest-demo-site-rollback --rollback-to <earlier-hash> --project-name <project-name>
+```
+
+The target must be in the archive, not withdrawn and not current; it is
+re-verified first. The publication being left is recorded as **withdrawn**:
+it stays in the archive and the bucket as the record, is excluded from this
+and every later site, and can never be re-published or re-pointed. Then put
+`publications/current.json` from the new site folder (the only S3 write) and
+deploy the new site folder.
+
+If the script refuses because there is **no earlier known-good publication**,
+take the Cloudflare deployment offline by hand in the Cloudflare dashboard
+(remove the Pages project's deployment or the project; the exact steps were
+not checked in the host review) and record the date in the private notes. Do
+not deploy a site without a valid current publication.
+
 ## Local-credential apply exception
 
 Until INFRA-005 (plan and apply path) is accepted, the only permitted applies
