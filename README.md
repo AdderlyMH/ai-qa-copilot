@@ -1,5 +1,12 @@
 # AI Quality Engineering Copilot
 
+## Live demo
+
+<https://ai-qa-copilot-demo.pages.dev/> is a static, read-only report page built offline from a synthetic order-service requirements document: eight requirements, fourteen findings, and five generated tests whose execution results come from a restricted executor against an in-process synthetic mock target, not any real service, each finding shown with the requirement line it cites.
+It is a pre-built snapshot, not a live system: the rule-based analyzer and deterministic test generation produced it, no model was called, and it is not an evaluation or model result. The page verifies its own data hash before showing anything.
+Guests cannot upload documents or run anything; the full application is not public.
+Design record: [ADR-019](docs/adr/ADR-019-guest-demo-snapshot.md).
+
 ## Current state
 
 The repository has completed its Phase 0 documentation and governance baseline.
