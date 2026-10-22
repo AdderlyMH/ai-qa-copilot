@@ -1,5 +1,38 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-011 stage 4: guest demo publish script — 2026-10-21
+
+**Status:** Implemented on a branch. INFRA-011 is **not Accepted**: nothing is
+deployed, and no S3 record is written (owner-run steps).
+
+`scripts/publish_demo_site.py` (logic in
+`apps/api/src/ai_qa_copilot_api/guest_demo_publish.py`) is offline: no
+network, AWS, Cloudflare or subprocess. It keeps an owner archive outside the
+repository (every publication and an append-only publish history) and writes
+a new site folder for Cloudflare Pages: every non-withdrawn publication,
+`current.json`, a root `_redirects` 302 to the current publication, a
+generated `_headers` (security headers on `/*`, immutable caching on hash
+paths only, no HSTS yet) and a static `404.html`. Before any write it builds
+twice and compares, checks the fixture hashes, every manifest and the viewer
+release, and re-runs the secret, e-mail, URL and identifier scanners on the
+final bytes. `--owner-reviewed` is required and recorded; it attests the D4
+manual review, which the script cannot verify. Owner decisions recorded in
+ADR-019 Open items: rollback withdraws the publication it leaves (D7), the
+scanner masking policy, the `404.html`, and the S3 record as an owner-run
+conditional put (CLI support unverified). The content hash is unchanged
+(`a29b6274…26faac`).
+
+Evidence: `test_guest_demo_publish.py` (tamper refusals with no writes,
+idempotent re-publish, same hash with other bytes, archived publications
+copied unchanged, `_headers` and `_redirects` contents and limits,
+`current.json` and history, rollback and withdrawal refusals, path and link
+checks, and a child-process write, socket and subprocess audit); the
+Decision 12 separation test now covers the publish module and launcher.
+
+Next action: owner review and merge; then stage 5, the S3 record and the
+first Cloudflare deploy by the owner, with the first-deploy checks in
+INFRASTRUCTURE.md.
+
 ## Guest demo host: Cloudflare Pages; CloudFront declined (docs only) — 2026-10-21
 
 **Status:** Owner decision, documentation only. No code, Terraform, tfvars,
