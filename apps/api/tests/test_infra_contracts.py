@@ -97,6 +97,19 @@ def test_the_demo_route_needs_no_demo_bucket_read() -> None:
         assert "DEMO_BUCKET" not in path.read_text(encoding="utf-8"), path.name
 
 
+def test_no_function_environment_names_the_demo_bucket() -> None:
+    # No API code reads DEMO_BUCKET_NAME, so the function environment and the
+    # module input are gone; the CloudFront origin domain input stays.
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    root = PRODUCTION_ROOT.read_text(encoding="utf-8")
+
+    assert "DEMO_BUCKET_NAME" not in code(block(compute, "  environment = {"))
+    assert 'variable "demo_bucket_name"' not in compute
+    assert "demo_bucket_name " not in code(block(root, 'module "compute_api"'))
+    assert 'variable "demo_bucket_regional_domain_name"' in compute
+    assert "domain_name              = var.demo_bucket_regional_domain_name" in compute
+
+
 def test_no_function_or_migration_role_has_a_demo_bucket_grant() -> None:
     data_plane = DATA_PLANE.read_text(encoding="utf-8")
     migration = (ROOT / "infra/modules/migration/main.tf").read_text(encoding="utf-8")

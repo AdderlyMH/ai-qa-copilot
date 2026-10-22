@@ -130,11 +130,6 @@ variable "data_bucket_name" {
   type        = string
 }
 
-variable "demo_bucket_name" {
-  description = "Private guest-demo bucket name."
-  type        = string
-}
-
 variable "demo_bucket_regional_domain_name" {
   description = "Regional domain name of the guest-demo bucket."
   type        = string
@@ -267,7 +262,6 @@ locals {
       GENERAL_QUEUE_URL         = var.queue_urls["general"]
       EXECUTION_QUEUE_URL       = var.queue_urls["execution"]
       DATA_BUCKET_NAME          = var.data_bucket_name
-      DEMO_BUCKET_NAME          = var.demo_bucket_name
       LOCAL_AUTH_BYPASS_ENABLED = "false"
 
       AI_QA_COPILOT_PARSER_WAKEUP_ENABLED = "true"
