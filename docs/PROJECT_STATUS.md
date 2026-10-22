@@ -1,5 +1,43 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Five-image rebuild done; SG-07 items 1, 3 and 4 closed — 2026-10-22
+
+**Status:** Owner-run on 2026-10-22 UTC; recorded in documentation only.
+INFRA-009 stays **not Accepted** until the owner records acceptance. SG-07 is
+**not** closed: item 2 is open.
+
+- **Build:** five images (`api`, `parser`, `general`, `executor`, `migrate`)
+  from `main` at `e1d3692` (PR #221) with the new base pin, on Docker Desktop
+  (amd64 engine, QEMU); `api` 126.6 s, `migrate` 97.3 s, the other three
+  reused the `api` layers.
+- **In-image checks before the push, all five:** certifi 2026.10.19, pypdf
+  6.21.1, `PARSER_OUTCOME_EVENT` = `parser.outcome`.
+- **Push:** immutable tags (the commit SHA), single OCI manifests, each ECR
+  digest equal to the local digest; digests kept in the owner's private notes.
+  The Windows credential-helper failure recurred; the fallback worked with the
+  `.docker\contexts` folder copied too, and the temporary folders were removed
+  after `docker logout`.
+- **Scan on push** (`COMPLETE`, all five): HIGH 12, MEDIUM 20, LOW 5,
+  UNDEFINED 1 each, identical counts to the `109a4e0` images; finding names
+  were not compared.
+- **Apply:** 4 in-place updates (`image_uri` of the four functions, and
+  `DEMO_BUCKET_NAME` removed from the API environment); 0 added, 4 changed, 0
+  destroyed; no changes on a follow-up plan; all four `Active`/`Successful`.
+  The migration runner is not deployed (`migration_enabled = false`), so the
+  migrate image is pushed but unused until the runner is on.
+- **Upload test:** `202`; one parser line `event=parser.outcome
+  outcome=accepted reason=none sections=2 requirements=2 exc_type=none` with a
+  clean `START`/`END`; `REPORT` Duration 2323.60 ms, Billed 4792 ms, Max
+  Memory 197 MB of 512 MB, Init 2467.82 ms (a single reading). The `202` also
+  confirms the post-apply status check of the `PublishDemoRevision` removal.
+- **SG-07:** items 1, 3 and 4 closed for the four deployed functions; item 2
+  open (refresh applied, counts unchanged; HIGH findings still need triage
+  and a documented disposition).
+
+Next action: owner review and merge; then SG-07 item 2 triage, the next
+weekly base-digest check, parser and general memory under load, and the
+general worker's first message.
+
 ## Five-image rebuild prepared; demo-bucket grant removal applied — 2026-10-22
 
 **Status:** Branch `build/base-refresh-rebuild-prep` prepares the rebuild;
