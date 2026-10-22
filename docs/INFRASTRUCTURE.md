@@ -382,7 +382,7 @@ prefix; no wildcard actions):
 
 | Role | CloudWatch Logs | SQS | S3 |
 |---|---|---|---|
-| `api` | Create stream and put events in its own log group | `SendMessage` to `parser`, `general`, `execution` | `PutObject` on `data/quarantine/*`; `GetObject` on `data/accepted/*` and `data/exports/*` (short-lived signed downloads after authorization); `PutObject` on `demo/publications/*` (explicit owner publish) |
+| `api` | Create stream and put events in its own log group | `SendMessage` to `parser`, `general`, `execution` | `PutObject` on `data/quarantine/*`; `GetObject` on `data/accepted/*` and `data/exports/*` (short-lived signed downloads after authorization); ~~`PutObject` on `demo/publications/*` (explicit owner publish)~~ removed in code 2026-10-22, see [API demo-bucket grant removed](#api-demo-bucket-grant-removed-2026-10-22) |
 | `parser` | Own log group | Receive, delete and get attributes on `parser`; `SendMessage` to `general` | `GetObject` on `data/quarantine/*` only |
 | `general` | Own log group | Receive, delete and get attributes on `general` | `GetObject` and `PutObject` on `data/accepted/*` and `data/exports/*` |
 | `executor` | Own log group | Receive, delete and get attributes on `execution` | none |
@@ -3086,6 +3086,32 @@ take the Cloudflare deployment offline by hand in the Cloudflare dashboard
 not checked in the host review) and record the date in the private notes. Do
 not deploy a site without a valid current publication.
 
+## API demo-bucket grant removed, 2026-10-22
+
+Code only: **not planned, not applied.** The API execution role's
+`PublishDemoRevision` statement (`s3:PutObject` on the demo bucket's
+`publications/*`) is removed from `data "aws_iam_policy_document" "api"` in
+`infra/modules/data_plane`, with the now unused `demo_bucket_arn` local. No API
+code writes to or reads from the demo bucket: the owner publishes with a local
+script and their own credentials (ADR-019 Decision 4), and `GET`/`HEAD /demo`
+reads its server-selected publication from a repository, not S3, so no read
+grant is needed or added. The demo bucket, its policy and every other role are
+unchanged. `apps/api/tests/test_infra_contracts.py` pins that the API role has
+no demo-bucket statement and that no function or migration role has one.
+
+**Owner steps** (local credentials, PowerShell, from
+`infra/environments/production`):
+
+```powershell
+terraform plan "-var-file=production.tfvars" '-target=module.data_plane.aws_iam_role_policy.function' "-out=tfplan"
+```
+
+Expected: `Plan: 0 to add, 1 to change, 0 to destroy.` The one change is
+`module.data_plane.aws_iam_role_policy.function["api"]` updated in place, its
+policy losing the `PublishDemoRevision` statement and nothing else. The
+`parser`, `general` and `executor` role policies show no change. Stop on any
+add, destroy or other change. Then `terraform apply tfplan`.
+
 ## Local-credential apply exception
 
 Until INFRA-005 (plan and apply path) is accepted, the only permitted applies
@@ -3112,7 +3138,10 @@ least-privilege deploy role and the manual approval before apply.
    the two buckets and `compute_api` remain.
 7. **Deferred scanner finding.** S3 server access logging (`CKV_AWS_18`),
    revisit in HARD-001.
-8. **Guest demo (INFRA-011):** first deployed 2026-10-22 UTC; the items still
+8. **API demo-bucket grant:** removed in code on 2026-10-22; the owner's
+   targeted apply is still to do. See
+   [API demo-bucket grant removed](#api-demo-bucket-grant-removed-2026-10-22).
+9. **Guest demo (INFRA-011):** first deployed 2026-10-22 UTC; the items still
    open are listed in
    [First deployment, 2026-10-22 UTC](#first-deployment-2026-10-22-utc) and in
    the ADR-019 Open items.

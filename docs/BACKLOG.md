@@ -1042,7 +1042,7 @@ of this backlog.
   - Confirm the phone-pattern exception for `_headers` (ADR-019 Open items).
   - Observe a second publication (earlier publications must survive the deploy).
   - Verify how to delete an old deployment at the first real rollback (per-deployment addresses, unverified).
-  - Remove the unused API-role `PublishDemoRevision` grant (Terraform change).
+  - Remove the unused API-role `PublishDemoRevision` grant (Terraform change). **Removed in code 2026-10-22 (on a branch); the owner's targeted apply is not yet done.**
 
 #### INFRA-012 — Migration runner
 
