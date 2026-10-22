@@ -1,5 +1,42 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Next.js bumped to 16.4.2 for a critical npm advisory — 2026-10-22
+
+**Status:** **Closed 2026-10-22 (SG-07 item 5):** the bump merged to `main` on 2026-10-22, and `security-scans` on `main` passed (owner-reported from the Actions run, 2026-10-22).
+Nothing deployed contains Next.js.
+
+On 2026-10-22 the application-CI `security-scans` job failed on
+`npm audit --omit=dev --audit-level=high`. Re-run against the `main`
+lockfile, the audit printed package `next`, range `16.0.0 - 16.4.0`,
+severity critical, with exactly two advisories, each `>=16.0.0 <=16.4.0`:
+GHSA-2464-fhr4-w9xw (critical, remote code execution in the Image
+Optimization API with SVG files) and GHSA-p3m5-59mp-jv5r (high, denial of
+service in the App Router through Server Actions). The public release notes
+were not read here, so whether they list more advisories than the audit
+printed is to be checked against the Next.js advisory. No public reports of
+exploitation as of 2026-10-15, according to a news report.
+
+`main` locked `next` 16.3.8 before the bump. The first fixed release is 16.4.1; the bump
+moves the lockfile to 16.4.2 (owner choice, the latest 16.x patch), which
+adds no security fixes according to a third-party report (reported by a
+third party; verify against the Next.js advisory). `apps/web/package.json`
+declares `^16.4.2`, and only `next` and its `@next/*` packages change in the
+lockfile; `eslint-config-next` stays at 16.2.11. The web build passes and the
+production audit reports 0 vulnerabilities.
+
+Exposure evidence only: the owner web app is not deployed (INFRA-010), and
+the guest demo is not a Next.js app. The advisories require Cache Components
+with `use cache`, SVG processing through the image optimizer or `next/og`, or
+a Server Action. A grep of `apps/web` finds none of `use cache`, `use server`,
+`cacheComponents`, `dangerouslyAllowSVG`, `next/og`, `ImageResponse` or
+`<Image`; the only `next/image` match is the generated type reference in
+`apps/web/next-env.d.ts:2`. Recorded as SG-07 register item 5 in
+INFRASTRUCTURE.md; its close condition (the bump merged to `main` and
+`security-scans` passing there) is met, so it is closed on 2026-10-22.
+
+Next action: update open branches from `main` so `security-scans` passes
+on them. SG-07 item 2 stays open (risk accepted until 2026-11-20).
+
 ## SG-07 item 2 triaged; risk accepted until 2026-11-20 — 2026-10-22
 
 **Status:** Owner decision, recorded in documentation only. SG-07 is **not**

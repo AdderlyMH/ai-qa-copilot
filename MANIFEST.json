@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 205893,
-      "sha256": "77f41d7e22fb612526c9cf10b99ffe9989208549a1d317bc55768264d0c248f1"
+      "bytes": 208063,
+      "sha256": "3373974b393528475d498032a48c441d5d437c3a80a87bc8929cea92d4daa705"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 197460,
-      "sha256": "4c3e1b143ba9f137395ece1a7fe6e8f831ea08baf56e0be2649512d6da510cc3"
+      "bytes": 199760,
+      "sha256": "2c34512a2ffcc29b97f1596f1334e88ecdd4264839720913d7a96823ca689e40"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -408,7 +408,7 @@
     {
       "path": "package-lock.json",
       "bytes": 214687,
-      "sha256": "7442a5a791e227ac58aae87ef134fca1360eb29fb2089c420e2f3c5b741b6d6d"
+      "sha256": "5e8c27c33aee0bb2f1232951d873339c11af9cf614cdd641aed1d5895e1db509"
     },
     {
       "path": "pyproject.toml",
