@@ -1,5 +1,33 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## SG-07 item 2 triaged; risk accepted until 2026-11-20 — 2026-10-22
+
+**Status:** Owner decision, recorded in documentation only. SG-07 is **not**
+closed: an accepted risk is still unresolved and blocks release until closed.
+
+The ECR scan of the image built from `e1d3692` (same counts on all five)
+lists HIGH 12 rows = 6 CVEs and MEDIUM 20 rows = 13 CVEs, in the base OS
+packages (OpenSSL, curl, rpm, pcre2, libxml2). The HIGH set is identical on
+the old and new images, so the 2026-10-22 base refresh changed none of them.
+Amazon Linux 2023 has published fixes for 12 of the CVEs (ALAS2023-2026-3204,
+-3128 and -3125); 7 are Pending Fix (the pcre2 CVE and six libxml2 CVEs). The
+deployed base still has the unfixed versions. AWS's Lambda Python page does
+not say how often base images are updated or whether updating OS packages in
+a Lambda image is supported. A grep finds no XML or document library in the
+Python dependencies or source. The owner's exposure reasoning is recorded as
+"owner-accepted reasoning, not tested"; whether any process loads libpcre2 or
+libxml2 is an open check.
+
+**Disposition:** risk accepted by the owner until 2026-11-20 (option 1: take
+the next AWS base refresh; no Dockerfile package updates for now).
+
+Dated entries: weekly base-digest checks on 2026-10-29, 2026-11-05,
+2026-11-12 and 2026-11-19 (re-scan after any digest change); a proposed
+checkpoint on 2026-11-13 (if unchanged, evaluate a package-update layer on a
+branch); the owner decision on 2026-11-20. The release freeze is December 6.
+
+Next action: owner review and merge; the 2026-10-29 base-digest check.
+
 ## Five-image rebuild done; SG-07 items 1, 3 and 4 closed — 2026-10-22
 
 **Status:** Owner-run on 2026-10-22 UTC; recorded in documentation only.
