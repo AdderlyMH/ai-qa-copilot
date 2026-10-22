@@ -1,5 +1,24 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Guest demo publish script prints `--branch main` — 2026-10-22
+
+**Status:** Code fix on a branch. INFRA-011 stays **not Accepted**.
+
+The deploy command printed by `scripts/publish_demo_site.py` now ends with
+`--branch main`. Outside a Git workspace Wrangler cannot detect a branch, so
+the previous command would have created a preview deployment (seen at the
+first deployment). Only the printed line changed: what is built, archived or
+written is unchanged, the content hash is unchanged, and the script still
+makes no network, AWS or subprocess call. `test_guest_demo_publish.py` pins
+the command for a publish and a rollback. The runbook warning and the
+matching BACKLOG and ADR-019 rows are closed.
+
+Owner-confirmed on the live page: browser check done on 2026-10-22 (owner): report renders, theme toggle works, console clean, mobile OK. The
+pending browser-check rows in ADR-019, BACKLOG and INFRASTRUCTURE.md are
+closed.
+
+Next action: owner review and merge.
+
 ## INFRA-011 stage 5: first guest demo deployment (docs only) — 2026-10-22
 
 **Status:** Owner-run on 2026-10-21 local time (2026-10-22 UTC); recorded in

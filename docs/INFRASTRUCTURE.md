@@ -2928,17 +2928,14 @@ deployed 2026-10-22 UTC; see
 4. S3 record (D4: the bucket is the record, so it goes **before** the
    Cloudflare deploy). See [S3 record](#s3-record).
 5. Deploy from a **neutral working folder** outside the repository and
-   outside the archive, after `npx wrangler login`. Add `--branch main`
-   (the project's production branch):
+   outside the archive, after `npx wrangler login`. Run the command the
+   script prints; it ends with `--branch main` (the project's production
+   branch), because outside a Git workspace Wrangler cannot detect a branch
+   and would otherwise create a preview deployment:
 
    ```powershell
    npx wrangler pages deploy <site-folder> --project-name <project-name> --branch main
    ```
-
-   **The command the script prints has no `--branch`.** Outside a Git
-   workspace Wrangler cannot detect a branch, so the printed command would
-   create a preview deployment instead of the production one. Use the command
-   above until the script is fixed (BACKLOG INFRA-011 follow-up).
 6. Run `npx wrangler logout`. `wrangler login` grants a wide OAuth scope set
    (Workers, D1, queues and others, far more than Pages needs), so the login
    does not stay on the machine between deploys.
@@ -3058,7 +3055,7 @@ ADR-019 open items):
 - The `Content-Type` Pages sends per file, and whether `/<hash>/index.html`
   redirects to `/<hash>/`: not recorded at the first deployment.
 - The owner's browser check (report renders, theme toggle, clean console):
-  pending.
+  pending. **Closed:** browser check done on 2026-10-22 (owner): report renders, theme toggle works, console clean, mobile OK.
 - Recheck Cloudflare's Pages-versus-Workers guidance.
 
 ### Roll back (ADR-019 Decision 7)
