@@ -2902,6 +2902,10 @@ Two directories, both outside the repository:
   that is not withdrawn, `current.json`, `_redirects`, `_headers` and
   `404.html`.
 
+The public demo address is <https://ai-qa-copilot-demo.pages.dev/> (first
+deployed 2026-10-22 UTC; see
+[First deployment, 2026-10-22 UTC](#first-deployment-2026-10-22-utc)).
+
 ### Publish
 
 1. Review the build. Build into a scratch folder and preview it as in
@@ -2919,13 +2923,25 @@ Two directories, both outside the repository:
    any check fails (`Publish refused: …`). It prints the content hash, the
    counts and the deploy command. Re-publishing the current publication is a
    no-op for the archive.
-3. S3 record (D4: the bucket is the record, so it goes **before** the
+3. Back up the archive. The archive is the local copy of the record: after
+   each publish, copy it to storage outside this machine.
+4. S3 record (D4: the bucket is the record, so it goes **before** the
    Cloudflare deploy). See [S3 record](#s3-record).
-4. Deploy: run the printed command yourself after `npx wrangler login`:
+5. Deploy from a **neutral working folder** outside the repository and
+   outside the archive, after `npx wrangler login`. Add `--branch main`
+   (the project's production branch):
 
    ```powershell
-   npx wrangler pages deploy <site-folder> --project-name <project-name>
+   npx wrangler pages deploy <site-folder> --project-name <project-name> --branch main
    ```
+
+   **The command the script prints has no `--branch`.** Outside a Git
+   workspace Wrangler cannot detect a branch, so the printed command would
+   create a preview deployment instead of the production one. Use the command
+   above until the script is fixed (BACKLOG INFRA-011 follow-up).
+6. Run `npx wrangler logout`. `wrangler login` grants a wide OAuth scope set
+   (Workers, D1, queues and others, far more than Pages needs), so the login
+   does not stay on the machine between deploys.
 
 ### S3 record
 
@@ -2935,11 +2951,12 @@ conditional put that S3 refuses if the key already exists; there is no
 `publications/current.json` are written. The bucket name comes from the
 Terraform output and is not recorded here.
 
-**UNVERIFIED:** whether the installed AWS CLI accepts `--if-none-match` on
-`put-object`, and how a conditional put behaves on the versioned demo bucket.
-Before first use, run `aws --version` and
-`aws s3api put-object help | Select-String if-none-match`; if the option is
-missing, use the fallback.
+**Verified 2026-10-22 UTC (owner-run):** AWS CLI 2.35.8 accepts
+`--if-none-match` on `put-object`, and a repeated put of an existing key on
+the versioned demo bucket failed with `PreconditionFailed`. Older CLIs may
+lack the option: check with `aws --version` and
+`aws s3api put-object help | Select-String if-none-match`, and use the
+fallback if it is missing.
 
 ```powershell
 $archive = "$env:USERPROFILE\guest-demo-archive"
@@ -2956,7 +2973,7 @@ aws s3api put-object --bucket $bucket --key 'publications/current.json' --body '
 `PreconditionFailed` error means the key exists: stop and compare it with the
 archive; never force it.
 
-**Fallback (no conditional put):** check each key before putting it, and put
+**Fallback (older CLIs without the conditional put):** check each key before putting it, and put
 only on "Not Found". The check is not atomic; it is safe here because the
 owner is the only writer.
 
@@ -2972,31 +2989,76 @@ foreach ($name in 'snapshot.json', 'index.html', 'viewer.js', 'viewer.css', 'man
 
 ### Verify after a deploy
 
-On `https://<project-name>.pages.dev` (`curl.exe -sI <url>`):
+On `https://ai-qa-copilot-demo.pages.dev` (`curl.exe -D - -o NUL <url>`):
 
 - `/` answers `302` with `Location: /<hash>/`.
-- `/<hash>/` serves `index.html`, and the viewer renders its "Report file
-  check" section with the content hash (no error message).
-- Every path, including `/<hash>/snapshot.json`, `/current.json` and an
-  unknown path, carries the `/*` security headers.
-- `/<hash>/*` carries `Cache-Control: public, max-age=31536000, immutable`,
-  once and without other values joined to it; `/current.json` carries
-  `no-cache`.
+- `/<hash>/` answers `200` with `index.html`; `/<hash>` answers `308` to the
+  trailing-slash URL. In a browser the viewer renders its "Report file check"
+  section with the content hash (no error message).
+- Every response, including the `302`, the `308` and a `404`, carries the six
+  `/*` security headers.
+- `/<hash>/*` carries `Cache-Control: public, max-age=31536000, immutable`;
+  `/current.json` carries `no-cache`.
+- An unknown path and an unknown file in a hash directory answer `404` with
+  the `404.html` body; `/_headers` and `/_redirects` answer `404`.
 - Earlier publications that are not withdrawn are still served.
 
-### First deploy: also test
+### First deployment, 2026-10-22 UTC
 
-These are ADR-019 Decision 13 open items, not yet known:
+Owner-run on 2026-10-21 local time (2026-10-22 UTC); every point below was
+observed, none assumed.
 
-- Whether `Strict-Transport-Security` is sent on `pages.dev` (the generated
-  `_headers` leaves it out until this is known).
-- What `Content-Type` Pages sends per file (left to the platform).
-- Whether `/<hash>/index.html` redirects to `/<hash>/`; the viewer accepts both.
-- An unknown path returns `404` with `404.html`, not the root or a viewer.
-  That Pages falls back to single-page-app behaviour without a top-level
-  `404.html` is from memory, not from the 2026-10-21 host review.
-- Whether a deploy replaces the whole site (the script uploads every
-  non-withdrawn publication each time, so either way nothing disappears).
+- **Publication:** content hash
+  `a29b62745001f53dca66ee100eca7a22a3459c29b522a6beec062e36c926faac`, publish
+  history date 2026-10-22 (the script records the UTC date). Before passing
+  `--owner-reviewed`, the owner read the full `snapshot.json` text; a pattern
+  search for paths, URLs, identifiers and secrets matched nothing.
+- **S3 record, before the deploy (D4):** five objects under
+  `publications/<hash>/` (`snapshot.json` 13528 bytes, `index.html` 2971,
+  `viewer.js` 17189, `viewer.css` 6078, `manifest.json` 794), then
+  `publications/current.json`. The SHA-256 of `snapshot.json` downloaded back
+  from S3 equalled the content hash. Conditional put: see
+  [S3 record](#s3-record).
+- **Deploy:** Cloudflare Pages Direct Upload, project created with production
+  branch `main`, deployed with
+  `npx wrangler pages deploy <site> --project-name <name> --branch main` from
+  a neutral folder outside the repository and the archive (Wrangler 4.151.3).
+- **Archive:** the owner made a one-time copy of the archive.
+
+**Verified on the live site** (`curl.exe -D`; these close the matching
+ADR-019 open items):
+
+| Check | Observed |
+|---|---|
+| Root mapping | `/` returns `302` with `Location: /<hash>/`; a plain `/` source in `_redirects` works. |
+| Directory index | `/<hash>/` returns `200` with `index.html`; `/<hash>` returns `308` to the trailing-slash URL. |
+| Security headers | All six headers from `_headers` on every response, including the `302`, `308` and `404`. (This corrects the stage 4 note that redirects get no headers.) |
+| Cache headers | Hash paths: `Cache-Control: public, max-age=31536000, immutable`; `/current.json`: `no-cache`. |
+| 404 | An unknown path and an unknown file in the hash directory return `404` with the `404.html` body, not the root or a viewer (no single-page-app fallback with `404.html` present); the platform adds `Cache-Control: no-store`. |
+| Control files | `/_headers` and `/_redirects` return `404`; they are not served. |
+
+**Platform behaviour observed, not set by us:**
+
+- Cloudflare adds `Access-Control-Allow-Origin: *`, `Report-To` and `Nel`
+  (network error logging). The content is public static demo data with no
+  credentials.
+- `pages.dev` sends no `Strict-Transport-Security`, and `_headers` does not
+  set one on the shared `pages.dev` host. That the `.dev` TLD is on the
+  browser HSTS preload list is an unverified recollection, not checked here.
+
+**Still open after the first deployment:**
+
+- A **second publication**: by design every non-withdrawn publication is
+  copied into every site folder, so earlier ones survive a deploy; not yet
+  observed.
+- **Per-deployment addresses (UNVERIFIED inference):** Cloudflare keeps every
+  deployment reachable at its own per-deployment address, so a withdrawn
+  publication may stay reachable at an old deployment's address until that
+  deployment is deleted. See the rollback steps.
+- The `Content-Type` Pages sends per file, and whether `/<hash>/index.html`
+  redirects to `/<hash>/`: not recorded at the first deployment.
+- The owner's browser check (report renders, theme toggle, clean console):
+  pending.
 - Recheck Cloudflare's Pages-versus-Workers guidance.
 
 ### Roll back (ADR-019 Decision 7)
@@ -3010,7 +3072,16 @@ re-verified first. The publication being left is recorded as **withdrawn**:
 it stays in the archive and the bucket as the record, is excluded from this
 and every later site, and can never be re-published or re-pointed. Then put
 `publications/current.json` from the new site folder (the only S3 write) and
-deploy the new site folder.
+deploy the new site folder with the `--branch main` command above, then run
+`npx wrangler logout`.
+
+After the rollback deploy, **delete the old deployment** that served the
+withdrawn publication. Cloudflare probably keeps each deployment reachable
+at its own per-deployment address, so the withdrawn publication may stay
+reachable there until that deployment is deleted (an unverified inference).
+The exact Wrangler command or dashboard path must be verified at the first
+real rollback. Do not record per-deployment addresses or account details in
+the repository.
 
 If the script refuses because there is **no earlier known-good publication**,
 take the Cloudflare deployment offline by hand in the Cloudflare dashboard
@@ -3044,6 +3115,10 @@ least-privilege deploy role and the manual approval before apply.
    the two buckets and `compute_api` remain.
 7. **Deferred scanner finding.** S3 server access logging (`CKV_AWS_18`),
    revisit in HARD-001.
+8. **Guest demo (INFRA-011):** first deployed 2026-10-22 UTC; the items still
+   open are listed in
+   [First deployment, 2026-10-22 UTC](#first-deployment-2026-10-22-utc) and in
+   the ADR-019 Open items.
 
 ## Sources (all read 2026-10-12)
 

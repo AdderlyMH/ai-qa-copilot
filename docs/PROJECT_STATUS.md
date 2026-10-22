@@ -1,5 +1,47 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-011 stage 5: first guest demo deployment (docs only) — 2026-10-22
+
+**Status:** Owner-run on 2026-10-21 local time (2026-10-22 UTC); recorded in
+documentation only. INFRA-011 is **not Accepted** until the owner records
+acceptance.
+
+The guest demo is live at <https://ai-qa-copilot-demo.pages.dev/> with
+content hash `a29b6274…26faac` (publish history date 2026-10-22). The owner
+read the full `snapshot.json` before passing `--owner-reviewed`; a pattern
+search for paths, URLs, identifiers and secrets matched nothing. The S3
+record (five publication objects, then `current.json`) was written before
+the deploy as D4 requires, and the SHA-256 of the downloaded `snapshot.json`
+equalled the content hash. AWS CLI 2.35.8 accepts `--if-none-match`, and a
+repeated put failed with `PreconditionFailed` on the versioned bucket, which
+closes that unverified item. Deployed by Cloudflare Pages Direct Upload with
+`--branch main` from a neutral folder (Wrangler 4.151.3); the command the
+script prints lacks `--branch` and would create a preview deployment.
+
+Verified with `curl.exe -D` on the live site: the `/` 302 to `/<hash>/`, the
+directory index (`/<hash>` 308 to the trailing slash), the six security
+headers on every response including the 302, 308 and 404, the immutable
+cache on hash paths and `no-cache` on `current.json`, `404.html` for unknown
+paths with no single-page-app fallback, and `/_headers` and `/_redirects`
+not served. Cloudflare adds `Access-Control-Allow-Origin: *`, `Report-To` and
+`Nel`; `pages.dev` sends no HSTS and none is set. ADR-019 Decision 13 is
+marked exercised and its answered open items are moved to a verified list.
+
+Runbook additions: deploy with `--branch main` from a neutral folder, run
+`npx wrangler logout` after every deploy (wide OAuth scopes), back up the
+archive outside this machine after each publish, and delete the old
+deployment after a rollback (per-deployment addresses are an unverified
+inference).
+
+Open: the owner browser check (pending), a second publication, the printed
+deploy command fix, the phone-pattern exception for `_headers`, the
+viewer-release hash table, the two private imports, the unused
+`PublishDemoRevision` grant, and a recheck of Cloudflare's Pages-versus-Workers
+guidance.
+
+Next action: owner review and merge; the browser check; then the
+`--branch main` code fix.
+
 ## INFRA-011 stage 4: guest demo publish script — 2026-10-21
 
 **Status:** Implemented on a branch. INFRA-011 is **not Accepted**: nothing is
