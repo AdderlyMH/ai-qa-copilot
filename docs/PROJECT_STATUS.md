@@ -1,5 +1,33 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Five-image rebuild prepared; demo-bucket grant removal applied — 2026-10-22
+
+**Status:** Branch `build/base-refresh-rebuild-prep` prepares the rebuild;
+nothing is built, pushed or applied from it. SG-07 is **not** closed.
+
+- **Base refresh required.** The owner's anonymous registry read on
+  2026-10-22 showed the `3.13-arm64` tag at
+  `sha256:02f57ee32abc4b34f77d30b9f00555d37eaa2fd6b8b10c2d3e6b79542255ac06`
+  instead of the pinned
+  `sha256:beebf5d3bf90deef2a7620801edc811b7922163023358c8471fc4d92409e873f`.
+  The branch changes only the `sha256:` value in `Dockerfile.lambda`.
+- **Unused variable dropped.** `DEMO_BUCKET_NAME` (no API code reads it) is
+  removed from the API function's environment, with the compute module input
+  and the root argument; a contract test pins its absence.
+- **Verified read-only:** `uv.lock` on `main` pins certifi 2026.10.19 and
+  pypdf 6.21.1 (PRs #204, #212 and #214 merged), and the `parser.outcome` log
+  line is on `main` (PR #206). All five images are affected by the base pin.
+- **SG-07 register:** items 1 to 4 now say the rebuild is prepared; the stale
+  "not merged" pypdf wording is corrected; every item stays open until the
+  images are built, scanned and verified.
+- **Owner apply, 2026-10-22 UTC:** the API role's `PublishDemoRevision` grant
+  is removed in the live environment (targeted apply, 0 added, 1 changed, 0
+  destroyed; a follow-up targeted plan showed no changes). Post-apply status
+  check: pending owner confirmation.
+
+Next action: owner review and merge; then the owner rebuild checklist in
+INFRASTRUCTURE.md ("Combined five-image rebuild, 2026-10-22").
+
 ## API role's demo-bucket write grant removed in code — 2026-10-22
 
 **Status:** Terraform and contract-test change on a branch; **not planned and

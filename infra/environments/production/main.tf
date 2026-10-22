@@ -269,7 +269,6 @@ module "compute_api" {
   ecr_repositories                 = module.data_plane.ecr_repositories
   application_secret_arns          = module.data_plane.application_secret_arns
   data_bucket_name                 = module.data_plane.data_bucket_name
-  demo_bucket_name                 = module.data_plane.demo_bucket_name
   demo_bucket_regional_domain_name = module.data_plane.demo_bucket_regional_domain_name
   cognito_owner_subject            = var.cognito_owner_subject
   model_provider                   = var.model_provider
