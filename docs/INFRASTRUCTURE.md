@@ -382,7 +382,7 @@ prefix; no wildcard actions):
 
 | Role | CloudWatch Logs | SQS | S3 |
 |---|---|---|---|
-| `api` | Create stream and put events in its own log group | `SendMessage` to `parser`, `general`, `execution` | `PutObject` on `data/quarantine/*`; `GetObject` on `data/accepted/*` and `data/exports/*` (short-lived signed downloads after authorization); ~~`PutObject` on `demo/publications/*` (explicit owner publish)~~ removed in code 2026-10-22, see [API demo-bucket grant removed](#api-demo-bucket-grant-removed-2026-10-22) |
+| `api` | Create stream and put events in its own log group | `SendMessage` to `parser`, `general`, `execution` | `PutObject` on `data/quarantine/*`; `GetObject` on `data/accepted/*` and `data/exports/*` (short-lived signed downloads after authorization); ~~`PutObject` on `demo/publications/*` (explicit owner publish)~~ removed and applied 2026-10-22 UTC, see [API demo-bucket grant removed](#api-demo-bucket-grant-removed-2026-10-22) |
 | `parser` | Own log group | Receive, delete and get attributes on `parser`; `SendMessage` to `general` | `GetObject` on `data/quarantine/*` only |
 | `general` | Own log group | Receive, delete and get attributes on `general` | `GetObject` and `PutObject` on `data/accepted/*` and `data/exports/*` |
 | `executor` | Own log group | Receive, delete and get attributes on `execution` | none |
@@ -1561,10 +1561,10 @@ closed.
 
 | # | Finding | Scope | Disposition (2026-10-20) | Close condition |
 |---|---|---|---|---|
-| 1 | PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2): `certifi` trusts the emSign ECC Root CA - G3, under which compromised intermediates were revoked; fixed in 2026.10.19 | `uv.lock` fixed on `main` (certifi 2026.10.19, PR #204). The five deployed images (`109a4e0`) still contain certifi 2026.7.22 | **Risk accepted by the owner** until the next image rebuild, which is combined with SG-07 item 2 | All five images rebuilt and redeployed at the AWS base-image refresh or before the December 6 freeze, whichever comes first. The rebuild must verify the certifi version inside each built image |
-| 2 | ECR scan on all five images: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each (Amazon Linux 2023 OS packages in the shared base layers) | Deployed images | Open, not triaged; waiting on an AWS base-image refresh ([Refresh the base image digest](#refresh-the-base-image-digest)) | The same rebuild, then a re-scan and a documented disposition of any remaining Medium findings |
-| 3 | pip-audit (2026-10-21) on the locked runtime dependencies: `pypdf` 6.19.0 has GHSA-qfv9-64jg-mh7p and GHSA-9mx8-4j7g-633p (fixed in 6.20.1) and GHSA-7mh2-4gg2-979f and GHSA-39mj-jf6j-2qj3 (fixed in 6.20.0); upstream changelog: per-stream work limits (6.20.0) and cyclic-tree handling (6.20.1) | `uv.lock` bumped to pypdf 6.20.1 on branch `chore/pypdf-advisory-bump` (not merged). The deployed images (`109a4e0`) still contain pypdf 6.19.0. ADR-018 excludes PDF from the production scope; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded | The bump merged to `main`, then the same five-image rebuild verifying the pypdf version inside each built image |
-| 4 | pip-audit (2026-10-21, later the same day) on the locked runtime dependencies: `pypdf` 6.20.1 has GHSA-5hx5-vpf9-5wcv, "Unvalidated JPEG image data loading", severity low, published 2026-10-21, fixed in 6.21.1; upstream changelog: /DCTDecode data is opened only with the Pillow JPEG plugin (6.21.1), plus stream-parsing and field work limits (6.21.0). Pillow is not a dependency of this project | Item 3's bump to 6.20.1 is on `main` (PR #212). `uv.lock` bumped to pypdf 6.21.1 on branch `chore/pypdf-6-21-1` (not merged). The deployed images (`109a4e0`) still contain pypdf 6.19.0, so items 3 and 4 both apply to them | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded | The bump merged to `main`, then the same five-image rebuild verifying pypdf 6.21.1 or later inside each built image |
+| 1 | PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2): `certifi` trusts the emSign ECC Root CA - G3, under which compromised intermediates were revoked; fixed in 2026.10.19 | `uv.lock` fixed on `main` (certifi 2026.10.19, PR #204). The five deployed images (`109a4e0`) still contain certifi 2026.7.22 | **Risk accepted by the owner** until the next image rebuild, which is combined with SG-07 item 2. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. | All five images rebuilt and redeployed at the AWS base-image refresh or before the December 6 freeze, whichever comes first. The rebuild must verify the certifi version inside each built image |
+| 2 | ECR scan on all five images: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each (Amazon Linux 2023 OS packages in the shared base layers) | Deployed images | Open, not triaged; waiting on an AWS base-image refresh ([Refresh the base image digest](#refresh-the-base-image-digest)). **Update (2026-10-22):** the refresh is available (new base digest) and pinned on branch `build/base-refresh-rebuild-prep`; not yet built, scanned or verified, so this item stays **open**. | The same rebuild, then a re-scan and a documented disposition of any remaining Medium findings |
+| 3 | pip-audit (2026-10-21) on the locked runtime dependencies: `pypdf` 6.19.0 has GHSA-qfv9-64jg-mh7p and GHSA-9mx8-4j7g-633p (fixed in 6.20.1) and GHSA-7mh2-4gg2-979f and GHSA-39mj-jf6j-2qj3 (fixed in 6.20.0); upstream changelog: per-stream work limits (6.20.0) and cyclic-tree handling (6.20.1) | `uv.lock` bumped to pypdf 6.20.1 on branch `chore/pypdf-advisory-bump` (not merged). **Correction (2026-10-22):** merged to `main` in PR #212 and superseded by pypdf 6.21.1 (item 4); `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0. ADR-018 excludes PDF from the production scope; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. | The bump merged to `main`, then the same five-image rebuild verifying the pypdf version inside each built image |
+| 4 | pip-audit (2026-10-21, later the same day) on the locked runtime dependencies: `pypdf` 6.20.1 has GHSA-5hx5-vpf9-5wcv, "Unvalidated JPEG image data loading", severity low, published 2026-10-21, fixed in 6.21.1; upstream changelog: /DCTDecode data is opened only with the Pillow JPEG plugin (6.21.1), plus stream-parsing and field work limits (6.21.0). Pillow is not a dependency of this project | Item 3's bump to 6.20.1 is on `main` (PR #212). `uv.lock` bumped to pypdf 6.21.1 on branch `chore/pypdf-6-21-1` (not merged). **Correction (2026-10-22):** merged to `main` in PR #214; `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0, so items 3 and 4 both apply to them | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. | The bump merged to `main`, then the same five-image rebuild verifying pypdf 6.21.1 or later inside each built image |
 
 ### Next actions
 
@@ -2555,6 +2555,15 @@ still resolved to the pinned digest
 `sha256:beebf5d3bf90deef2a7620801edc811b7922163023358c8471fc4d92409e873f`,
 so there was no newer base to refresh to.
 
+**2026-10-22: a refresh is required.** The owner's anonymous registry read
+(step 1; not re-checked here) showed the `3.13-arm64` tag resolving to
+`sha256:02f57ee32abc4b34f77d30b9f00555d37eaa2fd6b8b10c2d3e6b79542255ac06`, no longer the pinned
+`sha256:beebf5d3bf90deef2a7620801edc811b7922163023358c8471fc4d92409e873f`.
+Step 2 is done on branch `build/base-refresh-rebuild-prep`: only the `sha256:` value of the
+`ARG LAMBDA_PYTHON_BASE=` line changed. Step 3 (build, push, apply) is the
+owner's; see
+[Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22).
+
 No Terraform change was needed: `image_uris` already takes one URI per
 function and checks the four keys. A validation that rejects the all-zero
 example digest is a possible follow-up; it was not added.
@@ -3088,7 +3097,9 @@ not deploy a site without a valid current publication.
 
 ## API demo-bucket grant removed, 2026-10-22
 
-Code only: **not planned, not applied.** The API execution role's
+**Applied 2026-10-22 UTC (owner-run):** targeted apply, 0 added, 1 changed,
+0 destroyed; a follow-up targeted plan showed no changes. Post-apply status
+check: pending owner confirmation. (Originally code only.) The API execution role's
 `PublishDemoRevision` statement (`s3:PutObject` on the demo bucket's
 `publications/*`) is removed from `data "aws_iam_policy_document" "api"` in
 `infra/modules/data_plane`, with the now unused `demo_bucket_arn` local. No API
@@ -3111,6 +3122,72 @@ Expected: `Plan: 0 to add, 1 to change, 0 to destroy.` The one change is
 policy losing the `PublishDemoRevision` statement and nothing else. The
 `parser`, `general` and `executor` role policies show no change. Stop on any
 add, destroy or other change. Then `terraform apply tfplan`.
+
+## Combined five-image rebuild, 2026-10-22
+
+**Prepared, not built.** Branch `build/base-refresh-rebuild-prep` holds the commit the
+images will be built from, once merged:
+
+- the new base pin (`sha256:02f57ee32abc4b34f77d30b9f00555d37eaa2fd6b8b10c2d3e6b79542255ac06`; see
+  [Refresh the base image digest](#refresh-the-base-image-digest));
+- `DEMO_BUCKET_NAME` removed from the API function's environment (no API code
+  reads it); this is a Terraform change only, not an image change.
+
+Verified on the branch (read-only): `uv.lock` pins certifi 2026.10.19 and
+pypdf 6.21.1 (both merged to `main`), and the sanitized `event=parser.outcome`
+log line (`parser_promotion_worker.log_parser_outcome`, PR #206) is on
+`main`. All five images (`api`, `parser`, `general`, `executor` and
+`migrate`) are affected: each starts from the pinned base, installs the
+locked runtime dependencies (the `migrate` image adds the `migrate` group)
+and copies the same `ai_qa_copilot_api` source. Only the parser function
+emits the outcome line. SG-07 items 1 to 4 stay open until the checklist is
+done.
+
+**Owner checklist** (no results recorded yet):
+
+- [ ] Build from the merged `main` commit, on a clean checkout:
+  `py scripts/build_lambda_images.py`, then
+  `py scripts/build_lambda_images.py --function migrate`
+  ([Image build runbook](#image-build-runbook-owner)).
+- [ ] Push by digest with the
+  [Image push runbook](#image-push-runbook-owner-local-credentials) (the four
+  functions) and the migrate push steps in the
+  [Migration runbook](#migration-runbook-owner-local-credentials); keep the
+  digests in the private notes; check each manifest is a single image.
+- [ ] Inside each built image, check the versions and the log line. These
+  commands are **proposed and UNVERIFIED** (modelled on the `boto3` check in
+  the build runbook):
+
+  ```powershell
+  docker run --rm --platform linux/arm64 --entrypoint python "ai-qa-copilot-lambda/<image>:<SHA>" -c "import importlib.metadata as m; print(m.version('certifi'), m.version('pypdf'))"
+  docker run --rm --platform linux/arm64 --entrypoint python "ai-qa-copilot-lambda/<image>:<SHA>" -c "from ai_qa_copilot_api.parser_promotion_worker import PARSER_OUTCOME_EVENT; print(PARSER_OUTCOME_EVENT)"
+  ```
+
+  Expected for every image: `2026.10.19 6.21.1` and `parser.outcome`.
+- [ ] Put the new digests into `image_uris` (and `migration_image_uri`) in
+  the untracked `production.tfvars`.
+- [ ] Targeted plan (local credentials, from `infra/environments/production`):
+
+  ```powershell
+  terraform plan "-var-file=production.tfvars" '-target=module.compute_api.aws_lambda_function.this' '-target=module.migration' "-out=tfplan"
+  ```
+
+  Expected: only in-place updates of
+  `module.compute_api.aws_lambda_function.this` for `api`, `parser`,
+  `general` and `executor` (new `image_uri`), with the `api` function's
+  environment also losing `DEMO_BUCKET_NAME`, plus the migration runner's
+  image only while `migration_enabled` is true. No add and no destroy. Stop
+  on anything else; if Terraform reports "Moved resource instances excluded
+  by targeting", add the targets it lists.
+- [ ] `terraform apply tfplan`.
+- [ ] Re-scan: read the scan status and severity counts per repository with
+  the push runbook commands, and record a disposition for SG-07 item 2.
+- [ ] Upload test: upload one Markdown file as the owner and confirm one
+  `parser.outcome` line in the parser function's CloudWatch log group, for
+  example with
+  `aws logs filter-log-events --log-group-name <parser log group> --filter-pattern '"parser.outcome"'`
+  (**UNVERIFIED** command).
+- [ ] Update SG-07 items 1 to 4 with the observed versions and scan results.
 
 ## Local-credential apply exception
 
@@ -3138,8 +3215,9 @@ least-privilege deploy role and the manual approval before apply.
    the two buckets and `compute_api` remain.
 7. **Deferred scanner finding.** S3 server access logging (`CKV_AWS_18`),
    revisit in HARD-001.
-8. **API demo-bucket grant:** removed in code on 2026-10-22; the owner's
-   targeted apply is still to do. See
+8. **API demo-bucket grant:** removed in code and applied by the owner on
+   2026-10-22 UTC (0 added, 1 changed, 0 destroyed; no changes on a follow-up
+   plan); post-apply status check pending owner confirmation. See
    [API demo-bucket grant removed](#api-demo-bucket-grant-removed-2026-10-22).
 9. **Guest demo (INFRA-011):** first deployed 2026-10-22 UTC; the items still
    open are listed in
