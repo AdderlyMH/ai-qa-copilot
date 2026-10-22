@@ -87,6 +87,9 @@ SECURITY_HEADERS: Final = (
 )
 IMMUTABLE_CACHE_CONTROL: Final = "public, max-age=31536000, immutable"
 CURRENT_CACHE_CONTROL: Final = "no-cache"
+# Outside a Git workspace Wrangler cannot detect a branch, so without
+# --branch the printed command would create a preview deployment.
+PRODUCTION_BRANCH: Final = "main"
 
 # Static, script-free fallback page under the same CSP as the viewer.
 NOT_FOUND_PAGE: Final = (
@@ -655,7 +658,8 @@ def main(
     print(f"site files {len(plan.site_files)}")
     print(
         "deploy (run it yourself): npx wrangler pages deploy "
-        f"{args.site_dir.resolve()} --project-name {project or '<project-name>'}"
+        f"{args.site_dir.resolve()} --project-name {project or '<project-name>'} "
+        f"--branch {PRODUCTION_BRANCH}"
     )
     return 0
 

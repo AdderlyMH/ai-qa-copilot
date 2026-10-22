@@ -743,7 +743,7 @@ def test_main_prints_the_hash_counts_and_the_deploy_command(
         "publications withdrawn 0",
         "site files 9",
         "deploy (run it yourself): npx wrangler pages deploy "
-        f"{site.resolve()} --project-name demo-site",
+        f"{site.resolve()} --project-name demo-site --branch main",
     ]
     with pytest.raises(SystemExit, match="invalid --project-name"):
         main(
@@ -756,6 +756,30 @@ def test_main_prints_the_hash_counts_and_the_deploy_command(
             ],
             repo_root=ROOT,
         )
+
+
+def test_every_printed_deploy_command_targets_the_production_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Without --branch, Wrangler outside a Git workspace makes a preview deployment.
+    archive = tmp_path / "archive"
+    publish(archive, tmp_path / "s1", variant(2))
+    publish(archive, tmp_path / "s2", real_build(), DAY_TWO)
+    capsys.readouterr()
+    main(
+        [
+            str(archive),
+            str(tmp_path / "rolled"),
+            "--rollback-to",
+            variant(2).output.content_hash,
+        ],
+        repo_root=ROOT,
+        today=lambda: DAY_THREE,
+    )
+    command = capsys.readouterr().out.splitlines()[-1]
+    assert command.startswith("deploy (run it yourself): npx wrangler pages deploy ")
+    assert command.endswith(" --project-name <project-name> --branch main")
+    assert command.count("--branch") == 1
 
 
 # Child-process audit: the real publish under the stage 2b write and socket
