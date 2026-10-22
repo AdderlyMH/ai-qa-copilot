@@ -2,7 +2,8 @@
 
 ## Next.js bumped to 16.4.2 for a critical npm advisory — 2026-10-22
 
-**Status:** Lockfile change on a branch; nothing deployed contains Next.js.
+**Status:** **Closed 2026-10-22 (SG-07 item 5):** the bump merged to `main` on 2026-10-22, and `security-scans` on `main` passed (owner-reported from the Actions run, 2026-10-22).
+Nothing deployed contains Next.js.
 
 On 2026-10-22 the application-CI `security-scans` job failed on
 `npm audit --omit=dev --audit-level=high`. Re-run against the `main`
@@ -15,7 +16,7 @@ were not read here, so whether they list more advisories than the audit
 printed is to be checked against the Next.js advisory. No public reports of
 exploitation as of 2026-10-15, according to a news report.
 
-`main` locks `next` 16.3.8. The first fixed release is 16.4.1; the branch
+`main` locked `next` 16.3.8 before the bump. The first fixed release is 16.4.1; the bump
 moves the lockfile to 16.4.2 (owner choice, the latest 16.x patch), which
 adds no security fixes according to a third-party report (reported by a
 third party; verify against the Next.js advisory). `apps/web/package.json`
@@ -30,11 +31,39 @@ a Server Action. A grep of `apps/web` finds none of `use cache`, `use server`,
 `cacheComponents`, `dangerouslyAllowSVG`, `next/og`, `ImageResponse` or
 `<Image`; the only `next/image` match is the generated type reference in
 `apps/web/next-env.d.ts:2`. Recorded as SG-07 register item 5 in
-INFRASTRUCTURE.md; it closes when the bump is merged to `main` and
-`security-scans` passes there.
+INFRASTRUCTURE.md; its close condition (the bump merged to `main` and
+`security-scans` passing there) is met, so it is closed on 2026-10-22.
 
-Next action: merge, then update open branches from `main` so
-`security-scans` passes on them.
+Next action: update open branches from `main` so `security-scans` passes
+on them. SG-07 item 2 stays open (risk accepted until 2026-11-20).
+
+## SG-07 item 2 triaged; risk accepted until 2026-11-20 — 2026-10-22
+
+**Status:** Owner decision, recorded in documentation only. SG-07 is **not**
+closed: an accepted risk is still unresolved and blocks release until closed.
+
+The ECR scan of the image built from `e1d3692` (same counts on all five)
+lists HIGH 12 rows = 6 CVEs and MEDIUM 20 rows = 13 CVEs, in the base OS
+packages (OpenSSL, curl, rpm, pcre2, libxml2). The HIGH set is identical on
+the old and new images, so the 2026-10-22 base refresh changed none of them.
+Amazon Linux 2023 has published fixes for 12 of the CVEs (ALAS2023-2026-3204,
+-3128 and -3125); 7 are Pending Fix (the pcre2 CVE and six libxml2 CVEs). The
+deployed base still has the unfixed versions. AWS's Lambda Python page does
+not say how often base images are updated or whether updating OS packages in
+a Lambda image is supported. A grep finds no XML or document library in the
+Python dependencies or source. The owner's exposure reasoning is recorded as
+"owner-accepted reasoning, not tested"; whether any process loads libpcre2 or
+libxml2 is an open check.
+
+**Disposition:** risk accepted by the owner until 2026-11-20 (option 1: take
+the next AWS base refresh; no Dockerfile package updates for now).
+
+Dated entries: weekly base-digest checks on 2026-10-29, 2026-11-05,
+2026-11-12 and 2026-11-19 (re-scan after any digest change); a proposed
+checkpoint on 2026-11-13 (if unchanged, evaluate a package-update layer on a
+branch); the owner decision on 2026-11-20. The release freeze is December 6.
+
+Next action: owner review and merge; the 2026-10-29 base-digest check.
 
 ## Five-image rebuild done; SG-07 items 1, 3 and 4 closed — 2026-10-22
 

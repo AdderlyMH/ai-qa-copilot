@@ -1562,10 +1562,10 @@ closed.
 | # | Finding | Scope | Disposition (2026-10-20) | Close condition |
 |---|---|---|---|---|
 | 1 | PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2): `certifi` trusts the emSign ECC Root CA - G3, under which compromised intermediates were revoked; fixed in 2026.10.19 | `uv.lock` fixed on `main` (certifi 2026.10.19, PR #204). The five deployed images (`109a4e0`) still contain certifi 2026.7.22 | **Risk accepted by the owner** until the next image rebuild, which is combined with SG-07 item 2. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | All five images rebuilt and redeployed at the AWS base-image refresh or before the December 6 freeze, whichever comes first. The rebuild must verify the certifi version inside each built image |
-| 2 | ECR scan on all five images: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each (Amazon Linux 2023 OS packages in the shared base layers) | Deployed images | Open, not triaged; waiting on an AWS base-image refresh ([Refresh the base image digest](#refresh-the-base-image-digest)). **Update (2026-10-22):** the refresh is available (new base digest) and pinned on branch `build/base-refresh-rebuild-prep`; not yet built, scanned or verified, so this item stays **open**. **Update (2026-10-22, after the rebuild):** refresh applied, counts unchanged: the ECR scan on push (status `COMPLETE` for all five rebuilt images) reports HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each, identical to the counts on the `109a4e0` images. The finding names were not compared. HIGH findings still need triage and a documented disposition; this item stays **OPEN**. | The same rebuild, then a re-scan and a documented disposition of any remaining Medium findings |
+| 2 | ECR scan on all five images: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each (Amazon Linux 2023 OS packages in the shared base layers) | Deployed images | Open, not triaged; waiting on an AWS base-image refresh ([Refresh the base image digest](#refresh-the-base-image-digest)). **Update (2026-10-22):** the refresh is available (new base digest) and pinned on branch `build/base-refresh-rebuild-prep`; not yet built, scanned or verified, so this item stays **open**. **Update (2026-10-22, after the rebuild):** refresh applied, counts unchanged: the ECR scan on push (status `COMPLETE` for all five rebuilt images) reports HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each, identical to the counts on the `109a4e0` images. The finding names were not compared. **Correction (2026-10-22):** the HIGH finding names were compared on 2026-10-22 and are identical on the 109a4e0 and rebuilt images; see [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). HIGH findings still need triage and a documented disposition; this item stays **OPEN**. **Disposition (2026-10-22): Risk accepted by the owner until 2026-11-20 (does not close SG-07).** Triage, plan and open checks: [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). | The same rebuild, then a re-scan and a documented disposition of any remaining Medium findings. *(2026-10-22: the full close condition is in [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22).)* |
 | 3 | pip-audit (2026-10-21) on the locked runtime dependencies: `pypdf` 6.19.0 has GHSA-qfv9-64jg-mh7p and GHSA-9mx8-4j7g-633p (fixed in 6.20.1) and GHSA-7mh2-4gg2-979f and GHSA-39mj-jf6j-2qj3 (fixed in 6.20.0); upstream changelog: per-stream work limits (6.20.0) and cyclic-tree handling (6.20.1) | `uv.lock` bumped to pypdf 6.20.1 on branch `chore/pypdf-advisory-bump` (not merged). **Correction (2026-10-22):** merged to `main` in PR #212 and superseded by pypdf 6.21.1 (item 4); `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0. ADR-018 excludes PDF from the production scope; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | The bump merged to `main`, then the same five-image rebuild verifying the pypdf version inside each built image |
 | 4 | pip-audit (2026-10-21, later the same day) on the locked runtime dependencies: `pypdf` 6.20.1 has GHSA-5hx5-vpf9-5wcv, "Unvalidated JPEG image data loading", severity low, published 2026-10-21, fixed in 6.21.1; upstream changelog: /DCTDecode data is opened only with the Pillow JPEG plugin (6.21.1), plus stream-parsing and field work limits (6.21.0). Pillow is not a dependency of this project | Item 3's bump to 6.20.1 is on `main` (PR #212). `uv.lock` bumped to pypdf 6.21.1 on branch `chore/pypdf-6-21-1` (not merged). **Correction (2026-10-22):** merged to `main` in PR #214; `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0, so items 3 and 4 both apply to them | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | The bump merged to `main`, then the same five-image rebuild verifying pypdf 6.21.1 or later inside each built image |
-| 5 | `npm audit --omit=dev` (2026-10-22) on the `main` lockfile printed: package `next`, range `16.0.0 - 16.4.0`, severity critical, with two advisories: GHSA-2464-fhr4-w9xw (critical, "Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used") and GHSA-p3m5-59mp-jv5r (high, "Denial of Service in App Router using Server Actions"), each with range `>=16.0.0 <=16.4.0`. The audit printed only these two; the public release notes were not read here, so whether they list more (for example, one involving Cache Components) is to be checked against the Next.js advisory. No public reports of exploitation as of 2026-10-15, according to a news report | `package-lock.json` on `main` locks `next` 16.3.8. The owner web app (`apps/web`) is not deployed (INFRA-010 has no host), and the guest demo is the standalone static viewer, not Next.js. The advisories require specific features: Cache Components with `use cache`, SVG processing through the image optimizer or `next/og`, or a Server Action. Evidence: a grep of `apps/web` (source files and `next.config.ts`, 2026-10-22) finds no `use cache`, no `use server`, no `cacheComponents`, no `dangerouslyAllowSVG`, no `next/og`, no `ImageResponse` and no `<Image`; the only `next/image` match is the generated type reference in `apps/web/next-env.d.ts:2` (`/// <reference types="next/image-types/global" />`), not an import. `next.config.ts` sets only an `/api/:path*` rewrite and no `images` option | **Fixed on branch `chore/next-16-4-2` (2026-10-22, not merged):** the first fixed release is 16.4.1; the lockfile moves to 16.4.2 (owner choice, the latest 16.x patch), which adds no security fixes according to a third-party report (reported by a third party; verify against the Next.js advisory). Only `next` and its `@next/*` packages change in the lockfile; the web build passes and `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities. No deployed artifact contains `next` | The bump merged to `main` and `security-scans` passing there |
+| 5 | `npm audit --omit=dev` (2026-10-22) on the `main` lockfile printed: package `next`, range `16.0.0 - 16.4.0`, severity critical, with two advisories: GHSA-2464-fhr4-w9xw (critical, "Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used") and GHSA-p3m5-59mp-jv5r (high, "Denial of Service in App Router using Server Actions"), each with range `>=16.0.0 <=16.4.0`. The audit printed only these two; the public release notes were not read here, so whether they list more (for example, one involving Cache Components) is to be checked against the Next.js advisory. No public reports of exploitation as of 2026-10-15, according to a news report | `package-lock.json` on `main` locked `next` 16.3.8 before the bump. The owner web app (`apps/web`) is not deployed (INFRA-010 has no host), and the guest demo is the standalone static viewer, not Next.js. The advisories require specific features: Cache Components with `use cache`, SVG processing through the image optimizer or `next/og`, or a Server Action. Evidence: a grep of `apps/web` (source files and `next.config.ts`, 2026-10-22) finds no `use cache`, no `use server`, no `cacheComponents`, no `dangerouslyAllowSVG`, no `next/og`, no `ImageResponse` and no `<Image`; the only `next/image` match is the generated type reference in `apps/web/next-env.d.ts:2` (`/// <reference types="next/image-types/global" />`), not an import. `next.config.ts` sets only an `/api/:path*` rewrite and no `images` option | **Closed 2026-10-22:** the bump merged to `main` on 2026-10-22, and `security-scans` on `main` passed (owner-reported from the Actions run, 2026-10-22), which meets the close condition. The first fixed release is 16.4.1; the lockfile moves to 16.4.2 (owner choice, the latest 16.x patch), which adds no security fixes according to a third-party report (reported by a third party; verify against the Next.js advisory). Only `next` and its `@next/*` packages change in the lockfile; the web build passes and `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities. No deployed artifact contains `next` | The bump merged to `main` and `security-scans` passing there |
 
 ### Next actions
 
@@ -1577,6 +1577,10 @@ closed.
   counts and exception type; no content, filenames or IDs. **Done:** merged
   in PR #206 and seen in CloudWatch after the 2026-10-22 rebuild.
 - SG-07 item 2: triage the 12 HIGH findings and record a disposition.
+  **Done 2026-10-22:** risk accepted by the owner until 2026-11-20 (does not
+  close SG-07); see [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). Weekly base-digest
+  checks on 2026-10-29, 2026-11-05, 2026-11-12 and 2026-11-19; proposed
+  checkpoint 2026-11-13; decision 2026-11-20.
 - The next weekly base-digest check
   ([Refresh the base image digest](#refresh-the-base-image-digest)).
 - Measure parser and general memory under load.
@@ -3222,6 +3226,110 @@ kept in the owner's private notes, not in the repository.
 
 - [x] SG-07 items 1, 3 and 4 closed for the four deployed functions; item 2
   stays open (see the [SG-07 disposition register](#sg-07-disposition-register)).
+
+## SG-07 item 2 triage, 2026-10-22
+
+**Owner decision (2026-10-22): risk accepted until 2026-11-20** (option 1:
+take the next AWS base refresh; no package updates in the Dockerfile for now).
+This does **not** close SG-07 or the item: an accepted risk is still an
+unresolved finding and blocks release until closed. The release freeze is
+December 6, so 2026-11-20 leaves about two weeks to rebuild and redeploy.
+
+**Scan data.** The ECR scan of the image built from
+`e1d3692e947f8632382fbcdfec8802bc6daf8da7`; all five images share the base
+and showed the same counts. The scan lists one row per package:
+
+- HIGH: 12 rows = 6 CVEs. MEDIUM: 20 rows = 13 CVEs.
+- The HIGH set on the old (`109a4e0`) and the new images is identical (a set
+  comparison printed no difference), so the 2026-10-22 base refresh changed
+  none of them.
+- The deployed base digest (read 2026-10-22) still has the installed versions
+  below.
+
+Sources, read on 2026-10-22: the Amazon Linux security center
+(explore.alas.aws.amazon.com) for status and advisories, and the upstream or
+vendor pages named in each row for ratings and descriptions. Descriptions are
+short summaries of those sources; ratings are the sources' own.
+
+**HIGH (6 CVEs, 12 rows)**
+
+| CVE | Scanner CVSS3 | Packages (installed) | Amazon Linux 2023 status | Upstream rating | Summary |
+|---|---|---|---|---|---|
+| CVE-2026-84782 | 7.4 | `openssl-snapsafe-libs`, `openssl-fips-provider-latest` (3.5.8-1.amzn2023.0.1) | Fixed: ALAS2023-2026-3204 (2026-10-12), fixed package 3.5.8-1.amzn2023.0.3 | OpenSSL: High | DTLS handshake retransmission bug: heap memory could be sent to a peer, or a crash. OpenSSL says the FIPS provider is not affected. |
+| CVE-2026-75804 | 7.5 | same two packages (3.5.8-1.amzn2023.0.1) | Fixed: ALAS2023-2026-3204 (2026-10-12), fixed package 3.5.8-1.amzn2023.0.3 | OpenSSL: Low; Red Hat: 5.3 | Gap in QUIC connection-level flow control, leading to memory growth. |
+| CVE-2026-80230 | 7.4 | `curl-minimal`, `libcurl-minimal` (8.21.0-5.amzn2023.0.1) | Fixed: ALAS2023-2026-3128 (2026-09-29); the page did not show the fixed version | curl: Low | Needs `CURLOPT_PINNEDPUBLICKEY` with peer and host verification turned off. |
+| CVE-2026-84233 | 7.0 | `rpm`, `rpm-libs` (4.16.1.3-29.amzn2023.0.7) | Fixed: ALAS2023-2026-3125 (2026-09-29); the page did not show the fixed version | not read | Command injection through `rpmuncompress -x` on a crafted `.gem` file name (local, user-triggered). |
+| CVE-2026-78367 | 7.8 | `rpm`, `rpm-libs` (4.16.1.3-29.amzn2023.0.7) | Fixed: ALAS2023-2026-3125 (2026-09-29); the page did not show the fixed version | not read | `rpmbuild` macro injection from a crafted tarball member name. |
+| CVE-2026-89161 | 7.4 | `pcre2`, `pcre2-syntax` (10.40-1.amzn2023.0.3) | **Pending Fix** (no advisory, no release date) | Red Hat: Important, 7.4 (local, high complexity) | Memory corruption in the PCRE2 JIT matcher. |
+
+**MEDIUM (13 CVEs, 20 rows)**
+
+| CVE | Packages (installed) | Amazon Linux 2023 status | Upstream rating | Summary |
+|---|---|---|---|---|
+| CVE-2026-75805 | `openssl-snapsafe-libs`, `openssl-fips-provider-latest` (3.5.8-1.amzn2023.0.1) | Fixed: ALAS2023-2026-3204 (2026-10-12), fixed package 3.5.8-1.amzn2023.0.3 | not read | not read |
+| CVE-2026-75806 | same two packages | Fixed: ALAS2023-2026-3204 (2026-10-12) | not read | not read |
+| CVE-2026-54873 | same two packages | Fixed: ALAS2023-2026-3204 (2026-10-12) | not read | not read |
+| CVE-2026-54872 | same two packages | Fixed: ALAS2023-2026-3204 (2026-10-12) | not read | not read |
+| CVE-2026-84784 | same two packages | Fixed: ALAS2023-2026-3204 (2026-10-12) | not read | not read |
+| CVE-2026-42772 | same two packages | Fixed: ALAS2023-2026-3204 (2026-10-12) | not read | not read |
+| CVE-2026-72897 | same two packages | Fixed: ALAS2023-2026-3204 (2026-10-12) | not read | not read |
+| CVE-2026-86142 | `libxml2` (2.10.4-1.amzn2023.0.20) | **Pending Fix** | not read | Together, the six libxml2 CVEs affect libxml2 before 2.15.4: heap and stack overflows, a double free in a SAX callback, and XInclude flags not passed on. The image has 2.10.4. |
+| CVE-2026-86143 | `libxml2` (2.10.4-1.amzn2023.0.20) | **Pending Fix** | not read | as above |
+| CVE-2026-86140 | `libxml2` (2.10.4-1.amzn2023.0.20) | **Pending Fix** | not read | as above |
+| CVE-2026-74860 | `libxml2` (2.10.4-1.amzn2023.0.20) | **Pending Fix** | not read | as above |
+| CVE-2026-86138 | `libxml2` (2.10.4-1.amzn2023.0.20) | **Pending Fix** | not read | as above |
+| CVE-2026-86144 | `libxml2` (2.10.4-1.amzn2023.0.20) | **Pending Fix** | not read | as above |
+
+In total, 12 CVEs have a published Amazon Linux fix (5 HIGH, 7 MEDIUM) and 7
+are Pending Fix (`pcre2` and the six `libxml2` CVEs).
+
+**AWS documentation.** The Lambda Python image page
+(<https://docs.aws.amazon.com/lambda/latest/dg/python-image.html>, read
+2026-10-22) says images based on Amazon Linux 2023 use `microdnf` (linked as
+`dnf`). It does **not** state how often AWS updates the base images, and it
+does **not** state whether updating OS packages inside a Lambda image is
+supported.
+
+**Repository evidence (read-only grep, 2026-10-22).** No XML or document
+library appears in `uv.lock`, `apps/api/pyproject.toml`, the root
+`pyproject.toml` or `apps/api/src` (search terms: `lxml`, `python-docx`,
+`defusedxml`, `xml.etree`, `xml.sax`, `xml.dom`, `libxml`, `xmltodict`,
+`pcre`; 0 matches each), and no module in `apps/api/src` imports `xml`. The
+runtime dependencies in `apps/api/pyproject.toml` are boto3, fastapi,
+pyjwt[crypto], pydantic, psycopg[binary], sqlalchemy, uvicorn, pypdf, httpcore,
+httpx and mangum. This shows only what the Python dependency files and source
+name; it says nothing about native libraries loaded by the interpreter or by
+binary wheels.
+
+**Owner-accepted reasoning, not tested.** The application speaks ordinary TLS
+over TCP through Python; the Python `ssl` module has no DTLS or QUIC; the
+services do not call libcurl, the rpm tools or `rpmbuild`. None of this was
+tested.
+
+**Plan until 2026-11-20:**
+
+- Weekly base-digest check
+  ([Refresh the base image digest](#refresh-the-base-image-digest)) on
+  2026-10-29, 2026-11-05, 2026-11-12 and 2026-11-19.
+- After any digest change: refresh, rebuild, push, re-scan and update this
+  section.
+- **Proposed checkpoint, 2026-11-13:** if the digest is still unchanged,
+  evaluate a package-update layer on a branch. `microdnf` is present, but AWS
+  does not state that updating packages in a Lambda image is supported; the
+  layer would give up the pinned-digest reproducibility; and it would fix the
+  12 CVEs with published fixes and none of the 7 Pending Fix ones.
+- **Decision, 2026-11-20:** continue the acceptance with new evidence, or
+  switch to the package-update layer.
+
+**Close condition:** a refreshed base (or an owner-approved alternative)
+rebuilt and redeployed, a re-scan, and a documented disposition of every
+remaining HIGH and MEDIUM finding.
+
+**Open checks:**
+
+- Whether any process loads the system `libpcre2` or `libxml2`: not checked.
+- The LOW (5) and UNDEFINED (1) rows are not triaged; the register does not
+  require them.
 
 ## Local-credential apply exception
 
