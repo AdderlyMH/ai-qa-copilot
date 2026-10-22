@@ -394,7 +394,6 @@ resource "aws_secretsmanager_secret" "parser_database_url" {
 
 locals {
   data_bucket_arn = aws_s3_bucket.this["data"].arn
-  demo_bucket_arn = aws_s3_bucket.this["demo"].arn
 
   sqs_consume_actions = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
 
@@ -431,12 +430,9 @@ data "aws_iam_policy_document" "api" {
     resources = ["${local.data_bucket_arn}/accepted/*", "${local.data_bucket_arn}/exports/*"]
   }
 
-  # An explicit owner action publishes a new immutable revision (ADR-006).
-  statement {
-    sid       = "PublishDemoRevision"
-    actions   = ["s3:PutObject"]
-    resources = ["${local.demo_bucket_arn}/publications/*"]
-  }
+  # No grant on the demo bucket: the owner publishes from a local script with
+  # their own credentials (ADR-018, ADR-019 Decision 4), and GET/HEAD /demo
+  # reads no S3 object.
 
   # Cold-start secret bootstrap (ADR-018, INFRA-008): the two exact ARNs only.
   statement {

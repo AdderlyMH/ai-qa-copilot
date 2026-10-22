@@ -1,5 +1,25 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## API role's demo-bucket write grant removed in code — 2026-10-22
+
+**Status:** Terraform and contract-test change on a branch; **not planned and
+not applied**. The owner's targeted plan and apply are a separate step.
+
+The API execution role's `PublishDemoRevision` statement (`s3:PutObject` on
+the demo bucket's `publications/*`) is removed from the data-plane module,
+with the unused `demo_bucket_arn` local (least privilege; ADR-019 open item).
+No API code uses the demo bucket: publishing is the owner's local script
+(ADR-019 D4), and `GET`/`HEAD /demo` reads no S3 object, so no read grant is
+needed. No other role, the demo bucket or its policy changed.
+`test_infra_contracts.py` now pins that the API role has no demo-bucket
+statement and keeps its five other statements, that no function or
+migration role has a demo-bucket grant, and that the API source never names
+the demo bucket. `terraform validate` succeeds and the tracked files pass
+`terraform fmt`.
+
+Next action: owner review and merge; then the targeted plan in
+INFRASTRUCTURE.md (expected: 0 to add, 1 to change, 0 to destroy) and apply.
+
 ## Guest demo publish script prints `--branch main` — 2026-10-22
 
 **Status:** Code fix on a branch. INFRA-011 stays **not Accepted**.

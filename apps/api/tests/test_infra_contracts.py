@@ -62,6 +62,52 @@ def test_the_api_keeps_its_enqueue_grant() -> None:
     assert '"sqs:SendMessage"' in api
 
 
+POLICY_DOCUMENTS = ("api", "parser", "general", "executor")
+API_SOURCE = ROOT / "apps/api/src/ai_qa_copilot_api"
+
+
+def test_the_api_role_has_no_grant_on_the_demo_bucket() -> None:
+    data_plane = DATA_PLANE.read_text(encoding="utf-8")
+    api = code(block(data_plane, 'data "aws_iam_policy_document" "api"'))
+
+    # The owner publishes from a local script (ADR-019 D4); the former
+    # PublishDemoRevision s3:PutObject grant on publications/* is gone.
+    assert "PublishDemoRevision" not in data_plane
+    assert "demo" not in api and "publications" not in api
+    assert re.findall(r'sid\s*=\s*"(\w+)"', api) == [
+        "WriteOwnLogs",
+        "EnqueueJobs",
+        "WriteQuarantine",
+        "ReadAcceptedAndExports",
+        "ReadApplicationSecrets",
+    ]
+    # Every S3 grant the API keeps is on the data bucket.
+    s3_grants = re.findall(r'actions\s*=\s*\["s3:[^\n]*\n\s*resources\s*=\s*(.+)', api)
+    assert len(s3_grants) == 2
+    for resources in s3_grants:
+        assert "local.data_bucket_arn" in resources and "demo" not in resources
+
+
+def test_the_demo_route_needs_no_demo_bucket_read() -> None:
+    # GET/HEAD /demo serves a server-selected DemoPublication from its
+    # repository, not from S3, so the API role needs no read grant there.
+    demo = (API_SOURCE / "demo.py").read_text(encoding="utf-8")
+    assert "boto3" not in demo and not re.search(r"\bs3[_:.]", demo)
+    for path in sorted(API_SOURCE.glob("*.py")):
+        assert "DEMO_BUCKET" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_no_function_or_migration_role_has_a_demo_bucket_grant() -> None:
+    data_plane = DATA_PLANE.read_text(encoding="utf-8")
+    migration = (ROOT / "infra/modules/migration/main.tf").read_text(encoding="utf-8")
+
+    assert "demo_bucket_arn" not in code(data_plane)
+    for name in POLICY_DOCUMENTS:
+        document = code(block(data_plane, f'data "aws_iam_policy_document" "{name}"'))
+        assert '["demo"]' not in document and "demo" not in document, name
+    assert '["demo"]' not in code(migration)
+
+
 def test_the_parser_environment_has_no_queue_url() -> None:
     compute = COMPUTE_API.read_text(encoding="utf-8")
     parser_environment = code(block(compute, "    parser = merge({"))
