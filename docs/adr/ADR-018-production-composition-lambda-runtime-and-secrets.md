@@ -152,6 +152,8 @@ Sources: V1 <https://docs.aws.amazon.com/lambda/latest/dg/gettingstarted-limits.
 
 The following are planned acceptance conditions; this ADR records no executed validation evidence.
 
+*Note (2026-10-22): executed evidence is recorded outside this ADR, not here. Shared engine, API adapter, wake-up semantics, claim duration and the parser credential check: the INFRA-006 and INFRA-007 entries in [BACKLOG.md](../BACKLOG.md) (tests). Secrets and the parser database credential: INFRA-008 in BACKLOG.md (Accepted 2026-10-22) and [ADR-021](ADR-021-parser-database-credential.md). API adapter in AWS (`/health`, an authenticated owner request): INFRASTRUCTURE.md "Compute apply and owner API check, 2026-10-20". Upload limit arithmetic: INFRASTRUCTURE.md "Upload size and the Lambda payload limit". Parser isolation live and the measured monthly cost: no executed evidence is recorded.*
+
 | Validation | Required result |
 |---|---|
 | Shared engine | One engine per process; no idle pooled connection remains after a request; unit and PostgreSQL integration tests pass. |
