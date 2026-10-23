@@ -296,6 +296,8 @@ Evidence: the pages below were checked on 2026-10-21 during the host review; eac
 1. Whether a new deploy replaces the whole site. The publish script copies every non-withdrawn publication into every site folder, so earlier ones survive either way (Decision 3); a second publication has not been deployed yet.
 2. A recheck of Cloudflare's Pages-versus-Workers guidance; not recorded at the first deployment.
 
+*Note (2026-10-23):* [ADR-022](ADR-022-owner-app-frontend-host.md) amends this decision's "no CI deploy and no stored CI secret" **for the owner app only**: the owner app is a separate Cloudflare Pages project deployed by CI from a protected GitHub environment. The guest demo keeps the manual, offline Direct Upload described here. Whether a Cloudflare API token can be limited to one Pages project is not verified (ADR-022 open item); if it cannot, the CI token could also replace this project.
+
 #### Verified on the first deployment, 2026-10-22 UTC
 
 Owner-run and observed with `curl.exe -D` on the live site; details in [INFRASTRUCTURE.md](../INFRASTRUCTURE.md#first-deployment-2026-10-22-utc). These were open items 2 to 4 of the list above.

@@ -98,7 +98,7 @@ Phase 6 work is 69 h of new items (INFRA-006 to INFRA-012), 6 h to accept INFRA-
 Milestones:
 
 - **M1 — authenticated API call live (target Nov 15):** a Cognito access token for the configured owner is accepted by the deployed API over HTTPS and a project can be created and read from the production database.
-- **M2 — owner login, upload and analysis over HTTPS (target Nov 22):** in a browser on the CloudFront domain *(note 2026-10-22: CloudFront is not used; the guest demo is on Cloudflare Pages per ADR-019 Decision 13, and the owner frontend host is open under INFRA-010)* the owner signs in through the Hosted UI, submits synthetic text and sees an OpenAI analysis run, uploads a Markdown or text file and sees its parser status reach accepted or rejected.
+- **M2 — owner login, upload and analysis over HTTPS (target Nov 22):** in a browser on the CloudFront domain *(note 2026-10-22: CloudFront is not used; the guest demo is on Cloudflare Pages per ADR-019 Decision 13, and the owner frontend host is open under INFRA-010; note 2026-10-23: the owner app is served from its own Cloudflare Pages project, [ADR-022](adr/ADR-022-owner-app-frontend-host.md), so read "on the owner app's HTTPS address")* the owner signs in through the Hosted UI, submits synthetic text and sees an OpenAI analysis run, uploads a Markdown or text file and sees its parser status reach accepted or rejected.
 - **M3 — minimum live demo (target Nov 29):** an anonymous guest opens the CloudFront guest page *(note 2026-10-22: the guest demo is on Cloudflare Pages per ADR-019 Decision 13)* and sees the sanitized published snapshot, with no database connection opened and no write route reachable.
 
 **Ordered cut list** (apply in this order when a trigger fires: M1 not reached by Nov 15 applies cuts 1 to 3; M2 not reached by Nov 22 adds 4 and 5; M3 not reached by Nov 29 adds 6):
@@ -1033,6 +1033,14 @@ of this backlog.
 
 #### INFRA-010 — Static frontend, Cognito Hosted UI with PKCE, CORS and hosting
 
+- **Correction (2026-10-23):** CloudFront is not used (the account's CloudFront verification was declined on 2026-10-21). Hosting is decided in [ADR-022](adr/ADR-022-owner-app-frontend-host.md): a separate Cloudflare Pages project (Free plan) serving the static export, Cognito Hosted UI with authorization code and PKCE on a prefix domain, the access token in `sessionStorage` with no refresh token in the browser, a subdomain of the owner's domain through a Pages CNAME, and a CI deploy from a protected GitHub environment (owner app only). Where the deliverable below says "S3 and CloudFront hosting with the default HTTPS domain", read ADR-022. The 2026-10-18 dependency note's "no hosting fallback is designed" is superseded. The acceptance text is unchanged.
+- **Stages (one commit each; none is met yet):**
+  1. ADR-022 and the stale documentation statements (docs only).
+  2. Terraform, plan only: HTTP API CORS for the web origin (allow `Authorization`, `Content-Type`, `X-Upload-Filename`; expose `X-Correlation-ID`), Cognito prefix domain, OAuth authorization code with PKCE on the app client, HTTPS callback and logout URLs.
+  3. Web: remove the rewrite, build-time API base URL, `output: "export"`; `next build` added to CI.
+  4. Web: Hosted UI sign-in, sign-out and token handling.
+  5. Upload form and document-status panel, with slow polling against the 5 requests per second API throttle.
+  6. Deploy workflow and protected environment, apply, and the M2 acceptance run.
 - **Priority:** P0
 - **Estimate:** 18 h
 - **Dependencies:** ADR-018, INFRA-007, INFRA-006 (status route), INFRA-009
@@ -1045,7 +1053,7 @@ of this backlog.
 
 - **Priority:** P0
 - **Estimate:** 10 h
-- **Dependencies:** ADR-019 (Accepted 2026-10-21), INFRA-010, REP-001 to REP-004
+- **Dependencies:** ADR-019 (Accepted 2026-10-21), INFRA-010, REP-001 to REP-004 *(note 2026-10-23: the INFRA-010 dependency no longer applies; the guest page is a standalone static viewer on its own Cloudflare Pages project (ADR-019 Decision 13) and was deployed without INFRA-010)*
 - **Deliverable:** ADR-019 defining the snapshot schema, the sanitization policy and the static "server-selected" rule; a sanitizer and a local publish script that write a pre-sanitized snapshot to a new immutable key under `publications/` in the demo bucket with the owner's local credentials; a guest page that renders it from CloudFront. There is no owner publish API in this item.
 - **Acceptance:** A published snapshot passes the ADR-006 data policy checks and content-hash verification; the guest page loads over HTTPS with no database connection and no write route; a second publication does not overwrite the first; the script refuses unsanitized input. Completes milestone M3.
 

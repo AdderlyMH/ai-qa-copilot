@@ -547,6 +547,12 @@ CachingOptimized cache policy and SecurityHeadersPolicy, and `PriceClass_100`.
 The demo bucket policy gains one statement: `s3:GetObject` on `publications/*`
 for `cloudfront.amazonaws.com` with `AWS:SourceArn` equal to this distribution.
 A fixed source ARN keeps the policy non-public, so Block Public Access stays on.
+*Note (2026-10-23):* this distribution was never created. It is gated behind
+`demo_cdn_enabled`, which is `false` by owner decision after AWS declined the
+account's CloudFront verification (2026-10-21); the guest demo is on
+Cloudflare Pages ([ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decision 13)
+and the owner app on its own Cloudflare Pages project
+([ADR-022](adr/ADR-022-owner-app-frontend-host.md)).
 
 **Cognito:** one owner user pool (email sign-in, administrator-created users
 only, deletion protection, 14-character password policy) and a public app client
@@ -601,7 +607,10 @@ Stage 4 open items:
   the accepted general job. Options: hand off through the database and a
   trigger outside the parser, or an SQS interface endpoint (cost).
 - Frontend hosting, the Cognito domain, OAuth with PKCE, callback URLs and CORS:
-  not built; required for the owner workflow over HTTPS.
+  not built; required for the owner workflow over HTTPS. *(Note 2026-10-23:
+  the host is decided in [ADR-022](adr/ADR-022-owner-app-frontend-host.md),
+  a separate Cloudflare Pages project with a Cognito prefix domain; still not
+  built, see the INFRA-010 stages in [BACKLOG.md](BACKLOG.md).)*
 - Executor secret store and SG-08 control: INFRA-004; the executor trigger stays
   disabled until then.
 - Plan-role read access for Lambda, API Gateway, CloudFront, Cognito, ECR, SQS,
@@ -1615,7 +1624,9 @@ case number, account ID and correspondence stay in the owner's private notes.
   are set through a `_headers` file; its generator, the publish script and the
   entry page are INFRA-011 stage 4, and the first deploy is stage 5.
 - **Owner-app frontend (INFRA-010):** still has no HTTPS host; its hosting
-  question is open and not decided here.
+  question is open and not decided here. *(Note 2026-10-23: decided in
+  [ADR-022](adr/ADR-022-owner-app-frontend-host.md), a separate Cloudflare
+  Pages project; not yet built or deployed.)*
 
 ## Optional guest-demo CloudFront and the parser queue grant (2026-10-18)
 
@@ -1682,7 +1693,10 @@ correspondence) stays in the owner's private notes, not in the repository.
 **Update (2026-10-21):** the request was declined and the guest demo moves to
 an external static host; see
 [CloudFront verification declined; guest demo host, 2026-10-21](#cloudfront-verification-declined-guest-demo-host-2026-10-21).
-INFRA-010 still depends on a host.
+INFRA-010 still depends on a host. **Update (2026-10-23):** INFRA-010 no
+longer depends on this flag; the owner app is served from its own Cloudflare
+Pages project ([ADR-022](adr/ADR-022-owner-app-frontend-host.md)), and the
+flag stays `false`.
 
 **Owner steps** (no plan was run for this change):
 
