@@ -106,6 +106,28 @@ variable "model_provider" {
   default     = "openai"
 }
 
+# Owner app (INFRA-010 stage 2, ADR-022). No defaults; set in the private
+# production.tfvars. The compute_api module validates each value.
+variable "web_origins" {
+  description = "Exact HTTPS origins of the owner web app for the HTTP API CORS configuration."
+  type        = list(string)
+}
+
+variable "cognito_domain_prefix" {
+  description = "Prefix of the Cognito prefix domain for managed login."
+  type        = string
+}
+
+variable "cognito_callback_urls" {
+  description = "Exact HTTPS callback URLs of the owner web app (authorization code flow)."
+  type        = list(string)
+}
+
+variable "cognito_logout_urls" {
+  description = "Exact HTTPS sign-out URLs of the owner web app."
+  type        = list(string)
+}
+
 variable "parser_database_url_enabled" {
   description = "Give the parser its DATABASE_URL from the parser-database-url secret (ADR-018 fallback; the value lands in Terraform state). Set true only after create_parser_user has written the secret; false leaves the parser without a database URL (it fails closed)."
   type        = bool
@@ -276,6 +298,10 @@ module "compute_api" {
   demo_cdn_enabled                 = var.demo_cdn_enabled
   parser_database_url_enabled      = var.parser_database_url_enabled
   parser_database_url_secret_arn   = module.data_plane.parser_database_url_secret_arn
+  web_origins                      = var.web_origins
+  cognito_domain_prefix            = var.cognito_domain_prefix
+  cognito_callback_urls            = var.cognito_callback_urls
+  cognito_logout_urls              = var.cognito_logout_urls
 }
 
 output "http_api_endpoint" {
@@ -291,6 +317,16 @@ output "demo_distribution_domain_name" {
 output "cognito_user_pool_id" {
   description = "Owner user pool ID."
   value       = module.compute_api.cognito_user_pool_id
+}
+
+output "cognito_client_id" {
+  description = "Public app client ID for the owner web app build (not a secret)."
+  value       = module.compute_api.cognito_client_id
+}
+
+output "cognito_domain_base_url" {
+  description = "Cognito prefix-domain base address for the owner web app build (not a secret)."
+  value       = module.compute_api.cognito_domain_base_url
 }
 
 output "data_plane_ecr_repository_urls" {

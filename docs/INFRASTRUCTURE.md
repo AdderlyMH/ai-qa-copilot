@@ -1600,6 +1600,105 @@ closed.
   resolved. **Resolved 2026-10-21:** declined; see
   [CloudFront verification declined; guest demo host, 2026-10-21](#cloudfront-verification-declined-guest-demo-host-2026-10-21).
 
+## Owner-app CORS and Cognito OAuth (INFRA-010 stage 2, 2026-10-23)
+
+Terraform code only, on a branch: **not planned, not applied.** No AWS or
+Cloudflare call was made. Decisions in
+[ADR-022](adr/ADR-022-owner-app-frontend-host.md).
+
+**What changed** (`infra/modules/compute_api`, the production root and the
+example tfvars):
+
+- **HTTP API CORS** (`cors_configuration` on `aws_apigatewayv2_api.http`):
+  `allow_origins = var.web_origins`; `allow_methods` `DELETE`, `GET`, `POST`
+  (the methods the FastAPI routes serve; `/demo` also accepts `HEAD`, `PUT`
+  and `PATCH`, but only to deny them, so they are not offered to the web
+  origin); `allow_headers` `authorization`, `content-type`,
+  `x-upload-filename`; `expose_headers` `x-correlation-id`;
+  `allow_credentials = false` (bearer header, no cookies); `max_age` 600 s.
+  There is no local-development origin in the production module.
+- **Cognito prefix domain** (`aws_cognito_user_pool_domain.owner`) from
+  `cognito_domain_prefix`, with `managed_login_version = 2` (managed login).
+  No certificate, so no custom domain and no CloudFront distribution.
+- **Managed login style** (`aws_cognito_managed_login_branding.web`) for the
+  web client with `use_cognito_provided_values = true` (Cognito's default
+  style, no custom assets).
+- **App client** `web`: `allowed_oauth_flows_user_pool_client = true`,
+  `allowed_oauth_flows = ["code"]`, `allowed_oauth_scopes = ["openid"]`,
+  `callback_urls` and `logout_urls` from variables;
+  `supported_identity_providers`, `ALLOW_USER_SRP_AUTH`,
+  `ALLOW_REFRESH_TOKEN_AUTH`, token validities, revocation and
+  user-existence settings unchanged. The client is public (no secret), so the
+  web app must send PKCE (stage 4); Cognito does not let Terraform require it
+  on the client.
+- **Pool tier** pinned: `user_pool_tier = "ESSENTIALS"`, matching the owner's
+  read-only check of the deployed pool (2026-10-23, tier ESSENTIALS, deletion
+  protection ACTIVE), so a plan should show no tier change.
+- **Outputs** (not secrets, not repeated in the documentation):
+  `cognito_client_id` and `cognito_domain_base_url` in the root. No output
+  prints a token or a secret.
+- `apps/api/tests/test_infra_contracts.py` pins all of the above.
+
+**New required variables** (no defaults; values only in the private
+`production.tfvars`, never in the repository; the module validates them):
+
+| Variable | Rule |
+|---|---|
+| `web_origins` | List, at least one; each `https://<host>[:port]` in lowercase, no path, no trailing slash, no wildcard. |
+| `cognito_domain_prefix` | 1 to 63 lowercase letters, digits or hyphens; no leading or trailing hyphen (the `CreateUserPoolDomain` pattern). |
+| `cognito_callback_urls` | List, at least one; each an exact `https://` URL, no wildcard, no fragment. |
+| `cognito_logout_urls` | Same rule as the callback URLs. |
+
+Every plan of the production root now needs all four. The example tfvars
+carries fake `example.com` values.
+
+**Managed-login finding.** Cognito serves either managed login (branding
+version 2) or the classic hosted UI (version 1) on a domain, not both; the
+Lite plan has only the classic hosted UI. `ManagedLoginVersion` 2 "does not
+activate managed login pages for your app client": a client created through
+the API or an SDK, as Terraform does, has no branding style, and managed login
+is not available to it until a style exists (`CreateManagedLoginBranding`);
+only the console creates one automatically. The module therefore sets version
+2 and creates a default style. **Uncertain:** what the sign-in page shows
+before the style exists (not stated in what was read), and that
+`use_cognito_provided_values = true` alone is accepted by the API at apply
+time (the provider schema allows it; not exercised).
+
+**CORS finding.** With CORS configured on an HTTP API, API Gateway answers
+preflight `OPTIONS` requests itself, adds the configured headers to
+integration responses, and ignores CORS headers returned by the integration.
+The FastAPI app sets no `Access-Control-*` header and has no `CORSMiddleware`
+(source read 2026-10-23), so there is no overlap. This API has no authorizer
+on `$default`, so the documented `OPTIONS /{proxy+}` workaround for an
+authorized `$default` route is not needed. Not verified live.
+
+**Checks run:** `terraform init -backend=false` and `terraform validate` for
+the production root, `terraform fmt -check` on the changed files, and the CI
+Checkov scan: 381 passed, 0 failed, 63 skipped (unchanged counts; no new
+skip).
+
+**Not applied; owner steps later (stage 6):** add the four variables to the
+private tfvars, run a targeted plan of `module.compute_api` and confirm it
+adds the domain and the branding style, changes the API (CORS) and the client
+(OAuth) in place, and shows no change to the pool tier; then apply. No apply
+is recorded here.
+
+**Documentation read, 2026-10-23:**
+
+- *User pool managed login* (Amazon Cognito Developer Guide),
+  <https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html>
+- *Using the Amazon Cognito prefix domain for managed login*,
+  <https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-assign-domain-prefix.html>
+- *CreateUserPoolDomain* (Amazon Cognito API Reference),
+  <https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_CreateUserPoolDomain.html>
+- *Apply branding to managed login pages*,
+  <https://docs.aws.amazon.com/cognito/latest/developerguide/managed-login-branding.html>
+- *Configure CORS for HTTP APIs in API Gateway*,
+  <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-cors.html>
+- The pinned AWS provider's schema (6.68.0, `terraform providers schema -json`
+  after `init -backend=false`): `user_pool_tier`, `managed_login_version`,
+  `aws_cognito_managed_login_branding` and `cors_configuration` are present.
+
 ## CloudFront verification declined; guest demo host, 2026-10-21
 
 Owner decision, documentation only: no Terraform, tfvars or AWS change. The

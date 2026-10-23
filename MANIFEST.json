@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 124190,
-      "sha256": "29e705e830233f4fe60ec9339036a8ebc050c5eb346e1c148b2c9d064dbf31aa"
+      "bytes": 124405,
+      "sha256": "702e323cdce5f901f9f810f8be12b8ca4f8bdfa66bae63ce9ff5f63da42bfb55"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 209673,
-      "sha256": "dcd1feb06ee6b2aefa29853855404e977ca67351a01834f8bc408d28909ff1c2"
+      "bytes": 215520,
+      "sha256": "9cfbbd56f9664af9574c57175e31413abffdaee4b74d637a0665c17898b3adf5"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 203078,
-      "sha256": "b9abe1e7944d55e26cb4dfb3aa11ea118ebdce8d2bb06ad88c27ff37908c3eb0"
+      "bytes": 204704,
+      "sha256": "e935a31f4dcbc0bc9aed8ba1ca91c73de14425949081a9c9897c496fc10ad79e"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -282,8 +282,8 @@
     },
     {
       "path": "docs/adr/ADR-022-owner-app-frontend-host.md",
-      "bytes": 18171,
-      "sha256": "0622ebfce2d9bab0c2858320445dae147f30b2f9508ddb6a72bb4cc32c1e00fc"
+      "bytes": 19182,
+      "sha256": "19137958b0b00d659186ad74052d351f431da39a4c00ec86eb3d0874423deecc"
     },
     {
       "path": "docs/adr/README.md",

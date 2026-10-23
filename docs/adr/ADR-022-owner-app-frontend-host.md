@@ -117,12 +117,12 @@ No validation evidence is recorded in this ADR. Planned, under the INFRA-010 sta
 
 | Item | Status | What settles it |
 |---|---|---|
-| The deployed Cognito user pool's tier (Terraform sets none) and whether managed login is available at that tier | OPEN | A read-only `describe-user-pool` by the owner, read against S7 |
-| Prefix-domain charge (ADR-018 open item) | OPEN, not confirmed | A Cognito pricing statement or the first bill after the domain exists |
+| The deployed Cognito user pool's tier (Terraform sets none) and whether managed login is available at that tier | OPEN | A read-only `describe-user-pool` by the owner, read against S7 *(Updated 2026-10-23, INFRA-010 stage 2: tier **read**, ESSENTIALS, with deletion protection ACTIVE (owner-run read-only check). The Cognito `CreateUserPoolDomain` reference says managed login requires a feature plan other than Lite, so managed login is available at this tier. Terraform now pins `user_pool_tier = "ESSENTIALS"`; not applied.)* |
+| Prefix-domain charge (ADR-018 open item) | OPEN, not confirmed | A Cognito pricing statement or the first bill after the domain exists *(Updated 2026-10-23: still OPEN. The Cognito prefix-domain guide says there is no cost difference between the prefix and custom domain options, which is not a statement that either is free.)* |
 | Whether a Cloudflare API token can be limited to one Pages project | OPEN, not verified | Cloudflare token documentation; if it cannot, a leaked CI token could replace the guest demo, and a separate Cloudflare account for the owner app removes that risk |
 | The custom domain's registrar, DNS provider and annual cost | OPEN | Owner record (private notes; not the domain name in the repository) |
-| Whether Cloudflare is moving new projects from Pages to Workers static assets | OPEN | An official Cloudflare announcement; none found, secondary sources only. ADR-019 records Workers static assets as the documented fallback |
-| How API Gateway HTTP API CORS interacts with headers set by the FastAPI app | OPEN, not read | API Gateway HTTP API CORS documentation, then the stage 2 plan |
+| Whether Cloudflare is moving new projects from Pages to Workers static assets | OPEN | An official Cloudflare announcement; none found, secondary sources only. ADR-019 records Workers static assets as the documented fallback *(Updated 2026-10-23: still OPEN; not re-checked in stage 2.)* |
+| How API Gateway HTTP API CORS interacts with headers set by the FastAPI app | OPEN, not read | API Gateway HTTP API CORS documentation, then the stage 2 plan *(Updated 2026-10-23: documentation **read**; with CORS configured, API Gateway answers preflight requests itself and ignores CORS headers returned by the integration, and the FastAPI app sets no `Access-Control-*` header and has no CORS middleware. The live behavior is unverified until the stage 2 plan is applied; see INFRASTRUCTURE.md, "Owner-app CORS and Cognito OAuth (INFRA-010 stage 2, 2026-10-23)".)* |
 | The 5 requests per second throttle against status-panel polling | OPEN | Stage 5 polling interval, measured against the throttle |
 | `output: "export"` is unbuilt | OPEN | Stage 3 `next build` in CI |
 | Whether the `pages.dev` address is redirected to the custom domain | OPEN | Owner decision at the deploy stage (S2: account-level Bulk Redirect) |

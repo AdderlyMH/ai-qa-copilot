@@ -290,3 +290,161 @@ def test_the_demo_bucket_policy_gets_a_known_null_when_the_cdn_is_off() -> None:
     ):
         assert re.search(rf"{setting}\s+=\s+true", access), setting
     assert "count" not in access
+
+
+OWNER_APP_VARIABLES = (
+    "web_origins",
+    "cognito_domain_prefix",
+    "cognito_callback_urls",
+    "cognito_logout_urls",
+)
+
+
+def validation_pattern(compute: str, variable: str) -> re.Pattern[str]:
+    """Compile the ``can(regex(...))`` pattern of a module variable."""
+
+    body = code(block(compute, f'variable "{variable}"'))
+    match = re.search(r'can\(regex\("((?:[^"\\]|\\.)*)"', body)
+    assert match, variable
+    # Terraform string escapes: "\\." in HCL is the regex "\.".
+    return re.compile(match.group(1).replace("\\\\", "\\"))
+
+
+def test_owner_app_variables_have_no_defaults_and_reach_the_module() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    root = PRODUCTION_ROOT.read_text(encoding="utf-8")
+    module = code(block(root, 'module "compute_api"'))
+
+    for name in OWNER_APP_VARIABLES:
+        assert "default" not in code(block(compute, f'variable "{name}"')), name
+        assert "default" not in code(block(root, f'variable "{name}"')), name
+        assert re.search(rf"^\s+{name}\s+=\s+var\.{name}$", module, re.MULTILINE), name
+
+
+def test_http_api_cors_is_limited_to_https_web_origins_without_credentials() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    cors = code(block(compute, "  cors_configuration {"))
+
+    assert re.search(r"allow_origins\s+=\s+var\.web_origins$", cors, re.MULTILINE)
+    assert re.search(r"allow_credentials\s+=\s+false$", cors, re.MULTILINE)
+    assert "*" not in cors
+    allow_headers = re.search(r"allow_headers\s+=\s+\[([^\]]*)\]", cors)
+    expose_headers = re.search(r"expose_headers\s+=\s+\[([^\]]*)\]", cors)
+    assert allow_headers and '"x-upload-filename"' in allow_headers.group(1)
+    assert '"authorization"' in allow_headers.group(1)
+    assert expose_headers and '"x-correlation-id"' in expose_headers.group(1)
+    assert re.search(r'allow_methods\s+=\s+\["DELETE", "GET", "POST"\]', cors)
+    assert "  cors_configuration {" in block(
+        compute, 'resource "aws_apigatewayv2_api" "http"'
+    )
+
+    origin = validation_pattern(compute, "web_origins")
+    for allowed in ("https://app.example.com", "https://app.example.com:8443"):
+        assert origin.fullmatch(allowed), allowed
+    for refused in (
+        "*",
+        "https://*",
+        "https://*.example.com",
+        "http://app.example.com",
+        "http://localhost:3000",
+        "https://app.example.com/",
+        "https://app.example.com/path",
+        "HTTPS://APP.EXAMPLE.COM",
+    ):
+        assert not origin.fullmatch(refused), refused
+    assert "length(var.web_origins) > 0" in code(
+        block(compute, 'variable "web_origins"')
+    )
+
+
+def test_the_app_client_allows_only_the_code_flow_and_keeps_srp_and_refresh() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    client = code(block(compute, 'resource "aws_cognito_user_pool_client" "web"'))
+
+    assert re.search(
+        r"allowed_oauth_flows_user_pool_client\s+=\s+true$", client, re.MULTILINE
+    )
+    flows = re.search(r"allowed_oauth_flows\s+=\s+\[([^\]]*)\]", client)
+    assert flows and flows.group(1) == '"code"'
+    assert "implicit" not in client and "client_credentials" not in client
+    assert re.search(r'allowed_oauth_scopes\s+=\s+\["openid"\]', client)
+    assert re.search(
+        r"callback_urls\s+=\s+var\.cognito_callback_urls$", client, re.MULTILINE
+    )
+    assert re.search(
+        r"logout_urls\s+=\s+var\.cognito_logout_urls$", client, re.MULTILINE
+    )
+    assert re.search(r'supported_identity_providers\s+=\s+\["COGNITO"\]', client)
+    assert re.search(r"generate_secret\s+=\s+false$", client, re.MULTILINE)
+    assert re.search(
+        r'explicit_auth_flows\s+=\s+\["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"\]',
+        client,
+    )
+    for setting in (
+        r'prevent_user_existence_errors\s+=\s+"ENABLED"',
+        r"enable_token_revocation\s+=\s+true",
+        r"access_token_validity\s+=\s+60",
+        r"id_token_validity\s+=\s+60",
+        r"refresh_token_validity\s+=\s+12",
+    ):
+        assert re.search(setting, client), setting
+
+
+def test_callback_and_logout_urls_must_be_exact_https() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+
+    for name in ("cognito_callback_urls", "cognito_logout_urls"):
+        pattern = validation_pattern(compute, name)
+        assert f"length(var.{name}) > 0" in code(block(compute, f'variable "{name}"'))
+        for allowed in (
+            "https://app.example.com/",
+            "https://app.example.com/auth/callback",
+        ):
+            assert pattern.fullmatch(allowed), (name, allowed)
+        for refused in (
+            "http://app.example.com/",
+            "http://localhost:3000/",
+            "https://*.example.com/",
+            "https://app.example.com/*",
+            "https://app.example.com/#done",
+            "app.example.com/",
+        ):
+            assert not pattern.fullmatch(refused), (name, refused)
+
+
+def test_managed_login_uses_a_prefix_domain_and_a_default_style() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    domain = code(block(compute, 'resource "aws_cognito_user_pool_domain" "owner"'))
+    branding = code(
+        block(compute, 'resource "aws_cognito_managed_login_branding" "web"')
+    )
+    pool = code(block(compute, 'resource "aws_cognito_user_pool" "owner"'))
+
+    assert re.search(r"domain\s+=\s+var\.cognito_domain_prefix$", domain, re.MULTILINE)
+    assert re.search(r"managed_login_version\s+=\s+2$", domain, re.MULTILINE)
+    # A custom domain would need an ACM certificate and CloudFront (ADR-022).
+    assert "certificate_arn" not in domain
+    assert (
+        "client_id                   = aws_cognito_user_pool_client.web.id" in branding
+    )
+    assert re.search(r"use_cognito_provided_values\s+=\s+true$", branding, re.MULTILINE)
+    assert re.search(r'user_pool_tier\s+=\s+"ESSENTIALS"$', pool, re.MULTILINE)
+    assert re.search(r'deletion_protection\s+=\s+"ACTIVE"$', pool, re.MULTILINE)
+
+    prefix = validation_pattern(compute, "cognito_domain_prefix")
+    assert prefix.fullmatch("owner-app1")
+    for refused in ("-owner", "owner-", "Owner", "owner.app", "a" * 64, ""):
+        assert not prefix.fullmatch(refused), refused
+
+
+def test_no_owner_app_output_exposes_a_secret() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    root = PRODUCTION_ROOT.read_text(encoding="utf-8")
+
+    for text in (compute, root):
+        for name, body in re.findall(r'output "(\w+)" \{(.*?)\n\}', text, re.DOTALL):
+            assert "token" not in name and "secret" not in name.replace(
+                "secret_arn", ""
+            ), name
+            assert "sensitive(" not in body, name
+    assert "client_secret" not in code(compute)
