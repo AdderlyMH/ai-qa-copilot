@@ -87,8 +87,8 @@
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "bytes": 46665,
-      "sha256": "1a812ac7f010b3b544e922ed3e59c6d5a7f6e754fdfbc74c95fc7d185776f1e5"
+      "bytes": 47541,
+      "sha256": "3e8f75c4c854f7c33587c111e770b415af2ca4fb877f076fce2200f629ae18f8"
     },
     {
       "path": "docs/B1_CANDIDATE_EXECUTOR.md",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 122324,
-      "sha256": "6503f51949d8eba008abc4a3b465e369755bae64eec0c3234209a83a85ac70d7"
+      "bytes": 124190,
+      "sha256": "29e705e830233f4fe60ec9339036a8ebc050c5eb346e1c148b2c9d064dbf31aa"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 208666,
-      "sha256": "02ccf5acd9a28be3e0437aa0be1b2e20a1e3cb1e00b25a37cbb0c51d5d459fa2"
+      "bytes": 209673,
+      "sha256": "dcd1feb06ee6b2aefa29853855404e977ca67351a01834f8bc408d28909ff1c2"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 201346,
-      "sha256": "3b2d4797af979f08552d3a5054c126f3055eef4f3feee011b6988808ee687c23"
+      "bytes": 203078,
+      "sha256": "b9abe1e7944d55e26cb4dfb3aa11ea118ebdce8d2bb06ad88c27ff37908c3eb0"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -257,18 +257,18 @@
     },
     {
       "path": "docs/adr/ADR-017-network-egress-and-database-connectivity.md",
-      "bytes": 14657,
-      "sha256": "601931fea4f1e6d8c48ae1a70d33b83c93b283c9037bfbecc783e40cedf73947"
+      "bytes": 14971,
+      "sha256": "6b5d1a2a00ed07729efdb3ec5d1841b62655999bf9fb22617f7ce8af0ca0091f"
     },
     {
       "path": "docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md",
-      "bytes": 27524,
-      "sha256": "73afd21291fdd5ea0f6a34c50eef7e935262a9acd9a625812ab61c3d2f0b11bb"
+      "bytes": 28294,
+      "sha256": "ef1e11c5ac07de89588524a99c94510f5ca99c351cc7590e0a009e9f85b565ec"
     },
     {
       "path": "docs/adr/ADR-019-guest-demo-snapshot.md",
-      "bytes": 53145,
-      "sha256": "8a69d1a3a0d664559b5b74f462dabfa3efc0be09d77349d11446d680b5fd5256"
+      "bytes": 53643,
+      "sha256": "c696f7a96db90cf7b913c857abd26e46416221c5e554ffedd49eaaa72e45dbad"
     },
     {
       "path": "docs/adr/ADR-020-production-database-rds-postgresql.md",
@@ -281,9 +281,14 @@
       "sha256": "7eb1e4e3bbaf7ec17752aef29251c44cca3535358a8aaeee8cf8db8031cc7c73"
     },
     {
+      "path": "docs/adr/ADR-022-owner-app-frontend-host.md",
+      "bytes": 18171,
+      "sha256": "0622ebfce2d9bab0c2858320445dae147f30b2f9508ddb6a72bb4cc32c1e00fc"
+    },
+    {
       "path": "docs/adr/README.md",
-      "bytes": 5235,
-      "sha256": "7c49a0f82defdcdef6ccaf33090f5fca5e1c9d7c75f5dd48cb67258aac5ac060"
+      "bytes": 5410,
+      "sha256": "f4ade5479a95fca15eb8e18a86f57c4a51458507a918f05e8c6bc9e915197c70"
     },
     {
       "path": "docs/evidence/github-ruleset-2026-10-12/README.md",

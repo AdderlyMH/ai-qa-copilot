@@ -30,7 +30,7 @@ Research for this decision was done on 2026-10-12 and 2026-10-13 from official A
 - **S3:** a gateway VPC endpoint for Amazon S3 (no additional charge) on the private route tables.
 - **Database connection:** a direct connection from Lambda to the database endpoint inside the VPC, through the existing `DATABASE_URL` and SQLAlchemy code. **No RDS Proxy**, because a proxy holds connections open and prevents Aurora Serverless v2 from pausing.
 - **Guest demo:** the server-selected, immutable, sanitized `DemoPublication` revision is served as a **static snapshot** (object storage behind CloudFront), so guest traffic never opens a database connection. *Note (2026-10-21):* while CloudFront is unavailable to the account, the guest static snapshot is served from an external static host ([ADR-019](ADR-019-guest-demo-snapshot.md) Decision 13); guest traffic still opens no database connection.
-- **TLS for the frontend:** the CloudFront certificate is requested or imported in AWS Certificate Manager in **us-east-1**.
+- **TLS for the frontend:** the CloudFront certificate is requested or imported in AWS Certificate Manager in **us-east-1**. *Note (2026-10-23):* the owner-app frontend is not on CloudFront; it is served from a Cloudflare Pages project with that platform's HTTPS, and no ACM certificate is used for it ([ADR-022](ADR-022-owner-app-frontend-host.md)). A custom Cognito domain, which would need an ACM certificate in us-east-1, is not used.
 
 **Not decided here:** the production PostgreSQL provider. The ADR-005 database gate stays in force and INFRA-003 owns the selection. Aurora PostgreSQL Serverless v2 is assumed only to analyse connection, pause and resume behaviour.
 

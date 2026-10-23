@@ -1,5 +1,34 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## ADR-022: owner-app frontend host (docs only) — 2026-10-23
+
+**Status:** Owner decisions of 2026-10-23, recorded in documentation only. No
+code, Terraform, package, AWS or Cloudflare change.
+
+[ADR-022](adr/ADR-022-owner-app-frontend-host.md) (Accepted) decides the
+INFRA-010 host: a separate Cloudflare Pages project on the Free plan serving
+the static export of `apps/web`; Cognito Hosted UI with authorization code and
+PKCE on a prefix domain (no custom Cognito domain, which needs CloudFront and
+an ACM certificate in us-east-1); the access token in `sessionStorage` and no
+refresh token in the browser; a subdomain of the owner's domain through a
+Pages CNAME (the `pages.dev` address stays reachable unless redirected); and a
+CI deploy for the owner app only from a protected GitHub environment, which
+amends ADR-019 Decision 13 for that app. Amplify Hosting, an S3 website
+endpoint and serving from the API Lambda are not chosen. Sources read
+2026-10-23 are cited in the ADR.
+
+Dated notes added to ADR-017, ADR-018 and ADR-019; INFRA-010 gets a
+correction and a six-stage list (this is stage 1; nothing is met); stale
+statements corrected with dated notes in BACKLOG (M2 address, the INFRA-011
+dependency on INFRA-010), INFRASTRUCTURE.md (the `compute_api` CloudFront
+description, the `demo_cdn_enabled` dependency line, two open-host lines) and
+ARCHITECTURE 12.1 and 12.4. Open: the pool tier and managed-login availability,
+the prefix-domain charge, whether a Cloudflare token can be limited to one
+project, the domain's registrar and cost, Pages versus Workers, HTTP API CORS
+behavior, the throttle against polling, and the unbuilt export.
+
+Next action: owner review and merge; INFRA-010 stage 2 (Terraform, plan only).
+
 ## INFRA-012 and INFRA-008 accepted; INFRA-002 status rewritten (docs only) — 2026-10-22
 
 **Status:** Owner decisions of 2026-10-22, recorded in documentation only.

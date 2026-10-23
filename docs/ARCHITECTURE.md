@@ -629,6 +629,16 @@ guest static snapshot is served from an external static host
 ([ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decision 13); guest traffic
 still opens no database connection.
 
+**Note (2026-10-23):** two nodes of the diagram above are superseded. The
+"Amplify Hosting or CloudFront" node is neither: the owner-app static export
+is served from its own Cloudflare Pages project and the guest demo from
+another ([ADR-022](adr/ADR-022-owner-app-frontend-host.md), ADR-019
+Decision 13). The "Cognito JWT authorizer" node does not exist: the HTTP API
+has no API Gateway authorizer, and the API function validates Cognito access
+tokens itself ([ADR-018](adr/ADR-018-production-composition-lambda-runtime-and-secrets.md),
+`auth.py`). Owner sign-in uses the Cognito Hosted UI with authorization code
+and PKCE on a prefix domain.
+
 ### 12.2 Workload identity and network boundaries
 
 The following deployment roles are separate IAM identities, queue policies, database roles, object-store prefixes, network policies, and telemetry namespaces. A shared code repository or container base image must not merge these permissions.
@@ -665,7 +675,10 @@ Terraform modules should cover:
 - Network and security groups where required, including the NAT instance,
   the parser subnet without an egress route and the S3 gateway endpoint
   ([ADR-017](adr/ADR-017-network-egress-and-database-connectivity.md)).
-- Frontend hosting.
+- Frontend hosting. *(Note 2026-10-23: the frontend host is Cloudflare Pages,
+  outside Terraform ([ADR-022](adr/ADR-022-owner-app-frontend-host.md));
+  Terraform covers the HTTP API CORS and the Cognito domain, OAuth and
+  callback settings for it.)*
 - API Gateway.
 - Cognito.
 - Lambda API, restricted parser, general worker, and restricted executor deployments.

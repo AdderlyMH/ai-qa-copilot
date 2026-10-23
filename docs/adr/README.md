@@ -41,6 +41,7 @@ decision trigger and cannot be treated as an implemented or verified choice.
 | [ADR-019](ADR-019-guest-demo-snapshot.md) | Guest demo snapshot: allowlist projection, content-hash layout, local publish script, static viewer | Accepted |
 | [ADR-020](ADR-020-production-database-rds-postgresql.md) | Production database: RDS for PostgreSQL db.t4g.micro (ADR-019 is reserved for INFRA-011) | Accepted |
 | [ADR-021](ADR-021-parser-database-credential.md) | Parser database credential: a restricted role with its URL in the Lambda environment (ADR-018 fallback) | Accepted |
+| [ADR-022](ADR-022-owner-app-frontend-host.md) | Owner-app frontend host: a separate Cloudflare Pages project, Hosted UI with PKCE on a prefix domain, CI deploy | Accepted |
 
 ## Required ADR structure
 
