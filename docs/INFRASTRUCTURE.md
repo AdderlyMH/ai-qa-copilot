@@ -1400,8 +1400,10 @@ UPDATE by the application role; any connection by the general role or
 `verify-full` from the general image; the OpenAI call; what a Lambda timeout
 does to an open transaction.
 
-**CloudFront:** the AWS case had no reply as of 2026-10-20. While
-`demo_cdn_enabled` is false the guest page has no HTTPS host.
+**CloudFront:** the AWS case had no reply as of 2026-10-20. *(Updated
+2026-10-22: the request was declined on 2026-10-21, and the guest page has
+been served over HTTPS from Cloudflare Pages since 2026-10-22; see
+[First deployment, 2026-10-22 UTC](#first-deployment-2026-10-22-utc).)*
 
 **Status:** INFRA-012 acceptance evidence is recorded (the application role
 connected from a function); acceptance is the owner's call, so INFRA-012
@@ -2711,7 +2713,9 @@ in us-east-1. Facts only; account and resource identifiers are not recorded here
 - `compute_api` as a whole: not applied, so nothing about the Lambda functions,
   HTTP API, Cognito or the guest demo is verified.
 - The two buckets: not yet created; the fix is verified only by `fmt`,
-  `validate` and the Checkov scan, not by an apply.
+  `validate` and the Checkov scan, not by an apply. *(Updated 2026-10-22:
+  the buckets exist: later entries apply their bucket policies and use the
+  data bucket for uploads. No entry records the date they were created.)*
 
 **Lessons:**
 
@@ -3353,8 +3357,11 @@ least-privilege deploy role and the manual approval before apply.
    job. Needs the AWS account and the OIDC provider first.
 5. **Budgets and alarms.** Owned by HARD-003.
 6. **First apply** of `infra/bootstrap` and `infra/environments/production` by
-   the owner: partially done on 2026-10-13 (see [First apply, 2026-10-13](#first-apply-2026-10-13));
-   the two buckets and `compute_api` remain.
+   the owner: partially done on 2026-10-13 (see [First apply, 2026-10-13](#first-apply-2026-10-13)).
+   *Updated 2026-10-22:* the two buckets exist (later entries apply their
+   bucket policies and use the data bucket for uploads; no entry records
+   their creation date), and `compute_api` was applied on 2026-10-20 (see
+   [Compute apply and owner API check, 2026-10-20](#compute-apply-and-owner-api-check-2026-10-20)).
 7. **Deferred scanner finding.** S3 server access logging (`CKV_AWS_18`),
    revisit in HARD-001.
 8. **API demo-bucket grant:** removed in code and applied by the owner on

@@ -1,5 +1,34 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-012 and INFRA-008 accepted; INFRA-002 status rewritten (docs only) — 2026-10-22
+
+**Status:** Owner decisions of 2026-10-22, recorded in documentation only.
+
+- **INFRA-012: Accepted.** Migrated to head and read back (2026-10-17 and
+  2026-10-19 runs); the application role connects from a function
+  (2026-10-20). The failed-run criterion is covered by tests only
+  (`test_lambda_migrate.py`, `test_lambda_migrate_postgres.py`); no failed
+  run was staged in production.
+- **INFRA-008: Accepted**, with four open follow-ups: `verify-full` from the
+  general function (waits for INFRA-013), the OpenAI call (a live call), the
+  ADR-020 `FreeableMemory` alarm threshold (still OPEN, needs new readings),
+  and what a Lambda timeout does to an open transaction (a live test).
+- **INFRA-002: NOT Accepted.** Met: the API over HTTPS with an owner token,
+  uploads parsed end to end, and the guest read-only demo over HTTPS on
+  Cloudflare Pages (ADR-019 Decision 13), a deliberate deviation from the
+  CloudFront plan. Not met: the owner workflow in a browser over HTTPS
+  (M2), which depends on INFRA-010.
+
+Stale lines corrected with dated notes in BACKLOG and INFRASTRUCTURE.md (the
+parser login, the parser queue grant, the OpenAI key, the RDS master-secret
+keys, the two buckets, `compute_api`, and the "no HTTPS host" statements); the
+migrate image digest in the INFRA-012 history is replaced by a role
+description. ADR-018 Validation gets a dated note pointing to the recorded
+evidence.
+
+Next action: owner review and merge; INFRA-010 for the remaining INFRA-002
+criterion.
+
 ## Next.js bumped to 16.4.2 for a critical npm advisory — 2026-10-22
 
 **Status:** **Closed 2026-10-22 (SG-07 item 5):** the bump merged to `main` on 2026-10-22, and `security-scans` on `main` passed (owner-reported from the Actions run, 2026-10-22).
