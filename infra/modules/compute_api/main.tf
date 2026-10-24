@@ -210,6 +210,57 @@ variable "api_log_retention_days" {
   default     = 14
 }
 
+# Owner app (INFRA-010 stage 2, ADR-022). No defaults: the values are the
+# owner's addresses and live in the private production.tfvars.
+variable "web_origins" {
+  description = "Exact HTTPS origins of the owner web app allowed by the HTTP API CORS configuration (scheme and host, optional port; no path, no trailing slash, no wildcard)."
+  type        = list(string)
+
+  validation {
+    condition = length(var.web_origins) > 0 && alltrue([
+      for origin in var.web_origins :
+      can(regex("^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:[0-9]{1,5})?$", origin))
+    ])
+    error_message = "web_origins needs at least one entry; each must be https://<host>[:port] in lowercase, with no path, trailing slash or wildcard."
+  }
+}
+
+variable "cognito_domain_prefix" {
+  description = "Prefix of the Cognito prefix domain (<prefix>.auth.<region>.amazoncognito.com). A custom Cognito domain is not used (ADR-022)."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", var.cognito_domain_prefix))
+    error_message = "cognito_domain_prefix must be 1 to 63 lowercase letters, digits or hyphens, and must not start or end with a hyphen."
+  }
+}
+
+variable "cognito_callback_urls" {
+  description = "Exact HTTPS callback URLs for the authorization code flow (no wildcard, no fragment)."
+  type        = list(string)
+
+  validation {
+    condition = length(var.cognito_callback_urls) > 0 && alltrue([
+      for url in var.cognito_callback_urls :
+      can(regex("^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:[0-9]{1,5})?(/[^*#\\s]*)?$", url))
+    ])
+    error_message = "cognito_callback_urls needs at least one entry; each must be an exact https:// URL with no wildcard or fragment."
+  }
+}
+
+variable "cognito_logout_urls" {
+  description = "Exact HTTPS sign-out URLs (no wildcard, no fragment)."
+  type        = list(string)
+
+  validation {
+    condition = length(var.cognito_logout_urls) > 0 && alltrue([
+      for url in var.cognito_logout_urls :
+      can(regex("^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:[0-9]{1,5})?(/[^*#\\s]*)?$", url))
+    ])
+    error_message = "cognito_logout_urls needs at least one entry; each must be an exact https:// URL with no wildcard or fragment."
+  }
+}
+
 data "aws_partition" "current" {}
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
@@ -383,6 +434,19 @@ resource "aws_apigatewayv2_api" "http" {
   name          = "${var.name_prefix}-http"
   protocol_type = "HTTP"
   description   = "Owner and guest API; the function validates Cognito tokens itself (auth.py)."
+
+  # Owner web app on its own origin (ADR-022). API Gateway answers preflight
+  # requests and ignores CORS headers from the integration; FastAPI sets none.
+  # Methods are those the API routes serve to the web app; /demo accepts more
+  # methods only to deny them. Bearer header, no cookies: no credentials.
+  cors_configuration {
+    allow_origins     = var.web_origins
+    allow_methods     = ["DELETE", "GET", "POST"]
+    allow_headers     = ["authorization", "content-type", "x-upload-filename"]
+    expose_headers    = ["x-correlation-id"]
+    allow_credentials = false
+    max_age           = 600
+  }
 }
 
 resource "aws_apigatewayv2_integration" "api" {
@@ -530,6 +594,9 @@ resource "aws_cognito_user_pool" "owner" {
   name                = "${var.name_prefix}-owner"
   deletion_protection = "ACTIVE"
   username_attributes = ["email"]
+  # The deployed pool is on ESSENTIALS (owner read, 2026-10-23); pinned so a
+  # plan shows no tier change. Managed login needs a tier other than LITE.
+  user_pool_tier = "ESSENTIALS"
 
   # One server-configured owner; no self sign-up (ADR-008).
   admin_create_user_config {
@@ -553,8 +620,18 @@ resource "aws_cognito_user_pool" "owner" {
   }
 }
 
-# Public client: no client secret. OAuth flows (authorization code with PKCE)
-# need a user pool domain and HTTPS callback URLs, which are deferred.
+# Prefix domain for managed login (ADR-022): no custom domain, so no
+# CloudFront distribution and no ACM certificate. Version 2 is managed login,
+# which needs a non-LITE tier and a branding style per app client.
+resource "aws_cognito_user_pool_domain" "owner" {
+  domain                = var.cognito_domain_prefix
+  user_pool_id          = aws_cognito_user_pool.owner.id
+  managed_login_version = 2
+}
+
+# Public client: no client secret. Authorization code only; a public client
+# must send PKCE from the web app (stage 4). SRP and refresh-token flows are
+# kept for the existing owner API check.
 resource "aws_cognito_user_pool_client" "web" {
   name                                 = "${var.name_prefix}-web"
   user_pool_id                         = aws_cognito_user_pool.owner.id
@@ -562,7 +639,11 @@ resource "aws_cognito_user_pool_client" "web" {
   explicit_auth_flows                  = ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
   prevent_user_existence_errors        = "ENABLED"
   enable_token_revocation              = true
-  allowed_oauth_flows_user_pool_client = false
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows                  = ["code"]
+  allowed_oauth_scopes                 = ["openid"]
+  callback_urls                        = var.cognito_callback_urls
+  logout_urls                          = var.cognito_logout_urls
   supported_identity_providers         = ["COGNITO"]
   access_token_validity                = 60
   id_token_validity                    = 60
@@ -573,6 +654,15 @@ resource "aws_cognito_user_pool_client" "web" {
     id_token      = "minutes"
     refresh_token = "hours"
   }
+}
+
+# A client created through the API has no branding style, and managed login
+# is not available to it until one exists (Cognito CreateUserPoolDomain and
+# managed login documentation). Cognito's default style, no custom assets.
+resource "aws_cognito_managed_login_branding" "web" {
+  user_pool_id                = aws_cognito_user_pool.owner.id
+  client_id                   = aws_cognito_user_pool_client.web.id
+  use_cognito_provided_values = true
 }
 
 # ---------------------------------------------------------------- Outputs
@@ -600,6 +690,11 @@ output "cognito_user_pool_id" {
 output "cognito_client_id" {
   description = "Public app client ID (no secret)."
   value       = aws_cognito_user_pool_client.web.id
+}
+
+output "cognito_domain_base_url" {
+  description = "Base address of the Cognito prefix domain for the managed login and OAuth endpoints (not a secret)."
+  value       = "https://${aws_cognito_user_pool_domain.owner.domain}.auth.${data.aws_region.current.region}.amazoncognito.com"
 }
 
 output "function_names" {

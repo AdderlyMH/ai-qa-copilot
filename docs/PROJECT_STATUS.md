@@ -17,6 +17,35 @@ still contain pypdf 6.21.1 until the next rebuild.
 Next action: owner review and merge, then rerun `security-scans` on the open
 pull requests.
 
+## INFRA-010 stage 2: HTTP API CORS and Cognito OAuth (Terraform code) — 2026-10-23
+
+**Status:** Code on a branch; **not planned, not applied.** No AWS or
+Cloudflare call. Nothing is marked met.
+
+`infra/modules/compute_api` and the production root gain HTTP API CORS for
+the owner web origins (`DELETE`, `GET`, `POST`; `authorization`,
+`content-type`, `x-upload-filename` allowed; `x-correlation-id` exposed; no
+credentials), a Cognito prefix domain with managed login (version 2) and a
+default managed-login style for the web client, the authorization code flow
+with the `openid` scope and HTTPS callback and logout URLs on the existing
+public client (SRP, refresh-token and token settings unchanged), and
+`user_pool_tier = "ESSENTIALS"` pinned to match the deployed pool (owner
+read-only check, 2026-10-23). Four new required variables (`web_origins`,
+`cognito_domain_prefix`, `cognito_callback_urls`, `cognito_logout_urls`) are
+validated in the module; their values belong in the private tfvars.
+
+Finding: a Terraform-created app client has no managed-login style, and
+managed login is not available to it until one exists, so the module creates
+one. Uncertain until apply: the page shown before a style exists, and the
+API's acceptance of `use_cognito_provided_values` alone.
+
+Checks: `terraform validate` passed; Checkov 381 passed, 0 failed, 63 skipped
+(unchanged); six new contract tests in `test_infra_contracts.py`. ADR-022 open
+items updated (pool tier read; CORS documentation read; prefix-domain charge
+and Pages versus Workers still OPEN).
+
+Next action: owner review and merge; the plan and apply are stage 6.
+
 ## ADR-022: owner-app frontend host (docs only) — 2026-10-23
 
 **Status:** Owner decisions of 2026-10-23, recorded in documentation only. No

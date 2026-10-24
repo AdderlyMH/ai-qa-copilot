@@ -1577,7 +1577,7 @@ closed.
 | 3 | pip-audit (2026-10-21) on the locked runtime dependencies: `pypdf` 6.19.0 has GHSA-qfv9-64jg-mh7p and GHSA-9mx8-4j7g-633p (fixed in 6.20.1) and GHSA-7mh2-4gg2-979f and GHSA-39mj-jf6j-2qj3 (fixed in 6.20.0); upstream changelog: per-stream work limits (6.20.0) and cyclic-tree handling (6.20.1) | `uv.lock` bumped to pypdf 6.20.1 on branch `chore/pypdf-advisory-bump` (not merged). **Correction (2026-10-22):** merged to `main` in PR #212 and superseded by pypdf 6.21.1 (item 4); `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0. ADR-018 excludes PDF from the production scope; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | The bump merged to `main`, then the same five-image rebuild verifying the pypdf version inside each built image |
 | 4 | pip-audit (2026-10-21, later the same day) on the locked runtime dependencies: `pypdf` 6.20.1 has GHSA-5hx5-vpf9-5wcv, "Unvalidated JPEG image data loading", severity low, published 2026-10-21, fixed in 6.21.1; upstream changelog: /DCTDecode data is opened only with the Pillow JPEG plugin (6.21.1), plus stream-parsing and field work limits (6.21.0). Pillow is not a dependency of this project | Item 3's bump to 6.20.1 is on `main` (PR #212). `uv.lock` bumped to pypdf 6.21.1 on branch `chore/pypdf-6-21-1` (not merged). **Correction (2026-10-22):** merged to `main` in PR #214; `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0, so items 3 and 4 both apply to them | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | The bump merged to `main`, then the same five-image rebuild verifying pypdf 6.21.1 or later inside each built image |
 | 5 | `npm audit --omit=dev` (2026-10-22) on the `main` lockfile printed: package `next`, range `16.0.0 - 16.4.0`, severity critical, with two advisories: GHSA-2464-fhr4-w9xw (critical, "Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used") and GHSA-p3m5-59mp-jv5r (high, "Denial of Service in App Router using Server Actions"), each with range `>=16.0.0 <=16.4.0`. The audit printed only these two; the public release notes were not read here, so whether they list more (for example, one involving Cache Components) is to be checked against the Next.js advisory. No public reports of exploitation as of 2026-10-15, according to a news report | `package-lock.json` on `main` locked `next` 16.3.8 before the bump. The owner web app (`apps/web`) is not deployed (INFRA-010 has no host), and the guest demo is the standalone static viewer, not Next.js. The advisories require specific features: Cache Components with `use cache`, SVG processing through the image optimizer or `next/og`, or a Server Action. Evidence: a grep of `apps/web` (source files and `next.config.ts`, 2026-10-22) finds no `use cache`, no `use server`, no `cacheComponents`, no `dangerouslyAllowSVG`, no `next/og`, no `ImageResponse` and no `<Image`; the only `next/image` match is the generated type reference in `apps/web/next-env.d.ts:2` (`/// <reference types="next/image-types/global" />`), not an import. `next.config.ts` sets only an `/api/:path*` rewrite and no `images` option | **Closed 2026-10-22:** the bump merged to `main` on 2026-10-22, and `security-scans` on `main` passed (owner-reported from the Actions run, 2026-10-22), which meets the close condition. The first fixed release is 16.4.1; the lockfile moves to 16.4.2 (owner choice, the latest 16.x patch), which adds no security fixes according to a third-party report (reported by a third party; verify against the Next.js advisory). Only `next` and its `@next/*` packages change in the lockfile; the web build passes and `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities. No deployed artifact contains `next` | The bump merged to `main` and `security-scans` passing there |
-| 6 | pip-audit (CI `security-scans`, 2026-10-24, and reproduced locally the same day) on the locked runtime dependencies: `pypdf` 6.21.1 has GHSA-6c7f-9265-g8fw (long runtimes from a crafted PDF that references the same non-existent indirect object many times), GHSA-jr96-gvgh-j3r4 (long runtimes from repeated malformed cross-reference streams; a follow-up to GHSA-55h5-xmcq-c37v) and GHSA-gmh7-3g9r-mjh5 (long runtimes from large or wrong upper limits in the xref table), all fixed in 6.21.2 (advisory descriptions as printed by `pip-audit --desc`; the upstream changelog was not read). All three are denial of service through processing time, not code execution | `apps/api/pyproject.toml` and `uv.lock` bumped to pypdf 6.21.2 on branch `chore/pypdf-6-21-2` (not merged); only `pypdf` changes in the lock. The four deployed functions run the 2026-10-22 images, which contain pypdf 6.21.1. ADR-018 excludes PDF from the production scope and the parser has a 15 s timeout; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-24):** owner disposition pending; no risk acceptance recorded | The bump merged to `main` and `security-scans` passing there; then the next image rebuild verifying pypdf 6.21.2 or later inside each built image |
+| 6 | pip-audit (CI `security-scans`, 2026-10-24, and reproduced locally the same day) on the locked runtime dependencies: `pypdf` 6.21.1 has GHSA-6c7f-9265-g8fw (long runtimes from a crafted PDF that references the same non-existent indirect object many times), GHSA-jr96-gvgh-j3r4 (long runtimes from repeated malformed cross-reference streams; a follow-up to GHSA-55h5-xmcq-c37v) and GHSA-gmh7-3g9r-mjh5 (long runtimes from large or wrong upper limits in the xref table), all fixed in 6.21.2 (advisory descriptions as printed by `pip-audit --desc`; the upstream changelog was not read). All three are denial of service through processing time, not code execution | `apps/api/pyproject.toml` and `uv.lock` bumped to pypdf 6.21.2 on branch `chore/pypdf-6-21-2` (not merged); only `pypdf` changes in the lock. The four deployed functions run the 2026-10-22 images, which contain pypdf 6.21.1. ADR-018 excludes PDF from the production scope and the parser has a 15 s timeout; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-24):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-24):** the bump to pypdf 6.21.2 is merged to `main` (PR #228). The item stays **open**: the close condition (a passing scan and the next image rebuild) is not met yet | The bump merged to `main` and `security-scans` passing there; then the next image rebuild verifying pypdf 6.21.2 or later inside each built image |
 
 ### Next actions
 
@@ -1600,6 +1600,105 @@ closed.
 - The CloudFront case: `demo_cdn_enabled = false` stays until it is
   resolved. **Resolved 2026-10-21:** declined; see
   [CloudFront verification declined; guest demo host, 2026-10-21](#cloudfront-verification-declined-guest-demo-host-2026-10-21).
+
+## Owner-app CORS and Cognito OAuth (INFRA-010 stage 2, 2026-10-23)
+
+Terraform code only, on a branch: **not planned, not applied.** No AWS or
+Cloudflare call was made. Decisions in
+[ADR-022](adr/ADR-022-owner-app-frontend-host.md).
+
+**What changed** (`infra/modules/compute_api`, the production root and the
+example tfvars):
+
+- **HTTP API CORS** (`cors_configuration` on `aws_apigatewayv2_api.http`):
+  `allow_origins = var.web_origins`; `allow_methods` `DELETE`, `GET`, `POST`
+  (the methods the FastAPI routes serve; `/demo` also accepts `HEAD`, `PUT`
+  and `PATCH`, but only to deny them, so they are not offered to the web
+  origin); `allow_headers` `authorization`, `content-type`,
+  `x-upload-filename`; `expose_headers` `x-correlation-id`;
+  `allow_credentials = false` (bearer header, no cookies); `max_age` 600 s.
+  There is no local-development origin in the production module.
+- **Cognito prefix domain** (`aws_cognito_user_pool_domain.owner`) from
+  `cognito_domain_prefix`, with `managed_login_version = 2` (managed login).
+  No certificate, so no custom domain and no CloudFront distribution.
+- **Managed login style** (`aws_cognito_managed_login_branding.web`) for the
+  web client with `use_cognito_provided_values = true` (Cognito's default
+  style, no custom assets).
+- **App client** `web`: `allowed_oauth_flows_user_pool_client = true`,
+  `allowed_oauth_flows = ["code"]`, `allowed_oauth_scopes = ["openid"]`,
+  `callback_urls` and `logout_urls` from variables;
+  `supported_identity_providers`, `ALLOW_USER_SRP_AUTH`,
+  `ALLOW_REFRESH_TOKEN_AUTH`, token validities, revocation and
+  user-existence settings unchanged. The client is public (no secret), so the
+  web app must send PKCE (stage 4); Cognito does not let Terraform require it
+  on the client.
+- **Pool tier** pinned: `user_pool_tier = "ESSENTIALS"`, matching the owner's
+  read-only check of the deployed pool (2026-10-23, tier ESSENTIALS, deletion
+  protection ACTIVE), so a plan should show no tier change.
+- **Outputs** (not secrets, not repeated in the documentation):
+  `cognito_client_id` and `cognito_domain_base_url` in the root. No output
+  prints a token or a secret.
+- `apps/api/tests/test_infra_contracts.py` pins all of the above.
+
+**New required variables** (no defaults; values only in the private
+`production.tfvars`, never in the repository; the module validates them):
+
+| Variable | Rule |
+|---|---|
+| `web_origins` | List, at least one; each `https://<host>[:port]` in lowercase, no path, no trailing slash, no wildcard. |
+| `cognito_domain_prefix` | 1 to 63 lowercase letters, digits or hyphens; no leading or trailing hyphen (the `CreateUserPoolDomain` pattern). |
+| `cognito_callback_urls` | List, at least one; each an exact `https://` URL, no wildcard, no fragment. |
+| `cognito_logout_urls` | Same rule as the callback URLs. |
+
+Every plan of the production root now needs all four. The example tfvars
+carries fake `example.com` values.
+
+**Managed-login finding.** Cognito serves either managed login (branding
+version 2) or the classic hosted UI (version 1) on a domain, not both; the
+Lite plan has only the classic hosted UI. `ManagedLoginVersion` 2 "does not
+activate managed login pages for your app client": a client created through
+the API or an SDK, as Terraform does, has no branding style, and managed login
+is not available to it until a style exists (`CreateManagedLoginBranding`);
+only the console creates one automatically. The module therefore sets version
+2 and creates a default style. **Uncertain:** what the sign-in page shows
+before the style exists (not stated in what was read), and that
+`use_cognito_provided_values = true` alone is accepted by the API at apply
+time (the provider schema allows it; not exercised).
+
+**CORS finding.** With CORS configured on an HTTP API, API Gateway answers
+preflight `OPTIONS` requests itself, adds the configured headers to
+integration responses, and ignores CORS headers returned by the integration.
+The FastAPI app sets no `Access-Control-*` header and has no `CORSMiddleware`
+(source read 2026-10-23), so there is no overlap. This API has no authorizer
+on `$default`, so the documented `OPTIONS /{proxy+}` workaround for an
+authorized `$default` route is not needed. Not verified live.
+
+**Checks run:** `terraform init -backend=false` and `terraform validate` for
+the production root, `terraform fmt -check` on the changed files, and the CI
+Checkov scan: 381 passed, 0 failed, 63 skipped (unchanged counts; no new
+skip).
+
+**Not applied; owner steps later (stage 6):** add the four variables to the
+private tfvars, run a targeted plan of `module.compute_api` and confirm it
+adds the domain and the branding style, changes the API (CORS) and the client
+(OAuth) in place, and shows no change to the pool tier; then apply. No apply
+is recorded here.
+
+**Documentation read, 2026-10-23:**
+
+- *User pool managed login* (Amazon Cognito Developer Guide),
+  <https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-managed-login.html>
+- *Using the Amazon Cognito prefix domain for managed login*,
+  <https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-assign-domain-prefix.html>
+- *CreateUserPoolDomain* (Amazon Cognito API Reference),
+  <https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_CreateUserPoolDomain.html>
+- *Apply branding to managed login pages*,
+  <https://docs.aws.amazon.com/cognito/latest/developerguide/managed-login-branding.html>
+- *Configure CORS for HTTP APIs in API Gateway*,
+  <https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-cors.html>
+- The pinned AWS provider's schema (6.68.0, `terraform providers schema -json`
+  after `init -backend=false`): `user_pool_tier`, `managed_login_version`,
+  `aws_cognito_managed_login_branding` and `cors_configuration` are present.
 
 ## CloudFront verification declined; guest demo host, 2026-10-21
 

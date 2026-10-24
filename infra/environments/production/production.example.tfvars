@@ -50,6 +50,14 @@ cognito_owner_subject = "REPLACE_WITH_OWNER_SUB"
 model_provider        = "openai"
 executor_enabled      = false
 
+# Owner web app (INFRA-010 stage 2, ADR-022). Required, no defaults. FAKE
+# example values: use the owner app's real addresses (HTTPS only, exact
+# matches, no wildcard; origins have no path or trailing slash).
+web_origins           = ["https://app.example.com"]
+cognito_domain_prefix = "replace-with-prefix"
+cognito_callback_urls = ["https://app.example.com/"]
+cognito_logout_urls   = ["https://app.example.com/"]
+
 # Guest-demo CloudFront distribution (default true). Set false while CloudFront
 # is unavailable to the account; the guest page then has no HTTPS host.
 # demo_cdn_enabled = false
