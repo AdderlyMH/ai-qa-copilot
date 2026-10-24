@@ -1,5 +1,22 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## pypdf bumped to 6.21.2 for three pip-audit advisories — 2026-10-24
+
+**Status:** On branch `chore/pypdf-6-21-2`; not merged. Nothing deployed
+changes.
+
+The application-CI `security-scans` job failed on `pip-audit --strict`:
+`pypdf` 6.21.1 has GHSA-6c7f-9265-g8fw, GHSA-jr96-gvgh-j3r4 and
+GHSA-gmh7-3g9r-mjh5, each a crafted-PDF long-runtime issue fixed in 6.21.2.
+The failure comes from new advisories against the `main` lockfile, not from
+the INFRA-010 stage 2 change. `apps/api/pyproject.toml` and `uv.lock` move to
+pypdf 6.21.2; no other package changes. Recorded as SG-07 item 6 in
+INFRASTRUCTURE.md, open with owner disposition pending. The deployed images
+still contain pypdf 6.21.1 until the next rebuild.
+
+Next action: owner review and merge, then rerun `security-scans` on the open
+pull requests.
+
 ## ADR-022: owner-app frontend host (docs only) — 2026-10-23
 
 **Status:** Owner decisions of 2026-10-23, recorded in documentation only. No
