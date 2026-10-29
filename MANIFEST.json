@@ -47,8 +47,8 @@
     },
     {
       "path": ".github/workflows/docs-validation.yml",
-      "bytes": 2031,
-      "sha256": "3385cb7cc7169d96bfdd9d4c378ef144efd06d9004ba1f42f70a74cc77201bb1"
+      "bytes": 2030,
+      "sha256": "567a65d6d00610cc188c14d3cee0a26892d1f53b7df2b07ecf543d75eb0161cc"
     },
     {
       "path": ".node-version",
