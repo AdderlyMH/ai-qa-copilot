@@ -321,6 +321,81 @@ def test_owner_app_variables_have_no_defaults_and_reach_the_module() -> None:
         assert re.search(rf"^\s+{name}\s+=\s+var\.{name}$", module, re.MULTILINE), name
 
 
+def test_preflight_route_is_unauthenticated_and_shares_the_default_integration() -> (
+    None
+):
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    preflight = code(block(compute, 'resource "aws_apigatewayv2_route" "preflight"'))
+    default = code(block(compute, 'resource "aws_apigatewayv2_route" "default"'))
+    target = re.compile(r"^\s+target\s+=\s+(.+)$", re.MULTILINE)
+
+    assert re.search(
+        r'^\s+route_key\s+=\s+"OPTIONS /\{proxy\+\}"$', preflight, re.MULTILINE
+    )
+    assert re.search(r'^\s+authorization_type\s+=\s+"NONE"$', preflight, re.MULTILINE)
+    assert "authorizer" not in preflight
+    assert "authorization_scopes" not in preflight
+    preflight_target = target.search(preflight)
+    default_target = target.search(default)
+    assert preflight_target and default_target
+    assert preflight_target.group(1) == default_target.group(1)
+    assert preflight_target.group(1) == (
+        '"integrations/${aws_apigatewayv2_integration.api.id}"'
+    )
+    assert len(re.findall(r'resource "aws_apigatewayv2_route" "', compute)) == 2
+
+
+def test_default_route_is_unchanged() -> None:
+    assert block(
+        COMPUTE_API.read_text(encoding="utf-8"),
+        'resource "aws_apigatewayv2_route" "default"',
+    ) == (
+        'resource "aws_apigatewayv2_route" "default" {\n'
+        "  #checkov:skip=CKV_AWS_309:No API Gateway authorizer: guest routes are "
+        "anonymous by design (ADR-008) and the API function validates Cognito "
+        "access tokens for owner routes (auth.py).\n"
+        "  api_id    = aws_apigatewayv2_api.http.id\n"
+        '  route_key = "$default"\n'
+        '  target    = "integrations/${aws_apigatewayv2_integration.api.id}"\n'
+        "}"
+    )
+
+
+def test_cors_block_is_unchanged() -> None:
+    assert block(COMPUTE_API.read_text(encoding="utf-8"), "  cors_configuration {") == (
+        "  cors_configuration {\n"
+        "    allow_origins     = var.web_origins\n"
+        '    allow_methods     = ["DELETE", "GET", "POST"]\n'
+        '    allow_headers     = ["authorization", "content-type", "x-upload-filename"]\n'
+        '    expose_headers    = ["x-correlation-id"]\n'
+        "    allow_credentials = false\n"
+        "    max_age           = 600\n"
+        "  }"
+    )
+
+
+def test_preflight_skip_is_present_and_scoped_to_that_route_only() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+    skip = (
+        "#checkov:skip=CKV_AWS_309:Browser preflight requests carry no token, "
+        "so this route cannot require authorization."
+    )
+
+    assert compute.count(skip) == 1
+    assert skip in block(compute, 'resource "aws_apigatewayv2_route" "preflight"')
+    # One skip per route: $default keeps its own and nothing else has one.
+    assert compute.count("checkov:skip=CKV_AWS_309") == 2
+    assert (
+        len(
+            re.findall(
+                r"#checkov:skip=",
+                block(compute, 'resource "aws_apigatewayv2_route" "preflight"'),
+            )
+        )
+        == 1
+    )
+
+
 def test_http_api_cors_is_limited_to_https_web_origins_without_credentials() -> None:
     compute = COMPUTE_API.read_text(encoding="utf-8")
     cors = code(block(compute, "  cors_configuration {"))

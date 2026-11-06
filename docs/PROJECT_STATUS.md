@@ -1,5 +1,28 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## HTTP API preflight: hypothesized OPTIONS route — 2026-11-06
+
+**Status:** Terraform code on a branch. **The route is a HYPOTHESIZED fix, NOT
+applied and NOT verified.** No AWS call was made. Nothing is marked met.
+
+The owner's live checks on 2026-11-06, after the stage 2 apply, showed `OPTIONS`
+on `/health` and `/projects` returning a non-2xx (405 from FastAPI on `/health`,
+500 once on `/projects`), with the request reaching the Lambda function. This
+contradicts the stage 2 claim that API Gateway answers preflight itself.
+
+`aws_apigatewayv2_route.preflight` adds `OPTIONS /{proxy+}` with no authorization
+and the same integration as `$default`, with one new inline `CKV_AWS_309` skip
+because browser preflight requests carry no token. The `$default` route and the
+CORS block are unchanged. The route may still pass `OPTIONS` to FastAPI, and it
+does not match a preflight to the bare path `/`.
+
+Fallback: if the route does not work, handle `OPTIONS` in the application in the
+next image rebuild and remove this route. See INFRASTRUCTURE.md, "HTTP API
+preflight: live finding and hypothesized route, 2026-11-06".
+
+Next action: owner review and merge, then a targeted apply and a repeat of the
+live checks.
+
 ## INFRA-010 stage 6a: owner-app deploy workflow, ADR-022 amendment and runbook — 2026-11-06
 
 **Status:** On a branch. **Nothing is deployed and nothing is applied, and no

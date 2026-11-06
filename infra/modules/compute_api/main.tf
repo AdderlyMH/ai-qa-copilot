@@ -435,8 +435,11 @@ resource "aws_apigatewayv2_api" "http" {
   protocol_type = "HTTP"
   description   = "Owner and guest API; the function validates Cognito tokens itself (auth.py)."
 
-  # Owner web app on its own origin (ADR-022). API Gateway answers preflight
-  # requests and ignores CORS headers from the integration; FastAPI sets none.
+  # Owner web app on its own origin (ADR-022).
+  # These settings add CORS headers to responses.
+  # Whether API Gateway answers a preflight itself was not confirmed live
+  # (2026-11-06: the OPTIONS request reached the Lambda); see docs/INFRASTRUCTURE.md,
+  # section on the preflight finding.
   # Methods are those the API routes serve to the web app; /demo accepts more
   # methods only to deny them. Bearer header, no cookies: no credentials.
   cors_configuration {
@@ -462,6 +465,16 @@ resource "aws_apigatewayv2_route" "default" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
+}
+
+# Preflight reached the function through $default on the live API (2026-11-06).
+# This route is a hypothesized fix, not applied and not verified.
+resource "aws_apigatewayv2_route" "preflight" {
+  #checkov:skip=CKV_AWS_309:Browser preflight requests carry no token, so this route cannot require authorization.
+  api_id             = aws_apigatewayv2_api.http.id
+  route_key          = "OPTIONS /{proxy+}"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
 resource "aws_cloudwatch_log_group" "api_access" {
