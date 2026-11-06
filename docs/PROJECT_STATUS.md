@@ -1,5 +1,50 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-010 stage 5: upload form and document-status panel — 2026-11-05
+
+**Status:** Code on a branch; **not deployed.** **Never run against the real
+API**, and sign-in has still never run against real Cognito. No AWS or Cloudflare
+call and no Terraform or `apps/api/src` change. Nothing is marked met.
+
+When signed in, or with auth disabled in development, a selected project now
+shows an upload form and a document list; both call the API through `apiFetch`.
+The form takes `.md` and `.txt` only and checks extension, name and size in the
+browser. The size limit is 2 MiB, the server's per-type limit for those types,
+which is below its 10 MiB maximum. These checks are for convenience; the server
+decides. Error messages come only from the status code and known rejection codes.
+The list renders server values as text, newest first.
+
+The list polls one request at a time: right after an upload or on opening a
+project, then every 3 seconds while any document is `quarantined`,
+`parser_queued` or `parsing` (`DocumentStatus` in `document_status.py`), up to 3
+minutes. A 429, a 5xx or a network error doubles the delay up to 30 seconds, and
+a success returns it to 3 seconds. Polling pauses while the page is hidden and
+stops on sign-out, a 401, project change or unmount.
+
+**Measured worst case, not against the live throttle:** a simulated-timer run gave
+60 requests in 180 seconds, 0.333 per second with a minimum gap of 3,000 ms,
+against the shared limit of 5 per second. An upload adds one POST and an immediate
+list request, and the rate is per open page.
+
+Checked locally with placeholder values only, on the built export in one
+Chromium-based browser behind the generated CSP, with a same-origin mock API, a
+fabricated token and the API host rewritten to the mock in the page. Upload was
+accepted and polling stopped on `parsed`. Three 429 responses gave gaps of 6, 12
+and 24 seconds, then 3 again. A hidden page sent no request. Sign-out and a 401
+each stopped polling. Oversized, non-text and non-ASCII-named files were refused
+with no request sent, an HTML-like filename rendered as text, and there were no
+CSP violations. Not verified: the real API, CORS, the live throttle, whether a
+gateway 429 is readable by the browser (either way it backs off), and Cloudflare
+Pages serving the header.
+
+The CSP generator now also fails above 100 header rules. The limits of 2000
+characters per line and 100 rules are **VERIFIED**: stated in the Cloudflare Pages
+"Headers" docs (<https://developers.cloudflare.com/pages/configuration/headers/>),
+checked 2026-11-05 by the owner. The stage 5 line is 1,443 characters.
+
+Next action: owner review and merge; then stage 6 (deploy workflow, apply and the
+M2 acceptance run).
+
 ## INFRA-010 stage 4: Hosted UI sign-in, PKCE and token handling — 2026-11-05
 
 **Status:** Code on a branch; **not deployed.** **The sign-in flow has never

@@ -12,6 +12,7 @@ import {
   startSignIn,
   subscribeAuth,
 } from "../lib/auth/session";
+import { DocumentIntakeSection } from "./document-intake-section";
 import { SourcePassageViewer } from "./source-passage-viewer";
 import { FindingFeedbackPanel } from "./finding-feedback-panel";
 import { ExecutionPlanReviewPanel } from "./execution-plan-review-panel";
@@ -347,6 +348,10 @@ function ProjectWorkspace() {
           <p>{selectedProject.description || "No description."}</p>
           <p>{selectedProject.archived_at ? "Archived" : "Active"}</p>
 
+          <DocumentIntakeSection
+            key={`documents-${selectedProject.id}`}
+            projectId={selectedProject.id}
+          />
           <SourcePassageViewer projectId={selectedProject.id} />
           <FindingFeedbackPanel projectId={selectedProject.id} />
           <ExecutionPlanReviewPanel projectId={selectedProject.id} />

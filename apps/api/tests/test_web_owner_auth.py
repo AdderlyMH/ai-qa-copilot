@@ -165,8 +165,8 @@ def test_no_direct_api_fetch_outside_the_wrapper() -> None:
             assert "apiUrl" not in text or source.name == "api-url.ts", source
         wrapped_calls += len(re.findall(r"\bapiFetch\(", text))
 
-    # The 16 call sites plus the wrapper's own definition.
-    assert wrapped_calls == 17
+    # 16 existing call sites, 2 stage 5 call sites and the wrapper's definition.
+    assert wrapped_calls == 19
 
 
 @pytest.mark.parametrize("name", AUTH_VARIABLES)
