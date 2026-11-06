@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiUrl } from "../lib/api-url";
 import { SourcePassageViewer } from "./source-passage-viewer";
 import { FindingFeedbackPanel } from "./finding-feedback-panel";
 import { ExecutionPlanReviewPanel } from "./execution-plan-review-panel";
@@ -63,7 +64,7 @@ export default function Home() {
   async function loadProjects() {
     setBusy(true);
     try {
-      const response = await fetch("/api/projects");
+      const response = await fetch(apiUrl("/api/projects"));
       if (!response.ok) {
         throw new Error(await responseError(response));
       }
@@ -83,7 +84,7 @@ export default function Home() {
     event.preventDefault();
     setBusy(true);
     try {
-      const response = await fetch("/api/projects", {
+      const response = await fetch(apiUrl("/api/projects"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: description || null }),
@@ -110,7 +111,7 @@ export default function Home() {
   async function viewProject(projectId: string) {
     setBusy(true);
     try {
-      const response = await fetch(`/api/projects/${projectId}`);
+      const response = await fetch(apiUrl(`/api/projects/${projectId}`));
       if (!response.ok) {
         throw new Error(await responseError(response));
       }
@@ -123,7 +124,7 @@ export default function Home() {
       setAnalysisRuns([]);
 
       const runsResponse = await fetch(
-        `/api/projects/${projectId}/analysis-runs`,
+        apiUrl(`/api/projects/${projectId}/analysis-runs`),
       );
       if (!runsResponse.ok) {
         setMessage(
@@ -152,7 +153,7 @@ export default function Home() {
     setBusy(true);
     try {
       const response = await fetch(
-        `/api/projects/${selectedProject.id}/analysis-runs`,
+        apiUrl(`/api/projects/${selectedProject.id}/analysis-runs`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -178,9 +179,12 @@ export default function Home() {
   async function archiveProject(projectId: string) {
     setBusy(true);
     try {
-      const response = await fetch(`/api/projects/${projectId}/archive`, {
-        method: "POST",
-      });
+      const response = await fetch(
+        apiUrl(`/api/projects/${projectId}/archive`),
+        {
+          method: "POST",
+        },
+      );
       if (!response.ok) {
         throw new Error(await responseError(response));
       }

@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiUrl } from "../lib/api-url";
+
 type ExecutionPlanReview = {
   plan_id: string;
   plan_hash: string;
@@ -128,7 +130,7 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
     setBusy(true);
     try {
       const response = await fetch(
-        `/api/projects/${projectId}/execution-plan-reviews`,
+        apiUrl(`/api/projects/${projectId}/execution-plan-reviews`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -178,7 +180,7 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
     setBusy(true);
     try {
       const response = await fetch(
-        `/api/projects/${projectId}/execution-approvals`,
+        apiUrl(`/api/projects/${projectId}/execution-approvals`),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

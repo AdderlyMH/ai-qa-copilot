@@ -1,5 +1,37 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-010 stage 3: static export and build-time API base URL — 2026-11-05
+
+**Status:** Code on a branch; **not deployed.** No AWS or Cloudflare call and
+no Terraform change. Nothing is marked met.
+
+`apps/web/next.config.ts` now selects its configuration by Next phase. A
+production build uses `output: "export"` with no rewrite or redirect, and fails
+unless `NEXT_PUBLIC_API_BASE_URL` is set, starts with `https://` and has no
+trailing slash (rejected, not normalized). The development server keeps the
+`/api/:path*` rewrite to `API_BASE_URL`, which no build reads.
+`PUBLIC_DEMO_MODE=true` keeps its temporary redirect from `/` to `/demo` and
+does not export. Every `fetch` in `apps/web/src/app` goes through
+`apiUrl()` (`apps/web/src/lib/api-url.ts`), which replaces the `/api` prefix
+with the base URL when one is set; methods, bodies, headers and response
+handling are unchanged. Sign-in and tokens remain stage 4; polling and upload
+remain stage 5.
+
+`python scripts/tasks.py ci` now runs the web build with the placeholder
+`https://api.example.invalid`, set for that command only, and the
+`application-ci` `quality` job reaches it through that target. Local builds
+showed: export mode wrote `out/` including `index.html` and `demo.html`, demo
+mode wrote no `out/`, and an unset, `http://` or trailing-slash value failed
+with the error above. The step has not yet run on GitHub, so the ADR-022 open
+item stays OPEN. A local `ci` run now leaves a regenerated
+`apps/web/next-env.d.ts` to revert.
+
+The public Vercel showcase page (`/demo` and `PUBLIC_DEMO_MODE`, PR #232) is
+already merged to `main`. The `docs-validation` runner pin to `ubuntu-24.04`
+(PR #233) is also already merged.
+
+Next action: owner review and merge; then stage 4 (Hosted UI sign-in).
+
 ## pypdf bumped to 6.21.2 for three pip-audit advisories — 2026-10-24
 
 **Status:** On branch `chore/pypdf-6-21-2`; not merged. Nothing deployed
