@@ -1,5 +1,22 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## pypdf bumped to 6.21.4 for seven pip-audit advisories — 2026-11-05
+
+**Status:** On branch `chore/pypdf-6-21-4`; not merged. Nothing deployed
+changes.
+
+The application-CI `security-scans` job failed on `pip-audit --strict`:
+`pypdf` 6.21.2 has seven new advisories, each a denial of service through a
+crafted PDF (long runtimes, large memory use or an infinite loop); four are
+fixed in 6.21.3 and three in 6.21.4. The failure comes from the `main`
+lockfile, not from the INFRA-010 stage 3 branch where it was seen.
+`apps/api/pyproject.toml` and `uv.lock` move to pypdf 6.21.4; no other package
+changes. Recorded as SG-07 item 7 in INFRASTRUCTURE.md, open with owner
+disposition pending.
+
+Next action: owner review and merge, then rerun `security-scans` on the open
+pull requests.
+
 ## pypdf bumped to 6.21.2 for three pip-audit advisories — 2026-10-24
 
 **Status:** On branch `chore/pypdf-6-21-2`; not merged. Nothing deployed
