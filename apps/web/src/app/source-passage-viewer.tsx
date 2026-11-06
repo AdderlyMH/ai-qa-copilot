@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiUrl } from "../lib/api-url";
+
 type Citation = {
   id: string;
   document_type: string;
@@ -68,7 +70,7 @@ export function SourcePassageViewer({ projectId }: { projectId: string }) {
     setBusy(true);
     try {
       const response = await fetch(
-        `/api/projects/${projectId}/citations/${candidate}`,
+        apiUrl(`/api/projects/${projectId}/citations/${candidate}`),
       );
       if (!response.ok) {
         throw new Error(await responseError(response));

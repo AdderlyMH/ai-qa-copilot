@@ -1037,7 +1037,7 @@ of this backlog.
 - **Stages (one commit each; none is met yet):**
   1. ADR-022 and the stale documentation statements (docs only).
   2. Terraform, plan only: HTTP API CORS for the web origin (allow `Authorization`, `Content-Type`, `X-Upload-Filename`; expose `X-Correlation-ID`), Cognito prefix domain, OAuth authorization code with PKCE on the app client, HTTPS callback and logout URLs. *(2026-10-23: **code on branch, not applied**; also pins the pool tier ESSENTIALS and adds a default managed-login style; see INFRASTRUCTURE.md, "Owner-app CORS and Cognito OAuth (INFRA-010 stage 2, 2026-10-23)".)*
-  3. Web: remove the rewrite, build-time API base URL, `output: "export"`; `next build` added to CI.
+  3. Web: remove the rewrite, build-time API base URL, `output: "export"`; `next build` added to CI. *(2026-11-05: **code on branch, not deployed**; the production build exports with no rewrite and requires an `https://` `NEXT_PUBLIC_API_BASE_URL` with no trailing slash; the `/api/:path*` rewrite stays for the development server only; `PUBLIC_DEMO_MODE=true` builds are unchanged and do not export. The build runs inside `python scripts/tasks.py ci` against a placeholder host. See PROJECT_STATUS.md.)*
   4. Web: Hosted UI sign-in, sign-out and token handling.
   5. Upload form and document-status panel, with slow polling against the 5 requests per second API throttle.
   6. Deploy workflow and protected environment, apply, and the M2 acceptance run.

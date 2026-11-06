@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 124405,
-      "sha256": "702e323cdce5f901f9f810f8be12b8ca4f8bdfa66bae63ce9ff5f63da42bfb55"
+      "bytes": 124809,
+      "sha256": "4f92cc96ca252e15f7327a7c371b4d9ad11204c2c8aa92b986ab2f9ab8a50c1d"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 206299,
-      "sha256": "46bb5730afb073dc12725331b56a1aa27d4bbe85bd702921a071970b60271262"
+      "bytes": 208063,
+      "sha256": "0b6e0eadb667a7bf0ea71c204af23a62819b3243e674d03d62a9003a2a516bec"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -282,8 +282,8 @@
     },
     {
       "path": "docs/adr/ADR-022-owner-app-frontend-host.md",
-      "bytes": 19182,
-      "sha256": "19137958b0b00d659186ad74052d351f431da39a4c00ec86eb3d0874423deecc"
+      "bytes": 19717,
+      "sha256": "94bd731b8eeb2d31e191f101df05627e0d03bdfa4bcf4c5347d2323b42fe3abe"
     },
     {
       "path": "docs/adr/README.md",
@@ -432,8 +432,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 30765,
-      "sha256": "cc4e9ff9cdb0616e00e2101d70f0c77056452c060c58984b298cdb0c0bce1acd"
+      "bytes": 31189,
+      "sha256": "64efc569dab84f11c65e42f673a0cbb3d020547e89037ec8ea01dcc9bf28e2f4"
     },
     {
       "path": "scripts/validate_docs.py",

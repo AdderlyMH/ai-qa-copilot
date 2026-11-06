@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiUrl } from "../lib/api-url";
+
 type ExecutionEvidence = {
   id: string;
   execution_job_id: string;
@@ -103,7 +105,9 @@ export function ExecutionEvidenceViewer({ projectId }: { projectId: string }) {
 
     try {
       const evidenceResponse = await fetch(
-        `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/evidence`,
+        apiUrl(
+          `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/evidence`,
+        ),
       );
       if (!evidenceResponse.ok) {
         throw new Error(await responseError(evidenceResponse));
@@ -121,7 +125,9 @@ export function ExecutionEvidenceViewer({ projectId }: { projectId: string }) {
       }
 
       const analysisResponse = await fetch(
-        `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/failure-analysis`,
+        apiUrl(
+          `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/failure-analysis`,
+        ),
       );
       if (!analysisResponse.ok) {
         setMessage(

@@ -20,6 +20,7 @@ EXPECTED_NODE_MAJOR = 24
 EXECUTABLE_OVERRIDE_PREFIX = "AI_QA_COPILOT"
 ALEMBIC_CONFIG = "apps/api/alembic.ini"
 COMPOSE_FILE = "compose.yaml"
+CI_WEB_API_BASE_URL = "https://api.example.invalid"
 DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
@@ -192,6 +193,16 @@ def typecheck() -> None:
     npm_run("typecheck:web")
 
 
+def web_build() -> None:
+    """Build the static web export against a placeholder API host."""
+
+    verify_node_major()
+    environment = node_environment()
+    environment.pop("PUBLIC_DEMO_MODE", None)
+    environment["NEXT_PUBLIC_API_BASE_URL"] = CI_WEB_API_BASE_URL
+    run(npm(), "run", "build", "--workspace", "@ai-qa-copilot/web", env=environment)
+
+
 def test() -> None:
     """Run documentation self-tests and backend tests."""
 
@@ -224,6 +235,7 @@ def ci() -> None:
     format_check()
     lint()
     typecheck()
+    web_build()
     test()
     security_harness()
     docs_check()
