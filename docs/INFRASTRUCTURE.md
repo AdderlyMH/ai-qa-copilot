@@ -1701,6 +1701,189 @@ is recorded here.
   after `init -backend=false`): `user_pool_tier`, `managed_login_version`,
   `aws_cognito_managed_login_branding` and `cors_configuration` are present.
 
+## Owner-app deployment runbook (INFRA-010 stage 6b, owner-run)
+
+Written in stage 6a, 2026-11-06. **No step here has been executed.** Nothing is
+applied or deployed, and no Cloudflare account, token, environment or secret
+for the owner app exists yet. Decisions are in
+[ADR-022](adr/ADR-022-owner-app-frontend-host.md). The owner fills every
+`<placeholder>` privately. The domain name, account ID, project name, client ID
+and API address are not written in the repository, and the Cloudflare screen
+names below are from documentation, not from a run.
+
+Direct Upload and `_headers` serving by Cloudflare are unverified until step 9.
+
+**What stage 6a did NOT verify:**
+
+- The Wrangler action on Pages. The pinned action and Wrangler version were taken as given and have not run.
+- CORS live, between the owner app's address and the API.
+- The Hosted UI default style.
+- The 5 requests per second throttle under polling.
+- The prefix-domain charge.
+
+**Values used below:**
+
+| Placeholder | Meaning |
+|---|---|
+| `app.<owner-domain>` | The owner app's address: the subdomain `app` of the owner's domain |
+| `<pages-project-name>` | The Pages project in the owner-app Cloudflare account |
+| `<cognito-prefix>` | The Cognito domain prefix; choose an unused one |
+| `<api-base-url>` | The `http_api_endpoint` output, with no trailing slash |
+
+**Step 1. OWNER RUNS THIS: create the second Cloudflare account.**
+
+Create a separate Cloudflare account for the owner app, not a member of or the
+same account as the guest demo's. Record its account ID privately. Keep nothing
+else in this account: step 3's token reaches every Pages project in it.
+
+**Step 2. OWNER RUNS THIS: create the Pages project for Direct Upload.**
+
+A Wrangler session may still be signed in to the guest demo's account, so
+confirm the account first and stop if `whoami` lists the guest demo's account:
+
+```powershell
+npx wrangler@4.158.0 login
+npx wrangler@4.158.0 whoami
+$env:CLOUDFLARE_ACCOUNT_ID = "<owner-app-account-id>"
+npx wrangler@4.158.0 pages project create "<pages-project-name>" --production-branch=main
+Remove-Item Env:CLOUDFLARE_ACCOUNT_ID
+```
+
+Do not connect a Git repository to the project: CI deploys it.
+
+**Step 3. OWNER RUNS THIS: create the API token.**
+
+In the Cloudflare dashboard, create a custom API token with exactly one
+permission, *Account*, *Cloudflare Pages*, *Edit*, and under account resources
+include only the owner-app account. Copy it only into step 4.
+
+Its limits: it cannot be narrowed to one Pages project, as far as the official
+documentation read shows (ADR-022 open items), so it can create, edit and delete
+every Pages project in that account, including replacing the owner app. The
+separate account is what keeps it away from the guest demo. Set an expiry if you
+will rotate it, and revoke it at once if it may have leaked.
+
+**Step 4. OWNER RUNS THIS: create the GitHub environment.**
+
+In the repository settings, create the environment `owner-app-deploy`:
+
+- Required reviewer: the owner.
+- Deployment branches: limited to `main`.
+- Secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+- Variables, set as environment variables and not secrets:
+
+| Variable | Value | When |
+|---|---|---|
+| `CLOUDFLARE_PAGES_PROJECT` | `<pages-project-name>` | Now |
+| `NEXT_PUBLIC_AUTH_REDIRECT_URI` | `https://app.<owner-domain>/` | Now |
+| `NEXT_PUBLIC_AUTH_LOGOUT_URI` | `https://app.<owner-domain>/` | Now |
+| `NEXT_PUBLIC_API_BASE_URL` | `<api-base-url>` | Now, from `terraform output -raw http_api_endpoint` |
+| `NEXT_PUBLIC_COGNITO_DOMAIN` | Output of step 7 | After step 7 |
+| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Output of step 7 | After step 7 |
+
+The workflow's validation step fails, without printing a value, until all six
+are valid.
+
+**Step 5. OWNER RUNS THIS: fill the private tfvars.**
+
+Add these to the private `production.tfvars`, all from the same address. The
+callback and logout URLs are the https site root with a trailing slash; the
+origin has no trailing slash:
+
+```hcl
+web_origins           = ["https://app.<owner-domain>"]
+cognito_domain_prefix = "<cognito-prefix>"
+cognito_callback_urls = ["https://app.<owner-domain>/"]
+cognito_logout_urls   = ["https://app.<owner-domain>/"]
+```
+
+**Step 6. OWNER RUNS THIS: plan `module.compute_api`.**
+
+From `infra/environments/production`, with the owner's local credentials:
+
+```powershell
+terraform init -backend-config=backend.hcl
+terraform plan "-var-file=production.tfvars" '-target=module.compute_api' "-out=tfplan"
+```
+
+Read the **whole** plan. Expected, from
+[the stage 2 section](#owner-app-cors-and-cognito-oauth-infra-010-stage-2-2026-10-23):
+
+- Added: the Cognito domain and the managed-login branding style.
+- Changed in place: the HTTP API (CORS) and the app client (OAuth).
+- No change to the pool tier.
+- Nothing destroyed or replaced.
+
+If the plan destroys or replaces anything, changes the tier, or lists anything
+else you cannot explain, do not apply.
+
+Stop and paste the plan to the reviewer before apply.
+
+**Step 7. OWNER RUNS THIS: apply and read the outputs.**
+
+Only after the reviewer has read the plan:
+
+```powershell
+terraform apply tfplan
+terraform output -raw cognito_client_id
+terraform output -raw cognito_domain_base_url
+```
+
+Set `NEXT_PUBLIC_COGNITO_CLIENT_ID` and `NEXT_PUBLIC_COGNITO_DOMAIN` in the
+environment from these. Neither is a secret, and neither goes in the repository.
+
+**Step 8. OWNER RUNS THIS: attach the address.**
+
+In the Pages project, attach the custom domain `app.<owner-domain>`. At the DNS
+provider, add a CNAME for `app` pointing to `<pages-project-name>.pages.dev`.
+Wait until the Pages project shows the domain as active.
+
+**Step 9. OWNER RUNS THIS: deploy.**
+
+```powershell
+gh workflow run deploy-owner-app.yml --ref main
+```
+
+Approve the `owner-app-deploy` environment when the run asks. Then confirm that
+the CSP is served and allows no inline script by keyword:
+
+```powershell
+curl.exe -sI "https://app.<owner-domain>/" | Select-String "content-security-policy"
+```
+
+In the browser's developer tools, confirm `/` and `/demo` load with no CSP
+violation. This is the first real test of Direct Upload and `_headers`.
+
+**Step 10. OWNER RUNS THIS: the M2 acceptance run.**
+
+Against the INFRA-010 acceptance text, in a browser over HTTPS on
+`app.<owner-domain>`:
+
+1. Sign in through the Hosted UI, and note which sign-in page style appears.
+2. Create a project.
+3. Submit synthetic text, and see the analysis run saved.
+4. Upload a Markdown file and watch its status reach a final state.
+5. Without a token, an owner route returns 401:
+
+   ```powershell
+   curl.exe -s -o NUL -w "%{http_code}`n" "<api-base-url>/projects"
+   ```
+
+6. Record the Cognito tier and any domain charge once a bill shows it.
+
+**Evidence to paste back, with no token, client ID, account ID or domain name:**
+
+- [ ] The step 6 plan summary line, and confirmation that nothing was destroyed.
+- [ ] The deploy run's conclusion and commit, from `main`.
+- [ ] The CSP header check from step 9, with hosts and hashes removed.
+- [ ] Sign-in succeeded, and the page style seen.
+- [ ] The token is in `sessionStorage`, and no refresh token is in browser storage.
+- [ ] A project created and a synthetic analysis saved.
+- [ ] The Markdown upload's final status.
+- [ ] The 401 from step 10.
+- [ ] Any CORS, CSP or 429 error seen in the browser while polling.
+- [ ] The Cognito tier, and any domain charge or that no bill has shown one yet.
+
 ## CloudFront verification declined; guest demo host, 2026-10-21
 
 Owner decision, documentation only: no Terraform, tfvars or AWS change. The

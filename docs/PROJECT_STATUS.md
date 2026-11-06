@@ -1,5 +1,36 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-010 stage 6a: owner-app deploy workflow, ADR-022 amendment and runbook — 2026-11-06
+
+**Status:** On a branch. **Nothing is deployed and nothing is applied, and no
+secrets, Cloudflare account or GitHub environment for it exist yet.** No AWS,
+Cloudflare or GitHub-settings call was made and Terraform is unchanged. Nothing
+is marked met. Stage 6b is owner-run and has not started.
+
+`.github/workflows/deploy-owner-app.yml` deploys the owner app, never the guest
+demo. It runs only by manual dispatch and deploys only from `main`; a run from
+another ref prints why and does nothing. It waits on the owner-created
+`owner-app-deploy` environment. It validates the build variables with the
+`next.config.ts` rules, builds with the npm script so the CSP is written, and
+refuses output with no `_headers` or `index.html`, or with `unsafe-inline`. The
+two Cloudflare secrets reach only the deploy step. The workflow has never run;
+actions were pinned from `application-ci.yml` and, for `wrangler-action` and
+Wrangler, from the owner's brief, and those two pins were not re-checked here.
+
+ADR-022 now records the owner decisions of 2026-11-05: a separate Cloudflare
+account for the owner app, the address `app.<owner-domain>`, and the split of
+stage 6. The token-scope item is PARTIALLY RESOLVED. The runbook is in
+INFRASTRUCTURE.md, "Owner-app deployment runbook (INFRA-010 stage 6b, owner-run)".
+
+Verified locally only: the workflow parses as YAML, its contract tests pass, and
+its validation and output-check scripts behaved as intended when extracted and
+run on placeholder values. Unverified until stage 6b: the Wrangler action on
+Pages, Direct Upload, `_headers` serving by Cloudflare, CORS live, the Hosted UI
+default style, the 5 requests per second throttle under polling, and the
+prefix-domain charge.
+
+Next action: owner review and merge; then the runbook, step by step.
+
 ## INFRA-010 stage 5: upload form and document-status panel — 2026-11-05
 
 **Status:** Code on a branch; **not deployed.** **Never run against the real
