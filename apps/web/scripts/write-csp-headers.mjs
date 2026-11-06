@@ -6,8 +6,11 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Cloudflare Pages limit for one line of a _headers file.
+// VERIFIED: 2000 characters per line and 100 header rules, as stated in the
+// Cloudflare Pages "Headers" docs, checked 2026-11-05:
+// https://developers.cloudflare.com/pages/configuration/headers/
 const MAX_LINE_LENGTH = 2000;
+const MAX_HEADER_RULES = 100;
 const OUT_DIR = "out";
 
 const ENTITIES = {
@@ -93,7 +96,17 @@ function main() {
       `The CSP line is ${line.length} characters; the _headers limit is ${MAX_LINE_LENGTH}.`,
     );
   }
-  writeFileSync(join(OUT_DIR, "_headers"), `/*\n${line}\n`);
+  const headersFile = `/*\n${line}\n`;
+  // A rule starts at an unindented line; headers under it are indented.
+  const ruleCount = headersFile
+    .split("\n")
+    .filter((text) => text !== "" && !/^\s/.test(text)).length;
+  if (ruleCount > MAX_HEADER_RULES) {
+    throw new Error(
+      `The _headers file has ${ruleCount} rules; the limit is ${MAX_HEADER_RULES}.`,
+    );
+  }
+  writeFileSync(join(OUT_DIR, "_headers"), headersFile);
   console.log(
     `Wrote ${OUT_DIR}/_headers: ${scripts.size} script and ${styles.size} style hashes, ${line.length} characters.`,
   );
