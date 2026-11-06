@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { apiUrl } from "../lib/api-url";
+import { apiFetch } from "../lib/api-fetch";
 
 type EvidenceReference = {
   kind: string;
@@ -139,7 +139,7 @@ export function QualityReportViewer({ projectId }: { projectId: string }) {
     setMessage("Loading immutable quality report revisions...");
 
     try {
-      const response = await fetch(apiUrl(reportsPath));
+      const response = await apiFetch(reportsPath);
 
       if (!response.ok) {
         throw new Error(await responseError(response));
@@ -180,7 +180,7 @@ export function QualityReportViewer({ projectId }: { projectId: string }) {
     setMessage("Generating an immutable quality report revision...");
 
     try {
-      const response = await fetch(apiUrl(reportsPath), {
+      const response = await apiFetch(reportsPath, {
         method: "POST",
       });
 
@@ -212,8 +212,8 @@ export function QualityReportViewer({ projectId }: { projectId: string }) {
     setMessage("Loading immutable report snapshot...");
 
     try {
-      const response = await fetch(
-        apiUrl(`${reportsPath}/${encodeURIComponent(revisionId)}`),
+      const response = await apiFetch(
+        `${reportsPath}/${encodeURIComponent(revisionId)}`,
       );
 
       if (!response.ok) {

@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-import { apiUrl } from "../lib/api-url";
+import { apiFetch } from "../lib/api-fetch";
 
 type ExecutionEvidence = {
   id: string;
@@ -104,10 +104,8 @@ export function ExecutionEvidenceViewer({ projectId }: { projectId: string }) {
     setFailureAnalysis(null);
 
     try {
-      const evidenceResponse = await fetch(
-        apiUrl(
-          `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/evidence`,
-        ),
+      const evidenceResponse = await apiFetch(
+        `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/evidence`,
       );
       if (!evidenceResponse.ok) {
         throw new Error(await responseError(evidenceResponse));
@@ -124,10 +122,8 @@ export function ExecutionEvidenceViewer({ projectId }: { projectId: string }) {
         return;
       }
 
-      const analysisResponse = await fetch(
-        apiUrl(
-          `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/failure-analysis`,
-        ),
+      const analysisResponse = await apiFetch(
+        `/api/projects/${encodeURIComponent(projectId)}/execution-jobs/${encodeURIComponent(candidate)}/failure-analysis`,
       );
       if (!analysisResponse.ok) {
         setMessage(
