@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 
-import { apiUrl } from "../lib/api-url";
+import { apiFetch } from "../lib/api-fetch";
 
 type FindingFeedbackAction = "accept" | "reject" | "annotate";
 
@@ -61,7 +61,7 @@ export function FindingFeedbackPanel({ projectId }: { projectId: string }) {
 
     setBusy(true);
     try {
-      const response = await fetch(apiUrl(feedbackPath()));
+      const response = await apiFetch(feedbackPath());
       if (!response.ok) {
         throw new Error(await responseError(response));
       }
@@ -89,7 +89,7 @@ export function FindingFeedbackPanel({ projectId }: { projectId: string }) {
 
     setBusy(true);
     try {
-      const response = await fetch(apiUrl(feedbackPath()), {
+      const response = await apiFetch(feedbackPath(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

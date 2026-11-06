@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[3]
 WEB_SOURCE = ROOT / "apps/web/src"
 NEXT_CONFIG = ROOT / "apps/web/next.config.ts"
 API_URL_HELPER = WEB_SOURCE / "lib/api-url.ts"
+TOKEN_EXCHANGE = WEB_SOURCE / "lib/auth/token-exchange.ts"
 TASKS = ROOT / "scripts/tasks.py"
 APPLICATION_CI = ROOT / ".github/workflows/application-ci.yml"
 
@@ -75,6 +76,9 @@ def test_every_web_fetch_goes_through_api_url() -> None:
     sources = [*WEB_SOURCE.rglob("*.ts"), *WEB_SOURCE.rglob("*.tsx")]
     calls = 0
     for source in sources:
+        # The Cognito token exchange is the one call that is not to the API.
+        if source == TOKEN_EXCHANGE:
+            continue
         text = source.read_text(encoding="utf-8")
         assert not re.search(r"""\bfetch\(\s*[`"']/api/""", text), source
         assert not re.search(r"\bfetch\((?!\s*apiUrl\()", text), source

@@ -21,6 +21,9 @@ EXECUTABLE_OVERRIDE_PREFIX = "AI_QA_COPILOT"
 ALEMBIC_CONFIG = "apps/api/alembic.ini"
 COMPOSE_FILE = "compose.yaml"
 CI_WEB_API_BASE_URL = "https://api.example.invalid"
+CI_WEB_COGNITO_DOMAIN = "https://auth.example.invalid"
+CI_WEB_COGNITO_CLIENT_ID = "client-id.example.invalid"
+CI_WEB_SITE_ROOT = "https://app.example.invalid/"
 DB_CHECK_PROJECT_PREFIX = "ai-qa-copilot-db-check"
 DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
@@ -200,6 +203,10 @@ def web_build() -> None:
     environment = node_environment()
     environment.pop("PUBLIC_DEMO_MODE", None)
     environment["NEXT_PUBLIC_API_BASE_URL"] = CI_WEB_API_BASE_URL
+    environment["NEXT_PUBLIC_COGNITO_DOMAIN"] = CI_WEB_COGNITO_DOMAIN
+    environment["NEXT_PUBLIC_COGNITO_CLIENT_ID"] = CI_WEB_COGNITO_CLIENT_ID
+    environment["NEXT_PUBLIC_AUTH_REDIRECT_URI"] = CI_WEB_SITE_ROOT
+    environment["NEXT_PUBLIC_AUTH_LOGOUT_URI"] = CI_WEB_SITE_ROOT
     run(npm(), "run", "build", "--workspace", "@ai-qa-copilot/web", env=environment)
 
 

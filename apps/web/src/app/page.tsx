@@ -1,8 +1,17 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 
-import { apiUrl } from "../lib/api-url";
+import { apiFetch } from "../lib/api-fetch";
+import {
+  type AuthStatus,
+  getAuthStatus,
+  getServerAuthStatus,
+  initializeAuth,
+  signOut,
+  startSignIn,
+  subscribeAuth,
+} from "../lib/auth/session";
 import { SourcePassageViewer } from "./source-passage-viewer";
 import { FindingFeedbackPanel } from "./finding-feedback-panel";
 import { ExecutionPlanReviewPanel } from "./execution-plan-review-panel";
@@ -49,7 +58,61 @@ async function responseError(response: Response): Promise<string> {
   return `Request failed (${response.status})`;
 }
 
+const SIGNED_OUT_NOTES: Partial<Record<AuthStatus, string>> = {
+  expired: "Your session expired. Sign in again.",
+  error: "Sign-in failed. Try again.",
+};
+
 export default function Home() {
+  const status = useSyncExternalStore(
+    subscribeAuth,
+    getAuthStatus,
+    getServerAuthStatus,
+  );
+
+  useEffect(() => {
+    void initializeAuth();
+  }, []);
+
+  if (status === "disabled") {
+    return <ProjectWorkspace />;
+  }
+
+  if (status === "signed-in") {
+    return (
+      <>
+        <button onClick={signOut} type="button">
+          Sign out
+        </button>
+        <ProjectWorkspace />
+      </>
+    );
+  }
+
+  return (
+    <main
+      style={{
+        fontFamily: "system-ui, sans-serif",
+        margin: "3rem auto",
+        maxWidth: 760,
+      }}
+    >
+      <h1>AI Quality Engineering Copilot</h1>
+      {status === "pending" ? (
+        <p aria-live="polite">Loading.</p>
+      ) : (
+        <>
+          <p aria-live="polite">{SIGNED_OUT_NOTES[status]}</p>
+          <button onClick={() => void startSignIn()} type="button">
+            Sign in
+          </button>
+        </>
+      )}
+    </main>
+  );
+}
+
+function ProjectWorkspace() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [name, setName] = useState("");
@@ -64,7 +127,7 @@ export default function Home() {
   async function loadProjects() {
     setBusy(true);
     try {
-      const response = await fetch(apiUrl("/api/projects"));
+      const response = await apiFetch("/api/projects");
       if (!response.ok) {
         throw new Error(await responseError(response));
       }
@@ -84,7 +147,7 @@ export default function Home() {
     event.preventDefault();
     setBusy(true);
     try {
-      const response = await fetch(apiUrl("/api/projects"), {
+      const response = await apiFetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: description || null }),
@@ -111,7 +174,7 @@ export default function Home() {
   async function viewProject(projectId: string) {
     setBusy(true);
     try {
-      const response = await fetch(apiUrl(`/api/projects/${projectId}`));
+      const response = await apiFetch(`/api/projects/${projectId}`);
       if (!response.ok) {
         throw new Error(await responseError(response));
       }
@@ -123,8 +186,8 @@ export default function Home() {
       setSelectedProject(project);
       setAnalysisRuns([]);
 
-      const runsResponse = await fetch(
-        apiUrl(`/api/projects/${projectId}/analysis-runs`),
+      const runsResponse = await apiFetch(
+        `/api/projects/${projectId}/analysis-runs`,
       );
       if (!runsResponse.ok) {
         setMessage(
@@ -152,8 +215,8 @@ export default function Home() {
     }
     setBusy(true);
     try {
-      const response = await fetch(
-        apiUrl(`/api/projects/${selectedProject.id}/analysis-runs`),
+      const response = await apiFetch(
+        `/api/projects/${selectedProject.id}/analysis-runs`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -179,12 +242,9 @@ export default function Home() {
   async function archiveProject(projectId: string) {
     setBusy(true);
     try {
-      const response = await fetch(
-        apiUrl(`/api/projects/${projectId}/archive`),
-        {
-          method: "POST",
-        },
-      );
+      const response = await apiFetch(`/api/projects/${projectId}/archive`, {
+        method: "POST",
+      });
       if (!response.ok) {
         throw new Error(await responseError(response));
       }

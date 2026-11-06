@@ -1,5 +1,40 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-010 stage 4: Hosted UI sign-in, PKCE and token handling — 2026-11-05
+
+**Status:** Code on a branch; **not deployed.** **The sign-in flow has never
+been run against a real Cognito domain.** No AWS or Cloudflare call and no
+Terraform change. Nothing is marked met.
+
+`apps/web/src/lib/auth/` holds small modules using WebCrypto only, with no new
+npm package: PKCE S256, state, the authorize and logout URLs, the code exchange,
+a UX-only read of the JWT `exp` claim, and `sessionStorage` handling. Only the
+access token and its expiry are kept; the verifier and state are removed as soon
+as a callback reads them. Cognito may still return other tokens in the exchange
+response; the code reads `access_token` and drops the rest. The callback and
+logout URLs are the site root, as in the Terraform example values. All 16 API
+calls now go through `apiFetch` (`apps/web/src/lib/api-fetch.ts`), which adds the
+bearer token only for the configured API base and, on a 401 or an expired token,
+clears it and returns to the sign-in prompt, with no retry and no refresh.
+
+An export build fails unless `NEXT_PUBLIC_COGNITO_DOMAIN`,
+`NEXT_PUBLIC_COGNITO_CLIENT_ID`, `NEXT_PUBLIC_AUTH_REDIRECT_URI` and
+`NEXT_PUBLIC_AUTH_LOGOUT_URI` are valid. Demo-mode builds and the development
+server do not check them; without them auth is disabled and no header is sent.
+`python scripts/tasks.py ci` builds with `.invalid` placeholders. The export
+build also writes a hash-based CSP to `out/_headers`, with no `'unsafe-inline'`;
+see the ADR-022 open items for the policy and what was verified.
+
+Checked locally with placeholder values only: unit-style runs of the real modules
+in Node with a mocked `fetch`, including the RFC 7636 Appendix B vector, and the
+built export in one Chromium-based browser behind the generated header, where the
+CSP blocked three negative controls. In that browser a successful sign-in was not
+run; the signed-in page was reached with a fabricated token in storage, and the
+401 path used a mocked response. Not verified: Cognito accepting these requests,
+the real API accepting the token, CORS, and Cloudflare Pages serving the header.
+
+Next action: owner review and merge; then stage 5 (upload form and status panel).
+
 ## INFRA-010 stage 3: static export and build-time API base URL — 2026-11-05
 
 **Status:** Code on a branch; **not deployed.** No AWS or Cloudflare call and
