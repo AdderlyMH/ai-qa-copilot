@@ -1,5 +1,29 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Document uploads to archived projects refused — 2026-11-07
+
+**Status:** On a branch; **NOT deployed.** No AWS call was made. Nothing is
+marked met.
+
+`POST /projects/{project_id}/documents` now refuses an archived project with 409
+and `{"detail":{"code":"PROJECT_ARCHIVED","message":"Project is archived","retryable":false}}`,
+the same shape as the other upload rejections, with the `X-Correlation-ID`
+header. The check runs after authorization and the project lookup, so a non-owner
+still gets 403 and an unknown project 404, and before the request body is read.
+A refused upload creates no intake row, document, parser job, storage write or
+wake-up, and its audit trail is the same as any other rejected upload's. A new
+helper, `_require_project_accepting_uploads`, does the lookup for this route
+only; `_require_project` and its other callers are unchanged. No other route
+refuses archived projects, and the document list and status routes are
+unchanged.
+
+Verified by tests against the app only. The fix takes effect only after the
+Lambda images are rebuilt and applied, together with the 204 preflight change and
+the pypdf 6.21.4 bump already on `main`.
+
+Possible later web change: the owner app has no 409 mapping for uploads, so it
+shows its generic "The upload failed. Try again." message for this refusal.
+
 ## HTTP API preflight: 204 from the API, OPTIONS route removed — 2026-11-07
 
 **Status:** Code on a branch. **The app-level 204 is a HYPOTHESIS, NOT deployed
