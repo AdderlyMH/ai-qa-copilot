@@ -321,28 +321,14 @@ def test_owner_app_variables_have_no_defaults_and_reach_the_module() -> None:
         assert re.search(rf"^\s+{name}\s+=\s+var\.{name}$", module, re.MULTILINE), name
 
 
-def test_preflight_route_is_unauthenticated_and_shares_the_default_integration() -> (
-    None
-):
+def test_the_default_route_is_the_only_http_api_route() -> None:
     compute = COMPUTE_API.read_text(encoding="utf-8")
-    preflight = code(block(compute, 'resource "aws_apigatewayv2_route" "preflight"'))
-    default = code(block(compute, 'resource "aws_apigatewayv2_route" "default"'))
-    target = re.compile(r"^\s+target\s+=\s+(.+)$", re.MULTILINE)
 
-    assert re.search(
-        r'^\s+route_key\s+=\s+"OPTIONS /\{proxy\+\}"$', preflight, re.MULTILINE
-    )
-    assert re.search(r'^\s+authorization_type\s+=\s+"NONE"$', preflight, re.MULTILINE)
-    assert "authorizer" not in preflight
-    assert "authorization_scopes" not in preflight
-    preflight_target = target.search(preflight)
-    default_target = target.search(default)
-    assert preflight_target and default_target
-    assert preflight_target.group(1) == default_target.group(1)
-    assert preflight_target.group(1) == (
-        '"integrations/${aws_apigatewayv2_integration.api.id}"'
-    )
-    assert len(re.findall(r'resource "aws_apigatewayv2_route" "', compute)) == 2
+    assert re.findall(r'resource "aws_apigatewayv2_route" "(\w+)"', compute) == [
+        "default"
+    ]
+    assert "preflight" not in code(compute)
+    assert "OPTIONS" not in code(compute)
 
 
 def test_default_route_is_unchanged() -> None:
@@ -374,26 +360,20 @@ def test_cors_block_is_unchanged() -> None:
     )
 
 
-def test_preflight_skip_is_present_and_scoped_to_that_route_only() -> None:
-    compute = COMPUTE_API.read_text(encoding="utf-8")
-    skip = (
-        "#checkov:skip=CKV_AWS_309:Browser preflight requests carry no token, "
-        "so this route cannot require authorization."
-    )
+def test_checkov_skips_are_back_to_the_count_before_the_preflight_route() -> None:
+    skips = [
+        line
+        for path in (ROOT / "infra").rglob("*.tf")
+        if ".terraform" not in path.parts
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if "#checkov:skip=" in line
+    ]
 
-    assert compute.count(skip) == 1
-    assert skip in block(compute, 'resource "aws_apigatewayv2_route" "preflight"')
-    # One skip per route: $default keeps its own and nothing else has one.
-    assert compute.count("checkov:skip=CKV_AWS_309") == 2
-    assert (
-        len(
-            re.findall(
-                r"#checkov:skip=",
-                block(compute, 'resource "aws_apigatewayv2_route" "preflight"'),
-            )
-        )
-        == 1
-    )
+    # 48 comments give Checkov's 63 skipped checks: resources with for_each and
+    # modules report a skip per instance. The 63 itself needs a Checkov run.
+    assert len(skips) == 48
+    assert sum("CKV_AWS_309" in line for line in skips) == 1
+    assert not any("preflight" in line for line in skips)
 
 
 def test_http_api_cors_is_limited_to_https_web_origins_without_credentials() -> None:

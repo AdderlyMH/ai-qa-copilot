@@ -459,3 +459,65 @@ def test_responses_contain_no_environment_values(
     serialized = json.dumps(responses)
     for value in (SECRET_PASSWORD, SECRET_BUCKET, str(tmp_path)):
         assert value not in serialized
+
+
+# --- CORS preflight through simulated HTTP API v2 events ----------------------
+
+
+PREFLIGHT_HEADERS = {
+    "Origin": "https://app.example.invalid",
+    "Access-Control-Request-Method": "GET",
+    "Access-Control-Request-Headers": "authorization",
+}
+
+
+def cognito_settings() -> AuthSettings:
+    return AuthSettings(
+        app_env=AppEnvironment.LOCAL,
+        local_auth_bypass_enabled=False,
+        cognito=CognitoSettings(
+            issuer="https://cognito-idp.example.com/us-east-1_example",
+            client_id="example-client",
+            owner_subject="owner-subject",
+        ),
+    )
+
+
+@pytest.mark.parametrize("path", ["/health", "/projects"])
+def test_preflight_event_returns_204_with_correlation_and_no_cors_headers(
+    path: str,
+) -> None:
+    handler = LambdaApiHandler(create_app(cognito_settings()))
+
+    response = handler(http_event("OPTIONS", path, headers=PREFLIGHT_HEADERS), CONTEXT)
+
+    assert response["statusCode"] == 204
+    assert response["body"] == ""
+    assert UUID(response["headers"]["x-correlation-id"])
+    assert "www-authenticate" not in response["headers"]
+    assert not [
+        name for name in response["headers"] if name.startswith("access-control-")
+    ]
+
+
+def test_plain_options_event_still_returns_405() -> None:
+    handler = LambdaApiHandler(create_app(cognito_settings()))
+
+    response = handler(
+        http_event("OPTIONS", "/projects", headers={"Origin": "https://a.invalid"}),
+        CONTEXT,
+    )
+
+    assert response["statusCode"] == 405
+    assert UUID(response["headers"]["x-correlation-id"])
+
+
+def test_get_event_with_a_preflight_header_still_requires_a_token() -> None:
+    handler = LambdaApiHandler(create_app(cognito_settings()))
+
+    response = handler(
+        http_event("GET", "/projects", headers=PREFLIGHT_HEADERS), CONTEXT
+    )
+
+    assert response["statusCode"] == 401
+    assert response["headers"]["www-authenticate"] == "Bearer"

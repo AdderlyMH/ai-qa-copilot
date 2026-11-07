@@ -1,5 +1,32 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## HTTP API preflight: 204 from the API, OPTIONS route removed — 2026-11-07
+
+**Status:** Code on a branch. **The app-level 204 is a HYPOTHESIS, NOT deployed
+and NOT verified.** No AWS call was made. Nothing is marked met.
+
+The `OPTIONS /{proxy+}` route was applied by the owner and **failed live**:
+`OPTIONS /projects` still returned 405 with `allow: POST` from FastAPI, and the
+request reached the Lambda. API Gateway does add the configured CORS headers to
+that response for the allowed origin and none for another origin, so the missing
+piece appears to be a 2xx status.
+
+The API now answers a preflight, exactly method `OPTIONS` with an
+`Access-Control-Request-Method` header, with 204 and no body, before routing and
+authentication. It keeps `X-Correlation-ID` and sets no `Access-Control-*` header.
+Any other `OPTIONS` request still gets 405, and other methods are unchanged, with
+401 without a token. `aws_apigatewayv2_route.preflight` and its `CKV_AWS_309` skip
+are removed. `tfplan` is added to `.gitignore`.
+
+This takes effect only after the next image rebuild and apply, and removing the
+route is a destroy of one route on apply. Tests ran against the app and a
+simulated Lambda event, not the live API. The cause of the one 500 seen on
+`/projects` on 2026-11-06 is not recorded, and this change does not address it.
+The retest commands are in INFRASTRUCTURE.md, "HTTP API preflight: route experiment
+failed, app-level 204 hypothesized, 2026-11-07".
+
+Next action: owner review and merge, then an image rebuild, apply and the retest.
+
 ## HTTP API preflight: hypothesized OPTIONS route — 2026-11-06
 
 **Status:** Terraform code on a branch. **The route is a HYPOTHESIZED fix, NOT

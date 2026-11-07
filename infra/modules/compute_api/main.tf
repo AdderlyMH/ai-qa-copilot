@@ -467,16 +467,6 @@ resource "aws_apigatewayv2_route" "default" {
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
-# Preflight reached the function through $default on the live API (2026-11-06).
-# This route is a hypothesized fix, not applied and not verified.
-resource "aws_apigatewayv2_route" "preflight" {
-  #checkov:skip=CKV_AWS_309:Browser preflight requests carry no token, so this route cannot require authorization.
-  api_id             = aws_apigatewayv2_api.http.id
-  route_key          = "OPTIONS /{proxy+}"
-  authorization_type = "NONE"
-  target             = "integrations/${aws_apigatewayv2_integration.api.id}"
-}
-
 resource "aws_cloudwatch_log_group" "api_access" {
   #checkov:skip=CKV_AWS_158:Access logs use CloudWatch Logs default encryption; no customer managed KMS key.
   #checkov:skip=CKV_AWS_338:Retention is deliberately short (api_log_retention_days, default 14) to control storage cost.

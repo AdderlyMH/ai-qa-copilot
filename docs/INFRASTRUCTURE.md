@@ -1673,9 +1673,9 @@ The FastAPI app sets no `Access-Control-*` header and has no `CORSMiddleware`
 (source read 2026-10-23), so there is no overlap. This API has no authorizer
 on `$default`, so the documented `OPTIONS /{proxy+}` workaround for an
 authorized `$default` route is not needed. Not verified live. *(Note
-2026-11-06: the claim that API Gateway answers preflight itself is contradicted
+2026-11-07: the claim that API Gateway answers preflight itself is contradicted
 by live evidence; see
-[HTTP API preflight](#http-api-preflight-live-finding-and-hypothesized-route-2026-11-06).)*
+[HTTP API preflight](#http-api-preflight-route-experiment-failed-app-level-204-hypothesized-2026-11-07).)*
 
 **Checks run:** `terraform init -backend=false` and `terraform validate` for
 the production root, `terraform fmt -check` on the changed files, and the CI
@@ -1704,42 +1704,55 @@ is recorded here.
   after `init -backend=false`): `user_pool_tier`, `managed_login_version`,
   `aws_cognito_managed_login_branding` and `cors_configuration` are present.
 
-## HTTP API preflight: live finding and hypothesized route, 2026-11-06
+## HTTP API preflight: route experiment failed, app-level 204 hypothesized, 2026-11-07
 
-**The route below is a HYPOTHESIZED fix. It is NOT applied and NOT verified.**
+**The app-level 204 below is a HYPOTHESIS. It is NOT deployed and NOT verified
+until an image rebuild and the retest below.**
 
-**Live finding (owner-run, 2026-11-06, after the stage 2 apply).** `OPTIONS` on
-`/health` and on `/projects`, with `Origin: https://app.<owner-domain>`,
+**Live findings (owner-run).** On 2026-11-06, after the stage 2 apply, `OPTIONS`
+on `/health` and on `/projects`, with `Origin: https://app.<owner-domain>`,
 `Access-Control-Request-Method: GET` and
 `Access-Control-Request-Headers: authorization`, returned a non-2xx: 405 with
-`allow: GET` from FastAPI on `/health`, and 500 once on `/projects`. The Lambda
-logs show the request reached the function. API Gateway added the configured
-CORS headers but did not answer the preflight itself. This contradicts the stage
-2 claim that API Gateway answers preflight itself.
+`allow: GET` from FastAPI on `/health`, and 500 once on `/projects`. The cause of
+that one 500 is not recorded. This contradicts the stage 2 claim that API Gateway
+answers preflight itself.
 
-**Code change.** `aws_apigatewayv2_route.preflight` in `infra/modules/compute_api`
-adds the route key `OPTIONS /{proxy+}` with `authorization_type = "NONE"` and the
-same integration as `$default`. The `$default` route and the CORS block are
-unchanged. It carries one new inline `CKV_AWS_309` skip: browser preflight
-requests carry no token, so the route cannot require authorization.
+**The route experiment FAILED live.** On 2026-11-06 and 2026-11-07, with an
+`OPTIONS /{proxy+}` route with no authorizer applied, `OPTIONS /projects` still
+returned 405 with `allow: POST` from FastAPI, and the Lambda log shows the request
+reached the function. API Gateway adds the configured
+`access-control-allow-origin`, `-methods`, `-headers` and `-max-age` headers to
+that response for the allowed origin and none for another origin. The only
+missing piece appears to be a 2xx status.
 
-**Why it may not work.** The route targets the same Lambda integration, so
-`OPTIONS` may still reach FastAPI and return the same 405. It also does not match
-a preflight to the bare path `/`.
+**Code change.**
 
-**Fallback.** If the route does not work, handle `OPTIONS` in the application in
-the next image rebuild, and remove this route.
+- `aws_apigatewayv2_route.preflight` and its `CKV_AWS_309` skip are removed. The
+  `$default` route and the CORS block are unchanged.
+- The API now answers a preflight, exactly method `OPTIONS` with an
+  `Access-Control-Request-Method` header, with 204 and no body, before routing
+  and authentication. It keeps `X-Correlation-ID` and the `api.request` trace, and
+  sets no `Access-Control-*` header, because API Gateway adds them and a duplicate
+  would make browsers reject the response. Any other `OPTIONS` request still gets
+  405, and every other method is unchanged.
 
-**Owner check after a targeted apply (not run):**
+**When it takes effect.** Only after the next image rebuild and apply. The API
+function keeps returning 405 until then. Removing the route is a destroy of one
+route on apply, so that plan shows one route destroyed.
+
+**Retest after the rebuild and apply (owner-run, not run here).** From PowerShell,
+with the owner's values:
 
 ```powershell
-terraform plan "-var-file=production.tfvars" '-target=module.compute_api.aws_apigatewayv2_route.preflight' "-out=tfplan"
+curl.exe -si -X OPTIONS "<api-base-url>/health" -H "Origin: https://app.<owner-domain>" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization"
+curl.exe -si -X OPTIONS "<api-base-url>/projects" -H "Origin: https://app.<owner-domain>" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization"
+aws logs tail "/aws/lambda/<api-function-name>" --since 10m
 ```
 
-Expect 1 to add and nothing changed or destroyed (inferred from the code, no plan
-was run). After the apply, repeat both `OPTIONS` requests above. The fix holds
-only if both return a 2xx with the CORS headers and the Lambda logs show no
-`OPTIONS` request.
+The fix holds only if both return 204 with the CORS headers appearing once each,
+for the allowed origin, and the log shows the requests with no authorization
+denial. A request without a token to `GET <api-base-url>/projects` must still
+return 401.
 
 ## Owner-app deployment runbook (INFRA-010 stage 6b, owner-run)
 
