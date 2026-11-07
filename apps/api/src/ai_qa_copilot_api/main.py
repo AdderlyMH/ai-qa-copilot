@@ -1115,7 +1115,9 @@ def create_app(
             project_id=project_id,
             correlation_id=correlation_id,
         )
-        _require_project(project_repository, project_id, correlation_id)
+        _require_project_accepting_uploads(
+            project_repository, project_id, correlation_id
+        )
         service = _document_intake_service(request)
         try:
             intake = await service.receive(
@@ -2257,6 +2259,35 @@ def _require_project(
         _raise_projects_unavailable(correlation_id)
     if project is None:
         _raise_project_not_found(correlation_id)
+
+
+def _require_project_accepting_uploads(
+    repository: ProjectRepository,
+    project_id: UUID,
+    correlation_id: UUID,
+) -> None:
+    """``_require_project`` for uploads, which an archived project refuses.
+
+    It runs before any byte is read, so a refused upload stores and records
+    nothing.
+    """
+
+    try:
+        project = repository.get(project_id)
+    except ProjectRepositoryUnavailable:
+        _raise_projects_unavailable(correlation_id)
+    if project is None:
+        _raise_project_not_found(correlation_id)
+    if project.archived_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "PROJECT_ARCHIVED",
+                "message": "Project is archived",
+                "retryable": False,
+            },
+            headers={"X-Correlation-ID": str(correlation_id)},
+        )
 
 
 def _authorize_project_collection(
