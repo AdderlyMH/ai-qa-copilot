@@ -1672,7 +1672,10 @@ integration responses, and ignores CORS headers returned by the integration.
 The FastAPI app sets no `Access-Control-*` header and has no `CORSMiddleware`
 (source read 2026-10-23), so there is no overlap. This API has no authorizer
 on `$default`, so the documented `OPTIONS /{proxy+}` workaround for an
-authorized `$default` route is not needed. Not verified live.
+authorized `$default` route is not needed. Not verified live. *(Note
+2026-11-06: the claim that API Gateway answers preflight itself is contradicted
+by live evidence; see
+[HTTP API preflight](#http-api-preflight-live-finding-and-hypothesized-route-2026-11-06).)*
 
 **Checks run:** `terraform init -backend=false` and `terraform validate` for
 the production root, `terraform fmt -check` on the changed files, and the CI
@@ -1700,6 +1703,43 @@ is recorded here.
 - The pinned AWS provider's schema (6.68.0, `terraform providers schema -json`
   after `init -backend=false`): `user_pool_tier`, `managed_login_version`,
   `aws_cognito_managed_login_branding` and `cors_configuration` are present.
+
+## HTTP API preflight: live finding and hypothesized route, 2026-11-06
+
+**The route below is a HYPOTHESIZED fix. It is NOT applied and NOT verified.**
+
+**Live finding (owner-run, 2026-11-06, after the stage 2 apply).** `OPTIONS` on
+`/health` and on `/projects`, with `Origin: https://app.<owner-domain>`,
+`Access-Control-Request-Method: GET` and
+`Access-Control-Request-Headers: authorization`, returned a non-2xx: 405 with
+`allow: GET` from FastAPI on `/health`, and 500 once on `/projects`. The Lambda
+logs show the request reached the function. API Gateway added the configured
+CORS headers but did not answer the preflight itself. This contradicts the stage
+2 claim that API Gateway answers preflight itself.
+
+**Code change.** `aws_apigatewayv2_route.preflight` in `infra/modules/compute_api`
+adds the route key `OPTIONS /{proxy+}` with `authorization_type = "NONE"` and the
+same integration as `$default`. The `$default` route and the CORS block are
+unchanged. It carries one new inline `CKV_AWS_309` skip: browser preflight
+requests carry no token, so the route cannot require authorization.
+
+**Why it may not work.** The route targets the same Lambda integration, so
+`OPTIONS` may still reach FastAPI and return the same 405. It also does not match
+a preflight to the bare path `/`.
+
+**Fallback.** If the route does not work, handle `OPTIONS` in the application in
+the next image rebuild, and remove this route.
+
+**Owner check after a targeted apply (not run):**
+
+```powershell
+terraform plan "-var-file=production.tfvars" '-target=module.compute_api.aws_apigatewayv2_route.preflight' "-out=tfplan"
+```
+
+Expect 1 to add and nothing changed or destroyed (inferred from the code, no plan
+was run). After the apply, repeat both `OPTIONS` requests above. The fix holds
+only if both return a 2xx with the CORS headers and the Lambda logs show no
+`OPTIONS` request.
 
 ## Owner-app deployment runbook (INFRA-010 stage 6b, owner-run)
 
