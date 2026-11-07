@@ -11,7 +11,7 @@
 # credential, AWS configuration or database setting is copied in: settings come
 # from the function environment at run time (INFRA-008). The only certificate
 # is the public RDS CA bundle, copied into every target.
-ARG LAMBDA_PYTHON_BASE=public.ecr.aws/lambda/python:3.13-arm64@sha256:02f57ee32abc4b34f77d30b9f00555d37eaa2fd6b8b10c2d3e6b79542255ac06
+ARG LAMBDA_PYTHON_BASE=public.ecr.aws/lambda/python:3.13-arm64@sha256:d2f137e6fe7085cf5ee22c4b618c2f34d05860a4587e44f1be8076dfc0ed8af4
 
 FROM ${LAMBDA_PYTHON_BASE} AS dependencies
 
