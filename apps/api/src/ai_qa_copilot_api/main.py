@@ -699,6 +699,19 @@ class QualityReportRevisionResponse(BaseModel):
     snapshot: dict[str, object]
 
 
+def _is_cors_preflight(request: Request) -> bool:
+    """A browser preflight, answered before routing and authentication.
+
+    The response carries no ``Access-Control-*`` header: API Gateway adds them
+    from its CORS configuration, and a duplicate would make browsers reject it.
+    """
+
+    return (
+        request.method == "OPTIONS"
+        and "access-control-request-method" in request.headers
+    )
+
+
 def create_app(
     auth_settings: AuthSettings | None = None,
     token_validator: TokenValidator | None = None,
@@ -920,7 +933,11 @@ def create_app(
             attributes={"http.method": request.method, "http.path": request.url.path},
         ) as trace_id:
             request.state.workflow_trace_id = trace_id
-            response = await call_next(request)
+            response = (
+                Response(status_code=status.HTTP_204_NO_CONTENT)
+                if _is_cors_preflight(request)
+                else await call_next(request)
+            )
         response.headers["X-Correlation-ID"] = str(trace_id)
         return response
 
