@@ -1,5 +1,27 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Lambda base image digest refreshed in the Dockerfile — 2026-11-07
+
+**Status:** On branch `build/base-refresh-2026-11-07`; **not built, scanned,
+verified or deployed.** No build, push, AWS or network call was made. Nothing is
+marked met.
+
+The owner's registry read on 2026-11-07 showed `public.ecr.aws/lambda/python:3.13-arm64`
+resolving to
+`sha256:d2f137e6fe7085cf5ee22c4b618c2f34d05860a4587e44f1be8076dfc0ed8af4`. Only
+the `sha256:` value on the `ARG LAMBDA_PYTHON_BASE=` line of
+`apps/api/Dockerfile.lambda` changed, from
+`sha256:02f57ee32abc4b34f77d30b9f00555d37eaa2fd6b8b10c2d3e6b79542255ac06`
+(refreshed 2026-10-22). No test pins the digest value; the existing test checks
+only its form. Nothing here shows that the new base fixes any finding.
+
+SG-07 item 2 stays OPEN until the images are rebuilt and the ECR scan findings are
+compared by CVE name against the six HIGH CVEs in the 2026-10-22 triage. The next
+rebuild and apply would also carry the 204 preflight change, the archived-project
+upload refusal and the pypdf 6.21.4 bump, all already on `main` and not deployed.
+
+Next action: owner review and merge, then the rebuild, scan comparison and apply.
+
 ## Document uploads to archived projects refused — 2026-11-07
 
 **Status:** On a branch; **NOT deployed.** No AWS call was made. Nothing is
