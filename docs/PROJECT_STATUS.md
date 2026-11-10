@@ -1,5 +1,30 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Lambda base image digest refreshed in the Dockerfile — 2026-11-09
+
+**Status:** On branch `build/base-refresh-2026-11-09`; **not built, scanned,
+verified or deployed.** No build, push, AWS or network call was made. Nothing is
+marked met, and nothing here shows that the refresh fixes any finding.
+
+- **Pin:** the owner's registry read on 2026-11-09 showed the `3.13-arm64` tag at
+  a newer digest than the one pinned on 2026-11-07. Only the `sha256:` value of
+  the `ARG LAMBDA_PYTHON_BASE=` line and the refresh date in the Dockerfile
+  header comment changed; both digests are in the runbook note.
+- **Tests:** the digest test checks only the format, not the value, and no test
+  pins the comment, so no test changed.
+- **SG-07 item 2 (owner-run, 2026-11-09):** the ECR scan of the 2026-11-07 images
+  (`api`, `parser`, `general`, `executor`) shows MEDIUM 2 each, with no HIGH or
+  CRITICAL; none of the six HIGH CVEs of the 2026-10-22 triage remains. The two
+  findings are CVE-2026-76781 (`libxml2`, fix ALAS2023-2026-3341) and
+  CVE-2026-114406 (`ca-certificates`, fix ALAS2023-2026-3337). The new base may
+  carry both fixes; that is not verified.
+
+**Open:** SG-07 item 2 stays OPEN until the images are rebuilt on the new base
+and the scan findings are compared by CVE name. The owner's risk acceptance
+runs until 2026-11-20.
+
+See INFRASTRUCTURE.md, "Refresh the base image digest" and the SG-07 register.
+
 ## Mako bumped to 1.4.3 for Dependabot alert #124 — 2026-11-09
 
 **Status:** On branch `chore/mako-1-4-2`; **not merged, built or deployed.** No
