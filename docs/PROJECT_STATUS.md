@@ -1,5 +1,27 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Mako bumped to 1.4.3 for Dependabot alert #124 — 2026-11-09
+
+**Status:** On branch `chore/mako-1-4-2`; **not merged, built or deployed.** No
+AWS call was made.
+
+- **Alert:** GitHub Dependabot alert #124, `mako` <= 1.4.1, a Windows-only path
+  traversal through a drive-letter URI in `TemplateLookup`, severity Moderate,
+  patched in 1.4.2 (summary read from the alert, 2026-11-09).
+- **Change:** `uv.lock` moves Mako from 1.4.1 to 1.4.3, the latest release (owner
+  choice), with `uv lock --upgrade-package mako` (uv 0.11.16). Only `mako`
+  changes in the lock; no `pyproject.toml` pin was needed, and `alembic`'s
+  constraint allows it.
+- **Exposure:** Mako comes in only through `alembic` (the `migrate` and `dev`
+  groups), so only the `migrate` image carries it. The migration runner is off
+  (`migration_enabled = false`), and the Lambdas run Linux.
+- **pip-audit:** run as CI's `security-scans` job runs it, it reported no known
+  vulnerabilities before and after. That job audits the runtime set, which does
+  not include Mako; an audit of the `migrate` group export also flagged nothing.
+
+**Open:** SG-07 item 8, owner disposition pending, no acceptance recorded. The
+bump reaches an image only at the next `migrate` rebuild.
+
 ## Rebuild, owner-app verification and findings recorded — 2026-11-09
 
 **Status:** Docs only, on a branch. Recorded from the owner's report of
