@@ -1,5 +1,58 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Rebuild, owner-app verification and findings recorded — 2026-11-09
+
+**Status:** Docs only, on a branch. Recorded from the owner's report of
+2026-11-07 to 2026-11-09; no step was re-run here and no AWS, Cloudflare or
+network call was made. INFRA-010 and INFRA-002 are **not** marked Accepted:
+acceptance is the owner's decision.
+
+**Rebuild:** five images were built from `main` at `23c59a8` on the base pinned
+on 2026-11-07, with pypdf 6.21.4 and certifi 2026.10.19 verified inside all five.
+They were pushed, and a targeted apply reported 0 added, 4 changed, 1 destroyed:
+four image updates and the removed `OPTIONS` route. The four functions read back
+Active and Successful on the pushed digests, and a follow-up plan showed no
+changes. The live preflight now returns 204, with the allowed-origin header once
+for the allowed origin and none for another; `/health` returns 200 and
+`/projects` 401 without a token.
+
+**Owner app (M2 evidence):**
+
+- Hosted UI sign-in over HTTPS worked, and the token exchange returned 200.
+- Only an access-token key and an expiry key were in `sessionStorage`.
+- Project create (201), upload (202), document status and a synthetic analysis
+  (about 90 tokens) worked from the owner-app origin.
+- Direct Upload and the CSP from `_headers` are verified.
+- The cross-account custom domain is Active with SSL.
+
+**Docs updated:**
+
+- SG-07 item 7 records the rebuild, but stays open because a `security-scans` pass
+  on `main` after the 6.21.4 merge is not recorded. Items 3, 4 and 6 point to it.
+- The ADR-022 CORS item is closed for the interaction question.
+- The token-scope item gains its two sources, and a Cognito prefix reserved-word
+  item is added.
+- The runbook has corrections found in the 2026-11 run.
+- The Dockerfile header comment now gives the 2026-11-07 refresh date; the pin is
+  unchanged.
+
+**Not verified:** `sessionStorage` after sign-out; the 3 s polling spacing and the
+5 requests per second throttle under real polling; the Cognito prefix-domain
+charge; CSP on pages not exercised; the ECR scan results for `general` and
+`executor`; the Hosted UI version.
+
+**Open:**
+
+- SG-07 item 2: no by-name comparison against the six HIGH CVEs; the risk
+  acceptance runs until 2026-11-20.
+- The parser finding: `fixtures/sample-requirements.md` yields 0 Markdown
+  requirements and is rejected as `PARSER_EVIDENCE_INVALID`.
+- The two MEDIUM scan findings, not yet named.
+- The 2 moderate GitHub vulnerabilities, not yet identified.
+
+See INFRASTRUCTURE.md, "Rebuild and owner-app verification, 2026-11-07 to
+2026-11-09 (owner-run)".
+
 ## Lambda base image digest refreshed in the Dockerfile — 2026-11-07
 
 **Status:** On branch `build/base-refresh-2026-11-07`; **not built, scanned,

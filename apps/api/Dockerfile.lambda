@@ -5,7 +5,9 @@
 # through scripts/build_lambda_images.py; build context is the repository root.
 #
 # The base is the single-architecture arm64 manifest of the AWS Lambda Python
-# 3.13 base image (Amazon Linux 2023), pinned by digest (read 2026-10-16).
+# 3.13 base image (Amazon Linux 2023), pinned by digest and refreshed per the
+# "Refresh the base image digest" runbook (docs/INFRASTRUCTURE.md); last
+# refreshed 2026-11-07.
 # Lambda runs the function as its own least-privileged default user, so no
 # USER is set (AWS Lambda Developer Guide, images-create). No secret, .env,
 # credential, AWS configuration or database setting is copied in: settings come
