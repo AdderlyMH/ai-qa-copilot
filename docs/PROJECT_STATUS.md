@@ -1,5 +1,58 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## SG-07 dispositions, INFRA-010 and INFRA-002 accepted — 2026-11-09
+
+**Status:** Docs only, on a branch. Recorded from the owner's report of
+2026-11-09; no step was re-run here and no AWS or network call was made. The
+acceptances and dispositions are **owner decisions on the recorded evidence**.
+
+- **SG-07 item 2:** the six HIGH CVEs of the 2026-10-22 triage are absent from
+  the scans of the 2026-11-07 images, so the HIGH part is cleared. Two MEDIUM
+  findings remain: CVE-2026-76781 (`libxml2`) and CVE-2026-114406
+  (`ca-certificates`). The base pinned on 2026-11-09 (PR #248) was built from
+  `main` at `c7fff6b`, pushed and scanned. All five images list the same two
+  findings, so that base does not carry the Amazon Linux fixes. The images are
+  **not deployed**. Owner decision: the two MEDIUMs are risk-accepted until
+  2026-12-04, replacing the 2026-11-20 deadline, with base-digest checks every
+  Monday. This does **not** close SG-07.
+- **SG-07 item 7:** closed for the four deployed functions. pypdf 6.21.4 is
+  verified in the 2026-11-07 and 2026-11-09 images, and `security-scans` passed
+  on `main` (owner-reported).
+- **SG-07 item 8 (Mako, alert #124):** merged (PR #247), and Mako 1.4.3 is
+  verified inside the `migrate` image built on 2026-11-09, which is not
+  deployed. Still OPEN.
+- **SG-07 item 9 (new; `minimatch`, alert #126):** a dev-only lint dependency.
+  The owner dismissed it in GitHub as "risk is tolerable"; it is marked
+  dismissed, revisit.
+- **INFRA-010:** ACCEPTED by the owner, with the evidence mapped to its
+  acceptance text in BACKLOG.md. One gap: any Cognito prefix-domain charge is
+  not confirmed.
+- **INFRA-002:** ACCEPTED by the owner. The owner workflow over HTTPS (M2) and
+  the guest read-only demo are met. SG-08 remains disclosed as unmet, and
+  execution stays disabled.
+- **ADR-022:**
+  - The token-scope item records the second Cloudflare account (created
+    2026-11-06), the Pages project and the scoped CI token; it stays PARTIALLY
+    RESOLVED.
+  - The CSP row records the deployed hash-based policy and no console
+    violations on the pages exercised; it is not verified on every page.
+
+**Open:**
+
+- SG-07 item 2: the two MEDIUMs, accepted to 2026-12-04, with Monday checks on
+  2026-11-16, 2026-11-23 and 2026-11-30.
+- SG-07 item 8: `security-scans` on `main` after the merge, and the GitHub alert
+  shown closed; neither is confirmed.
+- The Markdown parser/sample finding.
+- Dependabot PRs #230, #231, #234, #235 and #236: all have failing checks, cause
+  not yet identified.
+- The Cognito prefix-domain charge: check the first monthly bill (early
+  December).
+- The deploy freeze on 2026-12-06.
+
+See INFRASTRUCTURE.md, the SG-07 disposition register, and BACKLOG.md, INFRA-010
+and INFRA-002.
+
 ## Lambda base image digest refreshed in the Dockerfile — 2026-11-09
 
 **Status:** On branch `build/base-refresh-2026-11-09`; **not built, scanned,
