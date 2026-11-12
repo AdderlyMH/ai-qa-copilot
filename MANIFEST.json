@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 228152,
-      "sha256": "753546881d20873c2648e6fc9d2965edb4691dab28d047d338483cc85e4eff20"
+      "bytes": 229701,
+      "sha256": "6ece04fd01b07e69f66e3f326465b2db0d5058159c045a84fe9ec67da50e404c"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -417,8 +417,8 @@
     },
     {
       "path": "pyproject.toml",
-      "bytes": 1542,
-      "sha256": "6dc6f45a5baa2ca9e937561266a19bf8b7ad691e6fcaf473a08e950d9a2899dd"
+      "bytes": 1541,
+      "sha256": "145df2ed4951f2440181e3ec06f5488d554cd79fa9d82a3050631a2b31c5f237"
     },
     {
       "path": "scripts/docs_integrity.py",
@@ -442,8 +442,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 91268,
-      "sha256": "969b213ba2cfa76c166985ef9eb5395745b45e8422162b8ea1e6164d581b4186"
+      "bytes": 97911,
+      "sha256": "2e803504cf5b6390b9bcec6906c2b7a910b90df877ad0bcd74712ace2a6a2afd"
     }
   ]
 }
