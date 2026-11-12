@@ -1,5 +1,30 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Five Python dev-tool bumps applied by hand — 2026-11-12
+
+**Status:** On branch `chore/dev-tool-bumps-2026-11`; not merged. No AWS call
+was made.
+
+- **Why by hand:** the Dependabot PRs' `uv.lock` failed `uv sync --locked` under
+  the pinned uv 0.11.16 ("The lockfile at uv.lock needs to be updated, but
+  --locked was provided"). The pins in the root `pyproject.toml` were updated
+  and the lock regenerated with `uv lock` (uv 0.11.16).
+- **Versions:** ruff 0.15.22 to 0.17.4 (#250), mypy 2.3.0 to 2.4.1 (#235),
+  types-pyyaml 6.0.12.20260518 to 6.0.12.20261103 (#251), pytest 9.1.1 to 9.2.0
+  (#252), and alembic 1.19.0 to 1.20.1 in both the `dev` and `migrate` groups
+  (#230). The only other lock changes are two direct dependencies of mypy:
+  `ast-serialize` 0.6.0 to 0.13.1 and `librt` 0.13.0 to 0.16.0. No dependency
+  was added or removed, and `mako` stays at 1.4.3.
+- **Checks:** ruff and mypy report no new findings, so no source file changed;
+  ci passes. `py scripts/tasks.py db-check` was **not run**: Docker was not
+  available on the workstation, so alembic 1.20.1 is not checked against a
+  real database here. CI's `db-check` job runs it.
+- **Images:** besides the local `scripts/tasks.py` migration and `db-check`
+  tasks (`dev` group), alembic is used only by the `migrate` image
+  (`lambda_migrate.py`), and the migration runner is off. The `migrate` image built on 2026-11-09
+  carries alembic 1.19.0; 1.20.1 reaches an image only at the next rebuild. No
+  SG-07 item changes: none of these packages has a recorded finding.
+
 ## SG-07 dispositions, INFRA-010 and INFRA-002 accepted — 2026-11-09
 
 **Status:** Docs only, on a branch. Recorded from the owner's report of
