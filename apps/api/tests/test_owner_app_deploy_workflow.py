@@ -46,7 +46,7 @@ UNCHANGED_WORKFLOW_SHA256 = {
         "5a50a0319fb3057d7ea4a76ea32a24f1ba502862a51e257f9608f158b9ddca89"
     ),
     "docs-validation.yml": (
-        "567a65d6d00610cc188c14d3cee0a26892d1f53b7df2b07ecf543d75eb0161cc"
+        "b50713172cd9b7e8f01db9824e862ef6e4847f06305a9997e0a8bdf90645cd12"  # updated 2026-11-12 for the actions/setup-python 7.1.0 pin bump (Dependabot #231)
     ),
 }
 
