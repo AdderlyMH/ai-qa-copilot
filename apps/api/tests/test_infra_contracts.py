@@ -321,6 +321,61 @@ def test_owner_app_variables_have_no_defaults_and_reach_the_module() -> None:
         assert re.search(rf"^\s+{name}\s+=\s+var\.{name}$", module, re.MULTILINE), name
 
 
+def test_the_default_route_is_the_only_http_api_route() -> None:
+    compute = COMPUTE_API.read_text(encoding="utf-8")
+
+    assert re.findall(r'resource "aws_apigatewayv2_route" "(\w+)"', compute) == [
+        "default"
+    ]
+    assert "preflight" not in code(compute)
+    assert "OPTIONS" not in code(compute)
+
+
+def test_default_route_is_unchanged() -> None:
+    assert block(
+        COMPUTE_API.read_text(encoding="utf-8"),
+        'resource "aws_apigatewayv2_route" "default"',
+    ) == (
+        'resource "aws_apigatewayv2_route" "default" {\n'
+        "  #checkov:skip=CKV_AWS_309:No API Gateway authorizer: guest routes are "
+        "anonymous by design (ADR-008) and the API function validates Cognito "
+        "access tokens for owner routes (auth.py).\n"
+        "  api_id    = aws_apigatewayv2_api.http.id\n"
+        '  route_key = "$default"\n'
+        '  target    = "integrations/${aws_apigatewayv2_integration.api.id}"\n'
+        "}"
+    )
+
+
+def test_cors_block_is_unchanged() -> None:
+    assert block(COMPUTE_API.read_text(encoding="utf-8"), "  cors_configuration {") == (
+        "  cors_configuration {\n"
+        "    allow_origins     = var.web_origins\n"
+        '    allow_methods     = ["DELETE", "GET", "POST"]\n'
+        '    allow_headers     = ["authorization", "content-type", "x-upload-filename"]\n'
+        '    expose_headers    = ["x-correlation-id"]\n'
+        "    allow_credentials = false\n"
+        "    max_age           = 600\n"
+        "  }"
+    )
+
+
+def test_checkov_skips_are_back_to_the_count_before_the_preflight_route() -> None:
+    skips = [
+        line
+        for path in (ROOT / "infra").rglob("*.tf")
+        if ".terraform" not in path.parts
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if "#checkov:skip=" in line
+    ]
+
+    # 48 comments give Checkov's 63 skipped checks: resources with for_each and
+    # modules report a skip per instance. The 63 itself needs a Checkov run.
+    assert len(skips) == 48
+    assert sum("CKV_AWS_309" in line for line in skips) == 1
+    assert not any("preflight" in line for line in skips)
+
+
 def test_http_api_cors_is_limited_to_https_web_origins_without_credentials() -> None:
     compute = COMPUTE_API.read_text(encoding="utf-8")
     cors = code(block(compute, "  cors_configuration {"))

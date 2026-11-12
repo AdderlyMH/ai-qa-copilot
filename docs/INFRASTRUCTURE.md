@@ -1573,11 +1573,14 @@ closed.
 | # | Finding | Scope | Disposition (2026-10-20) | Close condition |
 |---|---|---|---|---|
 | 1 | PYSEC-2026-4320 (GHSA-6q48-6c7w-9gw2): `certifi` trusts the emSign ECC Root CA - G3, under which compromised intermediates were revoked; fixed in 2026.10.19 | `uv.lock` fixed on `main` (certifi 2026.10.19, PR #204). The five deployed images (`109a4e0`) still contain certifi 2026.7.22 | **Risk accepted by the owner** until the next image rebuild, which is combined with SG-07 item 2. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | All five images rebuilt and redeployed at the AWS base-image refresh or before the December 6 freeze, whichever comes first. The rebuild must verify the certifi version inside each built image |
-| 2 | ECR scan on all five images: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each (Amazon Linux 2023 OS packages in the shared base layers) | Deployed images | Open, not triaged; waiting on an AWS base-image refresh ([Refresh the base image digest](#refresh-the-base-image-digest)). **Update (2026-10-22):** the refresh is available (new base digest) and pinned on branch `build/base-refresh-rebuild-prep`; not yet built, scanned or verified, so this item stays **open**. **Update (2026-10-22, after the rebuild):** refresh applied, counts unchanged: the ECR scan on push (status `COMPLETE` for all five rebuilt images) reports HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each, identical to the counts on the `109a4e0` images. The finding names were not compared. **Correction (2026-10-22):** the HIGH finding names were compared on 2026-10-22 and are identical on the 109a4e0 and rebuilt images; see [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). HIGH findings still need triage and a documented disposition; this item stays **OPEN**. **Disposition (2026-10-22): Risk accepted by the owner until 2026-11-20 (does not close SG-07).** Triage, plan and open checks: [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). | The same rebuild, then a re-scan and a documented disposition of any remaining Medium findings. *(2026-10-22: the full close condition is in [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22).)* |
-| 3 | pip-audit (2026-10-21) on the locked runtime dependencies: `pypdf` 6.19.0 has GHSA-qfv9-64jg-mh7p and GHSA-9mx8-4j7g-633p (fixed in 6.20.1) and GHSA-7mh2-4gg2-979f and GHSA-39mj-jf6j-2qj3 (fixed in 6.20.0); upstream changelog: per-stream work limits (6.20.0) and cyclic-tree handling (6.20.1) | `uv.lock` bumped to pypdf 6.20.1 on branch `chore/pypdf-advisory-bump` (not merged). **Correction (2026-10-22):** merged to `main` in PR #212 and superseded by pypdf 6.21.1 (item 4); `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0. ADR-018 excludes PDF from the production scope; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | The bump merged to `main`, then the same five-image rebuild verifying the pypdf version inside each built image |
-| 4 | pip-audit (2026-10-21, later the same day) on the locked runtime dependencies: `pypdf` 6.20.1 has GHSA-5hx5-vpf9-5wcv, "Unvalidated JPEG image data loading", severity low, published 2026-10-21, fixed in 6.21.1; upstream changelog: /DCTDecode data is opened only with the Pillow JPEG plugin (6.21.1), plus stream-parsing and field work limits (6.21.0). Pillow is not a dependency of this project | Item 3's bump to 6.20.1 is on `main` (PR #212). `uv.lock` bumped to pypdf 6.21.1 on branch `chore/pypdf-6-21-1` (not merged). **Correction (2026-10-22):** merged to `main` in PR #214; `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0, so items 3 and 4 both apply to them | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. | The bump merged to `main`, then the same five-image rebuild verifying pypdf 6.21.1 or later inside each built image |
+| 2 | ECR scan on all five images: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each (Amazon Linux 2023 OS packages in the shared base layers) | Deployed images | Open, not triaged; waiting on an AWS base-image refresh ([Refresh the base image digest](#refresh-the-base-image-digest)). **Update (2026-10-22):** the refresh is available (new base digest) and pinned on branch `build/base-refresh-rebuild-prep`; not yet built, scanned or verified, so this item stays **open**. **Update (2026-10-22, after the rebuild):** refresh applied, counts unchanged: the ECR scan on push (status `COMPLETE` for all five rebuilt images) reports HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 each, identical to the counts on the `109a4e0` images. The finding names were not compared. **Correction (2026-10-22):** the HIGH finding names were compared on 2026-10-22 and are identical on the 109a4e0 and rebuilt images; see [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). HIGH findings still need triage and a documented disposition; this item stays **OPEN**. **Disposition (2026-10-22): Risk accepted by the owner until 2026-11-20 (does not close SG-07).** Triage, plan and open checks: [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). **Update (2026-11-07):** a newer base exists (owner's read; see [Refresh the base image digest](#refresh-the-base-image-digest)) and is pinned on branch `build/base-refresh-2026-11-07`; it is not yet built, scanned or verified. This item stays **OPEN** until the images are rebuilt and the ECR scan findings are compared **by CVE name** against the six HIGH CVEs in the 2026-10-22 triage, not only by count. **Update (2026-11-07, after the rebuild):** the scan on push read `COMPLETE` for `api` and `parser` with MEDIUM 2 and no HIGH key; `general` and `executor` were not read (CLI error); the two MEDIUM findings were not named or triaged. No by-name comparison was made, so this item stays **OPEN** ([Rebuild and owner-app verification, 2026-11-07 to 2026-11-09](#rebuild-and-owner-app-verification-2026-11-07-to-2026-11-09-owner-run)). **Update (2026-11-09, owner-run; not re-checked here):** the owner read the ECR scan of the 2026-11-07 images in the console and the CLI for `api`, `parser`, `general` and `executor`: MEDIUM 2 each, no HIGH or CRITICAL. None of the six HIGH CVEs of the [2026-10-22 triage](#sg-07-item-2-triage-2026-10-22) is among the findings. The two remaining findings are CVE-2026-76781 (`libxml2` 2.10.4-1.amzn2023.0.21, denial of service through an XML catalog; Amazon Linux fix ALAS2023-2026-3341, released 2026-10-30) and CVE-2026-114406 (`ca-certificates` 2025.2.76-1.0.amzn2023.0.4, removal of root CAs that signed weak eMudhra intermediates; Amazon Linux fix ALAS2023-2026-3337, released 2026-10-29). A newer base is pinned on branch `build/base-refresh-2026-11-09` ([Refresh the base image digest](#refresh-the-base-image-digest)); it may carry both fixes, but that is not verified: the new base is not built, scanned or verified. This item stays **OPEN** until the images are rebuilt on it and the new scan findings are compared **by CVE name**. The owner's risk acceptance for this item still runs until 2026-11-20. **Update (2026-11-09, owner-run; not re-checked here), the 2026-11-07 images:** the ECR scan read `COMPLETE` for `api`, `parser`, `general` and `executor`, with MEDIUM 2 each and no HIGH or CRITICAL. None of the six HIGH CVEs of the 2026-10-22 triage (CVE-2026-84782, CVE-2026-75804, CVE-2026-80230, CVE-2026-84233, CVE-2026-78367, CVE-2026-89161) is present. The two findings are CVE-2026-76781 (`libxml2` 2.10.4-1.amzn2023.0.21, denial of service from a crafted XML catalog; Amazon Linux 2023 fix ALAS2023-2026-3341, released 2026-10-30) and CVE-2026-114406 (`ca-certificates` 2025.2.76-1.0.amzn2023.0.4, removal of root CAs that signed weak eMudhra intermediates; fix ALAS2023-2026-3337, released 2026-10-29; the advisory says its primary fix is CVE-2026-113470, and whether the installed version has that fix was not checked). **Rebuild on the 2026-11-09 base (owner-run; not re-checked here):** the owner read a newer public base digest (recorded in [Refresh the base image digest](#refresh-the-base-image-digest)), pinned it (PR #248) and rebuilt all five images from `main` at `c7fff6b469d1c06930d0a8f16fff805e0535fd0b`. certifi 2026.10.19 and pypdf 6.21.4 were verified inside them, the preflight and archived-upload code inside `api`, and Mako 1.4.3 inside `migrate`. All five were pushed, each a single OCI image manifest equal to the local manifest digest. The scan read `COMPLETE` for all five, and each lists exactly the same two MEDIUM findings by name, so the new base does not carry the Amazon Linux fixes. **Not deployed:** `production.tfvars` still holds the 2026-11-07 digests, and no apply was run. **Owner decision (2026-11-09), replacing the 2026-11-20 deadline:** the HIGH part is cleared, and the two MEDIUM findings are **risk-accepted until 2026-12-04**. Rule: every Monday (2026-11-16, 2026-11-23, 2026-11-30) the owner reads the base digest; if it changed, the owner builds and scans; if a scan lists neither CVE, the owner rebuilds and deploys within the same week. If no clean base exists by 2026-12-04, the owner decides again on the actual state. A fallback to consider then (**not decided, not verified**): updating the two packages in the Dockerfile, which would reverse the 2026-10-22 decision and depends on the base having a package manager and the repository offering the fixed versions. Exposure, as reasoning only (**not verified**): the `libxml2` CVE needs an XML catalog, which this app does not parse; the `ca-certificates` CVE needs a man-in-the-middle with a certificate from a weakly keyed intermediate. This does **not** close SG-07: an accepted risk is still an unresolved finding and blocks release until closed. This item stays **OPEN**. | The same rebuild, then a re-scan and a documented disposition of any remaining Medium findings. *(2026-10-22: the full close condition is in [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22).)* |
+| 3 | pip-audit (2026-10-21) on the locked runtime dependencies: `pypdf` 6.19.0 has GHSA-qfv9-64jg-mh7p and GHSA-9mx8-4j7g-633p (fixed in 6.20.1) and GHSA-7mh2-4gg2-979f and GHSA-39mj-jf6j-2qj3 (fixed in 6.20.0); upstream changelog: per-stream work limits (6.20.0) and cyclic-tree handling (6.20.1) | `uv.lock` bumped to pypdf 6.20.1 on branch `chore/pypdf-advisory-bump` (not merged). **Correction (2026-10-22):** merged to `main` in PR #212 and superseded by pypdf 6.21.1 (item 4); `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0. ADR-018 excludes PDF from the production scope; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. *(Pointer, 2026-11-07: the deployed images now contain pypdf 6.21.4; see item 7.)* *(Pointer, 2026-11-09: item 7 is closed for the four deployed functions.)* | The bump merged to `main`, then the same five-image rebuild verifying the pypdf version inside each built image |
+| 4 | pip-audit (2026-10-21, later the same day) on the locked runtime dependencies: `pypdf` 6.20.1 has GHSA-5hx5-vpf9-5wcv, "Unvalidated JPEG image data loading", severity low, published 2026-10-21, fixed in 6.21.1; upstream changelog: /DCTDecode data is opened only with the Pillow JPEG plugin (6.21.1), plus stream-parsing and field work limits (6.21.0). Pillow is not a dependency of this project | Item 3's bump to 6.20.1 is on `main` (PR #212). `uv.lock` bumped to pypdf 6.21.1 on branch `chore/pypdf-6-21-1` (not merged). **Correction (2026-10-22):** merged to `main` in PR #214; `uv.lock` on `main` pins pypdf 6.21.1. The deployed images (`109a4e0`) still contain pypdf 6.19.0, so items 3 and 4 both apply to them | **Open (2026-10-21):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-22):** the five-image rebuild is prepared on branch `build/base-refresh-rebuild-prep` with the new base pin; the images are not yet built, scanned or verified, so this item stays **open**. **Closed 2026-10-22 for the four deployed functions** (`api`, `parser`, `general`, `executor`): certifi 2026.10.19 and pypdf 6.21.1 were verified inside the built images before the push, and the deployed digests were verified after the apply ([Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22)). The `migrate` image was rebuilt and pushed with the same versions; the migration runner is not deployed. *(Pointer, 2026-11-07: the deployed images now contain pypdf 6.21.4; see item 7.)* *(Pointer, 2026-11-09: item 7 is closed for the four deployed functions.)* | The bump merged to `main`, then the same five-image rebuild verifying pypdf 6.21.1 or later inside each built image |
 | 5 | `npm audit --omit=dev` (2026-10-22) on the `main` lockfile printed: package `next`, range `16.0.0 - 16.4.0`, severity critical, with two advisories: GHSA-2464-fhr4-w9xw (critical, "Unauthenticated Remote Code Execution in Image Optimization API when SVG files are used") and GHSA-p3m5-59mp-jv5r (high, "Denial of Service in App Router using Server Actions"), each with range `>=16.0.0 <=16.4.0`. The audit printed only these two; the public release notes were not read here, so whether they list more (for example, one involving Cache Components) is to be checked against the Next.js advisory. No public reports of exploitation as of 2026-10-15, according to a news report | `package-lock.json` on `main` locked `next` 16.3.8 before the bump. The owner web app (`apps/web`) is not deployed (INFRA-010 has no host), and the guest demo is the standalone static viewer, not Next.js. The advisories require specific features: Cache Components with `use cache`, SVG processing through the image optimizer or `next/og`, or a Server Action. Evidence: a grep of `apps/web` (source files and `next.config.ts`, 2026-10-22) finds no `use cache`, no `use server`, no `cacheComponents`, no `dangerouslyAllowSVG`, no `next/og`, no `ImageResponse` and no `<Image`; the only `next/image` match is the generated type reference in `apps/web/next-env.d.ts:2` (`/// <reference types="next/image-types/global" />`), not an import. `next.config.ts` sets only an `/api/:path*` rewrite and no `images` option | **Closed 2026-10-22:** the bump merged to `main` on 2026-10-22, and `security-scans` on `main` passed (owner-reported from the Actions run, 2026-10-22), which meets the close condition. The first fixed release is 16.4.1; the lockfile moves to 16.4.2 (owner choice, the latest 16.x patch), which adds no security fixes according to a third-party report (reported by a third party; verify against the Next.js advisory). Only `next` and its `@next/*` packages change in the lockfile; the web build passes and `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities. No deployed artifact contains `next` | The bump merged to `main` and `security-scans` passing there |
-| 6 | pip-audit (CI `security-scans`, 2026-10-24, and reproduced locally the same day) on the locked runtime dependencies: `pypdf` 6.21.1 has GHSA-6c7f-9265-g8fw (long runtimes from a crafted PDF that references the same non-existent indirect object many times), GHSA-jr96-gvgh-j3r4 (long runtimes from repeated malformed cross-reference streams; a follow-up to GHSA-55h5-xmcq-c37v) and GHSA-gmh7-3g9r-mjh5 (long runtimes from large or wrong upper limits in the xref table), all fixed in 6.21.2 (advisory descriptions as printed by `pip-audit --desc`; the upstream changelog was not read). All three are denial of service through processing time, not code execution | `apps/api/pyproject.toml` and `uv.lock` bumped to pypdf 6.21.2 on branch `chore/pypdf-6-21-2` (not merged); only `pypdf` changes in the lock. The four deployed functions run the 2026-10-22 images, which contain pypdf 6.21.1. ADR-018 excludes PDF from the production scope and the parser has a 15 s timeout; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-24):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-24):** the bump to pypdf 6.21.2 is merged to `main` (PR #228). The item stays **open**: the close condition (a passing scan and the next image rebuild) is not met yet | The bump merged to `main` and `security-scans` passing there; then the next image rebuild verifying pypdf 6.21.2 or later inside each built image |
+| 6 | pip-audit (CI `security-scans`, 2026-10-24, and reproduced locally the same day) on the locked runtime dependencies: `pypdf` 6.21.1 has GHSA-6c7f-9265-g8fw (long runtimes from a crafted PDF that references the same non-existent indirect object many times), GHSA-jr96-gvgh-j3r4 (long runtimes from repeated malformed cross-reference streams; a follow-up to GHSA-55h5-xmcq-c37v) and GHSA-gmh7-3g9r-mjh5 (long runtimes from large or wrong upper limits in the xref table), all fixed in 6.21.2 (advisory descriptions as printed by `pip-audit --desc`; the upstream changelog was not read). All three are denial of service through processing time, not code execution | `apps/api/pyproject.toml` and `uv.lock` bumped to pypdf 6.21.2 on branch `chore/pypdf-6-21-2` (not merged); only `pypdf` changes in the lock. The four deployed functions run the 2026-10-22 images, which contain pypdf 6.21.1. ADR-018 excludes PDF from the production scope and the parser has a 15 s timeout; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-10-24):** owner disposition pending; no risk acceptance recorded. **Update (2026-10-24):** the bump to pypdf 6.21.2 is merged to `main` (PR #228). The item stays **open**: the close condition (a passing scan and the next image rebuild) is not met yet. *(Pointer, 2026-11-07: the deployed images now contain pypdf 6.21.4; see item 7.)* *(Pointer, 2026-11-09: item 7 is closed for the four deployed functions.)* | The bump merged to `main` and `security-scans` passing there; then the next image rebuild verifying pypdf 6.21.2 or later inside each built image |
+| 7 | pip-audit (CI `security-scans`, 2026-11-05, and reproduced locally the same day) on the locked runtime dependencies: `pypdf` 6.21.2 has seven advisories. Fixed in 6.21.3: GHSA-62m5-6wh8-28x7 (large runtimes or memory from an encrypted PDF that declares a wrong `/Count`, when reading the page count), GHSA-42gh-23hr-vphw (large runtimes when retrieving page labels), GHSA-x3rh-gjgm-fmqc (large memory when opening a file with cross-reference streams) and GHSA-4vqv-7265-gm2w (large memory when loading an invalid dictionary). Fixed in 6.21.4: GHSA-5849-834g-hvw5 (infinite loop when opening an incomplete file without a `trailer`), GHSA-mfr5-77xh-9j7h (infinite loop when cloning a `DictionaryObject`) and GHSA-cggf-277g-3q54 (large memory when parsing a page tree with many shared resources). Advisory descriptions as printed by `pip-audit --desc`; the upstream changelog was not read. All seven are denial of service through a crafted PDF, not code execution | `apps/api/pyproject.toml` and `uv.lock` bumped to pypdf 6.21.4 on branch `chore/pypdf-6-21-4` (not merged); only `pypdf` changes in the lock. Item 6 records the four deployed functions on images containing pypdf 6.21.1; that was not re-checked for this entry. ADR-018 excludes PDF from the production scope and the parser has a 15 s timeout; whether a PDF can reach the deployed parser was not verified for this entry | **Open (2026-11-05):** owner disposition pending; no risk acceptance recorded. **Update (2026-11-07):** pypdf 6.21.4 verified inside all five built images, and the four deployed functions read back on the pushed digests ([Rebuild and owner-app verification, 2026-11-07 to 2026-11-09](#rebuild-and-owner-app-verification-2026-11-07-to-2026-11-09-owner-run)). The bump is merged to `main` (PR #238). Still **open**: the close condition also needs `security-scans` passing on `main` after that merge, and that pass is not recorded here. **Closed 2026-11-09 for the four deployed functions** (`api`, `parser`, `general`, `executor`): pypdf 6.21.4 was verified inside all five images built on 2026-11-07 and again inside all five built on 2026-11-09; the four functions read back Active and Successful on the 2026-11-07 digests; and `security-scans` passed on `main` (owner-reported 2026-11-09; the run was not read here) | The bump merged to `main` and `security-scans` passing there; then the next image rebuild verifying pypdf 6.21.4 or later inside each built image |
+| 8 | GitHub Dependabot alert #124 (source: the alert; summary read 2026-11-09): `mako` <= 1.4.1, path traversal through a Windows drive-letter URI in `TemplateLookup`, severity Moderate, patched in 1.4.2. Windows only. pip-audit 2.9.0, run as CI's `security-scans` job runs it, reported no known vulnerabilities before and after the bump (2026-11-09, local). That job audits the runtime set (`--no-dev`), which does not include Mako; a local audit of the export with `--group migrate` also reported none for Mako 1.4.1 | `mako` comes in only through `alembic` in the `migrate` dependency group (and the `dev` group), so of the images only `migrate` carries it. The migration runner is off (`migration_enabled = false`), and the Lambdas run Linux. `uv.lock` is bumped to Mako 1.4.3 (owner choice: the latest release, which `uv lock --upgrade-package mako` resolved) on branch `chore/mako-1-4-2`; only `mako` changes in the lock. The bump is **not** in a deployed image until the next rebuild | **Open (2026-11-09):** owner disposition pending; no risk acceptance recorded. **Update (2026-11-09, owner-run; not re-checked here):** the lock bump to 1.4.3 is merged (PR #247), and Mako 1.4.3 was verified inside the `migrate` image built and pushed on 2026-11-09. That image is **not** deployed (`migration_enabled = false`). Still **OPEN**. Remaining close conditions: `security-scans` passing on `main` after the merge, and the GitHub alert shown closed; the owner has confirmed **neither** yet | The bump merged to `main` and `security-scans` passing there; then the next `migrate` image rebuild verifying Mako 1.4.2 or later inside it *(2026-11-09: the rebuild part is met; the scan pass and the alert's closure are not confirmed)* |
+| 9 | GitHub Dependabot alert #126 (source: the alert, as reported by the owner on 2026-11-09): `minimatch` (npm, `package-lock.json`), severity Moderate, a development dependency, transitive through `typescript-eslint`; affected `>= 7.0.0, < 11.0.1`, patched in 11.0.1 | The tree resolves `minimatch` 10.2.5 for `typescript-estree` and 3.1.5 elsewhere; Dependabot cannot update it because a dependency still resolves 10.2.6. A dev-only lint dependency, not in the production build or the owner-app export; `npm audit --omit=dev` reports 0 vulnerabilities | **Dismissed, revisit (owner decision 2026-11-09):** dismissed in GitHub as "risk is tolerable", with the comment: dev-only lint dependency, not in the production build or the owner-app export (`npm audit --omit=dev` reports 0); revisit when `typescript-eslint` allows 11.0.1. A dismissal is not a fix | Revisit when `typescript-eslint` allows `minimatch` 11.0.1: bump it and confirm the alert closes |
 
 ### Next actions
 
@@ -1592,7 +1595,11 @@ closed.
   **Done 2026-10-22:** risk accepted by the owner until 2026-11-20 (does not
   close SG-07); see [SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22). Weekly base-digest
   checks on 2026-10-29, 2026-11-05, 2026-11-12 and 2026-11-19; proposed
-  checkpoint 2026-11-13; decision 2026-11-20.
+  checkpoint 2026-11-13; decision 2026-11-20. **Update (2026-11-09, owner
+  decision, replacing the 2026-11-20 decision):** the HIGH part is cleared,
+  and the two remaining MEDIUM findings are risk-accepted until 2026-12-04,
+  with base-digest checks every Monday (2026-11-16, 2026-11-23, 2026-11-30);
+  see item 2 of the register. This does not close SG-07.
 - The next weekly base-digest check
   ([Refresh the base image digest](#refresh-the-base-image-digest)).
 - Measure parser and general memory under load.
@@ -1671,7 +1678,10 @@ integration responses, and ignores CORS headers returned by the integration.
 The FastAPI app sets no `Access-Control-*` header and has no `CORSMiddleware`
 (source read 2026-10-23), so there is no overlap. This API has no authorizer
 on `$default`, so the documented `OPTIONS /{proxy+}` workaround for an
-authorized `$default` route is not needed. Not verified live.
+authorized `$default` route is not needed. Not verified live. *(Note
+2026-11-07: the claim that API Gateway answers preflight itself is contradicted
+by live evidence; see
+[HTTP API preflight](#http-api-preflight-route-experiment-failed-app-level-204-hypothesized-2026-11-07).)*
 
 **Checks run:** `terraform init -backend=false` and `terraform validate` for
 the production root, `terraform fmt -check` on the changed files, and the CI
@@ -1699,6 +1709,334 @@ is recorded here.
 - The pinned AWS provider's schema (6.68.0, `terraform providers schema -json`
   after `init -backend=false`): `user_pool_tier`, `managed_login_version`,
   `aws_cognito_managed_login_branding` and `cors_configuration` are present.
+
+## HTTP API preflight: route experiment failed, app-level 204 hypothesized, 2026-11-07
+
+**The app-level 204 below is a HYPOTHESIS. It is NOT deployed and NOT verified
+until an image rebuild and the retest below.**
+
+**Live findings (owner-run).** On 2026-11-06, after the stage 2 apply, `OPTIONS`
+on `/health` and on `/projects`, with `Origin: https://app.<owner-domain>`,
+`Access-Control-Request-Method: GET` and
+`Access-Control-Request-Headers: authorization`, returned a non-2xx: 405 with
+`allow: GET` from FastAPI on `/health`, and 500 once on `/projects`. The cause of
+that one 500 is not recorded. This contradicts the stage 2 claim that API Gateway
+answers preflight itself.
+
+**The route experiment FAILED live.** On 2026-11-06 and 2026-11-07, with an
+`OPTIONS /{proxy+}` route with no authorizer applied, `OPTIONS /projects` still
+returned 405 with `allow: POST` from FastAPI, and the Lambda log shows the request
+reached the function. API Gateway adds the configured
+`access-control-allow-origin`, `-methods`, `-headers` and `-max-age` headers to
+that response for the allowed origin and none for another origin. The only
+missing piece appears to be a 2xx status.
+
+**Code change.**
+
+- `aws_apigatewayv2_route.preflight` and its `CKV_AWS_309` skip are removed. The
+  `$default` route and the CORS block are unchanged.
+- The API now answers a preflight, exactly method `OPTIONS` with an
+  `Access-Control-Request-Method` header, with 204 and no body, before routing
+  and authentication. It keeps `X-Correlation-ID` and the `api.request` trace, and
+  sets no `Access-Control-*` header, because API Gateway adds them and a duplicate
+  would make browsers reject the response. Any other `OPTIONS` request still gets
+  405, and every other method is unchanged.
+
+**When it takes effect.** Only after the next image rebuild and apply. The API
+function keeps returning 405 until then. Removing the route is a destroy of one
+route on apply, so that plan shows one route destroyed.
+
+**Retest after the rebuild and apply (owner-run, not run here).** From PowerShell,
+with the owner's values:
+
+```powershell
+curl.exe -si -X OPTIONS "<api-base-url>/health" -H "Origin: https://app.<owner-domain>" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization"
+curl.exe -si -X OPTIONS "<api-base-url>/projects" -H "Origin: https://app.<owner-domain>" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization"
+aws logs tail "/aws/lambda/<api-function-name>" --since 10m
+```
+
+The fix holds only if both return 204 with the CORS headers appearing once each,
+for the allowed origin, and the log shows the requests with no authorization
+denial. A request without a token to `GET <api-base-url>/projects` must still
+return 401.
+
+## Owner-app deployment runbook (INFRA-010 stage 6b, owner-run)
+
+Written in stage 6a, 2026-11-06. **No step here has been executed.** Nothing is
+applied or deployed, and no Cloudflare account, token, environment or secret
+for the owner app exists yet. Decisions are in
+[ADR-022](adr/ADR-022-owner-app-frontend-host.md). The owner fills every
+`<placeholder>` privately. The domain name, account ID, project name, client ID
+and API address are not written in the repository, and the Cloudflare screen
+names below are from documentation, not from a run.
+
+Direct Upload and `_headers` serving by Cloudflare are unverified until step 9.
+
+**Update (2026-11-09):** the owner has since run these steps; the results are in
+[Rebuild and owner-app verification, 2026-11-07 to 2026-11-09](#rebuild-and-owner-app-verification-2026-11-07-to-2026-11-09-owner-run)
+and in "Evidence recorded" at the end of this runbook. Direct Upload and
+`_headers` serving by Cloudflare are now verified: the deployed response carried
+the generated CSP with hashes and no `'unsafe-inline'`.
+
+**Corrections found in the 2026-11 run** (the steps below are unchanged text):
+
+- Attach the custom domain to the Pages project and add the DNS record (step 8) **before** the AWS apply: steps 5 to 7 bind the web origin and the callback and logout URLs to that address. Found in the 2026-11 run.
+- The CNAME to a Pages project in another Cloudflare account was accepted as DNS-only (proxy off) and reached Active with SSL. Found in the 2026-11 run.
+- Run `wrangler login` in a private browser window signed in to the owner-app account, so the session cannot land in the guest demo's account. Found in the 2026-11 run.
+- A trailing dot is not needed on the CNAME target in Cloudflare. Found in the 2026-11 run.
+- The Docker credential-helper fallback from the image push runbook was needed again. Found in the 2026-11 run.
+- Delete the saved plan after the apply (`Remove-Item tfplan`); `tfplan` is now git-ignored. Found in the 2026-11 run.
+- Update `image_uris` in `production.tfvars` **before** planning: a plan with the old digests showed no image change. This is confirmed again. Found in the 2026-11 run.
+- On Windows the test suite needs Git's bash first on `PATH`: a deploy-workflow test shells out to `bash`, and the WSL launcher fails. Found in the 2026-11 run.
+
+**What stage 6a did NOT verify:**
+
+- The Wrangler action on Pages. The pinned action and Wrangler version were taken as given and have not run.
+- CORS live, between the owner app's address and the API.
+- The Hosted UI default style.
+- The 5 requests per second throttle under polling.
+- The prefix-domain charge.
+
+**Values used below:**
+
+| Placeholder | Meaning |
+|---|---|
+| `app.<owner-domain>` | The owner app's address: the subdomain `app` of the owner's domain |
+| `<pages-project-name>` | The Pages project in the owner-app Cloudflare account |
+| `<cognito-prefix>` | The Cognito domain prefix; choose an unused one |
+| `<api-base-url>` | The `http_api_endpoint` output, with no trailing slash |
+
+**Step 1. OWNER RUNS THIS: create the second Cloudflare account.**
+
+Create a separate Cloudflare account for the owner app, not a member of or the
+same account as the guest demo's. Record its account ID privately. Keep nothing
+else in this account: step 3's token reaches every Pages project in it.
+
+**Step 2. OWNER RUNS THIS: create the Pages project for Direct Upload.**
+
+A Wrangler session may still be signed in to the guest demo's account, so
+confirm the account first and stop if `whoami` lists the guest demo's account:
+
+```powershell
+npx wrangler@4.158.0 login
+npx wrangler@4.158.0 whoami
+$env:CLOUDFLARE_ACCOUNT_ID = "<owner-app-account-id>"
+npx wrangler@4.158.0 pages project create "<pages-project-name>" --production-branch=main
+Remove-Item Env:CLOUDFLARE_ACCOUNT_ID
+```
+
+Do not connect a Git repository to the project: CI deploys it.
+
+**Step 3. OWNER RUNS THIS: create the API token.**
+
+In the Cloudflare dashboard, create a custom API token with exactly one
+permission, *Account*, *Cloudflare Pages*, *Edit*, and under account resources
+include only the owner-app account. Copy it only into step 4.
+
+Its limits: it cannot be narrowed to one Pages project, as far as the official
+documentation read shows (ADR-022 open items), so it can create, edit and delete
+every Pages project in that account, including replacing the owner app. The
+separate account is what keeps it away from the guest demo. Set an expiry if you
+will rotate it, and revoke it at once if it may have leaked.
+
+**Step 4. OWNER RUNS THIS: create the GitHub environment.**
+
+In the repository settings, create the environment `owner-app-deploy`:
+
+- Required reviewer: the owner.
+- Deployment branches: limited to `main`.
+- Secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+- Variables, set as environment variables and not secrets:
+
+| Variable | Value | When |
+|---|---|---|
+| `CLOUDFLARE_PAGES_PROJECT` | `<pages-project-name>` | Now |
+| `NEXT_PUBLIC_AUTH_REDIRECT_URI` | `https://app.<owner-domain>/` | Now |
+| `NEXT_PUBLIC_AUTH_LOGOUT_URI` | `https://app.<owner-domain>/` | Now |
+| `NEXT_PUBLIC_API_BASE_URL` | `<api-base-url>` | Now, from `terraform output -raw http_api_endpoint` |
+| `NEXT_PUBLIC_COGNITO_DOMAIN` | Output of step 7 | After step 7 |
+| `NEXT_PUBLIC_COGNITO_CLIENT_ID` | Output of step 7 | After step 7 |
+
+The workflow's validation step fails, without printing a value, until all six
+are valid.
+
+**Step 5. OWNER RUNS THIS: fill the private tfvars.**
+
+Add these to the private `production.tfvars`, all from the same address. The
+callback and logout URLs are the https site root with a trailing slash; the
+origin has no trailing slash:
+
+```hcl
+web_origins           = ["https://app.<owner-domain>"]
+cognito_domain_prefix = "<cognito-prefix>"
+cognito_callback_urls = ["https://app.<owner-domain>/"]
+cognito_logout_urls   = ["https://app.<owner-domain>/"]
+```
+
+**Step 6. OWNER RUNS THIS: plan `module.compute_api`.**
+
+From `infra/environments/production`, with the owner's local credentials:
+
+```powershell
+terraform init -backend-config=backend.hcl
+terraform plan "-var-file=production.tfvars" '-target=module.compute_api' "-out=tfplan"
+```
+
+Read the **whole** plan. Expected, from
+[the stage 2 section](#owner-app-cors-and-cognito-oauth-infra-010-stage-2-2026-10-23):
+
+- Added: the Cognito domain and the managed-login branding style.
+- Changed in place: the HTTP API (CORS) and the app client (OAuth).
+- No change to the pool tier.
+- Nothing destroyed or replaced.
+
+If the plan destroys or replaces anything, changes the tier, or lists anything
+else you cannot explain, do not apply.
+
+Stop and paste the plan to the reviewer before apply.
+
+**Step 7. OWNER RUNS THIS: apply and read the outputs.**
+
+Only after the reviewer has read the plan:
+
+```powershell
+terraform apply tfplan
+terraform output -raw cognito_client_id
+terraform output -raw cognito_domain_base_url
+```
+
+Set `NEXT_PUBLIC_COGNITO_CLIENT_ID` and `NEXT_PUBLIC_COGNITO_DOMAIN` in the
+environment from these. Neither is a secret, and neither goes in the repository.
+
+**Step 8. OWNER RUNS THIS: attach the address.**
+
+In the Pages project, attach the custom domain `app.<owner-domain>`. At the DNS
+provider, add a CNAME for `app` pointing to `<pages-project-name>.pages.dev`.
+Wait until the Pages project shows the domain as active.
+
+**Step 9. OWNER RUNS THIS: deploy.**
+
+```powershell
+gh workflow run deploy-owner-app.yml --ref main
+```
+
+Approve the `owner-app-deploy` environment when the run asks. Then confirm that
+the CSP is served and allows no inline script by keyword:
+
+```powershell
+curl.exe -sI "https://app.<owner-domain>/" | Select-String "content-security-policy"
+```
+
+In the browser's developer tools, confirm `/` and `/demo` load with no CSP
+violation. This is the first real test of Direct Upload and `_headers`.
+
+**Step 10. OWNER RUNS THIS: the M2 acceptance run.**
+
+Against the INFRA-010 acceptance text, in a browser over HTTPS on
+`app.<owner-domain>`:
+
+1. Sign in through the Hosted UI, and note which sign-in page style appears.
+2. Create a project.
+3. Submit synthetic text, and see the analysis run saved.
+4. Upload a Markdown file and watch its status reach a final state.
+5. Without a token, an owner route returns 401:
+
+   ```powershell
+   curl.exe -s -o NUL -w "%{http_code}`n" "<api-base-url>/projects"
+   ```
+
+6. Record the Cognito tier and any domain charge once a bill shows it.
+
+**Evidence to paste back, with no token, client ID, account ID or domain name:**
+
+- [ ] The step 6 plan summary line, and confirmation that nothing was destroyed.
+- [ ] The deploy run's conclusion and commit, from `main`.
+- [ ] The CSP header check from step 9, with hosts and hashes removed.
+- [ ] Sign-in succeeded, and the page style seen.
+- [ ] The token is in `sessionStorage`, and no refresh token is in browser storage.
+- [ ] A project created and a synthetic analysis saved.
+- [ ] The Markdown upload's final status.
+- [ ] The 401 from step 10.
+- [ ] Any CORS, CSP or 429 error seen in the browser while polling.
+- [ ] The Cognito tier, and any domain charge or that no bill has shown one yet.
+
+**Evidence recorded (owner-run, 2026-11-07 to 2026-11-09):**
+
+- Sign-in through the Hosted UI over HTTPS worked. The page looked like Cognito's default managed-login style; the version was **not** confirmed from the page.
+- The browser's token exchange to the Cognito token endpoint returned 200 with the allowed-origin header.
+- The access token is the only token kept: `sessionStorage` held exactly an access-token key and an expiry key, with no refresh or ID token key, and `localStorage` was empty.
+- Preflights returned 204. The project list, project create (201), upload (202) and document-status calls worked from the owner-app origin.
+- A synthetic analysis run saved a result (about 90 tokens).
+- The 401 without a token was observed.
+- The deployed response carried the generated CSP with hashes and no `'unsafe-inline'`, and no console violation appeared on the pages exercised.
+- The cross-account custom domain attached with a DNS-only CNAME and reached Active with SSL.
+
+**Not verified:** `sessionStorage` contents after sign-out; the 3 s polling
+spacing and the 5 requests per second throttle under real polling; the Cognito
+prefix-domain charge; CSP violations on pages not exercised. Accepting INFRA-010
+or INFRA-002 is the owner's decision; neither is marked Accepted here.
+
+## Rebuild and owner-app verification, 2026-11-07 to 2026-11-09 (owner-run)
+
+Recorded from the owner's report; no step was re-run for this entry. Image
+digests, account IDs, the owner's domain and the API address stay in the owner's
+private notes.
+
+**Rebuild and apply:**
+
+- The five images were built from `main` at
+  `23c59a88f6f30b54e16acde433ce3caa2830d45e`, on the base digest pinned on
+  2026-11-07 (see [Refresh the base image digest](#refresh-the-base-image-digest)).
+- pypdf 6.21.4 and certifi 2026.10.19 were verified inside all five built images.
+  The API image contains the preflight middleware and the archived-upload refusal.
+- The images were pushed with the documented credential-helper fallback. Each ECR
+  manifest is a single OCI image manifest and equals the local manifest digest.
+- The targeted apply reported 0 added, 4 changed, 1 destroyed: the four
+  `image_uri` updates, and the `OPTIONS /{proxy+}` route that had been removed
+  from code.
+- The four functions read back Active and Successful on the pushed digests. A
+  follow-up targeted plan reported no changes.
+
+**ECR scan on push:**
+
+- `api` and `parser`: `COMPLETE`, with MEDIUM 2 and no HIGH key in the counts.
+- `general` and `executor`: the CLI errored ("NoneType" item assignment), so their
+  results were not read.
+- The two MEDIUM findings were **not** named and **not** triaged.
+
+**SG-07 item 2 stays OPEN.** A count is not a by-name comparison against the six
+HIGH CVEs of the
+[2026-10-22 triage](#sg-07-item-2-triage-2026-10-22), two of the five images were
+not read, and the owner's risk acceptance runs until 2026-11-20.
+
+**Live checks against the API address:**
+
+- `OPTIONS` preflight from the allowed origin returns 204, with
+  `access-control-allow-origin` present once.
+- From another origin it returns 204 without that header.
+- `/health` returns 200, and `/projects` returns 401 without a token.
+
+The owner-app M2 evidence is listed under "Evidence recorded" in the
+[owner-app deployment runbook](#owner-app-deployment-runbook-infra-010-stage-6b-owner-run).
+
+### Finding: the sample requirements yield no Markdown requirements (OPEN)
+
+The Markdown parser (`apps/api/src/ai_qa_copilot_api/markdown_parser.py`,
+`_REQUIREMENT`, read 2026-11-09) recognizes a requirement only on a line such as
+`- REQ-ID: text`: an optional list marker, then a `REQ-` or `REQUIREMENT-` ID,
+then a colon or dash separator. Heading lines are treated only as context. The
+repository's own `fixtures/sample-requirements.md` writes each requirement as a
+heading (`### REQ-AUTH-001 — ...`), so parsed as Markdown it yields 0
+requirements. The promoter (`parser_evidence_promotion.py`) then rejects the empty
+result as `PARSER_EVIDENCE_INVALID`, and the status panel shows only "parser:
+rejected".
+
+Observed twice in production on 2026-11-07, and reproduced locally by the owner
+(Markdown: 0 requirements; text: 167). A small file with two
+`- REQ-ORDER-00N: ...` lines reached accepted (sections 2, requirements 2).
+
+**OPEN:** either the sample or the parser pattern should change, and the
+empty-result rejection reason is misleading. Neither is changed here.
 
 ## CloudFront verification declined; guest demo host, 2026-10-21
 
@@ -2697,6 +3035,32 @@ finding names were not compared); SG-07 item 2 stays open. Step 3 (build, push, 
 owner's; see
 [Combined five-image rebuild, 2026-10-22](#combined-five-image-rebuild-2026-10-22).
 
+**2026-11-07: a newer base exists.** The owner's anonymous registry read on
+2026-11-07 (step 1; not re-checked here) showed the `3.13-arm64` tag resolving
+to `sha256:d2f137e6fe7085cf5ee22c4b618c2f34d05860a4587e44f1be8076dfc0ed8af4`
+(media type `application/vnd.docker.distribution.manifest.v2+json`), no longer
+the pinned
+`sha256:02f57ee32abc4b34f77d30b9f00555d37eaa2fd6b8b10c2d3e6b79542255ac06`
+(refreshed 2026-10-22). Step 2 is done on branch `build/base-refresh-2026-11-07`:
+only the `sha256:` value of the `ARG LAMBDA_PYTHON_BASE=` line changed. The new
+base is **NOT yet built, scanned or verified**, and nothing here shows that it
+fixes any finding. Step 3 (build, push, apply) is the owner's; then compare the
+ECR scan findings by CVE name with the six HIGH CVEs in
+[SG-07 item 2 triage, 2026-10-22](#sg-07-item-2-triage-2026-10-22).
+
+**2026-11-09: a newer base exists.** The owner's anonymous registry read on
+2026-11-09 (step 1, `docker buildx imagetools inspect`; not re-checked here)
+showed the `3.13-arm64` tag resolving to
+`sha256:00632c00347477dd4dfa5c9813ee4d774208d1afd37b9e1b674412d904cf0ae0`, no
+longer the pinned
+`sha256:d2f137e6fe7085cf5ee22c4b618c2f34d05860a4587e44f1be8076dfc0ed8af4`
+(refreshed 2026-11-07). Step 2 is done on branch `build/base-refresh-2026-11-09`:
+only the `sha256:` value of the `ARG LAMBDA_PYTHON_BASE=` line and the refresh
+date in the header comment changed. The new base is **NOT yet built, scanned or
+verified**, and nothing here shows that it fixes any finding. Step 3 (build,
+push, apply) is the owner's; then compare the ECR scan findings by CVE name with
+the two MEDIUM findings recorded in SG-07 item 2 (2026-11-09 update).
+
 No Terraform change was needed: `image_uris` already takes one URI per
 function and checks the four keys. A validation that rejects the all-zero
 example digest is a possible follow-up; it was not added.
@@ -3353,6 +3717,14 @@ This does **not** close SG-07 or the item: an accepted risk is still an
 unresolved finding and blocks release until closed. The release freeze is
 December 6, so 2026-11-20 leaves about two weeks to rebuild and redeploy.
 
+**Owner decision (2026-11-09), replacing the 2026-11-20 deadline:** the six
+HIGH CVEs below are absent from the scans of the 2026-11-07 and 2026-11-09
+images, so the HIGH part is cleared. The two remaining MEDIUM findings
+(CVE-2026-76781, CVE-2026-114406) are risk-accepted until 2026-12-04, with
+weekly Monday checks. The plan below is history. Details, the rule and the
+fallback to consider: [SG-07 disposition register](#sg-07-disposition-register),
+item 2. This does **not** close SG-07.
+
 **Scan data.** The ECR scan of the image built from
 `e1d3692e947f8632382fbcdfec8802bc6daf8da7`; all five images share the base
 and showed the same counts. The scan lists one row per package:
@@ -3486,6 +3858,9 @@ least-privilege deploy role and the manual approval before apply.
    open are listed in
    [First deployment, 2026-10-22 UTC](#first-deployment-2026-10-22-utc) and in
    the ADR-019 Open items.
+10. **Parser finding (OPEN, 2026-11-09):** the sample requirements yield no
+    Markdown requirements and are rejected as `PARSER_EVIDENCE_INVALID`; see
+    [Finding: the sample requirements yield no Markdown requirements](#finding-the-sample-requirements-yield-no-markdown-requirements-open).
 
 ## Sources (all read 2026-10-12)
 

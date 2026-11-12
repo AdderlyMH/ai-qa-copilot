@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/write-csp-headers.mjs",
     "start": "next start",
     "format": "prettier --write --ignore-unknown --ignore-path ../../.gitignore .",
     "format-check": "prettier --check --ignore-unknown --ignore-path ../../.gitignore .",

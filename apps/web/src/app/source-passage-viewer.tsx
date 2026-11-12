@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
+import { apiFetch } from "../lib/api-fetch";
+
 type Citation = {
   id: string;
   document_type: string;
@@ -67,7 +69,7 @@ export function SourcePassageViewer({ projectId }: { projectId: string }) {
 
     setBusy(true);
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/projects/${projectId}/citations/${candidate}`,
       );
       if (!response.ok) {

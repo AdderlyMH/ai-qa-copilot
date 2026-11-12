@@ -435,8 +435,11 @@ resource "aws_apigatewayv2_api" "http" {
   protocol_type = "HTTP"
   description   = "Owner and guest API; the function validates Cognito tokens itself (auth.py)."
 
-  # Owner web app on its own origin (ADR-022). API Gateway answers preflight
-  # requests and ignores CORS headers from the integration; FastAPI sets none.
+  # Owner web app on its own origin (ADR-022).
+  # These settings add CORS headers to responses.
+  # Whether API Gateway answers a preflight itself was not confirmed live
+  # (2026-11-06: the OPTIONS request reached the Lambda); see docs/INFRASTRUCTURE.md,
+  # section on the preflight finding.
   # Methods are those the API routes serve to the web app; /demo accepts more
   # methods only to deny them. Bearer header, no cookies: no credentials.
   cors_configuration {

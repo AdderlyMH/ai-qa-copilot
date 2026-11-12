@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 124405,
-      "sha256": "702e323cdce5f901f9f810f8be12b8ca4f8bdfa66bae63ce9ff5f63da42bfb55"
+      "bytes": 128906,
+      "sha256": "300ace08de4db316ff3220b9b1943bca010823f30069bdf5170b1e3a8462e976"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 216987,
-      "sha256": "965cba2062af678b8825408007bc4b0663326d700756468c39c483d494da5b5b"
+      "bytes": 246570,
+      "sha256": "11c702a40575533110a12a99240d55a7231374113e67dea0dee91c3e5ecf58b3"
     },
     {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 205515,
-      "sha256": "5924dfaf5457097458931b7151abac6cb38ddcddda509969c627a2b2fe5a5b80"
+      "bytes": 228152,
+      "sha256": "753546881d20873c2648e6fc9d2965edb4691dab28d047d338483cc85e4eff20"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -282,8 +282,8 @@
     },
     {
       "path": "docs/adr/ADR-022-owner-app-frontend-host.md",
-      "bytes": 19182,
-      "sha256": "19137958b0b00d659186ad74052d351f431da39a4c00ec86eb3d0874423deecc"
+      "bytes": 27615,
+      "sha256": "5ab8c25ac1dd90aec18aa1eea3714a8959716bea26f57111a3594ecb9645b703"
     },
     {
       "path": "docs/adr/README.md",
@@ -432,8 +432,8 @@
     },
     {
       "path": "scripts/tasks.py",
-      "bytes": 30765,
-      "sha256": "cc4e9ff9cdb0616e00e2101d70f0c77056452c060c58984b298cdb0c0bce1acd"
+      "bytes": 31629,
+      "sha256": "455f83472c36a0d2bd6d479bb7397ea572ac132a8719d392e01388724c2ff145"
     },
     {
       "path": "scripts/validate_docs.py",
@@ -442,8 +442,8 @@
     },
     {
       "path": "uv.lock",
-      "bytes": 91269,
-      "sha256": "b0fb81984a587a7ac41f069311752cf7ad9eb5c430061e2807b738472e2abd9c"
+      "bytes": 91268,
+      "sha256": "969b213ba2cfa76c166985ef9eb5395745b45e8422162b8ea1e6164d581b4186"
     }
   ]
 }

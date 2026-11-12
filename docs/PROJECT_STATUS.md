@@ -1,5 +1,414 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## SG-07 dispositions, INFRA-010 and INFRA-002 accepted — 2026-11-09
+
+**Status:** Docs only, on a branch. Recorded from the owner's report of
+2026-11-09; no step was re-run here and no AWS or network call was made. The
+acceptances and dispositions are **owner decisions on the recorded evidence**.
+
+- **SG-07 item 2:** the six HIGH CVEs of the 2026-10-22 triage are absent from
+  the scans of the 2026-11-07 images, so the HIGH part is cleared. Two MEDIUM
+  findings remain: CVE-2026-76781 (`libxml2`) and CVE-2026-114406
+  (`ca-certificates`). The base pinned on 2026-11-09 (PR #248) was built from
+  `main` at `c7fff6b`, pushed and scanned. All five images list the same two
+  findings, so that base does not carry the Amazon Linux fixes. The images are
+  **not deployed**. Owner decision: the two MEDIUMs are risk-accepted until
+  2026-12-04, replacing the 2026-11-20 deadline, with base-digest checks every
+  Monday. This does **not** close SG-07.
+- **SG-07 item 7:** closed for the four deployed functions. pypdf 6.21.4 is
+  verified in the 2026-11-07 and 2026-11-09 images, and `security-scans` passed
+  on `main` (owner-reported).
+- **SG-07 item 8 (Mako, alert #124):** merged (PR #247), and Mako 1.4.3 is
+  verified inside the `migrate` image built on 2026-11-09, which is not
+  deployed. Still OPEN.
+- **SG-07 item 9 (new; `minimatch`, alert #126):** a dev-only lint dependency.
+  The owner dismissed it in GitHub as "risk is tolerable"; it is marked
+  dismissed, revisit.
+- **INFRA-010:** ACCEPTED by the owner, with the evidence mapped to its
+  acceptance text in BACKLOG.md. One gap: any Cognito prefix-domain charge is
+  not confirmed.
+- **INFRA-002:** ACCEPTED by the owner. The owner workflow over HTTPS (M2) and
+  the guest read-only demo are met. SG-08 remains disclosed as unmet, and
+  execution stays disabled.
+- **ADR-022:**
+  - The token-scope item records the second Cloudflare account (created
+    2026-11-06), the Pages project and the scoped CI token; it stays PARTIALLY
+    RESOLVED.
+  - The CSP row records the deployed hash-based policy and no console
+    violations on the pages exercised; it is not verified on every page.
+
+**Open:**
+
+- SG-07 item 2: the two MEDIUMs, accepted to 2026-12-04, with Monday checks on
+  2026-11-16, 2026-11-23 and 2026-11-30.
+- SG-07 item 8: `security-scans` on `main` after the merge, and the GitHub alert
+  shown closed; neither is confirmed.
+- The Markdown parser/sample finding.
+- Dependabot PRs #230, #231, #234, #235 and #236: all have failing checks, cause
+  not yet identified.
+- The Cognito prefix-domain charge: check the first monthly bill (early
+  December).
+- The deploy freeze on 2026-12-06.
+
+See INFRASTRUCTURE.md, the SG-07 disposition register, and BACKLOG.md, INFRA-010
+and INFRA-002.
+
+## Lambda base image digest refreshed in the Dockerfile — 2026-11-09
+
+**Status:** On branch `build/base-refresh-2026-11-09`; **not built, scanned,
+verified or deployed.** No build, push, AWS or network call was made. Nothing is
+marked met, and nothing here shows that the refresh fixes any finding.
+
+- **Pin:** the owner's registry read on 2026-11-09 showed the `3.13-arm64` tag at
+  a newer digest than the one pinned on 2026-11-07. Only the `sha256:` value of
+  the `ARG LAMBDA_PYTHON_BASE=` line and the refresh date in the Dockerfile
+  header comment changed; both digests are in the runbook note.
+- **Tests:** the digest test checks only the format, not the value, and no test
+  pins the comment, so no test changed.
+- **SG-07 item 2 (owner-run, 2026-11-09):** the ECR scan of the 2026-11-07 images
+  (`api`, `parser`, `general`, `executor`) shows MEDIUM 2 each, with no HIGH or
+  CRITICAL; none of the six HIGH CVEs of the 2026-10-22 triage remains. The two
+  findings are CVE-2026-76781 (`libxml2`, fix ALAS2023-2026-3341) and
+  CVE-2026-114406 (`ca-certificates`, fix ALAS2023-2026-3337). The new base may
+  carry both fixes; that is not verified.
+
+**Open:** SG-07 item 2 stays OPEN until the images are rebuilt on the new base
+and the scan findings are compared by CVE name. The owner's risk acceptance
+runs until 2026-11-20.
+
+See INFRASTRUCTURE.md, "Refresh the base image digest" and the SG-07 register.
+
+## Mako bumped to 1.4.3 for Dependabot alert #124 — 2026-11-09
+
+**Status:** On branch `chore/mako-1-4-2`; **not merged, built or deployed.** No
+AWS call was made.
+
+- **Alert:** GitHub Dependabot alert #124, `mako` <= 1.4.1, a Windows-only path
+  traversal through a drive-letter URI in `TemplateLookup`, severity Moderate,
+  patched in 1.4.2 (summary read from the alert, 2026-11-09).
+- **Change:** `uv.lock` moves Mako from 1.4.1 to 1.4.3, the latest release (owner
+  choice), with `uv lock --upgrade-package mako` (uv 0.11.16). Only `mako`
+  changes in the lock; no `pyproject.toml` pin was needed, and `alembic`'s
+  constraint allows it.
+- **Exposure:** Mako comes in only through `alembic` (the `migrate` and `dev`
+  groups), so only the `migrate` image carries it. The migration runner is off
+  (`migration_enabled = false`), and the Lambdas run Linux.
+- **pip-audit:** run as CI's `security-scans` job runs it, it reported no known
+  vulnerabilities before and after. That job audits the runtime set, which does
+  not include Mako; an audit of the `migrate` group export also flagged nothing.
+
+**Open:** SG-07 item 8, owner disposition pending, no acceptance recorded. The
+bump reaches an image only at the next `migrate` rebuild.
+
+## Rebuild, owner-app verification and findings recorded — 2026-11-09
+
+**Status:** Docs only, on a branch. Recorded from the owner's report of
+2026-11-07 to 2026-11-09; no step was re-run here and no AWS, Cloudflare or
+network call was made. INFRA-010 and INFRA-002 are **not** marked Accepted:
+acceptance is the owner's decision.
+
+**Rebuild:** five images were built from `main` at `23c59a8` on the base pinned
+on 2026-11-07, with pypdf 6.21.4 and certifi 2026.10.19 verified inside all five.
+They were pushed, and a targeted apply reported 0 added, 4 changed, 1 destroyed:
+four image updates and the removed `OPTIONS` route. The four functions read back
+Active and Successful on the pushed digests, and a follow-up plan showed no
+changes. The live preflight now returns 204, with the allowed-origin header once
+for the allowed origin and none for another; `/health` returns 200 and
+`/projects` 401 without a token.
+
+**Owner app (M2 evidence):**
+
+- Hosted UI sign-in over HTTPS worked, and the token exchange returned 200.
+- Only an access-token key and an expiry key were in `sessionStorage`.
+- Project create (201), upload (202), document status and a synthetic analysis
+  (about 90 tokens) worked from the owner-app origin.
+- Direct Upload and the CSP from `_headers` are verified.
+- The cross-account custom domain is Active with SSL.
+
+**Docs updated:**
+
+- SG-07 item 7 records the rebuild, but stays open because a `security-scans` pass
+  on `main` after the 6.21.4 merge is not recorded. Items 3, 4 and 6 point to it.
+- The ADR-022 CORS item is closed for the interaction question.
+- The token-scope item gains its two sources, and a Cognito prefix reserved-word
+  item is added.
+- The runbook has corrections found in the 2026-11 run.
+- The Dockerfile header comment now gives the 2026-11-07 refresh date; the pin is
+  unchanged.
+
+**Not verified:** `sessionStorage` after sign-out; the 3 s polling spacing and the
+5 requests per second throttle under real polling; the Cognito prefix-domain
+charge; CSP on pages not exercised; the ECR scan results for `general` and
+`executor`; the Hosted UI version.
+
+**Open:**
+
+- SG-07 item 2: no by-name comparison against the six HIGH CVEs; the risk
+  acceptance runs until 2026-11-20.
+- The parser finding: `fixtures/sample-requirements.md` yields 0 Markdown
+  requirements and is rejected as `PARSER_EVIDENCE_INVALID`.
+- The two MEDIUM scan findings, not yet named.
+- The 2 moderate GitHub vulnerabilities, not yet identified.
+
+See INFRASTRUCTURE.md, "Rebuild and owner-app verification, 2026-11-07 to
+2026-11-09 (owner-run)".
+
+## Lambda base image digest refreshed in the Dockerfile — 2026-11-07
+
+**Status:** On branch `build/base-refresh-2026-11-07`; **not built, scanned,
+verified or deployed.** No build, push, AWS or network call was made. Nothing is
+marked met.
+
+The owner's registry read on 2026-11-07 showed `public.ecr.aws/lambda/python:3.13-arm64`
+resolving to
+`sha256:d2f137e6fe7085cf5ee22c4b618c2f34d05860a4587e44f1be8076dfc0ed8af4`. Only
+the `sha256:` value on the `ARG LAMBDA_PYTHON_BASE=` line of
+`apps/api/Dockerfile.lambda` changed, from
+`sha256:02f57ee32abc4b34f77d30b9f00555d37eaa2fd6b8b10c2d3e6b79542255ac06`
+(refreshed 2026-10-22). No test pins the digest value; the existing test checks
+only its form. Nothing here shows that the new base fixes any finding.
+
+SG-07 item 2 stays OPEN until the images are rebuilt and the ECR scan findings are
+compared by CVE name against the six HIGH CVEs in the 2026-10-22 triage. The next
+rebuild and apply would also carry the 204 preflight change, the archived-project
+upload refusal and the pypdf 6.21.4 bump, all already on `main` and not deployed.
+
+Next action: owner review and merge, then the rebuild, scan comparison and apply.
+
+## Document uploads to archived projects refused — 2026-11-07
+
+**Status:** On a branch; **NOT deployed.** No AWS call was made. Nothing is
+marked met.
+
+`POST /projects/{project_id}/documents` now refuses an archived project with 409
+and `{"detail":{"code":"PROJECT_ARCHIVED","message":"Project is archived","retryable":false}}`,
+the same shape as the other upload rejections, with the `X-Correlation-ID`
+header. The check runs after authorization and the project lookup, so a non-owner
+still gets 403 and an unknown project 404, and before the request body is read.
+A refused upload creates no intake row, document, parser job, storage write or
+wake-up, and its audit trail is the same as any other rejected upload's. A new
+helper, `_require_project_accepting_uploads`, does the lookup for this route
+only; `_require_project` and its other callers are unchanged. No other route
+refuses archived projects, and the document list and status routes are
+unchanged.
+
+Verified by tests against the app only. The fix takes effect only after the
+Lambda images are rebuilt and applied, together with the 204 preflight change and
+the pypdf 6.21.4 bump already on `main`.
+
+Possible later web change: the owner app has no 409 mapping for uploads, so it
+shows its generic "The upload failed. Try again." message for this refusal.
+
+## HTTP API preflight: 204 from the API, OPTIONS route removed — 2026-11-07
+
+**Status:** Code on a branch. **The app-level 204 is a HYPOTHESIS, NOT deployed
+and NOT verified.** No AWS call was made. Nothing is marked met.
+
+The `OPTIONS /{proxy+}` route was applied by the owner and **failed live**:
+`OPTIONS /projects` still returned 405 with `allow: POST` from FastAPI, and the
+request reached the Lambda. API Gateway does add the configured CORS headers to
+that response for the allowed origin and none for another origin, so the missing
+piece appears to be a 2xx status.
+
+The API now answers a preflight, exactly method `OPTIONS` with an
+`Access-Control-Request-Method` header, with 204 and no body, before routing and
+authentication. It keeps `X-Correlation-ID` and sets no `Access-Control-*` header.
+Any other `OPTIONS` request still gets 405, and other methods are unchanged, with
+401 without a token. `aws_apigatewayv2_route.preflight` and its `CKV_AWS_309` skip
+are removed. `tfplan` is added to `.gitignore`.
+
+This takes effect only after the next image rebuild and apply, and removing the
+route is a destroy of one route on apply. Tests ran against the app and a
+simulated Lambda event, not the live API. The cause of the one 500 seen on
+`/projects` on 2026-11-06 is not recorded, and this change does not address it.
+The retest commands are in INFRASTRUCTURE.md, "HTTP API preflight: route experiment
+failed, app-level 204 hypothesized, 2026-11-07".
+
+Next action: owner review and merge, then an image rebuild, apply and the retest.
+
+## HTTP API preflight: hypothesized OPTIONS route — 2026-11-06
+
+**Status:** Terraform code on a branch. **The route is a HYPOTHESIZED fix, NOT
+applied and NOT verified.** No AWS call was made. Nothing is marked met.
+
+The owner's live checks on 2026-11-06, after the stage 2 apply, showed `OPTIONS`
+on `/health` and `/projects` returning a non-2xx (405 from FastAPI on `/health`,
+500 once on `/projects`), with the request reaching the Lambda function. This
+contradicts the stage 2 claim that API Gateway answers preflight itself.
+
+`aws_apigatewayv2_route.preflight` adds `OPTIONS /{proxy+}` with no authorization
+and the same integration as `$default`, with one new inline `CKV_AWS_309` skip
+because browser preflight requests carry no token. The `$default` route and the
+CORS block are unchanged. The route may still pass `OPTIONS` to FastAPI, and it
+does not match a preflight to the bare path `/`.
+
+Fallback: if the route does not work, handle `OPTIONS` in the application in the
+next image rebuild and remove this route. See INFRASTRUCTURE.md, "HTTP API
+preflight: live finding and hypothesized route, 2026-11-06".
+
+Next action: owner review and merge, then a targeted apply and a repeat of the
+live checks.
+
+## INFRA-010 stage 6a: owner-app deploy workflow, ADR-022 amendment and runbook — 2026-11-06
+
+**Status:** On a branch. **Nothing is deployed and nothing is applied, and no
+secrets, Cloudflare account or GitHub environment for it exist yet.** No AWS,
+Cloudflare or GitHub-settings call was made and Terraform is unchanged. Nothing
+is marked met. Stage 6b is owner-run and has not started.
+
+`.github/workflows/deploy-owner-app.yml` deploys the owner app, never the guest
+demo. It runs only by manual dispatch and deploys only from `main`; a run from
+another ref prints why and does nothing. It waits on the owner-created
+`owner-app-deploy` environment. It validates the build variables with the
+`next.config.ts` rules, builds with the npm script so the CSP is written, and
+refuses output with no `_headers` or `index.html`, or with `unsafe-inline`. The
+two Cloudflare secrets reach only the deploy step. The workflow has never run;
+actions were pinned from `application-ci.yml` and, for `wrangler-action` and
+Wrangler, from the owner's brief, and those two pins were not re-checked here.
+
+ADR-022 now records the owner decisions of 2026-11-05: a separate Cloudflare
+account for the owner app, the address `app.<owner-domain>`, and the split of
+stage 6. The token-scope item is PARTIALLY RESOLVED. The runbook is in
+INFRASTRUCTURE.md, "Owner-app deployment runbook (INFRA-010 stage 6b, owner-run)".
+
+Verified locally only: the workflow parses as YAML, its contract tests pass, and
+its validation and output-check scripts behaved as intended when extracted and
+run on placeholder values. Unverified until stage 6b: the Wrangler action on
+Pages, Direct Upload, `_headers` serving by Cloudflare, CORS live, the Hosted UI
+default style, the 5 requests per second throttle under polling, and the
+prefix-domain charge.
+
+Next action: owner review and merge; then the runbook, step by step.
+
+## INFRA-010 stage 5: upload form and document-status panel — 2026-11-05
+
+**Status:** Code on a branch; **not deployed.** **Never run against the real
+API**, and sign-in has still never run against real Cognito. No AWS or Cloudflare
+call and no Terraform or `apps/api/src` change. Nothing is marked met.
+
+When signed in, or with auth disabled in development, a selected project now
+shows an upload form and a document list; both call the API through `apiFetch`.
+The form takes `.md` and `.txt` only and checks extension, name and size in the
+browser. The size limit is 2 MiB, the server's per-type limit for those types,
+which is below its 10 MiB maximum. These checks are for convenience; the server
+decides. Error messages come only from the status code and known rejection codes.
+The list renders server values as text, newest first.
+
+The list polls one request at a time: right after an upload or on opening a
+project, then every 3 seconds while any document is `quarantined`,
+`parser_queued` or `parsing` (`DocumentStatus` in `document_status.py`), up to 3
+minutes. A 429, a 5xx or a network error doubles the delay up to 30 seconds, and
+a success returns it to 3 seconds. Polling pauses while the page is hidden and
+stops on sign-out, a 401, project change or unmount.
+
+**Measured worst case, not against the live throttle:** a simulated-timer run gave
+60 requests in 180 seconds, 0.333 per second with a minimum gap of 3,000 ms,
+against the shared limit of 5 per second. An upload adds one POST and an immediate
+list request, and the rate is per open page.
+
+Checked locally with placeholder values only, on the built export in one
+Chromium-based browser behind the generated CSP, with a same-origin mock API, a
+fabricated token and the API host rewritten to the mock in the page. Upload was
+accepted and polling stopped on `parsed`. Three 429 responses gave gaps of 6, 12
+and 24 seconds, then 3 again. A hidden page sent no request. Sign-out and a 401
+each stopped polling. Oversized, non-text and non-ASCII-named files were refused
+with no request sent, an HTML-like filename rendered as text, and there were no
+CSP violations. Not verified: the real API, CORS, the live throttle, whether a
+gateway 429 is readable by the browser (either way it backs off), and Cloudflare
+Pages serving the header.
+
+The CSP generator now also fails above 100 header rules. The limits of 2000
+characters per line and 100 rules are **VERIFIED**: stated in the Cloudflare Pages
+"Headers" docs (<https://developers.cloudflare.com/pages/configuration/headers/>),
+checked 2026-11-05 by the owner. The stage 5 line is 1,443 characters.
+
+Next action: owner review and merge; then stage 6 (deploy workflow, apply and the
+M2 acceptance run).
+
+## INFRA-010 stage 4: Hosted UI sign-in, PKCE and token handling — 2026-11-05
+
+**Status:** Code on a branch; **not deployed.** **The sign-in flow has never
+been run against a real Cognito domain.** No AWS or Cloudflare call and no
+Terraform change. Nothing is marked met.
+
+`apps/web/src/lib/auth/` holds small modules using WebCrypto only, with no new
+npm package: PKCE S256, state, the authorize and logout URLs, the code exchange,
+a UX-only read of the JWT `exp` claim, and `sessionStorage` handling. Only the
+access token and its expiry are kept; the verifier and state are removed as soon
+as a callback reads them. Cognito may still return other tokens in the exchange
+response; the code reads `access_token` and drops the rest. The callback and
+logout URLs are the site root, as in the Terraform example values. All 16 API
+calls now go through `apiFetch` (`apps/web/src/lib/api-fetch.ts`), which adds the
+bearer token only for the configured API base and, on a 401 or an expired token,
+clears it and returns to the sign-in prompt, with no retry and no refresh.
+
+An export build fails unless `NEXT_PUBLIC_COGNITO_DOMAIN`,
+`NEXT_PUBLIC_COGNITO_CLIENT_ID`, `NEXT_PUBLIC_AUTH_REDIRECT_URI` and
+`NEXT_PUBLIC_AUTH_LOGOUT_URI` are valid. Demo-mode builds and the development
+server do not check them; without them auth is disabled and no header is sent.
+`python scripts/tasks.py ci` builds with `.invalid` placeholders. The export
+build also writes a hash-based CSP to `out/_headers`, with no `'unsafe-inline'`;
+see the ADR-022 open items for the policy and what was verified.
+
+Checked locally with placeholder values only: unit-style runs of the real modules
+in Node with a mocked `fetch`, including the RFC 7636 Appendix B vector, and the
+built export in one Chromium-based browser behind the generated header, where the
+CSP blocked three negative controls. In that browser a successful sign-in was not
+run; the signed-in page was reached with a fabricated token in storage, and the
+401 path used a mocked response. Not verified: Cognito accepting these requests,
+the real API accepting the token, CORS, and Cloudflare Pages serving the header.
+
+Next action: owner review and merge; then stage 5 (upload form and status panel).
+
+## INFRA-010 stage 3: static export and build-time API base URL — 2026-11-05
+
+**Status:** Code on a branch; **not deployed.** No AWS or Cloudflare call and
+no Terraform change. Nothing is marked met.
+
+`apps/web/next.config.ts` now selects its configuration by Next phase. A
+production build uses `output: "export"` with no rewrite or redirect, and fails
+unless `NEXT_PUBLIC_API_BASE_URL` is set, starts with `https://` and has no
+trailing slash (rejected, not normalized). The development server keeps the
+`/api/:path*` rewrite to `API_BASE_URL`, which no build reads.
+`PUBLIC_DEMO_MODE=true` keeps its temporary redirect from `/` to `/demo` and
+does not export. Every `fetch` in `apps/web/src/app` goes through
+`apiUrl()` (`apps/web/src/lib/api-url.ts`), which replaces the `/api` prefix
+with the base URL when one is set; methods, bodies, headers and response
+handling are unchanged. Sign-in and tokens remain stage 4; polling and upload
+remain stage 5.
+
+`python scripts/tasks.py ci` now runs the web build with the placeholder
+`https://api.example.invalid`, set for that command only, and the
+`application-ci` `quality` job reaches it through that target. Local builds
+showed: export mode wrote `out/` including `index.html` and `demo.html`, demo
+mode wrote no `out/`, and an unset, `http://` or trailing-slash value failed
+with the error above. The step has not yet run on GitHub, so the ADR-022 open
+item stays OPEN. A local `ci` run now leaves a regenerated
+`apps/web/next-env.d.ts` to revert.
+
+The public Vercel showcase page (`/demo` and `PUBLIC_DEMO_MODE`, PR #232) is
+already merged to `main`. The `docs-validation` runner pin to `ubuntu-24.04`
+(PR #233) is also already merged.
+
+Next action: owner review and merge; then stage 4 (Hosted UI sign-in).
+
+## pypdf bumped to 6.21.4 for seven pip-audit advisories — 2026-11-05
+
+**Status:** On branch `chore/pypdf-6-21-4`; not merged. Nothing deployed
+changes.
+
+The application-CI `security-scans` job failed on `pip-audit --strict`:
+`pypdf` 6.21.2 has seven new advisories, each a denial of service through a
+crafted PDF (long runtimes, large memory use or an infinite loop); four are
+fixed in 6.21.3 and three in 6.21.4. The failure comes from the `main`
+lockfile, not from the INFRA-010 stage 3 branch where it was seen.
+`apps/api/pyproject.toml` and `uv.lock` move to pypdf 6.21.4; no other package
+changes. Recorded as SG-07 item 7 in INFRASTRUCTURE.md, open with owner
+disposition pending.
+
+Next action: owner review and merge, then rerun `security-scans` on the open
+pull requests.
+
 ## pypdf bumped to 6.21.2 for three pip-audit advisories — 2026-10-24
 
 **Status:** On branch `chore/pypdf-6-21-2`; not merged. Nothing deployed
