@@ -1,5 +1,63 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## INFRA-006, 007, 009, 011 and HARD-001 accepted; remaining plans — 2026-11-12
+
+**Status:** Docs only, on a branch. These are **owner decisions on the recorded
+evidence**; no step was re-run here and no AWS or network call was made. The
+Terraform and scanner facts below come from a read-only look at the repository
+on 2026-11-12.
+
+- **INFRA-006: ACCEPTED.** The owner API, upload and status routes were evidenced
+  live. Two gaps stay open:
+  - The idle pooled connection was never measured.
+  - Terraform does not set `DOCUMENT_UPLOAD_MAX_BYTES`, so the 3 MiB
+    recommendation is not applied. The application's 10 MiB maximum and the
+    2 MiB Markdown/text limit apply.
+
+  Open follow-up: the API role has no `s3:DeleteObject` for orphan cleanup.
+- **INFRA-007: ACCEPTED.** The API and parser handlers ran live. The general
+  handler is a no-op until INFRA-013, and the executor is disabled and has never
+  run. The parser wake-up is on, and the general wake-up is not set.
+- **INFRA-009: ACCEPTED.** Four rounds of arm64 images were built and pushed (digests
+  private). The emulator start was shown only for the parser, the executor has
+  never run in Lambda, and the general worker has never received a message.
+- **INFRA-011: ACCEPTED.** The first publication is live and verified, and tests
+  cover refusing unsanitized input and never overwriting. A second publication
+  has never been observed live.
+- **HARD-001: ACCEPTED.** All five categories have a configured scanner:
+  - secret: GitHub secret scanning;
+  - SAST: Bandit;
+  - dependency: pip-audit, npm audit and Dependabot;
+  - container: ECR scan on push;
+  - IaC: Checkov.
+
+  The SG-07 register records triage and the blocking rule. Limitations:
+  container scanning is not in CI, SAST is Bandit only, and secret scanning
+  evidence dates from 2026-07-21.
+- **INFRA-003: still NOT Accepted.** Connectivity, migration and the estimate
+  are evidenced; the backup/restore test (shared with HARD-004) remains.
+- **HARD-002, HARD-003, HARD-004:** notes only, no status change.
+  - HARD-002 runs last and needs an owner-amended acceptance.
+  - HARD-003 has the throttle as its quota control, but the alarm and budget
+    are not done and billing access is blocked.
+  - HARD-004 is the restore test plus an image rollback demonstration.
+
+**Open:**
+
+- SG-07 item 2: two MEDIUM findings accepted until 2026-12-04, with Monday
+  checks on 2026-11-16, 2026-11-23 and 2026-11-30.
+- INFRA-006 gaps: the idle pooled connection, `DOCUMENT_UPLOAD_MAX_BYTES` not
+  set, and the missing `s3:DeleteObject` orphan-cleanup grant.
+- INFRA-003 and HARD-004: the restore test and the image rollback demonstration.
+- HARD-003: the test alarm, the quota-rejection demonstration, the budget, and
+  billing access.
+- HARD-002: the final matrix run, and the owner's amended acceptance.
+- The Dependabot/uv finding, the Markdown parser/sample finding and the Cognito
+  charge check.
+- The deploy freeze on 2026-12-06.
+
+See BACKLOG.md for each item.
+
 ## Findings, Mako closure and Dependabot limits recorded — 2026-11-12
 
 **Status:** Docs only, on a branch. Recorded from the owner's report of

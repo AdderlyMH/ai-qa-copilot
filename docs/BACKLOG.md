@@ -959,6 +959,11 @@ of this backlog.
 - **Dependencies:** INFRA-001, OBS-002, ADR-017 (connection pattern and open auto-pause item)
 - **Deliverable:** Cost ADR and pgvector-capable production database.
 - **Acceptance:** Idle/resume behavior, migration, connectivity, backup/export, and monthly estimate are verified.
+- **Status (2026-11-12): still NOT Accepted.**
+  - Connectivity from the functions is evidenced: the owner API and the parser use the database live.
+  - Migration is evidenced by INFRA-012.
+  - The database-tier estimate is in [ADR-020](adr/ADR-020-production-database-rds-postgresql.md): 13.98 USD per month, database tier only.
+  - The remaining criterion is the backup/restore test, which is the same exercise as HARD-004. Plan: restore a snapshot into a temporary instance, check it with the migration runner's status action, then delete it. Owner-run; **not done**.
 - **Status (2026-10-16):** **Applied 2026-10-16, NOT Accepted.** The owner's targeted apply created 14 resources; the instance is available (engine 17.10, us-east-1a, not public, Single-AZ, encrypted, IAM authentication enabled); a parameter-group `apply_method` drift found afterwards is fixed in code. Acceptance still needs connectivity from the functions, the INFRA-012 migration and a backup restore test (see the 2026-10-16 apply in [INFRASTRUCTURE.md](INFRASTRUCTURE.md)). [ADR-020](adr/ADR-020-production-database-rds-postgresql.md) records the owner decision: RDS for PostgreSQL 17 (minor 17.10 or later), db.t4g.micro, Single-AZ (placed in the compute zone) in a two-AZ DB subnet group, gp3 20 GiB, `us-east-1`, master password managed by RDS in Secrets Manager; database tier 13.98 USD per month. The code is `infra/modules/database` plus the database subnets, route table, security group and rules in `infra/modules/network` (see [INFRASTRUCTURE.md](INFRASTRUCTURE.md)). Remaining scope: the owner's apply, then connectivity, migration and backup/restore evidence from it. The idle/resume part of the acceptance is not applicable to RDS (closed by the provider change, not by evidence). ADR-005 database gate: database gate condition met (provider recorded in ADR-020); the database is not deployed and ADR-005's validation conditions are unmet. The decision was made without the ADR-005 benchmark.
 
 #### INFRA-004 — Deploy mock sandbox target
@@ -977,6 +982,17 @@ of this backlog.
 - **Dependencies:** ADR-018, INFRA-002 (data plane resources), ING-001, ING-002, ING-003
 - **Deliverable:** A production composition selected by `APP_ENV=production` that replaces the `Unavailable*` defaults: one shared SQLAlchemy engine with `NullPool` injected into the repositories, the database-backed intake repository and `SqlAlchemyParserJobQueue`, an S3 `QuarantineStorage` (API, write) and `QuarantineReader` (parser, read-only) using `boto3`, a read-only owner-authorized document-status route, and a production upload cap (4 MiB pending verification). Local and test composition are unchanged.
 - **Acceptance:** Unit and PostgreSQL integration tests pass; no idle pooled connection remains after a request; the S3 adapters pass tests against a fake client; the status route denies cross-project access with a safe 404 and audits the decision; a 4 MiB Markdown request passes the API size checks and a larger one is rejected before parsing; `python scripts/tasks.py ci` and `db-check` pass; B1/v1 OpenAI behavior and evidence are unchanged.
+- **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the recorded evidence. Evidence, owner-observed 2026-11-07 to 2026-11-09:
+  - The production composition serves the owner API with a Cognito token.
+  - Project create returned 201.
+  - An upload returned 202, and the parser later logged `outcome=accepted`.
+  - The owner-only document list and status routes answered 200 from the browser.
+
+  **Gaps recorded, NOT closed:**
+  - (a) That no idle pooled connection remains after a request was never measured.
+  - (b) The 4 MiB request check was superseded by the 3 MiB recommendation (INFRASTRUCTURE.md, `DOCUMENT_UPLOAD_MAX_BYTES=3145728`). A read-only check on 2026-11-12 shows that **Terraform does not set `DOCUMENT_UPLOAD_MAX_BYTES`** anywhere: not in `infra/modules/compute_api`, the production root or the example tfvars. So the application default applies: a 10 MiB hard maximum (`MAX_RAW_UPLOAD_BYTES` in `ingestion.py`), with the per-type limits still in force. For the production scope (Markdown and text) the effective per-file cap is therefore the 2 MiB per-type limit. Lambda's 6 MB synchronous payload limit bounds any larger body before the application runs.
+
+  **Open follow-up:** the API role has `s3:PutObject` on `quarantine/*` only (`infra/modules/data_plane`, statement `WriteQuarantine`) and **no `s3:DeleteObject`**, so the orphan-cleanup grant is still missing. The status lines below are history.
 - **Status:** Implemented, 3 of 3 (2026-10-14); **not Accepted**. Stage 1: `database_engine.py` builds one `NullPool` engine (no pre-ping; PostgreSQL `connect_timeout` from the URL or 10 s) and the default `create_app` composition injects it into its ten database-backed defaults when `DATABASE_URL` is set; without it the `Unavailable*` defaults are unchanged, and every `from_database_url` is unchanged. Docker-free unit tests only; `db-check` and the PostgreSQL integration tests were not run for this stage. **Stage 2 (2026-10-14):** `boto3==1.43.113` added; `s3_quarantine.py` provides `S3QuarantineStorage` (write-once `PutObject` with `If-None-Match: *`, bucket-default SSE-S3, size checked before upload) and a read-only `S3QuarantineReader` (reads at most the 10 MiB upload limit plus one byte) over `quarantine/*` keys only, with a lazily created client from the default AWS chain and `DATA_BUCKET_NAME`; every S3 or transport error fails closed as `DocumentIntakeUnavailable` carrying only the S3 error code. `create_app` builds the database intake repository and `SqlAlchemyParserJobQueue` on the shared engine plus the S3 storage when both `DATABASE_URL` and `DATA_BUCKET_NAME` are set; otherwise the `Unavailable*` defaults are unchanged. Tested with botocore `Stubber`; no live S3 call was made. Open: the API role has no `s3:DeleteObject`, so the intake's best-effort cleanup after a failed database insert is denied and leaves an orphan quarantine object (Terraform follow-up). **Stage 3 (2026-10-14):** `DOCUMENT_UPLOAD_MAX_BYTES` lowers the per-file cap at startup (invalid or above the 10 MiB maximum stops startup; default unchanged) and is applied to the intake service and the S3 storage; recommended production value 3 MiB (3,145,728 bytes) from the payload arithmetic in [INFRASTRUCTURE.md](INFRASTRUCTURE.md), not yet set in Terraform. Owner-only `GET /projects/{project_id}/documents` (newest first, at most 100) and `GET /projects/{project_id}/documents/{document_id}` (the upload `id`) return a closed derived status (`rejected`, `quarantined`, `parser_queued`, `parsing`, `parsed`, `parse_failed`), the parser stage and `indexing_not_enabled` for parsed documents, with no storage key, bucket or hash; foreign and missing documents get the same 404, and outages the existing 503. No migration. **Acceptance gaps:** live PostgreSQL and S3 behavior and "no idle pooled connection after a request" are unproven until the compute apply and `db-check`; the 4 MiB request check in the acceptance text is superseded by the 3 MiB recommendation and is not yet run through API Gateway; the API role's `s3:DeleteObject` for orphan cleanup is INFRA-008 Terraform work.
 
 #### INFRA-007 — Lambda entry points, parser runtime amendment and general wake-up
@@ -986,6 +1002,12 @@ of this backlog.
 - **Dependencies:** ADR-018, INFRA-006
 - **Deliverable:** A Mangum handler for the API; SQS handlers for the parser, general worker and executor that treat the message as a wake-up and return `batchItemFailures` only for infrastructure errors before a claim; a configurable claim duration; the ADR-018 parser credential check with unit tests for every accepted and rejected combination; the API's general-queue wake-up after upload and on status reads, behind a flag that is off until INFRA-013; the Terraform change that removes the parser's `SendMessage` on the general queue and sets the API model variables.
 - **Acceptance:** Local invocation of each handler with sample events passes tests (empty, duplicate and post-claim messages produce no failure entry; a pre-claim database error produces exactly one); the Compose parser isolation job is unchanged and passes; the executor handler stays disabled by configuration; `terraform fmt`, `validate` and the Checkov scan pass.
+- **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the recorded evidence. **Evidence:** the handler contract tests run in CI, and the API and parser handlers ran live (uploads were accepted, and the parser accepted a file on 2026-11-09). **Gaps:**
+  - The general handler is a no-op until INFRA-013 (no embedding adapter).
+  - The executor is disabled by configuration and has never run in Lambda.
+  - Wake-up flags, as read in Terraform on 2026-11-12: the API sets `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED = "true"` (`infra/modules/compute_api`), and `AI_QA_COPILOT_GENERAL_WAKEUP_ENABLED` is **not set** on any function, so the general wake-up is off, as intended until INFRA-013.
+
+  The status lines below are history.
 - **Status:** Implemented, 3 of 3 (2026-10-15); **not Accepted**. Stage 1: `lambda_api.py` provides the API handler `ai_qa_copilot_api.lambda_api.handler` (Mangum 0.22.0, payload 2.0, base path `/` for the `$default` stage). Mangum's own lifespan runs startup and shutdown on every invocation, so the handler runs the application lifespan once per process on the first invocation and calls Mangum with lifespan `off`; one app, one engine and one set of repositories serve every invocation. Tested with simulated HTTP API v2 events only (no Lambda runtime, emulator or AWS call). **Stage 2 (2026-10-15):** `lambda_workers.py` adds `parser_handler`, `general_handler` and `executor_handler`: each SQS message is a wake-up only (the body is never read), one worker turn runs per record, and a `messageId` is reported in `batchItemFailures` only for an infrastructure error before any claim; post-claim errors and idle turns succeed. Abandoned parser and indexing claims are reaped with the existing `expire_claims()` before each turn. `PARSER_CLAIM_DURATION_SECONDS` and `INDEXING_CLAIM_DURATION_SECONDS` (default 60, 1 to 3600) make the leases configurable; execution claims have no lease, so there is no execution setting (reaper is INFRA-004). `general_wakeup.py` sends one fixed, identifier-free, 60-second delayed message to `GENERAL_QUEUE_URL` from the document status reads when a parsed document is shown, only if `AI_QA_COPILOT_GENERAL_WAKEUP_ENABLED=true` (default off). The parser handler cannot run in real Lambda until stage 3 relaxes the credential check; the general handler claims nothing until an embedding adapter exists (INFRA-013); nothing yet sends parser wake-ups. **Stage 3, part 1 (2026-10-15):** the ADR-018 parser credential-check amendment is implemented in `parser_worker.py` (`lambda_parser_credentials_allowed`) with tests for every accepted and rejected combination in `test_parser_runtime_lambda.py`; the strict rule is unchanged outside the Lambda parser. **Stage 3, part 2 (2026-10-15):** `parser_wakeup.py` sends one fixed, identifier-free message with `DelaySeconds=0` to `PARSER_QUEUE_URL` after each accepted upload (the parser job row is already committed), off the event loop, only if `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED=true` (default off); rejected uploads send nothing; status reads re-send at most once per 60 s while a document is `parser_queued`, which recovers a lost wake-up one job at a time. **Remaining gaps:** real Lambda behavior (API, parser, general, executor and both wake-ups) is unproven until the compute apply; the general handler is a no-op until INFRA-013 (embedding adapter and its own runtime check); execution claims have no lease (INFRA-004 reaper); the Terraform delta (remove the parser's `sqs:SendMessage` on the general queue, set `AI_QA_COPILOT_PARSER_WAKEUP_ENABLED`, the claim-duration variables and later the general wake-up flag) is INFRA-008/INFRA-009 work and must land before the parser runs in production.
 
 #### INFRA-008 — Secrets bootstrap and parser database credential
@@ -1021,6 +1043,17 @@ of this backlog.
 - **Dependencies:** ADR-018, INFRA-007
 - **Deliverable:** One multi-stage Dockerfile on `public.ecr.aws/lambda/python:3.13` for `linux/arm64` (`--provenance=false`) producing the API, parser, general and executor images by command, tagged by commit; a documented local build and push procedure using the owner's credentials; recorded image sizes; `boto3` presence confirmed.
 - **Acceptance:** The four images build for arm64 from the locked dependencies, start under the Lambda runtime interface emulator, and are pushed to the immutable ECR repositories; digests are recorded for the Terraform variables; the existing parser Compose job and Dockerfile are unchanged.
+- **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the recorded evidence. **Evidence:**
+  - Images were built for `linux/arm64` from the locked dependencies and pushed to the immutable ECR repositories as single OCI image manifests on 2026-10-16, 2026-10-22, 2026-11-07 and 2026-11-09; the digests are recorded in the owner's private notes.
+  - The four functions run on them: the parser and the API ran live; the general and executor images were only imported.
+
+  **Gaps:**
+  - The Lambda runtime interface emulator start was shown only for the parser image.
+  - The executor image has never run in Lambda.
+  - The general worker has never received a message.
+  - The SG-07 follow-ups stand (INFRASTRUCTURE.md, SG-07 disposition register).
+
+  The status lines below are history.
 - **Status (2026-10-16):** **Pushed, NOT Accepted; nothing deployed.** `apps/api/Dockerfile.lambda` (AWS Lambda Python 3.13 arm64 base pinned by digest; one target per function class differing only in the handler `CMD`; locked non-dev dependencies, hashes, wheels only; no secrets or database settings), a Dockerfile-specific allowlist ignore file, `scripts/build_lambda_images.py` and Docker-free contract tests. **Owner push (2026-10-16):** built from `main` at `4fdbfc2` and pushed to the four immutable ECR repositories with the commit SHA as tag; single OCI image manifests; digests and ECR sizes (about 243.6 MB each) are in the push record in [INFRASTRUCTURE.md](INFRASTRUCTURE.md#push-record-2026-10-16). `boto3` precedence verified (1.43.113 from `/var/task`). The parser image started under the runtime interface emulator and returned an empty `batchItemFailures` for an empty event, which shows the handler loads, not that the parser works; the other three handlers were only imported inside their images, not started under the emulator. ECR scan on push: HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 in each image, all Amazon Linux 2023 OS packages, not triaged; the base tag still resolved to the pinned digest, so no refresh was available. The acceptance sets no scan threshold (SG-07 and HARD-001 do, for release). Acceptance is the owner's call on these facts. Correction: the smoke-build size was earlier labelled "uncompressed"; that label is withdrawn. The Alembic/migrations gap for INFRA-012 is unchanged.
 - **Status (2026-10-22, rebuild prepared):** the `3.13-arm64` base tag resolved to a new digest (owner's registry read), so a refresh is required. Branch `build/base-refresh-rebuild-prep` pins the new base digest and drops the unused `DEMO_BUCKET_NAME` from the API environment; `uv.lock` on `main` already pins certifi 2026.10.19 and pypdf 6.21.1, and the parser outcome log line is on `main`. The five images are **not built**; the owner checklist is in INFRASTRUCTURE.md ("Combined five-image rebuild, 2026-10-22"). SG-07 disposition items 1 to 4 stay open.
 - **Status (2026-10-22, rebuild done, owner-run):** five images built from `main` at `e1d3692` (PR #221) with the new base pin; certifi 2026.10.19, pypdf 6.21.1 and the `parser.outcome` event verified inside each image before the push; pushed (single OCI manifests, ECR digest equal to the local digest; digests in the owner's private notes); the four functions applied (0 added, 4 changed, 0 destroyed; no changes on a follow-up plan; all `Active`/`Successful`); an upload returned `202` and the parser logged one `outcome=accepted` line. The migrate image is pushed but the runner is not deployed. Scan counts unchanged (HIGH 12, MEDIUM 20, LOW 5, UNDEFINED 1 per image). SG-07 items 1, 3 and 4 closed for the four deployed functions; item 2 open. INFRA-009 stays **not Accepted** until the owner records acceptance. Remaining follow-ups: SG-07 item 2 triage of the 12 HIGH findings; the next weekly base-digest check; parser and general memory under load; the general worker's first message.
@@ -1068,6 +1101,11 @@ of this backlog.
 - **Dependencies:** ADR-019 (Accepted 2026-10-21), INFRA-010, REP-001 to REP-004 *(note 2026-10-23: the INFRA-010 dependency no longer applies; the guest page is a standalone static viewer on its own Cloudflare Pages project (ADR-019 Decision 13) and was deployed without INFRA-010)*
 - **Deliverable:** ADR-019 defining the snapshot schema, the sanitization policy and the static "server-selected" rule; a sanitizer and a local publish script that write a pre-sanitized snapshot to a new immutable key under `publications/` in the demo bucket with the owner's local credentials; a guest page that renders it from CloudFront. There is no owner publish API in this item.
 - **Acceptance:** A published snapshot passes the ADR-006 data policy checks and content-hash verification; the guest page loads over HTTPS with no database connection and no write route; a second publication does not overwrite the first; the script refuses unsanitized input. Completes milestone M3.
+- **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the recorded evidence. **Evidence:**
+  - The first publication is live over HTTPS, with its content hash verified and a clean browser check (2026-10-22; stage 5 note below).
+  - The publish script refuses unsanitized input, and it never overwrites an earlier publication. Both are shown by tests in `test_guest_demo_publish.py`, for example `test_secret_or_pii_like_text_in_the_snapshot_is_refused`, `test_site_holds_every_archived_publication_unchanged` and `test_the_same_hash_with_different_bytes_is_refused`.
+
+  **Gap:** a second publication has never been observed live. The notes below are history.
 
 - **Dependency note (2026-10-18):** the guest page is served by the CloudFront distribution, which exists only while `demo_cdn_enabled` is true. While it is false the guest page has no CloudFront host *(updated 2026-10-22: the guest page is served over HTTPS from Cloudflare Pages, ADR-019 Decision 13)*, so through CloudFront the acceptance ("loads over HTTPS") cannot be met; publishing to the private demo bucket is unaffected.
 - **Dependency note (2026-10-21, updated on acceptance):** [ADR-019](adr/ADR-019-guest-demo-snapshot.md) is **Accepted** (2026-10-21, project owner) and host-neutral (static files over HTTPS). The ADR-018 condition "ADR-019, which must be accepted before the guest page ships" is met, so INFRA-011 implementation can start. Still open: the static host choice, and the ADR-017/ADR-018 amendment if that host is not CloudFront; the publish step writes to the demo bucket as the record either way.
@@ -1129,6 +1167,23 @@ of this backlog.
 - **Dependencies:** SKEL-006, INFRA-001
 - **Deliverable:** Secret, SAST, dependency, container, and IaC scanning.
 - **Acceptance:** Findings are triaged; critical/high unresolved findings block release.
+- **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the recorded evidence. A read-only check on 2026-11-12 found a configured scanner for each of the five categories:
+
+  | Category | Tool | Where configured | Evidence |
+  |---|---|---|---|
+  | Secret | GitHub secret scanning and push protection | Repository settings (no repository file can enable it) | Verified 2026-07-21 from the preserved capture in `docs/evidence/github-security-2026-07-21/` (REPOSITORY_GOVERNANCE.md) |
+  | SAST | Bandit 1.8.6, failing on medium and high | `.github/workflows/application-ci.yml`, `security-scans` job | Runs on every CI run; passed on `main` (owner-reported, 2026-11-12) |
+  | Dependency | pip-audit 2.9.0 `--strict` on the locked runtime set; `npm audit --omit=dev --audit-level=high`; Dependabot alerts | `application-ci.yml` `security-scans`; `.github/dependabot.yml` | SG-07 items 3 to 9 record findings from these sources |
+  | Container | Amazon ECR scan on push | `scan_on_push = true` in `infra/modules/data_plane` and `infra/modules/migration` | Scan results read by the owner for every rebuild; SG-07 item 2 |
+  | IaC | Checkov 3.3.20 on `infra` (Terraform framework) | `.github/workflows/terraform-ci.yml` | Required check `terraform-validate`; skips are inline with reasons |
+
+  **Triage and blocking rule:** findings are triaged in the SG-07 disposition register (INFRASTRUCTURE.md), which states that an accepted risk is still an unresolved finding and blocks release until closed. THREAT_MODEL.md SG-07 requires zero unresolved Critical or High findings across all five categories, and a documented disposition for Medium findings.
+
+  **Known limitations:**
+  - Container scanning is the ECR scan on push, read by the owner; it is not part of CI.
+  - SAST is Bandit only; no CodeQL or code-scanning workflow is configured.
+  - Secret scanning is verified only from the 2026-07-21 capture.
+  - The CI dependency audit leaves out the `dev` and `migrate` groups.
 
 #### HARD-002 — Run threat-model verification matrix
 
@@ -1144,6 +1199,7 @@ of this backlog.
   - The evaluation uses the completed `EVAL-007` release workflow rather than treating corpus existence as execution evidence.
   - A completed corpus, workflow definition, or scanner configuration is not itself evidence that the gate passed.
 - **Scope note (2026-10-13):** with the executor disabled and INFRA-004 deferred, the live execution and SG-08 parts of this acceptance cannot be met by the Dec 6 freeze. The matrix is run for every gate that the minimum live demo exposes, the unmet gates are reported as unmet, and PORT-003 states the limitation. This item is not Accepted unless the owner records an amended acceptance.
+- **Note (2026-11-12):** HARD-002 runs last, against the final deployed revision. The owner must record an amended acceptance for the SG-08 and live-execution parts (scope note of 2026-10-13); none is recorded here.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
@@ -1152,6 +1208,10 @@ of this backlog.
 - **Dependencies:** OBS-002, INFRA-002
 - **Deliverable:** Operational and financial controls.
 - **Acceptance:** Test alarm and quota rejection are observed.
+- **Planning note (2026-11-12, no status change):**
+  - The HTTP API throttle is the quota control: 5 requests per second with a burst of 10 (`api_throttle_rate_per_second` and `api_throttle_burst` defaults in `infra/modules/compute_api`). "Quota rejection observed" can be shown by exceeding it.
+  - The test alarm and the budget are **NOT done**.
+  - Reading and creating budgets is blocked for the owner's IAM user until the root-only setting "IAM user and role access to Billing information" is turned on. It is not turned on yet, and it is **NOT verified** that the setting also gates Budgets.
 
 #### HARD-004 — Exercise migration, rollback, and incident procedures
 
@@ -1160,6 +1220,9 @@ of this backlog.
 - **Dependencies:** INFRA-003
 - **Deliverable:** Recorded exercise and corrected runbook.
 - **Acceptance:** Restore/rollback path is demonstrated within the portfolio environment.
+- **Planning note (2026-11-12, no status change):** the exercise has two parts, both owner-run and **not done**:
+  - The INFRA-003 restore test: restore a snapshot into a temporary instance, check it with the migration runner's status action, then delete it.
+  - An image rollback demonstration: point the four functions at older image digests, then forward again.
 
 **Phase 6 exit:** The live application is deployed through Terraform, monitored, cost-controlled, and passes the threat-model gates.
 
