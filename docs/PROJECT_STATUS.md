@@ -1,5 +1,51 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Findings, Mako closure and Dependabot limits recorded — 2026-11-12
+
+**Status:** Docs only, on a branch. Recorded from the owner's report of
+2026-11-12; no step was re-run here and no AWS or network call was made.
+
+- **SG-07 item 8 (Mako, alert #124): CLOSED.** The lock bump is merged (PR #247).
+  `security-scans` passed on `main` at `ca54170` and `c7fff6b` (read by the
+  owner from the public GitHub check-runs API). The alert is shown Closed, and
+  Mako 1.4.3 is verified inside the `migrate` image built on 2026-11-09. That
+  image is not deployed, and no deployed function ever contained Mako.
+- **SG-07 item 9 (`minimatch`, alert #126):** the dismissal was made in GitHub on
+  2026-11-12, with the reason recorded on 2026-11-09.
+- **New finding (OPEN): Dependabot cannot maintain the Python lock.**
+  - On PRs #230, #235, #250, #251 and #252, `uv sync --locked` fails in CI, and
+    Dependabot does not support the pinned uv 0.11.16. Those updates were
+    applied by hand (PR #253) and the PRs closed.
+  - Its `github-actions` updates to `docs-validation.yml` need a manual manifest
+    regeneration and a hash update.
+  - Three options are recorded, none decided: raise the pinned uv, stop
+    Dependabot on the Python lock, or drop `docs-validation.yml` from the
+    pinned-hash test. To be decided after the 2026-12-06 freeze.
+- **Note:** pytest 9.2.0 shows a `PytestRemovedIn10Warning` from anyio's plugin;
+  it will become a failure under pytest 10, and it is not a defect in this
+  repository.
+- **Billing access:** the owner's IAM user cannot read Cost Explorer or Bills,
+  because the root user's "IAM user and role access to Billing information"
+  setting is off. Plan, not done: turn it on in early December and read the
+  first bill's Cognito line.
+- **BACKLOG.md:** a dated line marks the INFRA-010 stages header and the stage 6
+  note's "neither is marked Accepted" as predating the 2026-11-09 acceptance.
+- **HANDOFF-core.md:** not changed. It is a dated snapshot report (inspected
+  2026-10-02, describing `main` at `488c989`), not a standalone version table;
+  its other rows are just as old.
+
+**Open:**
+
+- SG-07 item 2: the two MEDIUM findings are accepted until 2026-12-04, with
+  Monday checks on 2026-11-16, 2026-11-23 and 2026-11-30.
+- The Dependabot/uv finding.
+- The Markdown parser/sample finding.
+- The Cognito prefix-domain charge check (early December).
+- The deploy freeze on 2026-12-06.
+
+See INFRASTRUCTURE.md: the SG-07 disposition register, "Dependabot and the Python
+lock, 2026-11-12", and the owner-app runbook's billing-access note.
+
 ## Five Python dev-tool bumps applied by hand — 2026-11-12
 
 **Status:** On branch `chore/dev-tool-bumps-2026-11`; not merged. No AWS call
