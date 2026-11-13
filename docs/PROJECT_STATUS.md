@@ -1,5 +1,47 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## HARD-003 notification path and alarms in Terraform — 2026-11-12
+
+**Status:** code on a branch; **not planned or applied**, and no AWS call was
+made. HARD-003 stays **NOT Accepted**.
+
+- **New module `alarm_notifications`:**
+  - a customer managed KMS key (rotation on, 7-day deletion window, alias);
+  - an SNS topic encrypted with that key, which only CloudWatch in this account
+    may publish to;
+  - one email subscription from the new sensitive root variable `alarm_email`.
+    It has no default; the example tfvars uses the placeholder
+    `alerts@example.invalid`.
+
+  The AWS managed key `alias/aws/sns` cannot serve CloudWatch alarms, per the
+  SNS Developer Guide read on 2026-11-12. Whether the email arrives is **NOT
+  verified**. The key costs about 1 USD per month, an unverified estimate.
+- **Alarms:** the two RDS alarms gain alarm and OK actions; their names,
+  metrics and thresholds are unchanged. Three new alarms cover the API: Lambda
+  `Errors` >= 1, Lambda `Throttles` >= 1, and HTTP API `4xx` >= 10 per 5
+  minutes. HTTP APIs publish no throttle metric, so `4xx` stands in for
+  throttling.
+- **Checks:** Checkov passes with no new skip. One contract test was added in
+  `test_infra_contracts.py`.
+- **Owner-read today:**
+  - Two budgets exist outside Terraform.
+  - The RDS alarms had zero actions.
+  - Costs from 2026-11-01 to 2026-11-12 total 10.40 USD including tax (RDS
+    5.32). Cognito shows 0, but Cost Explorer lags.
+  - Bills and Cost Explorer now load for the owner's IAM user. This supersedes
+    "not enabled yet" in the entry below on that point; which setting caused it
+    is not recorded.
+
+**Open:**
+
+- HARD-003 owner steps: targeted plan and apply, confirm the subscription, a
+  test alarm email, an observed 429.
+- The cause of the VPC cost line is not verified.
+- The Cognito charge is to be checked on the first monthly bill.
+- The other open items in the entry below are unchanged.
+
+See INFRASTRUCTURE.md, "HARD-003 alarms, 2026-11-12".
+
 ## Deferred items, HARD-002 amended acceptance and the parser plan — 2026-11-12
 
 **Status:** Docs only, on a branch. These are **owner decisions of 2026-11-12**

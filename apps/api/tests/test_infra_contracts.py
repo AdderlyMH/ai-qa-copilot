@@ -376,6 +376,41 @@ def test_checkov_skips_are_back_to_the_count_before_the_preflight_route() -> Non
     assert not any("preflight" in line for line in skips)
 
 
+ALARM_NOTIFICATIONS = ROOT / "infra/modules/alarm_notifications/main.tf"
+DATABASE = ROOT / "infra/modules/database/main.tf"
+
+
+def test_alarm_topic_uses_its_own_key_and_reaches_every_alarm() -> None:
+    notifications = code(ALARM_NOTIFICATIONS.read_text(encoding="utf-8"))
+    root = PRODUCTION_ROOT.read_text(encoding="utf-8")
+    database = DATABASE.read_text(encoding="utf-8")
+    compute_alarms = (ROOT / "infra/modules/compute_api/alarms.tf").read_text(
+        encoding="utf-8"
+    )
+
+    # CloudWatch cannot use the AWS managed key alias/aws/sns (HARD-003).
+    assert "alias/aws/sns" not in notifications
+    assert "kms_master_key_id = aws_kms_key.alarms.arn" in notifications
+    assert "enable_key_rotation     = true" in notifications
+    assert re.findall(r'Service = "([\w.]+)"', notifications) == [
+        "cloudwatch.amazonaws.com"
+    ]
+    # The owner's address is never in Terraform: no default, sensitive.
+    variable = code(block(root, 'variable "alarm_email"'))
+    assert "default" not in variable
+    assert "sensitive   = true" in variable
+    # The two database alarms keep their names and gain the topic actions.
+    for name in ("cpu-surplus-credits-charged", "freeable-memory-low"):
+        assert f'alarm_name          = "${{local.identifier}}-{name}"' in database
+    every = database + compute_alarms
+    assert every.count('resource "aws_cloudwatch_metric_alarm"') == 5
+    assert every.count("alarm_actions       = local.alarm_actions") == 5
+    assert every.count("ok_actions          = local.alarm_actions") == 5
+    for module in ('module "database"', 'module "compute_api"'):
+        assert "alarm_topic_arn" in block(root, module)
+        assert "module.alarm_notifications.topic_arn" in block(root, module)
+
+
 def test_http_api_cors_is_limited_to_https_web_origins_without_credentials() -> None:
     compute = COMPUTE_API.read_text(encoding="utf-8")
     cors = code(block(compute, "  cors_configuration {"))

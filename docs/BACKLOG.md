@@ -1220,6 +1220,14 @@ of this backlog.
   - The HTTP API throttle is the quota control: 5 requests per second with a burst of 10 (`api_throttle_rate_per_second` and `api_throttle_burst` defaults in `infra/modules/compute_api`). "Quota rejection observed" can be shown by exceeding it.
   - The test alarm and the budget are **NOT done**.
   - Reading and creating budgets is blocked for the owner's IAM user until the root-only setting "IAM user and role access to Billing information" is turned on. It is not turned on yet, and it is **NOT verified** that the setting also gates Budgets.
+- **Note (2026-11-12, later; status unchanged, NOT Accepted):** the notification path and alarms are now in Terraform, on a branch, not planned or applied:
+  - A customer managed KMS key, an encrypted SNS topic that only CloudWatch in this account may publish to, and one email subscription from the sensitive `alarm_email` variable.
+  - Actions on the two RDS alarms.
+  - Three API alarms: Lambda `Errors` >= 1, Lambda `Throttles` >= 1, and HTTP API `4xx` >= 10 in 5 minutes. HTTP APIs publish no throttle metric, so `4xx` is the throttling signal.
+
+  Owner-read today: two budgets exist outside Terraform (`monthly-35` and `monthly-50-hard`), and Bills and Cost Explorer now load for the owner's IAM user. The sentence above about the setting not being turned on is superseded on that point; which setting caused the change is not recorded.
+
+  **Still to do (owner-run):** the targeted plan and apply, confirming the subscription, a test alarm email through `set-alarm-state`, and an observed HTTP 429. Accepted only after those observations. See INFRASTRUCTURE.md, "HARD-003 alarms, 2026-11-12".
 
 #### HARD-004 — Exercise migration, rollback, and incident procedures
 
