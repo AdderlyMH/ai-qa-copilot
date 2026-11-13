@@ -2062,6 +2062,64 @@ section will describe the accepted format. Heading-form requirements
 (`### REQ-X - title`) and a clearer rejection reason in the API are post-freeze
 design work. The hint and the docs section are **NOT done**.
 
+*Updated 2026-11-13:* the hint and the format section are implemented in code
+but **NOT deployed**. The hint is in
+`apps/web/src/app/document-status-panel.tsx`, and the format section is
+[Accepted Markdown requirement format](#accepted-markdown-requirement-format)
+below. The deploy is the owner-run owner-app deploy workflow. The parser rules
+and the sample fixture are unchanged, and the finding stays **OPEN**.
+
+### Accepted Markdown requirement format
+
+What the parser code does, read from
+`apps/api/src/ai_qa_copilot_api/markdown_parser.py` (`PARSER_VERSION`
+`markdown-text-v1`) on 2026-11-13. Each line is checked first against the
+heading rule, then against the requirement rule:
+
+```python
+_HEADING = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$")
+_REQUIREMENT = re.compile(
+    r"^\s*(?:[-*+]\s+)?((?:REQ|REQUIREMENT)-[A-Z0-9][A-Z0-9_-]*)\s*[:—-]\s*(.+?)\s*$",
+    re.IGNORECASE,
+)
+```
+
+- **Requirement line:** a requirement unit is one line of this form:
+  - optional leading spaces;
+  - an optional list marker (`-`, `*` or `+`, then whitespace);
+  - an ID starting with `REQ-` or `REQUIREMENT-` (any case; stored in upper
+    case), then letters, digits, `_` or `-`;
+  - a separator: a colon, an em dash or a hyphen;
+  - non-empty text.
+
+  That is, `- REQ-ID: text`.
+- **Headings:** a heading line (`#` to `######`, then a space) is never a
+  requirement. It only sets the heading context recorded with the following
+  requirement lines.
+- **Other lines:** in a Markdown document, every other line is ignored. In a
+  text document (`.txt`), every other non-empty line becomes a requirement
+  without an ID.
+
+Example that yields two requirements under the heading "Orders":
+
+```markdown
+## Orders
+
+- REQ-ORDER-001: The owner can create an order.
+- REQ-ORDER-002: An order total is never negative.
+```
+
+**Not recognized:** heading-form requirements such as
+`### REQ-X - title`. The heading rule matches such a line first, so it only
+sets context. `fixtures/sample-requirements.md` writes each requirement that
+way, so as Markdown it parses to **zero** requirements. The empty result is
+then rejected (see the finding above), and the document ends as
+`parse_failed`.
+
+**Size:** the per-type limit for Markdown and text is 2 MiB (`_FILE_TYPES` in
+`ingestion.py`). Terraform does not set `DOCUMENT_UPLOAD_MAX_BYTES`, so 2 MiB
+is the effective cap in production (INFRA-006).
+
 ## HARD-003 alarms, 2026-11-12
 
 **Status:** code only, on a branch. Nothing is planned or applied, and no AWS
@@ -2314,6 +2372,10 @@ Placeholders in angle brackets are private values from the owner's notes or
 **Exact flags:** the restore and delete flags below match the settings
 recorded for the exercise. The owner's exact command lines are not recorded
 here.
+
+*Updated 2026-11-13:* step (c) now matches the restore the owner ran,
+including `--db-instance-class db.t4g.micro`. The sentence above is kept as
+history.
 
 ### Database restore to a temporary instance
 

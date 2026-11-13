@@ -1,5 +1,39 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## parse_failed hint and accepted Markdown format — 2026-11-13
+
+**Status:** web code, docs and tests on a branch; **NOT deployed**. Deploying
+is the owner-run owner-app deploy workflow. No AWS or network call was made.
+The parser rules and `fixtures/sample-requirements.md` are unchanged (owner
+decision 2026-11-12).
+
+- **Hint:** the document status panel adds one plain-text line under a
+  document whose status is `parse_failed` with parser stage `rejected`:
+  "Likely reason: No requirement lines were found. Use lines like -
+  REQ-ORDER-001: text. See the accepted format in the docs." It is worded as a
+  likely reason, because the API returns no parser rejection reason
+  (`rejection_code` is set only for upload-time rejections) and other failures
+  can also end as `parse_failed`.
+- **Docs:** a new INFRASTRUCTURE.md section, "Accepted Markdown requirement
+  format", quotes the parser's two rules. It explains that heading-form
+  requirements are not recognized, so the sample fixture parses to zero
+  requirements, and states the 2 MiB effective cap. The parser finding links
+  to it and stays OPEN.
+- **Tests:** three static tests were added in `test_web_upload_panel.py`.
+- **Runbook:** the HARD-004 runbook now notes that step (c) matches the
+  restore the owner ran.
+
+**Open:**
+
+- Deploying the hint: owner-run owner-app deploy workflow.
+- HARD-002: runs last, against the final deployed revision.
+- SKEL-007: not started.
+- SG-07 item 2: accepted until 2026-12-04, with Monday checks on 2026-11-16,
+  2026-11-23 and 2026-11-30.
+- The Cognito charge, to be rechecked on the first monthly bill.
+- INFRA-006 follow-up: the missing `s3:DeleteObject` grant.
+- The deploy freeze on 2026-12-06.
+
 ## Restore and rollback exercised; HARD-003, INFRA-003 and HARD-004 accepted — 2026-11-12
 
 **Status:** Docs only, on a branch. These are **owner decisions on owner-run
