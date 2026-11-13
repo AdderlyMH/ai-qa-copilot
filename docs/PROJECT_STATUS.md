@@ -1,5 +1,51 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Restore and rollback exercised; HARD-003, INFRA-003 and HARD-004 accepted — 2026-11-12
+
+**Status:** Docs only, on a branch. These are **owner decisions on owner-run
+evidence**; no step was re-run here and no AWS or network call was made.
+
+- **HARD-003: ACCEPTED.** The test alarm's ALARM and OK emails were received,
+  and a 60-request burst returned 52 × 200 and 8 × 429. Gaps:
+  - the `4xx` alarm's email path was not exercised;
+  - the token-bucket behavior is not verified;
+  - the KMS key cost (about 1 USD a month) is an unverified estimate;
+  - the second budget's subscribers were not checked.
+- **Restore exercise (2026-11-12 evening):**
+  - A temporary `-restore-test` copy was restored from the newest automated
+    snapshot (05:34 UTC), with private, Single-AZ, IAM-authentication and
+    deletion-protection settings.
+  - It reached `available` in about 10 minutes: 17.10, 20 GiB, encrypted.
+  - It was then deleted. Production was not modified.
+  - Data integrity and the restored copy's master-secret behavior were not
+    checked.
+  - It cost about 20 minutes of a db.t4g.micro (an estimate).
+- **INFRA-003: ACCEPTED**, with the limit that data integrity was not checked.
+  ADR-020 estimates 13.98 USD per month; Cost Explorer showed RDS at 5.32 USD
+  for 2026-11-01 to 2026-11-12.
+- **Image rollback (parser only):** forward to the never-deployed 2026-11-09
+  image and back to 2026-11-07. Each plan was 0/1/0 (`image_uri` only), each
+  apply took about 20 s and ended `Active` / `Successful`, and an upload reached
+  `parsed` each time. In PowerShell the target had to be the whole function
+  set.
+- **HARD-004: ACCEPTED** on that evidence. Limits: no data-integrity check, and
+  only the parser was rolled back.
+- **Runbook:** INFRASTRUCTURE.md, "Restore and rollback procedures (HARD-004),
+  2026-11-12".
+
+**Open:**
+
+- HARD-002: runs last, against the final deployed revision.
+- SKEL-007: not started.
+- The web hint for `parse_failed`: not done.
+- SG-07 item 2: accepted until 2026-12-04, with Monday checks on 2026-11-16,
+  2026-11-23 and 2026-11-30.
+- The Cognito charge, to be rechecked on the first monthly bill.
+- INFRA-006 follow-up: the missing `s3:DeleteObject` grant.
+- The deploy freeze on 2026-12-06.
+
+See BACKLOG.md and INFRASTRUCTURE.md for each item.
+
 ## HARD-003 applied; test alarm and quota rejection observed — 2026-11-12
 
 **Status:** Docs only, on a branch. Recorded from the owner's report; no step
