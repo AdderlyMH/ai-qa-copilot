@@ -909,6 +909,8 @@ of this backlog.
   required before routing ablations. External review is not a prerequisite
   under ADR-007; any internal result must be disclosed as not independently
   validated.
+- **Status (2026-11-12):** still Deferred. The owner confirmed on 2026-11-12
+  that it remains deferred for the reasons recorded above.
 
 **Phase 5 exit:** A 100-case benchmark, CI gates, traces, and cost/latency evidence support the release candidate.
 
@@ -947,6 +949,7 @@ of this backlog.
 - **Deliverable:** AWS application tier.
 - **Acceptance:** Owner workflow and guest read-only demo operate over HTTPS.
 - **Status (2026-11-09): ACCEPTED by the owner on 2026-11-09**, an owner decision on the recorded evidence. **Met:** the owner workflow in a browser over HTTPS (milestone M2; see INFRA-010) and the guest read-only demo over HTTPS (Cloudflare Pages since 2026-10-22). **Still disclosed:** SG-08 (restricted execution) remains **unmet**, and execution stays disabled. **Still open:** the Markdown parser/sample finding and the unverified items listed in INFRASTRUCTURE.md, "Rebuild and owner-app verification, 2026-11-07 to 2026-11-09 (owner-run)". The 2026-10-22 status below is history.
+- **Parser finding plan (2026-11-12):** OWNER DECISION 2026-11-12: the parser's matching rules and the hash-pinned sample fixture are **not** changed before the freeze. A web-only change will show a hint when a Markdown file ends as `parse_failed` ("No requirement lines found. Use lines like - REQ-ORDER-001: text"), and a docs section will describe the accepted format. Heading-form requirements (`### REQ-X - title`) and a clearer rejection reason in the API are post-freeze design work. The finding stays **OPEN** with this plan; the hint and the docs section are **NOT done**. See INFRASTRUCTURE.md, "Finding: the sample requirements yield no Markdown requirements".
 - **Status (2026-10-22, history): NOT Accepted** (owner decision, 2026-10-22). **Met:** the API over HTTPS with an owner token (`/health` 200; `/projects` 401 without a token and 200 with one, 2026-10-20); uploads parsed end to end (2026-10-20 and 2026-10-22, INFRASTRUCTURE.md); the guest read-only demo live over HTTPS on Cloudflare Pages since 2026-10-22 ([ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decision 13), a **deliberate deviation** from the CloudFront plan, with no database connection on the guest path. **Not met:** the owner workflow in a browser over HTTPS (milestone M2), which depends on INFRA-010 (frontend host, Cognito domain and OAuth, CORS; the host decision is still open).
 - **Status (2026-10-13, history):** All four stages implemented (2026-10-13); **not yet Accepted**: acceptance needs an apply showing the owner workflow and guest read-only demo over HTTPS. Stage 1: network module. Stage 2: the ADR-017 t4g.nano NAT instance (about 7.36 USD per month). Stage 3: data plane (ECR, SQS with DLQs, private data and demo buckets, log groups, least-privilege execution roles). Stage 4: four Arm Lambda container functions in the VPC, SQS event source mappings (batch 1, partial batch responses, concurrency 2; executor trigger disabled), ECR pull policies, the HTTP API (throttled, no authorizer because the API validates Cognito tokens), the guest-demo CloudFront distribution with Origin Access Control (never created; not planned while `demo_cdn_enabled = false`), and the Cognito owner pool with a public client. Open on 2026-10-13, updated 2026-10-22: the Lambda adapters, secrets, images and the parser enqueue path are done (INFRA-007, INFRA-008, INFRA-009); Aurora resume is moot after [ADR-020](adr/ADR-020-production-database-rds-postgresql.md) chose RDS; frontend hosting and the OAuth domain remain open under INFRA-010. Single compute AZ accepted. Database subnets and security group are deferred to INFRA-003. SG-08 is not met. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md). **Scope note (2026-10-13):** the open application items are owned by INFRA-006 to INFRA-012 under [ADR-018](adr/ADR-018-production-composition-lambda-runtime-and-secrets.md); the acceptance apply targets milestone M1 (Nov 15) and the owner-workflow part of the criterion is completed by M2. **First apply (2026-10-13): partially done.** Bootstrap (7 resources) and a targeted production apply of naming, the OIDC plan role, network, NAT instance and data plane (63 resources) succeeded; the two buckets failed on S3 tag characters and the NAT `source_dest_check` drifted, both fixed in code; *(updated 2026-10-22: superseded: the buckets exist and `compute_api` was applied on 2026-10-20, see the compute apply below)*. INFRA-002 is **not Accepted**. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md#first-apply-2026-10-13).
 - **API memory (2026-10-20):** owner-observed: at 512 MB the API's init phase hit Lambda's 10 s init limit (`Init Duration` 9999.62 ms, status timeout) and the first request took about 10.3 s; at 1769 MB, set first with the CLI, a cold request took 2.7 s end to end (`Init Duration` 1357.77 ms, `Duration` 598.21 ms) and a warm one 4.65 ms. Max memory used stayed about 176 to 180 MB, so the cause was CPU, not memory. `compute_api` `memory_mb` now defaults to api 1769, parser 512, general 1024, executor 512, validated to exactly those four keys and 128 to 10240 MB each, so Terraform keeps the CLI value. The parser, general and executor are **unmeasured**; the parser (15 s timeout) is also subject to the 10 s init limit and is measured at its first message. No cost figure is recorded for this change. See [INFRASTRUCTURE.md](INFRASTRUCTURE.md#api-memory-2026-10-20).
@@ -974,6 +977,7 @@ of this backlog.
 - **Deliverable:** Allowlisted public sandbox API.
 - **Acceptance:** Executor can reach only configured target and security suite passes live.
 - **Scope note (2026-10-13):** deferred out of the minimum live demo by owner decision. The executor stays disabled in production and SG-08 is disclosed as unmet (ADR-017, ADR-018). The acceptance above cannot be met by the Dec 6 freeze; this item stays open and is not Accepted.
+- **Status (2026-11-12): RECORDED EXCEPTION, NOT Accepted.** OWNER DECISION 2026-11-12: deferred past the 2026-12-06 freeze and not built. The executor stays disabled in production, and SG-08 stays disclosed as unmet, as in the 2026-10-13 scope note above.
 
 #### INFRA-006 — Production composition root and shared database engine
 
@@ -982,6 +986,7 @@ of this backlog.
 - **Dependencies:** ADR-018, INFRA-002 (data plane resources), ING-001, ING-002, ING-003
 - **Deliverable:** A production composition selected by `APP_ENV=production` that replaces the `Unavailable*` defaults: one shared SQLAlchemy engine with `NullPool` injected into the repositories, the database-backed intake repository and `SqlAlchemyParserJobQueue`, an S3 `QuarantineStorage` (API, write) and `QuarantineReader` (parser, read-only) using `boto3`, a read-only owner-authorized document-status route, and a production upload cap (4 MiB pending verification). Local and test composition are unchanged.
 - **Acceptance:** Unit and PostgreSQL integration tests pass; no idle pooled connection remains after a request; the S3 adapters pass tests against a fake client; the status route denies cross-project access with a safe 404 and audits the decision; a 4 MiB Markdown request passes the API size checks and a larger one is rejected before parsing; `python scripts/tasks.py ci` and `db-check` pass; B1/v1 OpenAI behavior and evidence are unchanged.
+- **Connection evidence (2026-11-12):** gap (a) below, "no idle pooled connection remains after a request", is **CLOSED** on this evidence: the CloudWatch `DatabaseConnections` one-minute maximums, read by the owner, were 0 at every point from 15:32 to 17:19 (UTC-05:00) on 2026-11-12. That includes the 14 minutes after an owner upload at 17:05 that reached `parsed`. **Limits:** it is a sampled gauge, so connections shorter than the sampling interval are not visible; what it shows is that no connection stayed open. The other gaps stay as recorded below.
 - **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the recorded evidence. Evidence, owner-observed 2026-11-07 to 2026-11-09:
   - The production composition serves the owner API with a Cognito token.
   - Project create returned 201.
@@ -1149,6 +1154,7 @@ of this backlog.
 - **Dependencies:** INFRA-008, INFRA-007; not started before milestone M3
 - **Deliverable:** A real `EmbeddingAdapter` (OpenAI), the retrieval and citation composition in the production root, the general worker's indexing turned on and the general wake-up flag enabled.
 - **Acceptance:** An uploaded Markdown document is indexed and retrieved with citations in production; embedding calls use the server-only key; provider usage is accounted per ADR-012. Out of the minimum live demo.
+- **Status (2026-11-12): RECORDED EXCEPTION, NOT Accepted.** OWNER DECISION 2026-11-12: deferred past the 2026-12-06 freeze. Production retrieval and indexing are outside the minimum live demo, and ADR-018 excludes them from production.
 
 #### INFRA-014 — Asynchronous model call for Claude in production
 
@@ -1157,6 +1163,7 @@ of this backlog.
 - **Dependencies:** INFRA-008, ADR-013, ADR-018
 - **Deliverable:** A design and implementation that runs the Anthropic adapter (60 s timeout) outside the 29 s API request, with a stored Anthropic secret.
 - **Acceptance:** A Claude analysis run completes through the queue and the owner sees its result; the default provider stays OpenAI. Not in the minimum live demo.
+- **Status (2026-11-12): RECORDED EXCEPTION, NOT Accepted.** OWNER DECISION 2026-11-12: deferred past the 2026-12-06 freeze. Asynchronous Claude is outside the minimum live demo, and ADR-018 excludes it from production.
 
 ### Epic HARD — Release hardening
 
@@ -1200,6 +1207,7 @@ of this backlog.
   - A completed corpus, workflow definition, or scanner configuration is not itself evidence that the gate passed.
 - **Scope note (2026-10-13):** with the executor disabled and INFRA-004 deferred, the live execution and SG-08 parts of this acceptance cannot be met by the Dec 6 freeze. The matrix is run for every gate that the minimum live demo exposes, the unmet gates are reported as unmet, and PORT-003 states the limitation. This item is not Accepted unless the owner records an amended acceptance.
 - **Note (2026-11-12):** HARD-002 runs last, against the final deployed revision. The owner must record an amended acceptance for the SG-08 and live-execution parts (scope note of 2026-10-13); none is recorded here.
+- **OWNER-AMENDED ACCEPTANCE (2026-11-12):** the threat-model verification matrix is run against the final deployed revision for every gate the live demo exposes. SG-08 and the live-execution parts are reported as unmet, and PORT-003 states the limitation. The evidence is the existing scorer, validator and scanner outputs, not an inference from the corpus. **HARD-002 is NOT yet run** and stays open until it is. (This supersedes the "none is recorded here" in the note above.)
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
