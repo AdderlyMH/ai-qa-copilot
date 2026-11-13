@@ -1,5 +1,51 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Deferred items, HARD-002 amended acceptance and the parser plan — 2026-11-12
+
+**Status:** Docs only, on a branch. These are **owner decisions of 2026-11-12**
+and owner-read evidence; no step was re-run here and no AWS or network call was
+made.
+
+- **INFRA-004: recorded exception, NOT Accepted.** Deferred past the 2026-12-06
+  freeze and not built; the executor stays disabled in production and SG-08
+  stays disclosed as unmet.
+- **INFRA-013 and INFRA-014: recorded exceptions, NOT Accepted.** Deferred past
+  the freeze: production retrieval and indexing, and asynchronous Claude, are
+  outside the minimum live demo, and ADR-018 excludes them from production.
+- **OBS-003: still Deferred**, confirmed by the owner for the reasons already
+  recorded.
+- **HARD-002: owner-amended acceptance recorded.** The matrix runs against the
+  final deployed revision for every gate the live demo exposes; SG-08 and the
+  live-execution parts are reported as unmet; PORT-003 states the limitation;
+  the evidence is the existing scorer, validator and scanner outputs. HARD-002
+  is **NOT yet run**.
+- **INFRA-006 gap (a) CLOSED.** CloudWatch `DatabaseConnections` one-minute
+  maximums, read by the owner, were 0 from 15:32 to 17:19 (UTC-05:00) on
+  2026-11-12, including the 14 minutes after an upload at 17:05 that reached
+  `parsed`. Limit: a sampled gauge, so connections shorter than the sampling
+  interval are not visible. The cap and `s3:DeleteObject` gaps stay open.
+- **Parser finding: still OPEN, with a plan.** The parser rules and the
+  hash-pinned sample fixture are not changed before the freeze. A web-only hint
+  for Markdown files that end as `parse_failed` and a docs section on the
+  accepted format are planned and **NOT done**; heading-form requirements and a
+  clearer API rejection reason are post-freeze design work.
+- The owner-app runbook's "neither is marked Accepted" sentence now carries a
+  dated note that it predates the 2026-11-09 acceptance.
+
+**Open:**
+
+- SG-07 item 2: accepted until 2026-12-04, with Monday checks on 2026-11-16,
+  2026-11-23 and 2026-11-30.
+- HARD-003, HARD-004 and the INFRA-003 restore test: not done.
+- HARD-002: runs last.
+- SKEL-007 (P1, a local fake-model Playwright test): not started.
+- PORT items: after the freeze.
+- The Cognito charge check.
+- The root billing setting: owner-reported as not enabled yet.
+- The deploy freeze on 2026-12-06.
+
+See BACKLOG.md and INFRASTRUCTURE.md for each item.
+
 ## INFRA-006, 007, 009, 011 and HARD-001 accepted; remaining plans — 2026-11-12
 
 **Status:** Docs only, on a branch. These are **owner decisions on the recorded

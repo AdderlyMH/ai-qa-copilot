@@ -1976,6 +1976,9 @@ spacing and the 5 requests per second throttle under real polling; the Cognito
 prefix-domain charge; CSP violations on pages not exercised. Accepting INFRA-010
 or INFRA-002 is the owner's decision; neither is marked Accepted here.
 
+*Updated 2026-11-12:* the sentence above predates the owner's acceptance of
+INFRA-010 and INFRA-002 on 2026-11-09 (BACKLOG.md); it is kept as history.
+
 **Billing access for the prefix-domain charge (2026-11-12, owner-reported):**
 the owner's IAM user could not read Cost Explorer or Bills ("You need
 permissions"). The root user's one-time account setting "IAM user and role
@@ -2044,6 +2047,14 @@ Observed twice in production on 2026-11-07, and reproduced locally by the owner
 
 **OPEN:** either the sample or the parser pattern should change, and the
 empty-result rejection reason is misleading. Neither is changed here.
+
+**Plan, OWNER DECISION 2026-11-12 (finding still OPEN):** the parser's matching
+rules and the hash-pinned sample fixture are **not** changed before the freeze. A
+web-only change will show a hint when a Markdown file ends as `parse_failed`
+("No requirement lines found. Use lines like - REQ-ORDER-001: text"), and a docs
+section will describe the accepted format. Heading-form requirements
+(`### REQ-X - title`) and a clearer rejection reason in the API are post-freeze
+design work. The hint and the docs section are **NOT done**.
 
 ## Dependabot and the Python lock, 2026-11-12
 
@@ -3899,6 +3910,9 @@ least-privilege deploy role and the manual approval before apply.
 10. **Parser finding (OPEN, 2026-11-09):** the sample requirements yield no
     Markdown requirements and are rejected as `PARSER_EVIDENCE_INVALID`; see
     [Finding: the sample requirements yield no Markdown requirements](#finding-the-sample-requirements-yield-no-markdown-requirements-open).
+    *Updated 2026-11-12:* still OPEN; the owner's plan (a web-only hint and a
+    docs section before the freeze, parser changes after it) is recorded in
+    that section and is not done.
 11. **Dependabot finding (OPEN, 2026-11-12):** Dependabot cannot maintain the
     Python lock under the pinned uv, and its `docs-validation.yml` updates need
     manual follow-up; to be decided after the 2026-12-06 freeze. See
