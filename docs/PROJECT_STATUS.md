@@ -1,5 +1,43 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Lambda base pin reverted after the 2026-11-13 scan — 2026-11-13
+
+**Status:** On branch `build/revert-base-pin-2026-11-13`; Dockerfile pin and
+docs only. No build, push, AWS or network call was made here; the build and
+scan below are owner-run and were not re-checked. Nothing is deployed, and
+nothing is marked met.
+
+- **Scan of the newer base (owner-run, 2026-11-13):** after PR #263, five
+  images were built from `main` at `150f00f5b8f14f65197b3999a241f38d7cd5e297`,
+  verified inside, pushed once and scanned (`COMPLETE`, the same findings by
+  name in all five). CVE-2026-76781 (`libxml2`) and CVE-2026-114406
+  (`ca-certificates`) are gone. New: HIGH CVE-2026-95520 and CVE-2026-95521
+  (`rpm`, `rpm-libs`); six MEDIUM and one LOW on `sqlite-libs` (listed in SG-07
+  item 2). The owner did not read the new CVEs; whether the Lambda runtime uses
+  `rpm`, and whether fixed packages exist, is NOT verified.
+- **Pin:** set back to the 2026-11-09 base (`sha256:00632c00…`), because the
+  newer base scanned worse. Only the `sha256:` value changed; the header
+  comment already read "last refreshed 2026-11-13".
+- **Tests:** the digest test checks only the format, and no test pins the
+  comment, so no test changed.
+- **Not deployed:** `production.tfvars` still holds the 2026-11-07 digests. The
+  push rotated the oldest image out of each repository (ECR keeps five); the
+  owner states the deployed 2026-11-07 images remain, and a check is pending.
+
+**Open:**
+
+- SG-07 item 2: OPEN; accepted until 2026-12-04 (unchanged); a clean base is
+  still needed. The package-update fallback is NOT decided and NOT verified.
+- Monday base-digest checks: 2026-11-16, 2026-11-23 and 2026-11-30.
+- HARD-002: the run, planned for 2026-12-01 to 2026-12-04.
+- SKEL-007: whether `e2e-smoke` becomes a required check (owner decision).
+- The browser console's informational notices on the owner app, believed to be
+  the form-field id/name notice, not yet read (ADR-022).
+- The Cognito charge, to be rechecked on the first monthly bill.
+- The deploy freeze on 2026-12-06.
+
+See INFRASTRUCTURE.md, "Refresh the base image digest" and the SG-07 register.
+
 ## Lambda base image digest refreshed in the Dockerfile — 2026-11-13
 
 **Status:** On branch `build/base-refresh-2026-11-13`; **not built, scanned,
