@@ -704,3 +704,8 @@ output "function_names" {
   description = "Lambda function name per class."
   value       = { for k, f in aws_lambda_function.this : k => f.function_name }
 }
+
+output "http_api_id" {
+  description = "HTTP API ID (the ApiId dimension of its CloudWatch metrics)."
+  value       = aws_apigatewayv2_api.http.id
+}

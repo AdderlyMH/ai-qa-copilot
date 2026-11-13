@@ -1986,6 +1986,12 @@ access to Billing information" is off. **Plan, not done:** turn that setting on
 once in early December and read the Cognito line of the first bill. Until then
 the prefix-domain charge stays **UNCONFIRMED**.
 
+*Updated later on 2026-11-12 (owner-observed):* Bills and Cost Explorer now load
+for the owner's IAM user. Which setting change caused this is not recorded here.
+Cost Explorer shows no Cognito charge through 2026-11-12, but it lags, so the
+prefix-domain charge stays **UNCONFIRMED** until the first monthly bill. See
+[HARD-003 alarms, 2026-11-12](#hard-003-alarms-2026-11-12).
+
 ## Rebuild and owner-app verification, 2026-11-07 to 2026-11-09 (owner-run)
 
 Recorded from the owner's report; no step was re-run for this entry. Image
@@ -2055,6 +2061,134 @@ web-only change will show a hint when a Markdown file ends as `parse_failed`
 section will describe the accepted format. Heading-form requirements
 (`### REQ-X - title`) and a clearer rejection reason in the API are post-freeze
 design work. The hint and the docs section are **NOT done**.
+
+## HARD-003 alarms, 2026-11-12
+
+**Status:** code only, on a branch. Nothing is planned or applied, and no AWS
+call was made for this entry. The facts under "Found today" were read by the
+owner.
+
+### What the code adds
+
+- **Module `infra/modules/alarm_notifications`:**
+  - A customer managed KMS key with rotation on and a 7-day deletion window,
+    plus an alias named `alias/<name prefix>-alarms`. Its key policy has two
+    statements: the account root administers the key, and
+    `cloudwatch.amazonaws.com` may call `kms:GenerateDataKey*` and
+    `kms:Decrypt`, limited by `aws:SourceAccount` to this account. There is no
+    `sns.amazonaws.com` grant, and no `aws:SourceArn` condition (not checked).
+  - An SNS topic `<name prefix>-alarms` encrypted with that key.
+  - A topic policy that lets only `cloudwatch.amazonaws.com` publish, limited
+    by `aws:SourceAccount`.
+  - One email subscription to the root variable `alarm_email`. That variable
+    is sensitive, has no default and is validated as non-empty with an `@`.
+    The real address goes only in the git-ignored `production.tfvars`; the
+    example file has the placeholder `alerts@example.invalid`.
+- **Database module:** a new input `alarm_topic_arn` (default empty). The
+  production root passes the topic ARN, so the two existing RDS alarms gain
+  `alarm_actions` and `ok_actions`. Their names, metrics, dimensions and
+  thresholds are unchanged. Their descriptions change from "Console only; no
+  notification." to "Notifies the HARD-003 alarm topic.", so a plan should
+  show in-place updates only (not yet planned).
+- **Compute API module, new file `alarms.tf`:** three alarms. Each uses one
+  5-minute period, `Sum`, `GreaterThanOrEqualToThreshold`,
+  `treat_missing_data = "notBreaching"`, and actions on ALARM and OK. Each
+  threshold is a production-root variable with a default:
+
+  | Alarm | Metric | Dimension | Default threshold | Why |
+  |---|---|---|---|---|
+  | `<name prefix>-api-lambda-errors` | `AWS/Lambda` `Errors` | API function name | 1 (`api_errors_alarm_threshold`) | Little traffic, so one unhandled error is worth an email |
+  | `<name prefix>-http-api-4xx` | `AWS/ApiGateway` `4xx` | `ApiId` | 10 (`http_api_4xx_alarm_threshold`) | The throttling signal; see below |
+  | `<name prefix>-api-lambda-throttles` | `AWS/Lambda` `Throttles` | API function name | 1 (`api_throttles_alarm_threshold`) | No reserved concurrency, so any throttle refused a request |
+
+  The dimensions come from the module's own resources. A new output,
+  `http_api_id`, exports the HTTP API ID.
+- **Monthly cost:** one customer managed KMS key at about 1 USD per month,
+  plus request charges. This is an **unverified estimate** from memory, not
+  read from the KMS pricing page or the repository's pricing files. Alarm and
+  SNS email charges are not estimated here.
+
+### Why a customer managed key
+
+The topic cannot use the AWS managed key `alias/aws/sns` for CloudWatch
+alarms. The Amazon SNS Developer Guide page "Managing Amazon SNS encryption
+keys and costs" was read for this change on 2026-11-12. Its section "Enable compatibility
+between event sources from AWS services and encrypted topics" says to:
+
+- use a customer managed key;
+- grant the service principal `kms:GenerateDataKey*` and `kms:Decrypt` in the
+  key policy (it lists `cloudwatch.amazonaws.com` for Amazon CloudWatch);
+- optionally add `aws:SourceAccount` and `aws:SourceArn` conditions.
+
+It does not ask for an `sns.amazonaws.com` grant. **Whether an alarm email
+actually arrives is NOT verified** until the owner's test below.
+
+### Why the throttling alarm uses 4xx
+
+The API Gateway Developer Guide page "Monitor CloudWatch metrics for HTTP
+APIs", read for this change on 2026-11-12, lists only `4xx`, `5xx`, `Count`,
+`IntegrationLatency`, `Latency` and `DataProcessed`, with the `ApiId`
+dimension. There is **no throttle metric** for HTTP APIs. A request rejected
+by the stage throttle (5 requests per second, burst 10) returns 429, which
+counts in `4xx`.
+
+But `4xx` also counts 401, 403, 404 and 413 responses, so the alarm is not
+specific to throttling. The default threshold of 10 in 5 minutes was chosen
+so that normal owner use (an occasional 401 after a token expires) stays below
+it, while a throttled burst would go over it.
+
+### Checkov
+
+Checkov 3.3.20 passes with no new skip: 400 passed, 0 failed, 63 skipped,
+the same skip count as before. A first version wrote the key policy as an
+`aws_iam_policy_document`. Three generic IAM-document checks failed on it
+(CKV_AWS_109, CKV_AWS_111, CKV_AWS_356), because they read the key policy's
+`"Resource": "*"` as every resource, while in a key policy it means this key.
+The same statements are now inline on the key. The KMS and SNS checks
+CKV_AWS_7, CKV_AWS_33, CKV_AWS_227, CKV2_AWS_64 and CKV_AWS_26 pass.
+
+### Found today (owner-read, 2026-11-12)
+
+- **Budgets:** two budgets exist in the account, outside Terraform. They stay
+  that way.
+  - `monthly-35`: 35 USD, with alerts at 80% and 100% of actual and 100% of
+    forecast. Both of its 2 emails are verified. No actions.
+  - `monthly-50-hard`: 50 USD, with alerts at 80% and 100% of actual. Its
+    subscribers were not checked.
+- **RDS alarms:** the two alarms had zero actions.
+- **Cost, 2026-11-01 to 2026-11-12, by service (Cost Explorer, USD):**
+
+  | Service | USD |
+  |---|---|
+  | RDS | 5.32 |
+  | VPC | 1.38 |
+  | EC2 compute | 1.15 |
+  | Secrets Manager | 0.61 |
+  | EC2-Other | 0.24 |
+  | ECR | 0.11 |
+  | Cognito | 0 |
+  | Tax | 1.59 |
+
+  Cost Explorer lags, so Cognito shows no charge through 2026-11-12. Recheck it
+  on the first monthly bill. The cause of the VPC line is **NOT verified**.
+- **Billing access:** Bills and Cost Explorer now load for the owner's IAM
+  user. Which setting caused this is not recorded.
+
+### Owner-run steps, TO DO
+
+1. A targeted plan and apply of the new module and the changed alarms. Check
+   that the plan creates the key, the alias, the topic, the topic policy, the
+   subscription and three alarms, and updates the two RDS alarms in place
+   only.
+2. Click the SNS subscription confirmation email. The subscription stays
+   **Pending** until then.
+3. Set one alarm to ALARM by hand with `aws cloudwatch set-alarm-state` and
+   see the email arrive. This is the first evidence that the key policy
+   works.
+4. Exceed the 5 requests per second API throttle and observe HTTP 429. How the
+   HTTP API throttle behaves on `/health` is **NOT verified**.
+
+HARD-003 stays **NOT Accepted** until these observations are done.
 
 ## Dependabot and the Python lock, 2026-11-12
 
@@ -3917,6 +4051,10 @@ least-privilege deploy role and the manual approval before apply.
     Python lock under the pinned uv, and its `docs-validation.yml` updates need
     manual follow-up; to be decided after the 2026-12-06 freeze. See
     [Finding: Dependabot cannot maintain the Python lock](#finding-dependabot-cannot-maintain-the-python-lock-open).
+12. **HARD-003 alarms (code, 2026-11-12):** not planned or applied. The
+    subscription confirmation, a test alarm email and a 429 observation are
+    owner-run steps still to do. See
+    [HARD-003 alarms, 2026-11-12](#hard-003-alarms-2026-11-12).
 
 ## Sources (all read 2026-10-12)
 

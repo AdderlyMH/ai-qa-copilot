@@ -96,8 +96,17 @@ variable "freeable_memory_alarm_threshold_mib" {
   }
 }
 
+variable "alarm_topic_arn" {
+  description = "SNS topic ARN for the two alarms' alarm_actions and ok_actions (HARD-003). Empty: the alarms have no actions and stay console only."
+  type        = string
+  default     = ""
+  nullable    = false
+}
+
 locals {
-  identifier = "${var.name_prefix}-postgres"
+  identifier    = "${var.name_prefix}-postgres"
+  alarm_actions = var.alarm_topic_arn == "" ? [] : [var.alarm_topic_arn]
+  alarm_notice  = var.alarm_topic_arn == "" ? "Console only; no notification." : "Notifies the HARD-003 alarm topic."
 }
 
 resource "aws_db_subnet_group" "this" {
@@ -204,11 +213,11 @@ resource "aws_db_instance" "this" {
 }
 
 # Surplus CPU credits are the only usage-based charge of the instance (RDS
-# db.t4g runs in Unlimited mode). No alarm action or SNS topic: there is no
-# confirmed subscriber, so the alarm is visible in the CloudWatch console only.
+# db.t4g runs in Unlimited mode). Until HARD-003 there was no alarm action or
+# SNS topic; the actions now go to alarm_topic_arn when it is set (2026-11-12).
 resource "aws_cloudwatch_metric_alarm" "cpu_surplus_credits_charged" {
   alarm_name          = "${local.identifier}-cpu-surplus-credits-charged"
-  alarm_description   = "Charged surplus CPU credits on the db.t4g.micro instance (ADR-020). Console only; no notification."
+  alarm_description   = "Charged surplus CPU credits on the db.t4g.micro instance (ADR-020). ${local.alarm_notice}"
   namespace           = "AWS/RDS"
   metric_name         = "CPUSurplusCreditsCharged"
   dimensions          = { DBInstanceIdentifier = aws_db_instance.this.identifier }
@@ -218,14 +227,16 @@ resource "aws_cloudwatch_metric_alarm" "cpu_surplus_credits_charged" {
   comparison_operator = "GreaterThanThreshold"
   threshold           = 0
   treat_missing_data  = "notBreaching"
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
 }
 
 # FreeableMemory (AWS/RDS, Bytes) below the owner-set threshold for three
 # consecutive 5-minute periods (INFRA-008, ADR-020 decision rule). Same as the
-# CPU alarm: no alarm action and no SNS topic, console only.
+# CPU alarm: actions go to alarm_topic_arn when it is set (HARD-003).
 resource "aws_cloudwatch_metric_alarm" "freeable_memory_low" {
   alarm_name          = "${local.identifier}-freeable-memory-low"
-  alarm_description   = "FreeableMemory below ${var.freeable_memory_alarm_threshold_mib} MiB on the db.t4g.micro instance (ADR-020 decision rule, threshold set by the owner). Console only; no notification."
+  alarm_description   = "FreeableMemory below ${var.freeable_memory_alarm_threshold_mib} MiB on the db.t4g.micro instance (ADR-020 decision rule, threshold set by the owner). ${local.alarm_notice}"
   namespace           = "AWS/RDS"
   metric_name         = "FreeableMemory"
   dimensions          = { DBInstanceIdentifier = aws_db_instance.this.identifier }
@@ -235,6 +246,8 @@ resource "aws_cloudwatch_metric_alarm" "freeable_memory_low" {
   comparison_operator = "LessThanThreshold"
   threshold           = var.freeable_memory_alarm_threshold_mib * 1048576
   treat_missing_data  = "missing"
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
 }
 
 output "instance_identifier" {

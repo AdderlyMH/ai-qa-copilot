@@ -26,6 +26,15 @@ database_subnet_cidrs       = ["10.20.10.0/24", "10.20.11.0/24"]
 # number is given on purpose. Every plan of this root needs it.
 # database_freeable_memory_alarm_threshold_mib = <owner-chosen MiB>
 
+# HARD-003 alarms. Required, no default: the address subscribed to the alarm
+# topic. PLACEHOLDER only: put the real address in production.tfvars, never in
+# the repository. The subscription stays Pending until its confirmation email is
+# clicked. The thresholds are optional; defaults shown.
+alarm_email = "alerts@example.invalid"
+# api_errors_alarm_threshold    = 1
+# api_throttles_alarm_threshold = 1
+# http_api_4xx_alarm_threshold  = 10
+
 # Migration runner (INFRA-012). Off by default; the ECR repository exists either
 # way. Turn on only to run migrations, with the pushed migrate image by digest,
 # then turn off again (runbook in docs/INFRASTRUCTURE.md).

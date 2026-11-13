@@ -175,6 +175,37 @@ variable "database_freeable_memory_alarm_threshold_mib" {
   type        = number
 }
 
+# HARD-003 alarms. alarm_email has no default: it is the owner's private
+# address and lives only in production.tfvars. Every plan of this root needs it.
+variable "alarm_email" {
+  description = "Email address subscribed to the HARD-003 alarm topic (private; production.tfvars only)."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(trimspace(var.alarm_email)) > 0 && strcontains(var.alarm_email, "@")
+    error_message = "alarm_email must be a non-empty email address."
+  }
+}
+
+variable "api_errors_alarm_threshold" {
+  description = "API function Lambda Errors in one 5-minute period that fire the alarm (default 1: any error)."
+  type        = number
+  default     = 1
+}
+
+variable "api_throttles_alarm_threshold" {
+  description = "API function Lambda Throttles in one 5-minute period that fire the alarm (default 1: any throttle)."
+  type        = number
+  default     = 1
+}
+
+variable "http_api_4xx_alarm_threshold" {
+  description = "HTTP API 4xx responses in one 5-minute period that fire the alarm (default 10). HTTP APIs have no throttle metric; throttled 429s count in 4xx, as do 401, 403, 404 and 413."
+  type        = number
+  default     = 10
+}
+
 variable "migration_enabled" {
   description = "Create the one-shot migration runner function (INFRA-012). Keep false except while running migrations; the ECR repository exists either way."
   type        = bool
@@ -239,6 +270,13 @@ module "database" {
   backup_retention_period   = var.database_backup_retention_period
 
   freeable_memory_alarm_threshold_mib = var.database_freeable_memory_alarm_threshold_mib
+  alarm_topic_arn                     = module.alarm_notifications.topic_arn
+}
+
+module "alarm_notifications" {
+  source      = "../../modules/alarm_notifications"
+  name_prefix = module.naming.name_prefix
+  alarm_email = var.alarm_email
 }
 
 module "nat_instance" {
@@ -302,6 +340,11 @@ module "compute_api" {
   cognito_domain_prefix            = var.cognito_domain_prefix
   cognito_callback_urls            = var.cognito_callback_urls
   cognito_logout_urls              = var.cognito_logout_urls
+
+  alarm_topic_arn               = module.alarm_notifications.topic_arn
+  api_errors_alarm_threshold    = var.api_errors_alarm_threshold
+  api_throttles_alarm_threshold = var.api_throttles_alarm_threshold
+  http_api_4xx_alarm_threshold  = var.http_api_4xx_alarm_threshold
 }
 
 output "http_api_endpoint" {
