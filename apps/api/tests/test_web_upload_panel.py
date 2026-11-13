@@ -158,6 +158,45 @@ def test_status_panel_renders_required_fields_as_text() -> None:
     assert "Date.parse(b.created_at) - Date.parse(a.created_at)" in panel
 
 
+PARSE_FAILED_HINT = (
+    "Likely reason: No requirement lines were found. Use lines like "
+    "- REQ-ORDER-001: text. See the accepted format in the docs."
+)
+
+
+def test_parse_failed_hint_text_is_present_and_hedged() -> None:
+    panel = text(APP / "document-status-panel.tsx")
+
+    assert f'export const PARSE_FAILED_HINT =\n  "{PARSE_FAILED_HINT}";' in panel
+    # The API gives no reason code, so the hint must not claim the cause.
+    assert PARSE_FAILED_HINT.startswith("Likely reason: ")
+    assert "rejection_code is set only for" in panel
+
+
+def test_parse_failed_hint_shows_only_for_a_rejected_parse() -> None:
+    panel = text(APP / "document-status-panel.tsx")
+
+    assert (
+        'return item.status === "parse_failed" && item.parser_stage === "rejected";'
+        in panel
+    )
+    assert DocumentStatus.PARSE_FAILED.value == "parse_failed"
+    assert panel.count("PARSE_FAILED_HINT") == 2
+    assert panel.count("showsParseFailedHint(item)") == 1
+
+
+def test_parse_failed_hint_is_rendered_as_text() -> None:
+    panel = text(APP / "document-status-panel.tsx")
+
+    assert (
+        "{showsParseFailedHint(item) ? (\n"
+        "                <div>{PARSE_FAILED_HINT}</div>\n"
+        "              ) : null}"
+    ) in panel
+    assert "dangerouslySetInnerHTML" not in panel
+    assert "href" not in panel
+
+
 def test_polling_constants_are_named_and_have_the_required_values() -> None:
     polling = text(POLLING)
 
