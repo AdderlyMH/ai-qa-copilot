@@ -7,13 +7,13 @@
 # The base is the single-architecture arm64 manifest of the AWS Lambda Python
 # 3.13 base image (Amazon Linux 2023), pinned by digest and refreshed per the
 # "Refresh the base image digest" runbook (docs/INFRASTRUCTURE.md); last
-# refreshed 2026-11-09.
+# refreshed 2026-11-13.
 # Lambda runs the function as its own least-privileged default user, so no
 # USER is set (AWS Lambda Developer Guide, images-create). No secret, .env,
 # credential, AWS configuration or database setting is copied in: settings come
 # from the function environment at run time (INFRA-008). The only certificate
 # is the public RDS CA bundle, copied into every target.
-ARG LAMBDA_PYTHON_BASE=public.ecr.aws/lambda/python:3.13-arm64@sha256:00632c00347477dd4dfa5c9813ee4d774208d1afd37b9e1b674412d904cf0ae0
+ARG LAMBDA_PYTHON_BASE=public.ecr.aws/lambda/python:3.13-arm64@sha256:add56ac7b4071495622c9ebb91b8aea424da9d9c762541ff0e5d48b56f78a3e3
 
 FROM ${LAMBDA_PYTHON_BASE} AS dependencies
 

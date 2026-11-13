@@ -1,5 +1,26 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Lambda base image digest refreshed in the Dockerfile — 2026-11-13
+
+**Status:** On branch `build/base-refresh-2026-11-13`; **not built, scanned,
+verified or deployed.** No build, push, AWS or network call was made. Nothing is
+marked met, and nothing here shows that the refresh fixes any finding.
+
+- **Pin:** the owner's registry read on 2026-11-13 showed the `3.13-arm64` tag at
+  a newer digest than the one pinned on 2026-11-09. Only the `sha256:` value of
+  the `ARG LAMBDA_PYTHON_BASE=` line and the refresh date in the Dockerfile
+  header comment changed; both digests are in the runbook note.
+- **Tests:** the digest test checks only the format, not the value, and no test
+  pins the comment, so no test changed.
+- **SG-07 item 2:** the owner's weekly check on 2026-11-13, earlier than the
+  Monday schedule, found this newer base. The item stays OPEN until the images
+  are rebuilt on it and the scan findings are compared by CVE name with
+  CVE-2026-76781 (`libxml2`) and CVE-2026-114406 (`ca-certificates`). The images
+  are deployed only if both are gone. The risk acceptance still runs until
+  2026-12-04.
+
+See INFRASTRUCTURE.md, "Refresh the base image digest" and the SG-07 register.
+
 ## SKEL-007 Playwright smoke test — 2026-11-13
 
 **Status:** test code, a new CI workflow and docs, on a branch. **NOT
