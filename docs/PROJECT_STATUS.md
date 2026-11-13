@@ -1,5 +1,43 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## HARD-003 applied; test alarm and quota rejection observed — 2026-11-12
+
+**Status:** Docs only, on a branch. Recorded from the owner's report; no step
+was re-run here and no AWS or network call was made. HARD-003 is **not marked
+Accepted**: that is the owner's decision.
+
+- **Apply (owner-run, evening of 2026-11-12):** the plan showed 8 to add, 2 to
+  change and 0 to destroy, with nothing outside the alarm path. The apply had
+  the same counts.
+- **Subscription:** `PendingConfirmation`, then confirmed by the owner. A test
+  alarm fired while it was unconfirmed delivered nothing, as expected.
+- **Test alarm:** `set-alarm-state` on the API Lambda `Errors` alarm.
+  - Emails arrived for ALARM (03:23:16 UTC on 2026-11-13) and OK (03:24:24
+    UTC), and the alarm history shows "Successfully executed action".
+  - This verifies that CloudWatch publishes to the topic encrypted with the
+    customer managed key under `aws:SourceAccount`.
+  - OK came about a minute later because no datapoints arrived
+    (`notBreaching`), not after a full 5-minute period.
+- **Quota rejection:** 60 simultaneous health requests returned 52 × 200 and
+  8 × 429, with no 5xx. The token-bucket behavior is NOT verified.
+- **Not exercised:** the `4xx` alarm (threshold 10, so not reached by 8) and its
+  email path. This is optional.
+- **Cost:** the KMS key's monthly cost is still an unverified estimate.
+
+**Open:**
+
+- The HARD-003 acceptance decision (owner).
+- HARD-004 and the INFRA-003 restore test: not done.
+- HARD-002: runs last.
+- SKEL-007: not started.
+- The web hint for `parse_failed`: not done.
+- SG-07 item 2: accepted until 2026-12-04, with Monday checks on 2026-11-16,
+  2026-11-23 and 2026-11-30.
+- The Cognito charge, to be rechecked on the first monthly bill.
+- The deploy freeze on 2026-12-06.
+
+See INFRASTRUCTURE.md, "Apply and observations, 2026-11-12 (owner-run)".
+
 ## HARD-003 notification path and alarms in Terraform — 2026-11-12
 
 **Status:** code on a branch; **not planned or applied**, and no AWS call was
