@@ -9,6 +9,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -29,6 +30,8 @@ DB_CHECK_NAME = "ai_qa_copilot_check"
 DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
 DB_CHECK_REVISION = "0021_analysis_run_provider"
+E2E_TEMP_ROOT_VARIABLE = "AI_QA_COPILOT_E2E_TEMP_ROOT"
+E2E_API_LAUNCHER = "apps/web/e2e/api_launcher.py"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -234,6 +237,37 @@ def security_harness() -> None:
     """Run deterministic security fixtures with fake adapters only."""
 
     uv_run("python", "scripts/security_harness.py")
+
+
+def e2e() -> None:
+    """Install Chromium and run the Playwright smoke test (SKEL-007).
+
+    Not part of ``ci``. Playwright starts its own test-only API launcher
+    (apps/web/e2e/api_launcher.py) and web server on dedicated ports; the
+    launcher's temporary SQLite folder lives under a task-owned root removed
+    afterwards. The launcher sits outside ``scripts`` because docs-validation
+    type-checks ``scripts`` without the API's runtime dependencies, so it is
+    linted and type-checked here instead.
+    """
+
+    uv_run("ruff", "check", E2E_API_LAUNCHER)
+    uv_run("ruff", "format", "--check", E2E_API_LAUNCHER)
+    mypy_environment = os.environ.copy()
+    mypy_environment["MYPYPATH"] = "apps/api/src"
+    uv_run("mypy", E2E_API_LAUNCHER, env=mypy_environment)
+    verify_node_major()
+    environment = node_environment()
+    playwright = (npm(), "exec", "--workspace", "@ai-qa-copilot/web", "--")
+    install = [*playwright, "playwright", "install", "chromium"]
+    if sys.platform.startswith("linux") and environment.get("CI") == "true":
+        install.append("--with-deps")
+    run(*install, env=environment)
+    temp_root = tempfile.mkdtemp(prefix="ai-qa-copilot-e2e-root-")
+    environment[E2E_TEMP_ROOT_VARIABLE] = temp_root
+    try:
+        run(*playwright, "playwright", "test", env=environment)
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
 
 
 def ci() -> None:
@@ -957,7 +991,7 @@ def print_help() -> None:
     print("Available targets:")
     print(
         "  bootstrap format format-check lint typecheck test dev db-up db-down migrate "
-        "migrate-down db-check docs-check docs-self-test security-harness ci"
+        "migrate-down db-check docs-check docs-self-test security-harness ci e2e"
     )
 
 
@@ -985,6 +1019,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "docs-self-test",
             "security-harness",
             "ci",
+            "e2e",
         ),
         nargs="?",
         default="help",
@@ -1014,6 +1049,7 @@ def main(argv: list[str] | None = None) -> int:
         "docs-self-test": docs_self_test,
         "security-harness": security_harness,
         "ci": ci,
+        "e2e": e2e,
     }
     if args.target == "help":
         print_help()

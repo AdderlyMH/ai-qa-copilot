@@ -2069,6 +2069,11 @@ but **NOT deployed**. The hint is in
 below. The deploy is the owner-run owner-app deploy workflow. The parser rules
 and the sample fixture are unchanged, and the finding stays **OPEN**.
 
+*Deploy update 2026-11-13:* the "NOT deployed" note above is stale. The
+owner-app deploy workflow (run #2, on commit 2d2b237) deployed the hint and
+the format section. The hint was seen live on the rejected sample file and was
+absent on parsed files. The finding stays **OPEN**.
+
 ### Accepted Markdown requirement format
 
 What the parser code does, read from

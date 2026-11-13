@@ -1,5 +1,57 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## SKEL-007 Playwright smoke test — 2026-11-13
+
+**Status:** test code, a new CI workflow and docs, on a branch. **NOT
+accepted**: the owner decides. The new `e2e-smoke` job is **NOT a required
+check**. No application behaviour, infra, Dockerfile or pinned workflow
+changed. No AWS call and no model call was made; the only network traffic was
+package and browser installation.
+
+- **Test:** `apps/web/e2e/project-analysis.spec.ts` uses Chromium and
+  `@playwright/test` 1.65.0, pinned exactly as an `apps/web` devDependency. It
+  creates a project with a synthetic name, runs and saves a synthetic analysis,
+  and asserts that the saved run shows `e2e-fake-model · E2E-FAKE/v1 · 7 tokens`.
+  It uses role and label locators and Playwright's auto-waiting, with no sleeps.
+- **Servers:** `apps/web/playwright.config.ts` starts both servers on dedicated
+  ports and never reuses a running server:
+  - `apps/web/e2e/api_launcher.py` on 127.0.0.1:8131;
+  - `next dev` on localhost:3131, forwarding `/api` to the launcher, with
+    Cognito disabled.
+- **Launcher:** `apps/web/e2e/api_launcher.py` is test-only. It calls `create_app(...)`
+  with local-bypass auth, SQLite in a temporary folder, and a fixed fake model
+  adapter. It refuses to start without `AI_QA_COPILOT_E2E=1`. Before importing
+  the app, it reduces its environment to an operating-system allowlist, so it
+  never reads model keys, `DATABASE_URL` or AWS settings.
+- **Limits:** this smoke test does not exercise the environment-based
+  production wiring. The provenance it asserts comes from the launcher's fake.
+  The stock local API cannot run this flow without PostgreSQL and a provider
+  key.
+- **Run locally:** `py scripts/tasks.py e2e`, which installs Chromium and runs
+  the test. It is not part of `ci`.
+- **CI:** `.github/workflows/e2e-smoke.yml`:
+  - runs on ubuntu-24.04, with the same action SHAs as the existing jobs;
+  - `contents: read`, no secrets, `timeout-minutes: 15`;
+  - uploads the report only on failure.
+
+  The `upload-artifact` SHA is the one the evaluation workflows use; the
+  repository does not record its release tag.
+- **Deploy correction:** the parse_failed hint entry below says "NOT
+  deployed". The owner-app deploy workflow (run #2, on commit 2d2b237)
+  deployed it. The hint was seen live on the rejected sample file and was
+  absent on parsed files.
+
+**Open:**
+
+- SKEL-007 acceptance: owner decision, and whether `e2e-smoke` becomes a
+  required check.
+- HARD-002: runs last, against the final deployed revision.
+- SG-07 item 2: accepted until 2026-12-04, with Monday checks on 2026-11-16,
+  2026-11-23 and 2026-11-30.
+- The Cognito charge, to be rechecked on the first monthly bill.
+- INFRA-006 follow-up: the missing `s3:DeleteObject` grant.
+- The deploy freeze on 2026-12-06.
+
 ## parse_failed hint and accepted Markdown format — 2026-11-13
 
 **Status:** web code, docs and tests on a branch; **NOT deployed**. Deploying
