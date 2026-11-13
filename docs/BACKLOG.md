@@ -335,7 +335,7 @@ security release gate has executed or passed.
   - `apps/web/playwright.config.ts` starts both servers itself and never reuses a running server:
     - the API on 127.0.0.1:8131;
     - `next dev` on localhost:3131, forwarding `/api` to the API, with Cognito sign-in disabled.
-  - The API is `scripts/e2e_api.py`, a **test-only launcher**:
+  - The API is `apps/web/e2e/api_launcher.py`, a **test-only launcher**:
     - it calls `create_app(...)` with local-bypass auth, SQLite repositories in a temporary folder, and a fixed fake model adapter, the same way `test_analysis_runs.py` does;
     - it refuses to start unless `AI_QA_COPILOT_E2E=1` is set;
     - before importing the app, it reduces its environment to an operating-system allowlist, so it never reads model keys, `DATABASE_URL` or AWS settings.

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-// Provenance values returned by the fake adapter in scripts/e2e_api.py.
+// Provenance values returned by the fake adapter in e2e/api_launcher.py.
 const FAKE_MODEL_ID = "e2e-fake-model";
 const FAKE_CONFIGURATION_VERSION = "E2E-FAKE/v1";
 

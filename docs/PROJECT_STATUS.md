@@ -15,10 +15,10 @@ package and browser installation.
   It uses role and label locators and Playwright's auto-waiting, with no sleeps.
 - **Servers:** `apps/web/playwright.config.ts` starts both servers on dedicated
   ports and never reuses a running server:
-  - `scripts/e2e_api.py` on 127.0.0.1:8131;
+  - `apps/web/e2e/api_launcher.py` on 127.0.0.1:8131;
   - `next dev` on localhost:3131, forwarding `/api` to the launcher, with
     Cognito disabled.
-- **Launcher:** `scripts/e2e_api.py` is test-only. It calls `create_app(...)`
+- **Launcher:** `apps/web/e2e/api_launcher.py` is test-only. It calls `create_app(...)`
   with local-bypass auth, SQLite in a temporary folder, and a fixed fake model
   adapter. It refuses to start without `AI_QA_COPILOT_E2E=1`. Before importing
   the app, it reduces its environment to an operating-system allowlist, so it

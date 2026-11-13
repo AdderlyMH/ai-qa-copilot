@@ -1,8 +1,8 @@
 name: e2e-smoke
 
 # SKEL-007 Playwright smoke test. Not a required check: the owner decides
-# acceptance. It uses the test-only API launcher (scripts/e2e_api.py) with
-# SQLite and a fixed fake model, so it needs no secrets and makes no model calls.
+# acceptance. It uses the test-only API launcher (apps/web/e2e/api_launcher.py)
+# with SQLite and a fixed fake model, so it needs no secrets and makes no model calls.
 
 on:
   pull_request:

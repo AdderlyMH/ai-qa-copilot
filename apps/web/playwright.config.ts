@@ -3,8 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 // SKEL-007 smoke test. Both servers are started here on dedicated ports
 // (test_dev_lifecycle.py uses OS-assigned ephemeral ports; `tasks.py dev`
 // defaults to 8000/3000), and an already-running server is never reused.
-// The API is scripts/e2e_api.py: a test-only launcher with SQLite storage and a
-// fixed fake model, not the environment-based production wiring.
+// The API is e2e/api_launcher.py: a test-only launcher with SQLite storage and
+// a fixed fake model, not the environment-based production wiring.
 const E2E_API_PORT = 8131;
 const E2E_WEB_PORT = 3131;
 const E2E_API_ORIGIN = `http://127.0.0.1:${E2E_API_PORT}`;
@@ -25,7 +25,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: `uv run --locked python scripts/e2e_api.py --port ${E2E_API_PORT}`,
+      command: `uv run --locked python apps/web/e2e/api_launcher.py --port ${E2E_API_PORT}`,
       cwd: "../..",
       url: `${E2E_API_ORIGIN}/health`,
       env: { AI_QA_COPILOT_E2E: "1" },

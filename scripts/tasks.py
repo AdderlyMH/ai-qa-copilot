@@ -31,6 +31,7 @@ DB_CHECK_USER = "ai_qa_copilot_check"
 DB_CHECK_PASSWORD = "ai_qa_copilot_check"
 DB_CHECK_REVISION = "0021_analysis_run_provider"
 E2E_TEMP_ROOT_VARIABLE = "AI_QA_COPILOT_E2E_TEMP_ROOT"
+E2E_API_LAUNCHER = "apps/web/e2e/api_launcher.py"
 DEV_SHUTDOWN_TIMEOUT_SECONDS = 5.0
 WINDOWS_CREATE_NEW_PROCESS_GROUP = 0x00000200
 WINDOWS_JOB_OBJECT_EXTENDED_LIMIT_INFORMATION = 9
@@ -242,10 +243,18 @@ def e2e() -> None:
     """Install Chromium and run the Playwright smoke test (SKEL-007).
 
     Not part of ``ci``. Playwright starts its own test-only API launcher
-    (scripts/e2e_api.py) and web server on dedicated ports; the launcher's
-    temporary SQLite folder lives under a task-owned root removed afterwards.
+    (apps/web/e2e/api_launcher.py) and web server on dedicated ports; the
+    launcher's temporary SQLite folder lives under a task-owned root removed
+    afterwards. The launcher sits outside ``scripts`` because docs-validation
+    type-checks ``scripts`` without the API's runtime dependencies, so it is
+    linted and type-checked here instead.
     """
 
+    uv_run("ruff", "check", E2E_API_LAUNCHER)
+    uv_run("ruff", "format", "--check", E2E_API_LAUNCHER)
+    mypy_environment = os.environ.copy()
+    mypy_environment["MYPYPATH"] = "apps/api/src"
+    uv_run("mypy", E2E_API_LAUNCHER, env=mypy_environment)
     verify_node_major()
     environment = node_environment()
     playwright = (npm(), "exec", "--workspace", "@ai-qa-copilot/web", "--")
