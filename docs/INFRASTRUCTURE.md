@@ -2068,6 +2068,11 @@ design work. The hint and the docs section are **NOT done**.
 call was made for this entry. The facts under "Found today" were read by the
 owner.
 
+*Updated 2026-11-12, later:* the code was merged (PR #257) and applied by the
+owner the same evening. Both acceptance observations were made; see
+[Apply and observations](#apply-and-observations-2026-11-12-owner-run). The
+status line above is kept as history.
+
 ### What the code adds
 
 - **Module `infra/modules/alarm_notifications`:**
@@ -2189,6 +2194,47 @@ CKV_AWS_7, CKV_AWS_33, CKV_AWS_227, CKV2_AWS_64 and CKV_AWS_26 pass.
    HTTP API throttle behaves on `/health` is **NOT verified**.
 
 HARD-003 stays **NOT Accepted** until these observations are done.
+
+*Updated 2026-11-12, later:* steps 1 to 4 are **DONE**; see below. Nothing that
+the acceptance requires remains. The list above is kept as history.
+
+### Apply and observations, 2026-11-12 (owner-run)
+
+Recorded from the owner's report; no step was re-run for this entry, and no
+AWS call was made.
+
+- **Apply (evening of 2026-11-12):** the plan showed 8 to add, 2 to change and
+  0 to destroy, with nothing outside the alarm path. The apply completed with
+  the same counts.
+- **Subscription:** created as `PendingConfirmation`, then confirmed by the
+  owner by clicking the SNS email. An earlier test alarm that fired while the
+  subscription was still unconfirmed delivered nothing, as expected.
+- **Test alarm (observed):**
+  - The owner ran `aws cloudwatch set-alarm-state` on the API Lambda `Errors`
+    alarm.
+  - An ALARM email arrived at 03:23:16 UTC on 2026-11-13, and an OK email at
+    03:24:24 UTC.
+  - The alarm history showed "Successfully executed action" for the topic.
+
+  This verifies that CloudWatch can publish to the topic encrypted with the
+  customer managed key under the `aws:SourceAccount` condition. The alarm went
+  back to OK about a minute after the test because no datapoints were received
+  (`treat_missing_data = "notBreaching"`), not after a full 5-minute period.
+- **Quota rejection (observed):** 60 simultaneous GET requests to the API
+  health route from the owner's machine returned 52 × 200 and 8 × 429, with no
+  5xx. How the token bucket behaves is **NOT verified**.
+
+**Still optional, not exercised:**
+
+- The `4xx` alarm (threshold 10 in 5 minutes) was not exceeded by the 8
+  rejections, and its email path was not separately exercised.
+
+**Other notes:**
+
+- Bills and Cost Explorer load for the owner's IAM user (recorded above).
+- The KMS key's monthly cost is still an **unverified estimate**.
+
+Accepting HARD-003 is the owner's decision; it is not recorded here.
 
 ## Dependabot and the Python lock, 2026-11-12
 
@@ -4055,6 +4101,10 @@ least-privilege deploy role and the manual approval before apply.
     subscription confirmation, a test alarm email and a 429 observation are
     owner-run steps still to do. See
     [HARD-003 alarms, 2026-11-12](#hard-003-alarms-2026-11-12).
+    *Updated 2026-11-12, later:* applied by the owner. The subscription is
+    confirmed, a test alarm email (ALARM and OK) arrived, and 8 × 429 were
+    observed. Acceptance is the owner's decision. The `4xx` alarm's email
+    path is optional and not exercised.
 
 ## Sources (all read 2026-10-12)
 

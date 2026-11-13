@@ -1228,6 +1228,11 @@ of this backlog.
   Owner-read today: two budgets exist outside Terraform (`monthly-35` and `monthly-50-hard`), and Bills and Cost Explorer now load for the owner's IAM user. The sentence above about the setting not being turned on is superseded on that point; which setting caused the change is not recorded.
 
   **Still to do (owner-run):** the targeted plan and apply, confirming the subscription, a test alarm email through `set-alarm-state`, and an observed HTTP 429. Accepted only after those observations. See INFRASTRUCTURE.md, "HARD-003 alarms, 2026-11-12".
+- **Observations (2026-11-12, owner-run; status unchanged):** both acceptance observations were made after the owner's apply (8 added, 2 changed, 0 destroyed) and confirmed subscription.
+  - **Test alarm:** `set-alarm-state` on the API Lambda `Errors` alarm delivered an ALARM email (03:23:16 UTC on 2026-11-13) and an OK email (03:24:24 UTC). The alarm history shows "Successfully executed action".
+  - **Quota rejection:** 60 simultaneous health requests returned 52 × 200 and 8 × 429, with no 5xx. The token-bucket behavior is NOT verified.
+
+  The `4xx` alarm's email path was not exercised (optional). **Acceptance is the owner's decision and is NOT recorded here.** See INFRASTRUCTURE.md, "Apply and observations, 2026-11-12 (owner-run)".
 
 #### HARD-004 — Exercise migration, rollback, and incident procedures
 
