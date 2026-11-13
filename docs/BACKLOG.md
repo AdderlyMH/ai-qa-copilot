@@ -962,6 +962,12 @@ of this backlog.
 - **Dependencies:** INFRA-001, OBS-002, ADR-017 (connection pattern and open auto-pause item)
 - **Deliverable:** Cost ADR and pgvector-capable production database.
 - **Acceptance:** Idle/resume behavior, migration, connectivity, backup/export, and monthly estimate are verified.
+- **Status (2026-11-12, later): ACCEPTED by the owner on 2026-11-12**, an owner decision, with this limit stated:
+  - A restore to a running instance was demonstrated (owner-run, 2026-11-12; see HARD-004 and INFRASTRUCTURE.md, "Restore exercise, 2026-11-12 (owner-run)"). Data integrity of the copy was **not checked**.
+  - Idle/resume does not apply to RDS (already recorded below).
+  - The database-tier estimate of 13.98 USD per month is from ADR-020. Cost Explorer showed an RDS line of 5.32 USD for 2026-11-01 to 2026-11-12.
+
+  The status lines below, including the ADR-005 text, are history.
 - **Status (2026-11-12): still NOT Accepted.**
   - Connectivity from the functions is evidenced: the owner API and the parser use the database live.
   - Migration is evidenced by INFRA-012.
@@ -1216,6 +1222,13 @@ of this backlog.
 - **Dependencies:** OBS-002, INFRA-002
 - **Deliverable:** Operational and financial controls.
 - **Acceptance:** Test alarm and quota rejection are observed.
+- **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the recorded observations: the test alarm's ALARM and OK emails were received, and a 60-request burst returned 52 × 200 and 8 × 429. **Gaps recorded:**
+  - The HTTP API `4xx` alarm's email path was not exercised; the 8 rejections did not reach its threshold of 10.
+  - The token-bucket behavior is not verified.
+  - The KMS key cost (about 1 USD a month) is an unverified estimate.
+  - Two budgets exist outside Terraform, and the second one's subscribers were not checked.
+
+  The notes below are history.
 - **Planning note (2026-11-12, no status change):**
   - The HTTP API throttle is the quota control: 5 requests per second with a burst of 10 (`api_throttle_rate_per_second` and `api_throttle_burst` defaults in `infra/modules/compute_api`). "Quota rejection observed" can be shown by exceeding it.
   - The test alarm and the budget are **NOT done**.
@@ -1241,6 +1254,11 @@ of this backlog.
 - **Dependencies:** INFRA-003
 - **Deliverable:** Recorded exercise and corrected runbook.
 - **Acceptance:** Restore/rollback path is demonstrated within the portfolio environment.
+- **Status (2026-11-12): ACCEPTED by the owner on 2026-11-12**, an owner decision on the restore and rollback evidence (owner-run, 2026-11-12/13):
+  - **Restore:** a temporary copy was restored from the newest automated snapshot, reached `available` and was deleted. The production database was not modified.
+  - **Rollback:** the parser function went forward to the 2026-11-09 image and back to the 2026-11-07 image, with an upload reaching `parsed` after each change.
+
+  **Limits:** no data-integrity check was made on the copy. The rollback was tested on one function, the parser; the executor and general functions were not rolled back. The runbook is in INFRASTRUCTURE.md, "Restore and rollback procedures (HARD-004), 2026-11-12". The planning note below is history; its plan to check the copy with the migration runner and to roll back all four functions was not carried out as written.
 - **Planning note (2026-11-12, no status change):** the exercise has two parts, both owner-run and **not done**:
   - The INFRA-003 restore test: restore a snapshot into a temporary instance, check it with the migration runner's status action, then delete it.
   - An image rollback demonstration: point the four functions at older image digests, then forward again.

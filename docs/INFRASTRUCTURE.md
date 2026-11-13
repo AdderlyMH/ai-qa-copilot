@@ -2236,6 +2236,180 @@ AWS call was made.
 
 Accepting HARD-003 is the owner's decision; it is not recorded here.
 
+*Updated 2026-11-12, later:* OWNER DECISION 2026-11-12: HARD-003 is
+**ACCEPTED** on these observations. The gaps stay recorded: the `4xx` alarm's
+email path was not exercised, the token-bucket behavior is not verified, the
+KMS key cost is an unverified estimate, and two budgets exist outside Terraform
+(the second one's subscribers were not checked). The sentence above is kept as
+history. See BACKLOG.md, HARD-003.
+
+## Restore exercise, 2026-11-12 (owner-run)
+
+Recorded from the owner's report; no step was re-run for this entry, and no
+AWS call was made. Times are UTC unless marked otherwise. The exercise ran on
+the evening of 2026-11-12 (UTC-05:00).
+
+- **Source:** the newest automated snapshot, from 2026-11-12 05:34 UTC. Eight
+  daily snapshots existed, backup retention is 7 days, and the latest
+  restorable time was within minutes of the query.
+- **Restore:** `aws rds restore-db-instance-from-db-snapshot` created a
+  temporary instance, named like the production instance with a
+  `-restore-test` suffix, with these settings:
+  - the production DB subnet group;
+  - the production database security group;
+  - the production parameter group;
+  - no public access;
+  - Single-AZ;
+  - IAM authentication on;
+  - deletion protection on.
+- **Result:** it reached `available` in about 10 minutes, with engine 17.10,
+  20 GiB of storage, encrypted and not publicly accessible.
+- **Deletion:** deletion protection was turned off, then the instance was
+  deleted with skip-final-snapshot and delete-automated-backups. A later
+  listing showed only the production instance.
+- **Production:** the production database was not modified.
+- **NOT checked:**
+  - Data integrity: nobody connected to the copy or ran the migration runner's
+    status action against it.
+  - How the RDS-managed master secret behaves for a restored copy.
+- **Cost:** about 20 minutes of a db.t4g.micro. This is an estimate, not read
+  from a bill.
+
+Owner decisions 2026-11-12: INFRA-003 and HARD-004 **ACCEPTED** with the limit
+that data integrity was not checked (BACKLOG.md).
+
+## Image rollback exercise, 2026-11-12/13 (owner-run)
+
+Recorded from the owner's report; no step was re-run for this entry. The
+exercise covered the parser function only. Each targeted plan showed 0 to
+add, 1 to change and 0 to destroy, and only `image_uri` changed.
+
+- **Forward:** from the 2026-11-07 image to the 2026-11-09 image, which was
+  already pushed but never deployed. The apply took about 20 s, and the
+  function showed `Active` / `Successful`. An upload (`test-2.md`) reached
+  `parsed` with "parser: accepted".
+- **Back:** to the 2026-11-07 image. The apply took about 21 s, and the
+  function showed `Active` / `Successful`. An upload (`test-3.md`) reached
+  `parsed` with "parser: accepted".
+- **End state:** the final tfvars image set equals the 2026-11-07 set.
+- **Targeting quirk:** in PowerShell, quoting a single instance index in
+  `-target` failed, so the target was the whole function set
+  (`-target=module.compute_api.aws_lambda_function.this`). The plan still
+  showed only the parser changing.
+- **Not exercised:** the API, general and executor functions were not rolled
+  back.
+
+## Restore and rollback procedures (HARD-004), 2026-11-12
+
+Owner-run procedures, written as the exercise above was performed. Run them in
+PowerShell with the owner's local credentials (the INFRA-005 exception).
+Placeholders in angle brackets are private values from the owner's notes or
+`terraform output`; do not commit them.
+
+- `<prefix>` is the naming prefix, so the production instance is
+  `<prefix>-postgres`, the subnet group `<prefix>-database` and the parameter
+  group `<prefix>-postgres17`.
+- `<copy>` is `<prefix>-postgres-restore-test`.
+
+**Exact flags:** the restore and delete flags below match the settings
+recorded for the exercise. The owner's exact command lines are not recorded
+here.
+
+### Database restore to a temporary instance
+
+(a) List the automated snapshots and the latest restorable time:
+
+```powershell
+aws rds describe-db-snapshots --db-instance-identifier <prefix>-postgres --snapshot-type automated --query "DBSnapshots[].[DBSnapshotIdentifier,SnapshotCreateTime,Status]" --output table
+aws rds describe-db-instances --db-instance-identifier <prefix>-postgres --query "DBInstances[0].LatestRestorableTime"
+```
+
+Pick the newest snapshot whose status is `available`.
+
+(b) Read the source instance's placement and flags:
+
+```powershell
+aws rds describe-db-instances --db-instance-identifier <prefix>-postgres --query "DBInstances[0].{SubnetGroup:DBSubnetGroup.DBSubnetGroupName,SecurityGroups:VpcSecurityGroups[].VpcSecurityGroupId,ParameterGroups:DBParameterGroups[].DBParameterGroupName,Class:DBInstanceClass,MultiAZ:MultiAZ,Public:PubliclyAccessible,IAMAuth:IAMDatabaseAuthenticationEnabled}"
+```
+
+Keep the security group ID in a shell variable or the private notes, never in
+the repository.
+
+(c) Restore into a new identifier. A restore always creates a new instance; it
+never overwrites the source.
+
+```powershell
+aws rds restore-db-instance-from-db-snapshot --db-instance-identifier <copy> --db-snapshot-identifier <snapshot> --db-instance-class db.t4g.micro --db-subnet-group-name <prefix>-database --vpc-security-group-ids <database security group ID> --db-parameter-group-name <prefix>-postgres17 --no-publicly-accessible --no-multi-az --enable-iam-database-authentication --deletion-protection
+```
+
+(d) Wait, then check the copy:
+
+```powershell
+aws rds wait db-instance-available --db-instance-identifier <copy>
+aws rds describe-db-instances --db-instance-identifier <copy> --query "DBInstances[0].{Status:DBInstanceStatus,Engine:Engine,Version:EngineVersion,StorageGiB:AllocatedStorage,Encrypted:StorageEncrypted,Public:PubliclyAccessible}"
+```
+
+Expect `available`, `postgres`, 17.x, 20, `true` and `false`. In the exercise
+this took about 10 minutes.
+
+(e) Delete the copy safely. First confirm that the identifier ends in
+`-restore-test`; never run these steps against `<prefix>-postgres`.
+
+```powershell
+aws rds modify-db-instance --db-instance-identifier <copy> --no-deletion-protection --apply-immediately
+aws rds delete-db-instance --db-instance-identifier <copy> --skip-final-snapshot --delete-automated-backups
+aws rds wait db-instance-deleted --db-instance-identifier <copy>
+aws rds describe-db-instances --query "DBInstances[].DBInstanceIdentifier"
+```
+
+The last listing must show only `<prefix>-postgres`.
+
+### Image rollback of a Lambda function
+
+(f) Roll back by digest through Terraform:
+
+1. Confirm that the target image still exists in the function's ECR
+   repository (see the warnings below).
+2. In the private `production.tfvars`, set that function's entry in
+   `image_uris` to the target image by digest.
+3. Plan with the whole function set as the target. Quoting a single instance
+   index failed in PowerShell.
+
+   ```powershell
+   terraform plan "-var-file=production.tfvars" "-target=module.compute_api.aws_lambda_function.this" "-out=tfplan"
+   ```
+
+   Expect 0 to add, 1 to change and 0 to destroy, with only that function's
+   `image_uri` changing. Otherwise, stop and do not apply.
+4. Apply with `terraform apply tfplan`.
+5. Check the function:
+
+   ```powershell
+   aws lambda get-function-configuration --function-name <prefix>-<function> --query "{State:State,LastUpdateStatus:LastUpdateStatus}"
+   ```
+
+   Expect `Active` and `Successful`.
+6. For the parser, upload one small Markdown file from the owner app and see
+   it reach `parsed` with "parser: accepted".
+7. Roll forward the same way.
+
+### Warnings
+
+- A restore never overwrites production: it creates a new instance under a
+  new identifier.
+- A restored instance must not be public. Keep `--no-publicly-accessible`, and
+  check `PubliclyAccessible` is `false` in step (d).
+- Delete copies promptly. A copy is billed like a second instance while it
+  exists, and its deletion protection must be turned off first.
+- ECR keeps only the 5 newest images per repository (`ecr_images_to_keep` in
+  `infra/modules/data_plane` and `images_to_keep` in
+  `infra/modules/migration`, both default 5). A rollback target must still
+  exist; check before planning.
+- **Open improvement:** add a data-integrity step, either connecting to the
+  copy or running the migration runner's status action against it. Add it
+  once the runner's target selection has been read; it was not done in the
+  exercise.
+
 ## Dependabot and the Python lock, 2026-11-12
 
 ### Finding: Dependabot cannot maintain the Python lock (OPEN)
@@ -4105,6 +4279,11 @@ least-privilege deploy role and the manual approval before apply.
     confirmed, a test alarm email (ALARM and OK) arrived, and 8 × 429 were
     observed. Acceptance is the owner's decision. The `4xx` alarm's email
     path is optional and not exercised.
+    *Updated 2026-11-12, later:* ACCEPTED by the owner (BACKLOG.md).
+13. **Restore and rollback (HARD-004, INFRA-003), 2026-11-12:** exercised by
+    the owner and ACCEPTED, without a data-integrity check, and with the
+    rollback tested on the parser only. See
+    [Restore and rollback procedures (HARD-004), 2026-11-12](#restore-and-rollback-procedures-hard-004-2026-11-12).
 
 ## Sources (all read 2026-10-12)
 
