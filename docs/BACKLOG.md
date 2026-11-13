@@ -1229,6 +1229,18 @@ of this backlog.
 - **Scope note (2026-10-13):** with the executor disabled and INFRA-004 deferred, the live execution and SG-08 parts of this acceptance cannot be met by the Dec 6 freeze. The matrix is run for every gate that the minimum live demo exposes, the unmet gates are reported as unmet, and PORT-003 states the limitation. This item is not Accepted unless the owner records an amended acceptance.
 - **Note (2026-11-12):** HARD-002 runs last, against the final deployed revision. The owner must record an amended acceptance for the SG-08 and live-execution parts (scope note of 2026-10-13); none is recorded here.
 - **OWNER-AMENDED ACCEPTANCE (2026-11-12):** the threat-model verification matrix is run against the final deployed revision for every gate the live demo exposes. SG-08 and the live-execution parts are reported as unmet, and PORT-003 states the limitation. The evidence is the existing scorer, validator and scanner outputs, not an inference from the corpus. **HARD-002 is NOT yet run** and stays open until it is. (This supersedes the "none is recorded here" in the note above.)
+- **OWNER AMENDMENT (2026-11-13), EVAL-007 clause:** the acceptance clause "The evaluation uses the completed `EVAL-007` release workflow" is **UNMET** and is not claimed as met. Owner decision: HARD-002 is accepted on the archived outputs of the security harness, the mapped pytest files, the HARD-001 scanners and the SG-06 scans, not on a run of the EVAL-007 release workflow. The reasons, as facts recorded in the read-only survey of 2026-11-13:
+  - `.github/workflows/evaluation-release.yml` has no security-gate step. Neither it nor its contract verifier runs the security harness or any SG check.
+  - A run requires paid model calls (the B0 and grounded release evaluations with `OPENAI_API_KEY`).
+  - A run also requires `evaluation/reviews/release-review-manifest.v2.yaml`, which is not in the repository.
+  - No spend is authorized.
+- **Results fixed in advance by this amendment** (the run fills in the remaining results):
+  - **SG-02:** unmet. No executable check runs SEC-PI cases against the application.
+  - **SG-03:** the SEC-NET-006 allowed path is unmet, because the executor is disabled.
+  - **SG-07:** unmet while SG-07 item 2 stays open (accepted until 2026-12-04).
+  - **SG-08:** unmet. There is no live exposure test, and executor egress is not shown.
+- **Security harness label:** the `scripts/security_harness.py` output is a **fixture-versus-table consistency check**. It compares each fixture's expected outcome, boundary and side effects with a table in the same script, through fake adapters. It is **never** evidence that the application enforces a gate.
+- **Status:** HARD-002 is still **NOT run** and **NOT accepted**. The evidence will be archived under `docs/evidence/hard-002-<date>/`.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
