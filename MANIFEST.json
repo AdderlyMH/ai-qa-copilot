@@ -282,8 +282,8 @@
     },
     {
       "path": "docs/adr/ADR-022-owner-app-frontend-host.md",
-      "bytes": 28195,
-      "sha256": "6df6dbae48863b2148904562aca3a08aedc487038135d0192dc2079d0fa80ba6"
+      "bytes": 28459,
+      "sha256": "37d386d6c81147ca142b38fe6beaaf6d0d0a8f0aa17aa628bff82de3580df763"
     },
     {
       "path": "docs/adr/README.md",
