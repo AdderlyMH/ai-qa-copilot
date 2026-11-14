@@ -26,11 +26,7 @@ changed, and no AWS or network call was made.
   referenced in `compose.yaml` instead of repeated. PORT-001 stays NOT
   accepted.
 
-**TODO(owner) items in the README:**
-
-- A one-line pitch.
-- The public showcase site URL.
-- The demo video link (PORT-005).
+**TODO(owner) items in the README:** The demo video link (PORT-005).
 
 **Open:** PORT-001 acceptance (owner); HARD-002 run (2026-12-01 to
 2026-12-04); SG-07 item 2 (accepted until 2026-12-04); the deploy freeze on

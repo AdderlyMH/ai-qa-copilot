@@ -1,6 +1,6 @@
 # AI Quality Engineering Copilot
 
-TODO(owner): add a one-line pitch.
+An AI quality-engineering copilot that analyzes requirements and OpenAPI specs, generates grounded API tests, and shows its evidence, with restricted execution deliberately off.
 
 > **Status (2026-11-14)**
 >
@@ -37,7 +37,7 @@ and [Limitations](#limitations).
 - **Owner app:** the static owner app on Cloudflare Pages, with Cognito
   sign-in. It is for the owner only and is not public
   ([ADR-022](docs/adr/ADR-022-owner-app-frontend-host.md)).
-- TODO(owner): add the public showcase site URL.
+- **Showcase site:** <https://ai-qa-copilot-demo.pages.dev/> (the guest demo above).
 - TODO(owner): add the demo video link (PORT-005).
 
 ## Architecture
