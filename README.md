@@ -1,308 +1,208 @@
 # AI Quality Engineering Copilot
 
-## Live demo
+TODO(owner): add a one-line pitch.
 
-<https://ai-qa-copilot-demo.pages.dev/> is a static, read-only report page built offline from a synthetic order-service requirements document: eight requirements, fourteen findings, and five generated tests whose execution results come from a restricted executor against an in-process synthetic mock target, not any real service, each finding shown with the requirement line it cites.
-It is a pre-built snapshot, not a live system: the rule-based analyzer and deterministic test generation produced it, no model was called, and it is not an evaluation or model result. The page verifies its own data hash before showing anything.
-Guests cannot upload documents or run anything; the full application is not public.
-Design record: [ADR-019](docs/adr/ADR-019-guest-demo-snapshot.md).
+> **Status (2026-11-14)**
+>
+> - **Live:** a static guest demo snapshot, and an owner app with Cognito sign-in, synthetic-text analysis with OpenAI and Markdown/text upload with a visible status ([ADR-018](docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md) production scope; [project status](docs/PROJECT_STATUS.md)).
+> - **Disabled on purpose:** restricted execution, production retrieval and indexing, and Anthropic Claude in production ([ADR-018](docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md), owner decision 2026-10-13).
+> - **Evaluation limit:** the development split cannot measure model accuracy: in 59 of 60 cases the model-visible inputs do not identify the expected answer ([ADR-015](docs/adr/ADR-015-informed-baseline-development-comparison.md), amendment of 2026-10-05).
+> - **SG-07 item 2:** two Medium container findings on the deployed images are an accepted risk until 2026-12-04 ([SG-07 disposition register](docs/INFRASTRUCTURE.md#sg-07-disposition-register)).
+> - **HARD-002** (the threat-model verification matrix) is **not yet run**; **SG-08** is reported as unmet by owner decision ([BACKLOG](docs/BACKLOG.md), HARD-002).
 
-## Current state
+## Problem
 
-The repository has completed its Phase 0 documentation and governance baseline.
-Accepted component, integration, and evaluation work now spans Phase 1 through
-Phase 5; OBS-001 is accepted on `main` through PR #121, and OBS-002 is
-accepted through PR #126. OBS-003 is the next authorized canonical
-implementation item.
+Software teams spend substantial manual effort turning incomplete requirements
+and API specifications into reliable, risk-based tests. Generic LLM workflows
+often produce plausible but unsupported test cases, weak traceability, unsafe
+tool execution, and no measurable quality or cost controls
+([project charter](docs/PROJECT_CHARTER.md)).
 
-SKEL-001 through SKEL-006, IAM-001, IAM-002, and
-SEC-001 are verified on `main`. SKEL-006 supplies the application-CI baseline,
-and SEC-001 supplies a deterministic fixture-policy harness plus required
-dependency and static-analysis scans. IAM-001 supplies the typed FastAPI authentication boundary, Cognito
-access-token validation, immutable server-side owner mapping, and
-local-environment bypass guard. IAM-002 supplies the central project
-authorization, immutable server-selected demo-publication, and
-authorization-sensitive audit boundaries.
+The copilot grounds findings in uploaded requirements and OpenAPI evidence,
+produces schema-validated analysis and test artifacts, links requirements to
+risks and tests, requires explicit approval before any API execution, and
+measures quality and cost against a versioned benchmark (charter, section 2).
+Several of these parts exist in code but are not deployed; see the status box
+and [Limitations](#limitations).
 
-The accepted SKEL-003/004 slices add the minimum project entity,
-PostgreSQL/SQLAlchemy repository, reversible migrations, owner-only
-create/list/view/archive routes, a basic local web UI, and a server-only typed
-model gateway proof. The SKEL-005 candidate composes those seams for one
-synthetic text analysis run whose result and configuration persist and display.
-It deliberately does not add a persisted demo record, durable audit adapter,
-retrieval, worker, deployment, runtime evaluation, product metric, latency
-result, or cost result. Its integration evidence and review are recorded;
-IAM-002 remains component evidence, not SG-05 or production evidence.
-SEC-001 is fixture-contract evidence only; it does not verify future live
-ingestion, execution, or deployment paths.
+## Demo
 
-The Phase 0 exit evidence is recorded: the Linear project contains owned P0
-work with milestones and estimates; GitHub enforces the required `main` CI
-rule with preserved secret-protection and Dependabot evidence; and FND-007
-through FND-009 have documented, validated contract evidence. This does not
-constitute application, deployment, evaluation, cost, latency, or security-test
-success. See [project status](docs/PROJECT_STATUS.md) and [repository
-governance evidence](docs/REPOSITORY_GOVERNANCE.md).
+- **Guest demo:** <https://ai-qa-copilot-demo.pages.dev/> is a static,
+  read-only snapshot built offline from a synthetic order-service requirements
+  document: eight requirements, fourteen findings and five generated tests,
+  each finding shown with the requirement line it cites. No model was called to
+  build it; it is not an evaluation result. The page verifies its own data hash
+  before showing anything. Guests cannot upload or run anything
+  ([ADR-019](docs/adr/ADR-019-guest-demo-snapshot.md)).
+- **Owner app:** the static owner app on Cloudflare Pages, with Cognito
+  sign-in. It is for the owner only and is not public
+  ([ADR-022](docs/adr/ADR-022-owner-app-frontend-host.md)).
+- TODO(owner): add the public showcase site URL.
+- TODO(owner): add the demo video link (PORT-005).
 
-EXEC-008 is accepted on `main` through PR #113. It adds bounded, claim-bound
-Markdown/text evidence promotion from private quarantine storage into normalized,
-source-located sections, verified through local SQLite and isolated PostgreSQL
-integration gates plus required PR checks.
+## Architecture
 
-RAG-006 is accepted on `main` through PR #115. It adds durable,
-configuration-scoped indexing jobs created atomically with accepted parser
-evidence. A separate lease-bound worker uses injected, deterministic fake
-embeddings to create versioned chunks, project-scoped cache entries, and
-chunk-embedding attachments. Local SQLite and isolated PostgreSQL integration
-gates plus required PR checks passed. It does not add a deployed scheduler,
-production object storage, a live embedding provider, a user-facing retrieval
-route, safe HTTP execution, or deployment.
-RAG-007 is accepted on `main` through PR #117. It adds an authorized,
-project-scoped retrieval operation that creates an immutable hybrid retrieval
-trace and citations only for that trace's selected chunks. The endpoint accepts
-bounded query and filtering inputs, never caller-supplied vectors, and fails
-closed until deployment explicitly composes a durable retriever and embedding
-adapter. It does not add a live embedding provider, a generated answer, a
-deployed worker or scheduler, safe HTTP execution, evaluation, or deployment.
-The 2026-09-15 backlog acceptance audit verified the accepted execution,
-reporting, and evaluation slices through EVAL-007. The next authorized
-canonical implementation item is OBS-003, routing and retrieval ablations.
+| Part | What the docs record | Source |
+|---|---|---|
+| API | FastAPI on AWS Lambda (arm64 container images), wrapped by Mangum, behind an API Gateway HTTP API | [ADR-018](docs/adr/ADR-018-production-composition-lambda-runtime-and-secrets.md) |
+| Owner sign-in | Cognito Hosted UI, authorization code with PKCE, on a Cognito prefix domain; the API accepts only validated access tokens for one configured owner | [ADR-008](docs/adr/ADR-008-cognito-owner-guest-authorization.md), ADR-018 |
+| Database | RDS for PostgreSQL, db.t4g.micro, Single-AZ, gp3 20 GiB | [ADR-020](docs/adr/ADR-020-production-database-rds-postgresql.md) |
+| Workers | Parser, general and executor Lambdas woken by SQS; the message is a wake-up and the database claim selects the job. The general worker is a no-op until INFRA-013; the executor is disabled and has never run | ADR-018, [project status](docs/PROJECT_STATUS.md) |
+| Parser isolation | The parser runs with no route except the S3 gateway endpoint and no model key | [ADR-009](docs/adr/ADR-009-parser-isolation.md), ADR-018 |
+| Egress | A NAT instance (not a managed NAT gateway); compute runs in one Availability Zone | [ADR-017](docs/adr/ADR-017-network-egress-and-database-connectivity.md) |
+| Owner app | Static Next.js export on a Cloudflare Pages project, deployed by a CI workflow | [ADR-022](docs/adr/ADR-022-owner-app-frontend-host.md) |
+| Guest demo | A pre-sanitized snapshot published by a local script and served from Cloudflare Pages | [ADR-019](docs/adr/ADR-019-guest-demo-snapshot.md) |
+| Model | OpenAI only in production; Anthropic Claude is available locally and for evaluation | [ADR-013](docs/adr/ADR-013-anthropic-claude-second-provider.md), ADR-018 |
 
-## Canonical documents
+The full design is in [Architecture](docs/ARCHITECTURE.md) and the
+[ADR index](docs/adr/README.md).
 
-- [Project charter](docs/PROJECT_CHARTER.md)
-- [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Threat model](docs/THREAT_MODEL.md)
-- [Evaluation plan](docs/EVALUATION_PLAN.md)
-- [Backlog](docs/BACKLOG.md)
-- [Project status](docs/PROJECT_STATUS.md)
+## Setup (local)
+
+Prerequisites: Python 3.13 (`.python-version`), uv 0.11.16, Node.js 24
+(`.node-version`), npm 11.16.0, and Docker with Compose v2 for `db-check`.
+
+The shortest path that needs no cloud account and no API key:
+
+```powershell
+python scripts/tasks.py bootstrap
+python scripts/tasks.py ci
+python scripts/tasks.py e2e
+```
+
+| Command | What it does |
+|---|---|
+| `bootstrap` | Installs the locked Python and npm dependency graphs. |
+| `ci` | The Docker-free local validation contract: formatting, lint, type checks, tests, the web build and documentation validation. |
+| `dev` | Starts FastAPI on 127.0.0.1:8000 and Next.js on localhost:3000. |
+| `e2e` | The Playwright smoke test: creates a project and saves a synthetic analysis against a test-only API launcher with SQLite and a fixed fake model. |
+| `db-check` | Runs migrations, rollback and the project routes against an isolated PostgreSQL container. |
+
+Last recorded run: 2248 collected, 2167 passed, 81 skipped on 2026-11-14 via
+`py scripts/tasks.py ci`.
+
+What runs without keys, and what does not:
+
+- The full local app needs PostgreSQL (`DATABASE_URL`) and a model key
+  (`OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` with `MODEL_PROVIDER=anthropic`).
+  Without them the project and analysis routes fail closed. The owner app does
+  not run locally without a database.
+- The `e2e` launcher (`apps/web/e2e/api_launcher.py`) is test-only. It does not
+  exercise the production wiring; the provenance it shows comes from its fake.
+- So the runnable demo without keys is the `e2e` test plus the guest demo
+  snapshot viewer. To preview the viewer, follow
+  [Preview the viewer locally](docs/INFRASTRUCTURE.md#preview-the-viewer-locally).
+- On Windows the test suite needs Git's bash first on `PATH`
+  ([INFRASTRUCTURE](docs/INFRASTRUCTURE.md)).
+
+CI runs `application-ci`, `docs-validation`, `e2e-smoke` (not a required
+check) and `terraform-ci` on pull requests, some only for matching paths. The
+evaluation workflows and the
+owner-app deploy run only by manual dispatch.
+
+## Evaluation
+
+- **Approach:** a versioned benchmark with development, validation and holdout
+  splits, scored on discriminating checks: required ground-truth IDs, no
+  unexpected IDs, source references and the policy boundary
+  ([evaluation plan](docs/EVALUATION_PLAN.md)).
+- **Informed single-call baseline:** one model call with the catalog in the
+  prompt ([ADR-015](docs/adr/ADR-015-informed-baseline-development-comparison.md)).
+  The task is **catalog selection**, not open issue discovery.
+- **Development-split finding (ADR-015, 2026-10-05):** in 59 of 60 cases, the
+  inputs the model sees are shared with another case that expects a different
+  answer. Scores from that split must not be read as model accuracy.
+- **Provider comparison:** [ADR-016](docs/adr/ADR-016-objective-fixture-v4-provider-comparison.md)
+  added objective-bearing fixture v4. The
+  [v4 comparison report](docs/EVALUATION_V4_PROVIDER_COMPARISON.md) records two
+  full runs per provider (Claude C1/v1 and OpenAI O1/v1, 31 development cases,
+  2026-10-09). Its results are design-set results, not independently validated,
+  never B1, B2 or gate evidence, and make no significance claim.
+- No accuracy, latency or quality figure is claimed here.
+
+## Security
+
+The threat model defines eight release gates
+([THREAT_MODEL, section 14](docs/THREAT_MODEL.md#14-security-release-gates)).
+HARD-002 evaluates them and is **not yet run** (planned for 2026-12-01 to
+2026-12-04). Results already fixed by the owner amendment of 2026-11-13
+([BACKLOG](docs/BACKLOG.md), HARD-002):
+
+| Gate | Recorded status |
+|---|---|
+| SG-01 Parser matrix | Not yet evaluated by HARD-002 |
+| SG-02 Untrusted-content matrix | Unmet: no executable check runs the SEC-PI cases against the application |
+| SG-03 Network matrix | The allowed path (SEC-NET-006) is unmet: the executor is disabled |
+| SG-04 Approval integrity | Not yet evaluated by HARD-002 |
+| SG-05 Authorization and isolation | Not yet evaluated by HARD-002 |
+| SG-06 Secret handling | Not yet evaluated by HARD-002 |
+| SG-07 Security scanning | Unmet while SG-07 item 2 stays open (accepted until 2026-12-04) |
+| SG-08 Deployment policy | Unmet: no live exposure test, and executor egress is not shown |
+
+- **Security harness** (`scripts/security_harness.py`): a **fixture-versus-table
+  consistency check** through fake adapters. It is never evidence that the
+  application enforces a gate.
+- **HARD-001 scanners** (accepted 2026-11-12): GitHub secret scanning, Bandit,
+  pip-audit, `npm audit`, Dependabot, the Amazon ECR scan on push and Checkov.
+  Container scanning is read by the owner and is not part of CI.
+- **SG-07 item 2:** a newer base image scanned on 2026-11-13 removed the two
+  Medium findings but added High and Medium ones, so the pin was reverted and
+  nothing was deployed from it
+  ([Refresh the base image digest](docs/INFRASTRUCTURE.md#refresh-the-base-image-digest)).
+
+## Limitations
+
+- The parser accepts only `- REQ-ID: text` lines; heading-form requirements
+  are not recognized
+  ([accepted format](docs/INFRASTRUCTURE.md#accepted-markdown-requirement-format)).
+- Restricted execution is disabled and has never run; SG-08 and the SG-03
+  allowed path are unmet.
+- Production retrieval and indexing, Claude in production and PDF uploads are
+  out of the production scope (ADR-018).
+- Compute and the NAT instance run in one Availability Zone (accepted by the
+  owner on 2026-10-13).
+- The Cognito prefix-domain charge is unconfirmed until the first monthly bill.
+- The API role has no `s3:DeleteObject` for orphan cleanup (INFRA-006
+  follow-up).
+- The restore test made no data-integrity check on the copy, and the image
+  rollback was exercised on the parser only (HARD-004).
+- HARD-003 gaps: the `4xx` alarm's email path was not exercised, and the
+  token-bucket behavior is not verified.
+- The evaluation cannot support an accuracy claim (see [Evaluation](#evaluation)).
+
+## Costs
+
+Only recorded figures, in USD:
+
+| Item | Figure | Source |
+|---|---|---|
+| Database tier (db.t4g.micro and 20 GB gp3) | 13.98 per month, estimate (list prices read 2026-10-16) | [ADR-020](docs/adr/ADR-020-production-database-rds-postgresql.md) |
+| NAT instance egress (instance, root volume, public IPv4) | about 7.36 per month, estimate (read 2026-10-12/13) | [ADR-017](docs/adr/ADR-017-network-egress-and-database-connectivity.md) |
+| Cost Explorer, 2026-11-01 to 2026-11-12 | RDS 5.32, VPC 1.38, EC2 compute 1.15, Secrets Manager 0.61, EC2-Other 0.24, ECR 0.11, Cognito 0, tax 1.59 | [INFRASTRUCTURE](docs/INFRASTRUCTURE.md), HARD-003, owner-read 2026-11-12 |
+| Budgets | `monthly-35` (35) and `monthly-50-hard` (50), outside Terraform | INFRASTRUCTURE, owner-read 2026-11-12 |
+| Evaluation spend, v4 comparison | 2.408122 charged across 8 runs | [v4 report](docs/EVALUATION_V4_PROVIDER_COMPARISON.md) |
+
+The Cost Explorer reading is partial: Cost Explorer lags, the cause of the VPC
+line is not verified, and Cognito showed no charge through 2026-11-12. The
+evaluation ADRs set budgets, not spend: ADR-015 declares 6.00 for the
+development split and 0.80 for smoke, and authorizes no spend
+([ADR-014](docs/adr/ADR-014-c1-budgeted-provider-comparison-evaluation.md),
+ADR-015). A monthly total is not recorded.
+
+## Links
+
+- [Project status](docs/PROJECT_STATUS.md) and [backlog](docs/BACKLOG.md)
+- [Product requirements](docs/PRODUCT_REQUIREMENTS.md) and
+  [project charter](docs/PROJECT_CHARTER.md)
+- [Architecture](docs/ARCHITECTURE.md) and the
+  [ADR index](docs/adr/README.md)
+- [Threat model](docs/THREAT_MODEL.md) and the
+  [control traceability matrix](docs/CONTROL_TRACEABILITY_MATRIX.md)
+- [Evaluation plan](docs/EVALUATION_PLAN.md) and the
+  [benchmark fixture guide](fixtures/benchmark/README.md)
+- [Infrastructure and runbooks](docs/INFRASTRUCTURE.md), including
+  [restore and rollback](docs/INFRASTRUCTURE.md#restore-and-rollback-procedures-hard-004-2026-11-12)
 - [Repository governance evidence](docs/REPOSITORY_GOVERNANCE.md)
-- [Control traceability matrix](docs/CONTROL_TRACEABILITY_MATRIX.md)
-- [Architecture decision records](docs/adr/README.md)
-- [Benchmark fixture guide](fixtures/benchmark/README.md)
-
-## Documentation validation
-
-```powershell
-python scripts/tasks.py bootstrap
-python scripts/tasks.py ci
-```
-
-`python scripts/tasks.py` exposes stable `format`, `format-check`, `lint`, `typecheck`,
-`test`, `dev`, `docs-check`, `docs-self-test`, and `ci` commands. `make` offers
-the same targets where GNU Make is available.
-
-`MANIFEST.json` is generated from canonical repository files and excludes
-itself to avoid circular hashing.
-
-## Local walking skeleton
-
-Prerequisites:
-
-- Python 3.13.11 (`.python-version` pins the local interpreter).
-- uv 0.11.16.
-- Node.js 24 LTS (`.node-version` pins 24.18.0).
-- npm 11.16.0 (pinned by the root `packageManager` field).
-- Docker Engine with Docker Compose v2 for the SKEL-002 local database targets.
-
-Install exactly the committed dependency graphs and start both applications:
-
-```powershell
-python scripts/tasks.py bootstrap
-python scripts/tasks.py dev
-```
-
-The development command uses `http://127.0.0.1:8000` for FastAPI and
-`http://localhost:3000` for Next.js. Pass `--port` and `--web-port` to override
-those defaults. Press `Ctrl+C` once to stop both processes.
-
-To run the servers in separate terminals instead, use:
-
-```powershell
-uv run --locked uvicorn ai_qa_copilot_api.main:app --host 127.0.0.1 --port 8000 --reload
-npm run dev:web -- --hostname localhost --port 3000
-```
-
-Run the complete local validation contract with:
-
-```powershell
-python scripts/tasks.py ci
-```
-
-`ci` deliberately remains Docker-free. Docker/PostgreSQL migration and project
-CRUD integration coverage is provided separately by `db-check`; the SKEL-006
-application-CI baseline is not implemented by this target.
-
-## IAM-001 authentication and IAM-002 authorization boundaries
-
-Application startup requires an explicit `APP_ENV` value of `local`, `preview`,
-or `production`. The local authentication bypass is disabled unless
-`LOCAL_AUTH_BYPASS_ENABLED=true`, and that setting is accepted only with
-`APP_ENV=local`. Preview and production refuse startup when the bypass is
-enabled; they also require complete Cognito configuration.
-
-The owner mapping is configured server-side with `COGNITO_ISSUER`,
-`COGNITO_CLIENT_ID`, and `COGNITO_OWNER_SUBJECT`. Owner authorization compares
-only the fully validated token's `(issuer, subject)` with that configured pair;
-email, display name, Cognito groups, client-supplied roles, and identity headers
-do not grant ownership. The API accepts Cognito access tokens only after
-verifying the issuer, the access-token `client_id`, the JWKS-backed signature,
-the fixed `RS256` algorithm, expiration, `nbf` when present, and
-`token_use=access`. Amazon Cognito documents that access tokens use `client_id`
-for the app-client binding while ID tokens use `aud`; IAM-001 intentionally
-accepts access tokens only. See the [AWS token-verification
-guide](https://docs.aws.amazon.com/cognito/latest/developerguide/amazon-cognito-user-pools-using-tokens-verifying-a-jwt.html).
-
-For local development, configure the environment explicitly before starting
-the API. For example, PowerShell can run the application with bypass-disabled
-local settings:
-
-```powershell
-$env:APP_ENV = "local"
-$env:LOCAL_AUTH_BYPASS_ENABLED = "false"
-python scripts/tasks.py dev
-```
-
-Set `LOCAL_AUTH_BYPASS_ENABLED=true` only for an intentional local bypass. If
-the bypass is false and Cognito owner access is needed, set all three
-`COGNITO_*` values in the process environment. `.env.example` documents the
-names but the task runner does not load `.env` automatically.
-
-IAM-002 adds a central project policy that returns an immutable authorization
-capability only after the trusted principal is an owner and the requested
-project matches the resource's repository-supplied `project_id`. Guest access,
-cross-project references, unversioned raw-object reads, and guest mutation,
-model, queue, approval, and execution actions fail closed before downstream
-work. Sensitive private denials use a safe `404` response strategy.
-
-The public `GET`/`HEAD /demo` boundary takes no publication identifier from the
-route. It reads only the exact `DEMO_PUBLICATION_ID` and
-`DEMO_PUBLICATION_REVISION_ID` pair selected in server configuration. Both
-variables must be valid non-zero UUIDs and must be configured together. When
-they are absent, the route returns a safe `404`. The selected repository record
-is exposed only if it matches both configured IDs and is immutable, published,
-sanitized, classified as synthetic/public, content-hash pinned, and pinned to
-report, traceability, and redacted citation-excerpt revisions. Client query
-parameters cannot replace that selection. Write verbs return `403` before a
-repository read.
-
-Every IAM-002 policy decision emits an immutable structured authorization event
-containing the principal type, actor ID when known, action, result, reason,
-resource and version, project scope, UTC timestamp, and server-generated
-correlation ID. The default adapter emits JSON through the authorization audit
-logger and fails closed if a configured sink rejects an event. A database-backed
-append-only sink, project/demo repositories, owner publication workflow, and
-real sanitized report content remain later persistence/report work; the current
-default repository deliberately serves no publication.
-
-## Local PostgreSQL and migrations
-
-The root `compose.yaml` runs one PostgreSQL 17 service with pgvector 0.8.6. The
-image is immutable-pinned as
-`pgvector/pgvector:0.8.6-pg17-bookworm@sha256:7ae6051efd0e60444282c27c7e141af07f322ce033300e727a49c3dd11075e38`.
-Its database port is published only on `127.0.0.1`; its named data volume and
-default bridge network are scoped by the Compose project.
-
-The defaults in `compose.yaml` and `.env.example` are development-only example
-credentials, not production secrets. Alembic does not contain a database URL;
-it reads `DATABASE_URL` from the process environment and fails closed when the
-variable is absent. The task runner does not load `.env` into the shell for
-Alembic.
-
-With Docker running, start the database and apply the initial migration in
-PowerShell:
-
-```powershell
-python scripts/tasks.py bootstrap
-python scripts/tasks.py db-up
-$env:DATABASE_URL = "postgresql+psycopg://ai_qa_copilot:ai_qa_copilot_dev@127.0.0.1:5432/ai_qa_copilot"
-python scripts/tasks.py migrate
-```
-
-For the SKEL-003/005 project UI, also enable the intentional local owner
-bypass in the API process, then use `http://localhost:3000`. The Next.js
-development server proxies `/api/*` to `API_BASE_URL` (default
-`http://127.0.0.1:8000`) so the browser does not need client-side credentials
-or a permissive API CORS policy. A submitted synthetic analysis run requires
-`OPENAI_API_KEY` in the API process only; without it, the route fails closed
-with a correlation ID. The integration test injects a deterministic fake model
-and never makes a paid provider call.
-
-Anthropic Claude is available as an alternative provider (ADR-013). Set
-`MODEL_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in the API process only;
-unset or `openai` keeps the OpenAI B1/v1 default. Only the selected provider's
-credential is read and there is no fallback between providers, so an unknown
-`MODEL_PROVIDER` or a missing key fails closed. Claude runs use configuration
-version `C1/v1` (`claude-sonnet-5-5`) and record `provider`, `model_id`, and
-`configuration_version` on each persisted run (migration `0021`). They are not
-B1/v1 evidence, and no live Anthropic call is part of repository CI.
-
-```powershell
-$env:APP_ENV = "local"
-$env:LOCAL_AUTH_BYPASS_ENABLED = "true"
-python scripts/tasks.py dev
-```
-
-This bypass remains local-only and is rejected by preview and production.
-
-Rollback to an empty Alembic base, recreate the migration, and stop the local
-database while preserving its development volume:
-
-```powershell
-python scripts/tasks.py migrate-down
-python scripts/tasks.py migrate
-python scripts/tasks.py db-down
-```
-
-To intentionally remove the local development data volume and recreate a clean
-database, run:
-
-```powershell
-docker compose down --volumes
-python scripts/tasks.py db-up
-python scripts/tasks.py migrate
-```
-
-For the SKEL-002 integration proof, use:
-
-```powershell
-python scripts/tasks.py db-check
-```
-
-`db-check` creates its own isolated Compose project and named volume, waits for
-PostgreSQL health, runs `upgrade head`, verifies the Alembic revision, `vector`
-extension, `projects`, and `analysis_runs` tables through SQL, then runs
-create/list/view/archive plus a deterministic-fake synthetic analysis through
-the FastAPI routes against that migrated database. It then runs `downgrade
-base` and verifies rollback before applying `upgrade head` again. Its cleanup
-path always requests removal of that check project's containers and volumes.
-The PostgreSQL integration test requires the task runner's explicit isolated
-database setting and is skipped by the Docker-free `ci` target.
-
-### Automatic manifest refresh before commits
-
-Install the versioned Git hook once per clone:
-
-```powershell
-git config --local core.hooksPath .githooks
-```
-
-When a manifest-covered file or `MANIFEST.json` is staged, the hook regenerates
-and stages the manifest. It refuses a commit when related documentation files
-have unstaged or untracked changes, so the staged manifest always describes the
-staged documentation snapshot.
-
-The 2026-07-21 exact-commit documentation-validation evidence snapshot is
-[`docs-validation` run #18](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811253002),
-which succeeded for pull-request branch commit
-[`dac1f24`](https://github.com/AdderlyMH/ai-qa-copilot/commit/dac1f241dc85936ebd4c7d44163ea0370aee3b9c).
-The associated `main` snapshot is
-[`docs-validation` run #19](https://github.com/AdderlyMH/ai-qa-copilot/actions/runs/29811327018),
-which succeeded for merge commit
-[`5645582`](https://github.com/AdderlyMH/ai-qa-copilot/commit/56455820b2aa22c5de075112babbe35a3c29d61c).
-Each result applies only to its recorded commit; later commits require their
-own successful `docs-validation` run.
 
 ## License
 

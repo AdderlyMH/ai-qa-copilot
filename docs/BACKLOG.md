@@ -1303,6 +1303,7 @@ of this backlog.
 - **Dependencies:** All prior phases
 - **Deliverable:** Problem, demo, architecture, setup, evaluation, security, limitations, and costs.
 - **Acceptance:** New reviewer can understand the product and run local demo.
+- **Note (2026-11-14):** a draft README is written: a dated status box, then Problem, Demo, Architecture, Setup (local), Evaluation, Security, Limitations, Costs and Links, each claim citing a committed doc. Its local demo without keys is `py scripts/tasks.py e2e` plus the guest demo snapshot viewer. Owner items are marked `TODO(owner):` (the one-line pitch, the public showcase site URL and the demo video link, PORT-005). Owner review and acceptance are pending; PORT-001 is **NOT Accepted**.
 
 #### PORT-002 — Produce architecture and sequence diagrams
 
