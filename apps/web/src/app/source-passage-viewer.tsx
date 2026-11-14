@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useId, useState } from "react";
 
 import { apiFetch } from "../lib/api-fetch";
 
@@ -53,6 +53,7 @@ function sourceCoordinate(citation: Citation): string {
 }
 
 export function SourcePassageViewer({ projectId }: { projectId: string }) {
+  const fieldId = useId();
   const [citationId, setCitationId] = useState("");
   const [citation, setCitation] = useState<Citation | null>(null);
   const [message, setMessage] = useState(
@@ -97,6 +98,8 @@ export function SourcePassageViewer({ projectId }: { projectId: string }) {
           <input
             aria-describedby="citation-viewer-message"
             required
+            id={`${fieldId}-citation-id`}
+            name="citation-id"
             value={citationId}
             onChange={(event) => setCitationId(event.target.value)}
             style={{ display: "block", width: "100%" }}

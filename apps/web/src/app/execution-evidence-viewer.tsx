@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useId, useState } from "react";
 
 import { apiFetch } from "../lib/api-fetch";
 
@@ -82,6 +82,7 @@ function FailureAnalysisList({
 }
 
 export function ExecutionEvidenceViewer({ projectId }: { projectId: string }) {
+  const fieldId = useId();
   const [jobId, setJobId] = useState("");
   const [evidence, setEvidence] = useState<ExecutionEvidence | null>(null);
   const [failureAnalysis, setFailureAnalysis] =
@@ -167,6 +168,8 @@ export function ExecutionEvidenceViewer({ projectId }: { projectId: string }) {
           <input
             aria-describedby="execution-evidence-message"
             required
+            id={`${fieldId}-execution-job-id`}
+            name="execution-job-id"
             value={jobId}
             onChange={(event) => setJobId(event.target.value)}
             style={{ display: "block", width: "100%" }}

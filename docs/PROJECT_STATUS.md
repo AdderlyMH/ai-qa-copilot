@@ -1,5 +1,42 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Form fields get an id and a name — 2026-11-14
+
+**Status:** web code, tests and docs on branch `web/form-field-ids`; **NOT
+deployed**. Deploying is the owner-run owner-app deploy workflow. No API,
+Lambda, infra, workflow or Dockerfile change, and no AWS call was made. No
+visible text, behaviour, request payload or CSP changed, and no dependency was
+added.
+
+- **Notice:** the owner identified the browser console's notices on 2026-11-13
+  in the DevTools Issues panel as "form field element should have an id or
+  name", listing 14 resources.
+- **Fields:** `apps/web/src` has 16 `<input>`/`<textarea>` fields and no
+  `<select>`. With a project open, 15 render at once; the approval comment
+  appears only after a plan preview. The 14-versus-16 difference was not
+  investigated; the owner chose to fix all 16.
+- **Fix:** each component that renders fields calls `useId()` once. Each field
+  gets ``id={`${fieldId}-<name>`}`` and a kebab-case `name` (for example
+  `project-name`, `synthetic-text`, `document-file`). The existing wrapping
+  `<label>` elements still name the fields; no `htmlFor` was added. Every form
+  calls `preventDefault()` and builds its request from state, so the names do
+  not reach any payload. No `autoComplete` was added (no credential fields).
+- **Tests:** `apps/api/tests/test_web_form_fields.py` adds 19 tests: the field
+  count (16), one per field (a `useId()`-based id whose suffix equals a
+  kebab-case name, no `autoComplete`), unique names, and a `useId()`
+  declaration in each file. All but the count test fail on the previous source.
+  The Playwright smoke test still finds its fields by label and passes.
+
+**Open:**
+
+- Deploying the fix, then re-reading the DevTools Issues panel.
+- SG-07 item 2: OPEN; accepted until 2026-12-04; Monday base-digest checks on
+  2026-11-16, 2026-11-23 and 2026-11-30.
+- HARD-002: the run, planned for 2026-12-01 to 2026-12-04.
+- SKEL-007: whether `e2e-smoke` becomes a required check (owner decision).
+- The Cognito charge, to be rechecked on the first monthly bill.
+- The deploy freeze on 2026-12-06.
+
 ## Lambda base pin reverted after the 2026-11-13 scan — 2026-11-13
 
 **Status:** On branch `build/revert-base-pin-2026-11-13`; Dockerfile pin and

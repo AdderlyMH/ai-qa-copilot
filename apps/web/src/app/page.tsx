@@ -1,6 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useId,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { apiFetch } from "../lib/api-fetch";
 import {
@@ -114,6 +120,7 @@ export default function Home() {
 }
 
 function ProjectWorkspace() {
+  const fieldId = useId();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [name, setName] = useState("");
@@ -284,6 +291,8 @@ function ProjectWorkspace() {
           <input
             required
             maxLength={120}
+            id={`${fieldId}-project-name`}
+            name="project-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
             style={{ display: "block", width: "100%" }}
@@ -293,6 +302,8 @@ function ProjectWorkspace() {
           Description (optional)
           <textarea
             maxLength={2000}
+            id={`${fieldId}-project-description`}
+            name="project-description"
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             style={{ display: "block", width: "100%" }}
@@ -375,6 +386,8 @@ function ProjectWorkspace() {
                 <textarea
                   required
                   maxLength={4000}
+                  id={`${fieldId}-synthetic-text`}
+                  name="synthetic-text"
                   value={syntheticText}
                   onChange={(event) => setSyntheticText(event.target.value)}
                   style={{ display: "block", width: "100%" }}
