@@ -18,6 +18,13 @@ changed, and no AWS or network call was made.
   already in the committed README. The earlier local-setup detail (IAM
   boundaries, PostgreSQL and migrations, the manifest hook) is no longer in
   the README.
+- **Update (2026-11-14, later):** that detail, with the Claude provider setup,
+  moved to `docs/LOCAL_DEVELOPMENT.md`, copied from the old README and linked
+  from the README's Setup (local) and Links sections. Two statements are
+  marked "(updated 2026-11-14)": the later-work list no longer names project
+  repositories or an owner publication workflow, and the pgvector digest is
+  referenced in `compose.yaml` instead of repeated. PORT-001 stays NOT
+  accepted.
 
 **TODO(owner) items in the README:**
 

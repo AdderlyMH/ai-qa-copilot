@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 12745,
-      "sha256": "802381a620ab193f8f48c365b82cfadba363a56466bab4cb1d6ebb66a0962b4f"
+      "bytes": 12920,
+      "sha256": "e427bf51265a9e4e3701c087253839bb822b5f999bcf0b2e582b4a5847636f9d"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -97,8 +97,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 148076,
-      "sha256": "0f57e604f9c19ff874d1b17c750284c33b9960820bc8dd9311543569ca25f7fd"
+      "bytes": 148368,
+      "sha256": "d14050aef4c5f32868e971ba352b3c93f2cd8005443c922ad08a8a4461978e49"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -131,6 +131,11 @@
       "sha256": "a1e09af23597c6896955e0784245f66848447beb006bc584e49c86c24a3f2e1a"
     },
     {
+      "path": "docs/LOCAL_DEVELOPMENT.md",
+      "bytes": 10435,
+      "sha256": "54efc1f9c27820201442e634b3a82a9f758b2db4fa1d49de0d8b87e902da2254"
+    },
+    {
       "path": "docs/OBS-003_ABLATION_PLAN.md",
       "bytes": 5574,
       "sha256": "abe9b87fc865374cf15652dda56bcb532199c73a62a53cd0039f3268bc2a243a"
@@ -152,8 +157,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 255136,
-      "sha256": "8ef552c592389ad0c1e09e11a3dcb1ecd7d443841584ac653704c0747c447370"
+      "bytes": 255602,
+      "sha256": "4a3534fcd0dfe61b16e5071b7a2302ad88a52409fdfdd1db95f9b8eb74a77e0f"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",

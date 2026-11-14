@@ -87,6 +87,7 @@ What runs without keys, and what does not:
   (`OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` with `MODEL_PROVIDER=anthropic`).
   Without them the project and analysis routes fail closed. The owner app does
   not run locally without a database.
+- Full local setup (PostgreSQL, migrations, auth bypass, Claude): [local development guide](docs/LOCAL_DEVELOPMENT.md).
 - The `e2e` launcher (`apps/web/e2e/api_launcher.py`) is test-only. It does not
   exercise the production wiring; the provenance it shows comes from its fake.
 - So the runnable demo without keys is the `e2e` test plus the guest demo
@@ -200,6 +201,7 @@ ADR-015). A monthly total is not recorded.
   [control traceability matrix](docs/CONTROL_TRACEABILITY_MATRIX.md)
 - [Evaluation plan](docs/EVALUATION_PLAN.md) and the
   [benchmark fixture guide](fixtures/benchmark/README.md)
+- [Local development guide](docs/LOCAL_DEVELOPMENT.md)
 - [Infrastructure and runbooks](docs/INFRASTRUCTURE.md), including
   [restore and rollback](docs/INFRASTRUCTURE.md#restore-and-rollback-procedures-hard-004-2026-11-12)
 - [Repository governance evidence](docs/REPOSITORY_GOVERNANCE.md)
