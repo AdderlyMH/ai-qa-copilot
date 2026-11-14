@@ -152,8 +152,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 251727,
-      "sha256": "2c94a5d64f83f365e86255c690eba64469f21f1de1f0c74041c68708865e5402"
+      "bytes": 253807,
+      "sha256": "2e9dd6d431858b0fc3cbaaa3837bd5cfa361449d00a2c9b0b9edb5ac1d200f22"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -282,8 +282,8 @@
     },
     {
       "path": "docs/adr/ADR-022-owner-app-frontend-host.md",
-      "bytes": 27615,
-      "sha256": "5ab8c25ac1dd90aec18aa1eea3714a8959716bea26f57111a3594ecb9645b703"
+      "bytes": 28195,
+      "sha256": "6df6dbae48863b2148904562aca3a08aedc487038135d0192dc2079d0fa80ba6"
     },
     {
       "path": "docs/adr/README.md",

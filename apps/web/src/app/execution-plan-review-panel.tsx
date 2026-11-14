@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useId, useState } from "react";
 
 import { apiFetch } from "../lib/api-fetch";
 
@@ -78,6 +78,7 @@ function parseGeneratedTestCase(value: string): Record<string, unknown> {
 }
 
 export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
+  const fieldId = useId();
   const [generatedTestCase, setGeneratedTestCase] = useState("");
   const [timeoutMs, setTimeoutMs] = useState("10000");
   const [maxRequestBodyBytes, setMaxRequestBodyBytes] = useState("64000");
@@ -226,6 +227,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
           Generated-test JSON
           <textarea
             required
+            id={`${fieldId}-generated-test-case`}
+            name="generated-test-case"
             value={generatedTestCase}
             onChange={(event) => {
               setGeneratedTestCase(event.target.value);
@@ -242,6 +245,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
           <input
             disabled
             readOnly
+            id={`${fieldId}-execution-target`}
+            name="execution-target"
             value="synthetic-order-api"
             style={{ display: "block", width: "100%" }}
           />
@@ -254,6 +259,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             max={30000}
             required
             type="number"
+            id={`${fieldId}-timeout-ms`}
+            name="timeout-ms"
             value={timeoutMs}
             onChange={(event) => {
               setTimeoutMs(event.target.value);
@@ -270,6 +277,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             max={1000000}
             required
             type="number"
+            id={`${fieldId}-max-request-body-bytes`}
+            name="max-request-body-bytes"
             value={maxRequestBodyBytes}
             onChange={(event) => {
               setMaxRequestBodyBytes(event.target.value);
@@ -286,6 +295,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             max={1000000}
             required
             type="number"
+            id={`${fieldId}-max-response-bytes`}
+            name="max-response-bytes"
             value={maxResponseBytes}
             onChange={(event) => {
               setMaxResponseBytes(event.target.value);
@@ -302,6 +313,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
             max={20}
             required
             type="number"
+            id={`${fieldId}-max-assertions`}
+            name="max-assertions"
             value={maxAssertions}
             onChange={(event) => {
               setMaxAssertions(event.target.value);
@@ -357,6 +370,8 @@ export function ExecutionPlanReviewPanel({ projectId }: { projectId: string }) {
               <label>
                 Approval comment (optional)
                 <textarea
+                  id={`${fieldId}-approval-comment`}
+                  name="approval-comment"
                   value={approvalComment}
                   onChange={(event) => setApprovalComment(event.target.value)}
                   maxLength={1000}

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useId, useState } from "react";
 
 import { apiFetch } from "../lib/api-fetch";
 
@@ -36,6 +36,7 @@ async function responseError(response: Response): Promise<string> {
 }
 
 export function FindingFeedbackPanel({ projectId }: { projectId: string }) {
+  const fieldId = useId();
   const [runId, setRunId] = useState("");
   const [findingId, setFindingId] = useState("");
   const [annotation, setAnnotation] = useState("");
@@ -127,6 +128,8 @@ export function FindingFeedbackPanel({ projectId }: { projectId: string }) {
           Requirement-analysis run ID
           <input
             required
+            id={`${fieldId}-analysis-run-id`}
+            name="analysis-run-id"
             value={runId}
             onChange={(event) => setRunId(event.target.value)}
             placeholder="UUID"
@@ -138,6 +141,8 @@ export function FindingFeedbackPanel({ projectId }: { projectId: string }) {
           Finding ID
           <input
             required
+            id={`${fieldId}-finding-id`}
+            name="finding-id"
             value={findingId}
             onChange={(event) => setFindingId(event.target.value)}
             placeholder="UUID"
@@ -172,6 +177,8 @@ export function FindingFeedbackPanel({ projectId }: { projectId: string }) {
           Annotation
           <textarea
             maxLength={4000}
+            id={`${fieldId}-feedback-annotation`}
+            name="feedback-annotation"
             value={annotation}
             onChange={(event) => setAnnotation(event.target.value)}
             placeholder="Required only for Annotate."

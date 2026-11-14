@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useId, useState } from "react";
 
 import { apiFetch } from "../lib/api-fetch";
 import {
@@ -17,6 +17,7 @@ export function UploadPanel({
   projectId: string;
   onUploaded: () => void;
 }) {
+  const fieldId = useId();
   const [file, setFile] = useState<File | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -75,6 +76,8 @@ export function UploadPanel({
         <label>
           Markdown or text file
           <input
+            id={`${fieldId}-document-file`}
+            name="document-file"
             key={inputKey}
             accept={ACCEPTED_FILE_TYPES}
             onChange={(event) => {
