@@ -1,5 +1,37 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## PORT-001 README draft — 2026-11-14
+
+**Status:** README and docs on branch `docs/port-001-readme`; **NOT
+accepted**: owner review pending. No code, infra, workflow, fixture or test
+changed, and no AWS or network call was made.
+
+- **README:** rewritten for a reviewer: a dated status box (what is live, what
+  is disabled on purpose, the evaluation limit, SG-07 item 2, HARD-002 not run,
+  SG-08 unmet), then Problem, Demo, Architecture, Setup (local), Evaluation,
+  Security, Limitations, Costs and Links. Each claim links to a committed doc;
+  costs are the recorded estimates and the 2026-11-01 to 11-12 Cost Explorer
+  reading, with no monthly total.
+- **Preserved:** no validator pins README headings. The validator checks its
+  manifest hash, that its relative links resolve, and an obsolete-claims
+  pattern list; no other doc links to a README anchor. The guest demo URL was
+  already in the committed README. The earlier local-setup detail (IAM
+  boundaries, PostgreSQL and migrations, the manifest hook) is no longer in
+  the README.
+- **Update (2026-11-14, later):** that detail, with the Claude provider setup,
+  moved to `docs/LOCAL_DEVELOPMENT.md`, copied from the old README and linked
+  from the README's Setup (local) and Links sections. Two statements are
+  marked "(updated 2026-11-14)": the later-work list no longer names project
+  repositories or an owner publication workflow, and the pgvector digest is
+  referenced in `compose.yaml` instead of repeated. PORT-001 stays NOT
+  accepted.
+
+**TODO(owner) items in the README:** The demo video link (PORT-005).
+
+**Open:** PORT-001 acceptance (owner); HARD-002 run (2026-12-01 to
+2026-12-04); SG-07 item 2 (accepted until 2026-12-04); the deploy freeze on
+2026-12-06.
+
 ## Form fields get an id and a name — 2026-11-14
 
 **Status:** web code, tests and docs on branch `web/form-field-ids`; **NOT
