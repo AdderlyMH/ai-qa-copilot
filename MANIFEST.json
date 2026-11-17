@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 277142,
-      "sha256": "4295b036fc2bc58166d45360cba52d79cfd53be0426003ecd21bea6523de4bcd"
+      "bytes": 279611,
+      "sha256": "b15b9f9fb31c9c6da20146ef590bf96c2a33f21cde7697a3857626ff5fd5d9ed"
     },
     {
       "path": "docs/LOCAL_DEVELOPMENT.md",
@@ -157,8 +157,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 256707,
-      "sha256": "cfcc45873851a437a489aae2efd1a832b7795f14786234c8b5df21bbe3975fe0"
+      "bytes": 258037,
+      "sha256": "3b68143cd36399e3314146979f6b134c565d3e7f4b132a989a7dbdbd2ef2f766"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -418,7 +418,7 @@
     {
       "path": "package-lock.json",
       "bytes": 216177,
-      "sha256": "2b5b3137a049d212d8b150c67fcd659b17032594f96dd2a4f90b212f7f3038ef"
+      "sha256": "cbe65673713df7f2171d1c23247c9d0664964888842e825aad7fc6adcf2a09df"
     },
     {
       "path": "pyproject.toml",
