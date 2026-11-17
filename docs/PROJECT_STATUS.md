@@ -1,5 +1,6 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+<<<<<<< HEAD
 ## Lambda base digest refresh — 2026-11-16
 
 **Status:** pin changed on branch `build/base-refresh-2026-11-16`; the new base
@@ -19,6 +20,28 @@ network call was made here.
   fixes anything.
 - **Docs:** `docs/INFRASTRUCTURE.md` (runbook note and SG-07 item 2 update);
   ADR-022's 2026-11-14 note had an unclosed italic, now closed.
+=======
+## Next.js 16.4.5 for GHSA-mfr8-8qww-v76h — 2026-11-16
+
+**Status:** lockfile bump on branch `build/next-16.4.5`; **not yet deployed**.
+No app code, infra or workflow changed, and no AWS call was made.
+
+- **Finding:** GHSA-mfr8-8qww-v76h (moderate; `next` 16.3.0 to 16.4.4, patched
+  in 16.4.5), published 2026-11-16. `main` locked 16.4.2. It surfaced when
+  `next build` stopped a local `ci` run with the Next.js upgrade reminder for
+  coding agents; no command from that reminder was run.
+- **Reading (not verified):** the app has no `'use cache'`, `unstable_cache`
+  or root params, and the owner app is a static export with no Next.js
+  server, so the export does not exercise the advisory.
+- **Change:** `next` is `^16.4.5` in `apps/web/package.json`, locked at
+  16.4.5. Only `next`, `@next/env` and the eight `@next/swc-*` packages
+  changed in `package-lock.json`. `eslint-config-next` stays at 16.2.11.
+- **Audit after the bump:** `npm audit --omit=dev` reports 0. `npm audit`
+  still lists dev-only findings: `zod` (high) and `minimatch` with six
+  `typescript-eslint` packages (moderate).
+- **SG-07 register:** item 10 (this advisory) and item 11 (`zod`, disposition
+  proposed, **not decided**) in `docs/INFRASTRUCTURE.md`.
+>>>>>>> f882f93 (build: upgrade next to 16.4.5 for GHSA-mfr8-8qww-v76h)
 
 ## PORT-001 README draft — 2026-11-14
 
