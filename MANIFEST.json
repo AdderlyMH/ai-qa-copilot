@@ -127,8 +127,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 275456,
-      "sha256": "a1e09af23597c6896955e0784245f66848447beb006bc584e49c86c24a3f2e1a"
+      "bytes": 277142,
+      "sha256": "4295b036fc2bc58166d45360cba52d79cfd53be0426003ecd21bea6523de4bcd"
     },
     {
       "path": "docs/LOCAL_DEVELOPMENT.md",
@@ -157,8 +157,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 255547,
-      "sha256": "cb72524dc6a1156e65198bb5122589f679f541c45d4149293d6fd699d89379e0"
+      "bytes": 256707,
+      "sha256": "cfcc45873851a437a489aae2efd1a832b7795f14786234c8b5df21bbe3975fe0"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -287,8 +287,8 @@
     },
     {
       "path": "docs/adr/ADR-022-owner-app-frontend-host.md",
-      "bytes": 28459,
-      "sha256": "37d386d6c81147ca142b38fe6beaaf6d0d0a8f0aa17aa628bff82de3580df763"
+      "bytes": 28461,
+      "sha256": "875a8466a49c4fad9e110afbe3d35bf9e8a78d2405268337dda8af030587d74f"
     },
     {
       "path": "docs/adr/README.md",

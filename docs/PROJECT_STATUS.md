@@ -1,5 +1,25 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Lambda base digest refresh — 2026-11-16
+
+**Status:** pin changed on branch `build/base-refresh-2026-11-16`; the new base
+is **NOT yet built, scanned or verified**. No build, push, deploy, AWS or
+network call was made here.
+
+- **Owner's read (2026-11-16, not re-checked here):** the weekly Monday check
+  found the `3.13-arm64` tag at `sha256:ed82e3ff…`, a third digest: neither
+  the pinned 2026-11-09 base (`sha256:00632c00…`) nor the `add56ac7…` base
+  that was built, scanned and rejected on 2026-11-13 and never deployed.
+- **Change:** only the `sha256:` value of the `ARG LAMBDA_PYTHON_BASE=` line
+  and the header comment date (now 2026-11-16) in `apps/api/Dockerfile.lambda`.
+- **SG-07 item 2:** stays **OPEN**. Next is the owner's build and scan, then a
+  comparison by CVE name with CVE-2026-76781, CVE-2026-114406 and anything
+  new; deploy only if both are gone and nothing HIGH or new appears. The risk
+  acceptance still runs until 2026-12-04. Nothing here shows the new base
+  fixes anything.
+- **Docs:** `docs/INFRASTRUCTURE.md` (runbook note and SG-07 item 2 update);
+  ADR-022's 2026-11-14 note had an unclosed italic, now closed.
+
 ## PORT-001 README draft — 2026-11-14
 
 **Status:** README and docs on branch `docs/port-001-readme`; **NOT
