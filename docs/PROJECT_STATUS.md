@@ -1,5 +1,26 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## PORT-002 architecture diagrams draft — 2026-11-19
+
+**Status:** docs on branch `docs/port-002-diagrams`; **NOT accepted**: owner
+review pending. No code, infra, workflow, fixture or test changed, and no AWS
+or network call was made.
+
+- **New doc:** `docs/ARCHITECTURE_DIAGRAMS.md` has five Mermaid diagrams:
+  context, deployment, the upload-and-parse sequence (with status polling and
+  the deduplicated response), the retrieval pipeline, and the approval and
+  execution sequence. Each has a Source line and a Status line. Disabled or
+  not-created parts are dashed and labelled: the executor and its queue
+  mapping (INFRA-004, SG-08 unmet), indexing and retrieval (INFRA-013),
+  Claude in production, the migrate function between runs, and CloudFront.
+- **Basis:** derived from committed docs and source on 2026-11-19, not from
+  the live accounts. `docs/ARCHITECTURE.md` keeps the planned design and is
+  unchanged.
+- **Links:** one line in the README Links section; the validator needs no
+  registration (the manifest picks up `docs/*.md`).
+- **Not checked:** the diagrams were not rendered here; GitHub's Mermaid
+  rendering of them is to be confirmed on the pull request.
+
 ## Lambda base pin reverted after the 2026-11-16 scan — 2026-11-18
 
 **Status:** pin set back on branch `build/revert-base-pin-2026-11-18`. No
