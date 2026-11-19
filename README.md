@@ -195,7 +195,8 @@ ADR-015). A monthly total is not recorded.
 - [Project status](docs/PROJECT_STATUS.md) and [backlog](docs/BACKLOG.md)
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md) and
   [project charter](docs/PROJECT_CHARTER.md)
-- [Architecture](docs/ARCHITECTURE.md) and the
+- [Architecture](docs/ARCHITECTURE.md), the
+  [architecture diagrams](docs/ARCHITECTURE_DIAGRAMS.md) and the
   [ADR index](docs/adr/README.md)
 - [Threat model](docs/THREAT_MODEL.md) and the
   [control traceability matrix](docs/CONTROL_TRACEABILITY_MATRIX.md)

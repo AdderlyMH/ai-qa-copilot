@@ -82,13 +82,18 @@
     },
     {
       "path": "README.md",
-      "bytes": 13099,
-      "sha256": "8ffca83166406ec06b140d4c1d468b87a8c1d9a73d31342e96fe5f123af4aef3"
+      "bytes": 13161,
+      "sha256": "cfa93a0afe5d1d7ed7314a13948fc6ae4b24c9dc377579be000351032f798b79"
     },
     {
       "path": "docs/ARCHITECTURE.md",
       "bytes": 47541,
       "sha256": "3e8f75c4c854f7c33587c111e770b415af2ca4fb877f076fce2200f629ae18f8"
+    },
+    {
+      "path": "docs/ARCHITECTURE_DIAGRAMS.md",
+      "bytes": 16936,
+      "sha256": "5f4bd89cc7a89bdc8f9e6aa545ec834274acd108cd8501ff588fcbed11a5f7c5"
     },
     {
       "path": "docs/B1_CANDIDATE_EXECUTOR.md",
@@ -97,8 +102,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 148368,
-      "sha256": "d14050aef4c5f32868e971ba352b3c93f2cd8005443c922ad08a8a4461978e49"
+      "bytes": 148838,
+      "sha256": "203ec642d1b414b85bc2587714fbcd1b8c0bcbaeabb0ecbc6a4806f3bc92ea28"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -157,8 +162,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 260338,
-      "sha256": "aac713e4381c27b6aa11d47cb2fcf1f41f90b1f1d071b670016a1af43ae849f0"
+      "bytes": 261523,
+      "sha256": "595ad4e2e4b9e03fafb48b765e60b0a2f256ec03fd0c0fe7314b06a9db16e13d"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",

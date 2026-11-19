@@ -1312,6 +1312,7 @@ of this backlog.
 - **Dependencies:** INFRA-003
 - **Deliverable:** Context, deployment, RAG, and approval/execution diagrams.
 - **Acceptance:** Diagrams match deployed system.
+- **Note (2026-11-19):** a draft is written in `docs/ARCHITECTURE_DIAGRAMS.md`: five Mermaid diagrams (context, deployment, upload-and-parse sequence, retrieval pipeline, approval-and-execution sequence), each with a Source line and a Status line, and disabled parts drawn dashed. "Match deployed system" is checked against committed docs and source on 2026-11-19, not by inspecting the AWS or Cloudflare accounts. Owner review is pending; PORT-002 is **NOT Accepted**.
 
 #### PORT-003 — Publish final evaluation report
 
