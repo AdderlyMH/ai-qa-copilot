@@ -1,6 +1,46 @@
 # Project Status â€” AI Quality Engineering Copilot
 
-<<<<<<< HEAD
+## Lambda base pin reverted after the 2026-11-16 scan — 2026-11-18
+
+**Status:** pin set back on branch `build/revert-base-pin-2026-11-18`. No
+build, push, deploy, AWS or network call was made here; the build and scan
+below are owner-run (2026-11-16 to 2026-11-18) and not re-checked here.
+
+- **Build and scan:** the `ed82e3ff…` base (PR #268) was used for all five
+  images from `main` at `7b42671ba57c16ce3914c45192bcc86df926d36d`, which also
+  includes `next` 16.4.5. Each was pushed once and scanned `COMPLETE` with the
+  same findings by name. CVE-2026-76781 (`libxml2`) and CVE-2026-114406
+  (`ca-certificates`) are gone, but HIGH CVE-2026-95520 and CVE-2026-95521
+  (`rpm`, `rpm-libs`) and six MEDIUM and one LOW `sqlite-libs` findings are
+  present: the same list as the rejected `add56ac7…` base. Whether the Lambda
+  runtime uses `rpm`, and whether fixed packages exist, is **NOT verified**.
+- **Pin:** set back to the 2026-11-09 base (`sha256:00632c00…`); the header
+  comment now reads "last refreshed 2026-11-18". Nothing was deployed from
+  the `ed82e3ff…` images; `production.tfvars` still holds the 2026-11-07
+  digests.
+- **ECR push rule:** the `api` repository holds five images (2026-10-22,
+  2026-11-07 deployed, 2026-11-09, 2026-11-13, 2026-11-16). One more push
+  would prune 2026-10-22 and the next the deployed 2026-11-07 image, so no
+  further push unless a deploy replaces the running set.
+- **Docs:** `docs/INFRASTRUCTURE.md` (runbook note and SG-07 item 2 update).
+- **Conflict markers removed:** three Git conflict-marker lines around the
+  two 2026-11-16 entries below were committed by mistake in the `next` 16.4.5
+  rebase. They are removed here; no other text in those entries changed.
+
+**Open:**
+
+- SG-07 item 2: OPEN; accepted until 2026-12-04; a clean base is still
+  needed; the package-update fallback is NOT decided and NOT verified.
+- Monday base-digest checks on 2026-11-23 and 2026-11-30; only a fourth
+  digest is worth building.
+- HARD-002: the run, planned for 2026-12-01 to 2026-12-04.
+- SG-07 item 11: the owner's decision on the dev-only `zod` finding, which
+  comes through `eslint-config-next`.
+- Upload deduplication UX: a repeat upload of identical content returns
+  deduplicated, and the panel keeps showing "Checking its status".
+- The Cognito charge, to be rechecked on the first monthly bill.
+- The deploy freeze on 2026-12-06.
+
 ## Lambda base digest refresh — 2026-11-16
 
 **Status:** pin changed on branch `build/base-refresh-2026-11-16`; the new base
@@ -20,7 +60,6 @@ network call was made here.
   fixes anything.
 - **Docs:** `docs/INFRASTRUCTURE.md` (runbook note and SG-07 item 2 update);
   ADR-022's 2026-11-14 note had an unclosed italic, now closed.
-=======
 ## Next.js 16.4.5 for GHSA-mfr8-8qww-v76h — 2026-11-16
 
 **Status:** lockfile bump on branch `build/next-16.4.5`; **not yet deployed**.
@@ -41,7 +80,6 @@ No app code, infra or workflow changed, and no AWS call was made.
   `typescript-eslint` packages (moderate).
 - **SG-07 register:** item 10 (this advisory) and item 11 (`zod`, disposition
   proposed, **not decided**) in `docs/INFRASTRUCTURE.md`.
->>>>>>> f882f93 (build: upgrade next to 16.4.5 for GHSA-mfr8-8qww-v76h)
 
 ## PORT-001 README draft — 2026-11-14
 
