@@ -1241,6 +1241,14 @@ of this backlog.
   - **SG-08:** unmet. There is no live exposure test, and executor egress is not shown.
 - **Security harness label:** the `scripts/security_harness.py` output is a **fixture-versus-table consistency check**. It compares each fixture's expected outcome, boundary and side effects with a table in the same script, through fake adapters. It is **never** evidence that the application enforces a gate.
 - **Status:** HARD-002 is still **NOT run** and **NOT accepted**. The evidence will be archived under `docs/evidence/hard-002-<date>/`.
+- **Note (2026-11-20): final run archived.** Evidence is in `docs/evidence/hard-002-2026-11-20/` (README with artifact SHA-256 hashes and the gate table). Run commit `6aca5a1f0016b068b9761bac99c2f4952a6ed314`. Image build commit (owner-stated) `23c59a88f6f30b54e16acde433ce3caa2830d45e`; between the two, `apps/api/src` is identical. Results:
+  - **Harness:** 57/57 expected = actual: a consistency check only, not used to mark a gate.
+  - **Tests pass on the run commit:** SG-01 35/35, SG-04 27/27 and SG-05 128/128, with no failures or skips.
+  - **SG-06:** partial. 33/33 tests, db-check 151 in its log, and 0 canary matches in the run's outputs. The history, image-layer and log scans are NOT RUN (owner decision 2026-11-13).
+  - **UNMET:** SG-02, the SG-03 allowed path (SEC-NET-006; the 37 denial-path tests show no failures), SG-07 while item 2 is open (0 findings at blocking scanner levels; Checkov 0 failed, 63 skipped), SG-08 (29 contract tests show no failures) and the EVAL-007 clause.
+  - **Compared with the 2026-11-14 dry run:** every count is unchanged.
+
+  The status stays **NOT accepted**. Applying the amended acceptance is the owner's decision.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 

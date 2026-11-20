@@ -1,5 +1,39 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## HARD-002 final run archived — 2026-11-20
+
+**Status:** evidence on branch `docs/hard-002-evidence`; HARD-002 is **NOT
+accepted** (applying the amended acceptance is the owner's decision). No AWS
+call, deploy, apply, image build or paid model call was made; the only
+network traffic was installing the pinned scanners and the pip-audit and
+npm audit advisory lookups.
+
+- **Where:** `docs/evidence/hard-002-2026-11-20/`, with a README that holds
+  the commands, tool versions, artifact SHA-256 hashes and the gate table.
+- **Commits:** run commit `6aca5a1f0016b068b9761bac99c2f4952a6ed314`. Image
+  build commit (owner-stated) `23c59a88f6f30b54e16acde433ce3caa2830d45e`, the
+  2026-11-07 image set. Between the two, `apps/api/src` is identical;
+  `pyproject.toml`, `uv.lock` and `Dockerfile.lambda` differ.
+- **Results:**
+  - SG-01, SG-04 and SG-05: tests pass on the run commit (35, 27 and 128,
+    with no failures or skips).
+  - SG-06: partial (33 tests, db-check 151, 0 canary matches); the history,
+    image-layer and log scans are NOT RUN.
+  - UNMET: SG-02, the SG-03 allowed path, SG-07 (item 2 open), SG-08 and the
+    EVAL-007 clause.
+  - Every count matches the 2026-11-14 dry run.
+- **Tools:** Node.js 24.21.0 and npm 11.19.0, newer than the pins (24.18.0,
+  11.16.0); everything else matches.
+- **Archiving notes:** JUnit hostnames are redacted, and local paths are made
+  repository-relative. Three JSON files were converted from CRLF to LF.
+  `db-check.log` was force-added past the `*.log` ignore rule and keeps its
+  raw trailing spaces.
+
+**Open:** the owner's decision on HARD-002 acceptance; SG-07 item 2
+(accepted until 2026-12-04; weekly checks 2026-11-23 and 2026-11-30); SG-07
+item 11; PORT-005 video; the first monthly bill and Cognito charge; the
+deploy freeze on 2026-12-06.
+
 ## PORT-001 and PORT-002 accepted; ARCHITECTURE.md supersession note — 2026-11-20
 
 **Status:** docs on branch `docs/architecture-supersession-note`. No code,

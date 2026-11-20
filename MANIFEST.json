@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 149427,
-      "sha256": "789ee8e43c992a1a15cae6e53e21dfb1536680055e60f0648e2271cae68f66c2"
+      "bytes": 150593,
+      "sha256": "79c168780495198919bdbb478893002b2155b58e446ef48ec84fa98a331ac219"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -162,8 +162,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 263538,
-      "sha256": "02f76aef4aba8696274cc3519b068681a41364ccf79a17c4af3d965b803cd549"
+      "bytes": 265342,
+      "sha256": "9d3316b73839c0ada6c19155d41d02ff484f458172301c7095cacae54fdd47ad"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
@@ -324,6 +324,11 @@
       "path": "docs/evidence/github-security-2026-07-21/secret-protection.png",
       "bytes": 74750,
       "sha256": "a4414385f226b5f5049b43c93db4c5a46152b9376d3edb65cef7e3fb244a468c"
+    },
+    {
+      "path": "docs/evidence/hard-002-2026-11-20/README.md",
+      "bytes": 13515,
+      "sha256": "b7ce108e7d7ad5309b225bfc02c5a19a66a00e91cf2dfb11238e0181024ee19c"
     },
     {
       "path": "fixtures/benchmark/README.md",
