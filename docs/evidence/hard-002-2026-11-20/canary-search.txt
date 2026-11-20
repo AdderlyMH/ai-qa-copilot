@@ -1,0 +1,30 @@
+HARD-002 SG-06 canary search, 2026-11-20
+Run commit: 6aca5a1f0016b068b9761bac99c2f4952a6ed314
+
+Scope: this run's own outputs in this folder only: junit-SG-01.xml,
+junit-SG-03.xml, junit-SG-04.xml, junit-SG-05.xml, junit-SG-06.xml,
+junit-SG-08.xml, security-harness.json, db-check.log, bandit.json,
+pip-audit.json, npm-audit-omit-dev.json, npm-audit-all.json, checkov.json.
+Not searched: git history, container image layers and CloudWatch logs (NOT RUN
+by owner decision, 2026-11-13).
+
+Method: fixed-string search (grep -F) for each canary string, after the
+hostname and local-path redaction described in README.md.
+
+exec-008-sensitive-canary: no match
+exec-006-canary-secret: no match
+exec-006-durable-display-canary: no match
+exec-006-postgres-display-canary: no match
+rep-003-collector-canary: no match
+exec-006-worker-cli-canary: no match
+
+The bare word "canary" also has no match in these outputs.
+
+Zero matches show only that these strings are absent from these outputs. The
+evidence that canary values are handled (redacted, not echoed, not persisted
+in display projections) is the pytest files themselves:
+apps/api/tests/test_end_to_end_workflow.py, test_execution_evidence.py,
+test_quality_report_evidence_collection.py and
+test_restricted_execution_worker_cli.py (run under SG-06 above), plus
+test_execution_job_api.py and test_projects_postgres.py, which define the
+other two strings and were not part of the SG-06 file list.
