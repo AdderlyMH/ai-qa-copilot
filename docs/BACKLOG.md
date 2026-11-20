@@ -1304,6 +1304,7 @@ of this backlog.
 - **Deliverable:** Problem, demo, architecture, setup, evaluation, security, limitations, and costs.
 - **Acceptance:** New reviewer can understand the product and run local demo.
 - **Note (2026-11-14):** a draft README is written: a dated status box, then Problem, Demo, Architecture, Setup (local), Evaluation, Security, Limitations, Costs and Links, each claim citing a committed doc. Its local demo without keys is `py scripts/tasks.py e2e` plus the guest demo snapshot viewer. Owner items are marked `TODO(owner):` (the one-line pitch, the public showcase site URL and the demo video link, PORT-005). Owner review and acceptance are pending; PORT-001 is **NOT Accepted**. *(Updated 2026-11-14, later: the local-development detail removed from the README (walking skeleton, IAM-001/IAM-002 boundaries, local PostgreSQL and migrations, the Claude provider setup, the manifest hook) moved to `docs/LOCAL_DEVELOPMENT.md`, linked from the README; still NOT Accepted.)*
+- **OWNER DECISION (2026-11-20):** PORT-001 is **ACCEPTED**, with one limit: the demo video link (PORT-005) is still a `TODO(owner)` in the README. The earlier "NOT Accepted" lines above are kept as history.
 
 #### PORT-002 — Produce architecture and sequence diagrams
 
@@ -1313,6 +1314,8 @@ of this backlog.
 - **Deliverable:** Context, deployment, RAG, and approval/execution diagrams.
 - **Acceptance:** Diagrams match deployed system.
 - **Note (2026-11-19):** a draft is written in `docs/ARCHITECTURE_DIAGRAMS.md`: five Mermaid diagrams (context, deployment, upload-and-parse sequence, retrieval pipeline, approval-and-execution sequence), each with a Source line and a Status line, and disabled parts drawn dashed. "Match deployed system" is checked against committed docs and source on 2026-11-19, not by inspecting the AWS or Cloudflare accounts. Owner review is pending; PORT-002 is **NOT Accepted**.
+- **Update (2026-11-20, owner-reported; not re-checked here):** the owner confirmed on GitHub that the five Mermaid diagrams render.
+- **OWNER DECISION (2026-11-20):** PORT-002 is **ACCEPTED**, with one limit: "matches the deployed system" is verified against committed docs and source, not by inspecting the live account. The earlier "NOT Accepted" line above is kept as history.
 
 #### PORT-003 — Publish final evaluation report
 

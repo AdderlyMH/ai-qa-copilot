@@ -1,5 +1,41 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## PORT-001 and PORT-002 accepted; ARCHITECTURE.md supersession note — 2026-11-20
+
+**Status:** docs on branch `docs/architecture-supersession-note`. No code,
+infra, workflow, fixture or test changed, and no AWS or network call was
+made.
+
+- **OWNER DECISION (2026-11-20):** PORT-001 is **ACCEPTED**, with one limit:
+  the demo video link (PORT-005) is still a `TODO(owner)` in the README.
+- **OWNER DECISION (2026-11-20):** PORT-002 is **ACCEPTED**, with one limit:
+  "matches the deployed system" is verified against committed docs and
+  source, not by inspecting the live account. The owner confirmed on GitHub
+  that the five Mermaid diagrams render (owner-reported; not re-checked here).
+- **`docs/ARCHITECTURE.md`:** a dated 2026-11-20 note under the title block
+  points to `docs/ARCHITECTURE_DIAGRAMS.md` for the deployed system and lists
+  three superseded points, each checked against the cited ADRs: the section
+  12.1 hosting and authorizer nodes (ADR-022, ADR-019 Decision 13), the
+  general worker calling OpenAI (ADR-018 keeps the model call in the API
+  function), and the parser sending to the general-job queue (ADR-018 option
+  A). No heading or earlier text changed.
+- **Correction of a date in earlier entries:** the original SG-07 item 2 risk
+  acceptance ran to 2026-11-20. The owner replaced that date on 2026-11-09
+  with 2026-12-04, so nothing expires today.
+
+**Open:**
+
+- SG-07 item 2: OPEN; accepted until 2026-12-04. Weekly base-digest checks
+  on 2026-11-23 and 2026-11-30; only a fourth digest is worth building. No
+  further ECR push unless a deploy replaces the running set.
+- HARD-002: the final run, planned for 2026-12-01 to 2026-12-04.
+- SG-07 item 11: the owner's decision on the dev-only `zod` finding.
+- Dependabot: two open Python pull requests and two AWS provider pull
+  requests, left for after the freeze (owner-reported; not checked here).
+- PORT-005: the demo video.
+- The Cognito charge, to be rechecked on the first monthly bill.
+- The deploy freeze on 2026-12-06.
+
 ## PORT-002 architecture diagrams draft — 2026-11-19
 
 **Status:** docs on branch `docs/port-002-diagrams`; **NOT accepted**: owner
