@@ -5,6 +5,27 @@
 **Last updated:** 2026-07-17
 **Architecture style:** Modular monolith with isolated execution boundary
 
+**Note (2026-11-20):** for the deployed system, see
+[Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md), derived from committed docs
+and source on 2026-11-19, not from the live account. This document is the
+planned design and is superseded on these points, each also covered by the
+dated notes further down:
+
+- The AWS target in section 12.1 shows "Amplify Hosting or CloudFront" and a
+  "Cognito JWT authorizer". The owner app and the guest demo are served from
+  separate Cloudflare Pages projects
+  ([ADR-022](adr/ADR-022-owner-app-frontend-host.md),
+  [ADR-019](adr/ADR-019-guest-demo-snapshot.md) Decision 13), and the HTTP
+  API has no API Gateway authorizer: the API function validates Cognito
+  access tokens itself (ADR-022).
+- The general worker is drawn calling OpenAI (sections 3 and 12.1).
+  [ADR-018](adr/ADR-018-production-composition-lambda-runtime-and-secrets.md)
+  keeps the model call inside the API function.
+- The parser is drawn sending to the general-job queue (sections 3, 7.1 and
+  12.1). ADR-018 handoff option A removed that send: the parser's promotion
+  writes the queued indexing job to the database, and the API sends the
+  general wake-up, which stays off until INFRA-013.
+
 See the [Control Traceability Matrix](CONTROL_TRACEABILITY_MATRIX.md) for the
 mapping from requirements and threats to architecture decisions, fixtures,
 scorers, release gates, and backlog items.
