@@ -1,5 +1,39 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## HARD-002 accepted under the owner amendment — 2026-11-21
+
+**Status:** docs on branch `docs/hard-002-acceptance`. No code, infra,
+workflow, fixture, test or evidence file changed, and no AWS or network call
+was made.
+
+- **OWNER DECISION (2026-11-21):** HARD-002 is **ACCEPTED** under the owner
+  amendment of 2026-11-13.
+  - **Evidence:** `docs/evidence/hard-002-2026-11-20/`, run commit
+    `6aca5a1f0016b068b9761bac99c2f4952a6ed314`. The deployed images were built
+    from `23c59a88f6f30b54e16acde433ce3caa2830d45e`; the API digest prefix
+    f31929c1 was re-confirmed by the owner on 2026-11-20.
+  - **Limits:** SG-02, the SG-03 allowed path (SEC-NET-006), SG-07 (item 2
+    open), SG-08 and the EVAL-007 clause are reported UNMET. The SG-06
+    history, image-layer and log scans are NOT RUN. The harness is a
+    fixture-versus-table consistency check, not proof of enforcement.
+  - **Meaning:** "accepted" means the amended acceptance was applied, not that
+    all gates passed.
+  - **Rerun:** the evidence must be rerun if code on `main` or the running
+    images change before the 2026-12-06 freeze.
+
+**Open:**
+
+- SG-07 item 2: OPEN; accepted until 2026-12-04.
+  - Base-digest checks on 2026-11-23 and 2026-11-30.
+  - Only a fourth digest is worth building: not `00632c00…`, `add56ac7…` or
+    `ed82e3ff…`.
+  - No ECR push unless a deploy replaces the running set.
+- SG-07 item 11: the owner's decision on the dev-only `zod` finding.
+- Dependabot pull requests, left for after the freeze.
+- PORT-003 to PORT-008.
+- The Cognito charge, to be rechecked on the first monthly bill.
+- The deploy freeze on 2026-12-06.
+
 ## HARD-002 final run archived — 2026-11-20
 
 **Status:** evidence on branch `docs/hard-002-evidence`; HARD-002 is **NOT

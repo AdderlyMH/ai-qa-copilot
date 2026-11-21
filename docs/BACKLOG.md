@@ -1249,6 +1249,16 @@ of this backlog.
   - **Compared with the 2026-11-14 dry run:** every count is unchanged.
 
   The status stays **NOT accepted**. Applying the amended acceptance is the owner's decision.
+- **OWNER DECISION (2026-11-21):** HARD-002 is **ACCEPTED** under the owner amendment of 2026-11-13, on the evidence archived at `docs/evidence/hard-002-2026-11-20/`.
+  - **Commits:** run commit `6aca5a1f0016b068b9761bac99c2f4952a6ed314`. The deployed images were built from `23c59a88f6f30b54e16acde433ce3caa2830d45e`; the API digest prefix f31929c1 was re-confirmed by the owner on 2026-11-20.
+  - **Limits:**
+    - SG-02, the SG-03 allowed path (SEC-NET-006), SG-07 (item 2 open), SG-08 and the EVAL-007 clause are reported **UNMET**.
+    - The SG-06 history, image-layer and log scans are **NOT RUN**.
+    - The harness is a fixture-versus-table consistency check, not proof of enforcement.
+  - **Meaning:** "accepted" means the amended acceptance was applied, not that all gates passed.
+  - **Rerun:** the evidence must be rerun if code on `main` or the running images change before the 2026-12-06 freeze.
+
+  The "NOT run" and "NOT accepted" status lines above are kept as history.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
