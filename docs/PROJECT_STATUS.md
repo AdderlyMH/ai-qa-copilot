@@ -1,5 +1,35 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## PORT-003 accepted — 2026-11-21
+
+**Status:** docs on branch `docs/port-003-acceptance`. No code, infra,
+workflow, fixture, test or evaluation file changed, and no AWS or network call
+was made.
+
+- **OWNER DECISION (2026-11-21):** PORT-003 is **ACCEPTED**, on
+  `docs/EVALUATION_REPORT.md`. The report's status line now says so; nothing
+  else in the report changed.
+- **Limits:**
+  - The v4 run artifacts are outside the repository, so quantitative claims
+    about them are linked to recorded SHA-256 hashes, not to openable files.
+  - "Accepted" does not mean any evaluation gate passed: EG-02 to EG-09 have
+    no recorded result.
+  - The results are design-set and not independently validated.
+  - The production model (B1/v1, `gpt-5.6-terra`) was never benchmarked.
+
+**Open:**
+
+- SG-07 item 2: OPEN; accepted until 2026-12-04.
+  - Base-digest checks on 2026-11-23 and 2026-11-30; only a fourth digest is
+    worth building.
+  - No ECR push unless a deploy replaces the running set.
+- SG-07 item 11: the owner's decision on the dev-only `zod` finding.
+- Dependabot pull requests, left for after the freeze.
+- PORT-004 to PORT-008; the PORT-005 demo video link is still a
+  `TODO(owner)` in the README.
+- The Cognito charge, to be rechecked on the first monthly bill.
+- The deploy freeze on 2026-12-06.
+
 ## PORT-003 evaluation report draft — 2026-11-21
 
 **Status:** docs on branch `docs/port-003-evaluation-report`; **NOT
