@@ -1,6 +1,6 @@
 # Evaluation Report — AI Quality Engineering Copilot
 
-**Draft (PORT-003), 2026-11-21.** ACCEPTED by the owner on 2026-11-21 with the
+**Accepted (PORT-003), 2026-11-21.** ACCEPTED by the owner on 2026-11-21 with the
 limits listed in docs/BACKLOG.md PORT-003. Every figure below is copied from a committed document, which is
 linked next to it; nothing was re-run or re-measured for this report. Where
 the docs record nothing, this report says **not recorded**.
@@ -23,13 +23,13 @@ derived counts.
 - **The production model was never benchmarked.** Production uses B1/v1
   (`gpt-5.6-terra`); the OpenAI runs below used O1/v1 (`gpt-6.1-sol`).
 
-**Result artifacts (open owner decision).** PORT-003 asks that every public
+**Result artifacts (owner decision).** PORT-003 asks that every public
 quantitative claim link to a result artifact. The v4 comparison run artifacts
 are kept outside the repository. Their run-report and ledger SHA-256 values are
 committed in the
-[verified-inputs table](EVALUATION_V4_PROVIDER_COMPARISON.md#verified-inputs),
-and this draft cites those hashes as the artifact references. The other
-option is to commit the run artifacts; the owner has not decided.
+[verified-inputs table](EVALUATION_V4_PROVIDER_COMPARISON.md#verified-inputs).
+Owner decision 2026-11-21: the v4 run artifacts stay outside the repository and
+the report cites their recorded SHA-256 hashes; the artifacts are not committed.
 
 ## 1. Problem and scope
 
@@ -271,7 +271,7 @@ to end and a warm request 4.65 ms.
 - **Production model unbenchmarked:** B1/v1 `gpt-5.6-terra` has no benchmark
   result.
 - **Artifacts outside the repository:** the v4 run artifacts are referenced
-  by hash only (see the open decision at the top).
+  by hash only (see the owner decision at the top).
 - **Deferred work:** the B1 reference run, B2 routing and the OBS-003
   ablations.
 - **Known open items in the records:** EVAL-055 is a probable fixture defect,
@@ -282,4 +282,4 @@ to end and a warm request 4.65 ms.
   development split. ADR-014's correction and the ADR-016 live results
   supersede both. The scorer registry also marks every scorer "Planned",
   although EVAL-002 (deterministic scorers) is accepted. Neither is corrected
-  in this draft.
+  in this report.
