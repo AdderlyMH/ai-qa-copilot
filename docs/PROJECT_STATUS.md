@@ -1,5 +1,32 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## PORT-003 evaluation report draft — 2026-11-21
+
+**Status:** docs on branch `docs/port-003-evaluation-report`; **NOT
+accepted**: owner review pending. No code, infra, workflow, fixture or test
+changed, and no AWS, network or provider call was made.
+
+- **New doc:** `docs/EVALUATION_REPORT.md` covers problem, method, results,
+  safety, quality, cost, latency and limitations.
+  - Every figure is copied from a committed document and linked to it.
+  - The only computed content is the SHA-256 of three committed files
+    (`evaluation-cases.v1.yaml`, `evaluation-cases.v2.yaml`,
+    `retrieval-baseline.v1.json`); there are no totals, sums or derived
+    counts.
+- **What it reports:**
+  - The three recorded evaluation run sets: the ADR-014 B0 smoke, the ADR-015
+    informed smoke and the v4 provider comparison.
+  - The HARD-002 gate table and the RAG-005 baseline.
+  - Recorded evaluation spend and production cost.
+- **Not recorded, and marked so:** evaluation gate results EG-01 to EG-09,
+  latency for evaluation and the workflow, cost per workflow, and a monthly
+  production total.
+- **Artifact-link limit:** the v4 run artifacts are outside the repository.
+  The draft cites their committed SHA-256 values as the result artifacts;
+  whether that meets PORT-003's acceptance, or the artifacts must be
+  committed, is the owner's decision.
+- **Links:** one line added to the README Links section.
+
 ## HARD-002 accepted under the owner amendment — 2026-11-21
 
 **Status:** docs on branch `docs/hard-002-acceptance`. No code, infra,
