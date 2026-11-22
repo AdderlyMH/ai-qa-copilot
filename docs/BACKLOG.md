@@ -1342,6 +1342,9 @@ of this backlog.
 - **Dependencies:** EVAL-007, HARD-002
 - **Deliverable:** Baseline/candidate, safety, quality, cost, latency, and limitations.
 - **Acceptance:** Every public quantitative claim links to a result artifact.
+- **Note (2026-11-21):** a draft is written in `docs/EVALUATION_REPORT.md`. Every figure is copied from a committed document and linked to it; the only computed content is the SHA-256 of three committed files. Results the docs do not record are marked "not recorded": evaluation gates EG-01 to EG-09, latency, cost per workflow and a monthly total.
+  - **Artifact-link limit:** the v4 comparison run artifacts are outside the repository. The draft cites their committed run-report and ledger SHA-256 values as the result artifacts. Whether that meets the acceptance, or the artifacts must be committed, is the owner's decision.
+  - **Status:** owner review is pending; PORT-003 is **NOT Accepted**.
 
 #### PORT-004 — Create public demo scenario and reset process
 
