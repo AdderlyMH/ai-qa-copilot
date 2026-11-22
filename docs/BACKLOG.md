@@ -1345,6 +1345,13 @@ of this backlog.
 - **Note (2026-11-21):** a draft is written in `docs/EVALUATION_REPORT.md`. Every figure is copied from a committed document and linked to it; the only computed content is the SHA-256 of three committed files. Results the docs do not record are marked "not recorded": evaluation gates EG-01 to EG-09, latency, cost per workflow and a monthly total.
   - **Artifact-link limit:** the v4 comparison run artifacts are outside the repository. The draft cites their committed run-report and ledger SHA-256 values as the result artifacts. Whether that meets the acceptance, or the artifacts must be committed, is the owner's decision.
   - **Status:** owner review is pending; PORT-003 is **NOT Accepted**.
+- **OWNER DECISION (2026-11-21):** PORT-003 is **ACCEPTED**, on `docs/EVALUATION_REPORT.md`, with these limits:
+  - The v4 run artifacts are outside the repository, so quantitative claims about them are linked to recorded SHA-256 hashes, not to openable files.
+  - "Accepted" does not mean any evaluation gate passed: EG-02 to EG-09 have no recorded result.
+  - The results are design-set and not independently validated.
+  - The production model (B1/v1, `gpt-5.6-terra`) was never benchmarked.
+
+  The earlier "NOT Accepted" status line above is kept as history.
 
 #### PORT-004 — Create public demo scenario and reset process
 

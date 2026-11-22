@@ -1,7 +1,7 @@
 # Evaluation Report — AI Quality Engineering Copilot
 
-**Draft (PORT-003), 2026-11-21.** Owner review is pending, and PORT-003 is not
-accepted. Every figure below is copied from a committed document, which is
+**Draft (PORT-003), 2026-11-21.** ACCEPTED by the owner on 2026-11-21 with the
+limits listed in docs/BACKLOG.md PORT-003. Every figure below is copied from a committed document, which is
 linked next to it; nothing was re-run or re-measured for this report. Where
 the docs record nothing, this report says **not recorded**.
 
