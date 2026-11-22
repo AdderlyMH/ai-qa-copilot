@@ -1,5 +1,21 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Evaluation report wording corrected after acceptance — 2026-11-21
+
+**Status:** docs on branch `docs/evaluation-report-leftovers`. Wording only,
+in `docs/EVALUATION_REPORT.md`; no figure, table, limit or "not recorded"
+entry changed.
+
+- **The two stale lines:**
+  - The opening now reads "Accepted (PORT-003)" instead of "Draft (PORT-003)".
+  - The artifact paragraph now records the owner decision of 2026-11-21: the
+    v4 run artifacts stay outside the repository, the report cites their
+    recorded SHA-256 hashes, and the artifacts are not committed. It no longer
+    says the owner has not decided.
+- **Related wording fixed with them:** that paragraph's lead-in ("open owner
+  decision" became "owner decision"), the Limitations pointer to "the open
+  decision at the top", and "in this draft" at the end of the report.
+
 ## PORT-003 accepted — 2026-11-21
 
 **Status:** docs on branch `docs/port-003-acceptance`. No code, infra,
