@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 153714,
-      "sha256": "ccd2083f072d60a9ea70b454e2fb60ab8268361c59664f0964a524fb77cc08b9"
+      "bytes": 154617,
+      "sha256": "b1ec906f2b5844e19a8bc1008e7f89d383b8075cb522866e6107b8b001e9711a"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -172,8 +172,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 273470,
-      "sha256": "64ec7fe0f9157026a80a6830c3adf5efc4163116c95e35d43f021fd9d74d504f"
+      "bytes": 274226,
+      "sha256": "7f4e74186a38036e5c5ce6fde42bf7ed44b2f494419a4b8cee99877a073c9f64"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
