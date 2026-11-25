@@ -203,6 +203,7 @@ ADR-015). A monthly total is not recorded.
 - [Evaluation plan](docs/EVALUATION_PLAN.md) and the
   [benchmark fixture guide](fixtures/benchmark/README.md)
 - [Evaluation report (draft)](docs/EVALUATION_REPORT.md)
+- [Demo scenario and reset process (draft)](docs/DEMO_SCENARIO.md)
 - [Local development guide](docs/LOCAL_DEVELOPMENT.md)
 - [Infrastructure and runbooks](docs/INFRASTRUCTURE.md), including
   [restore and rollback](docs/INFRASTRUCTURE.md#restore-and-rollback-procedures-hard-004-2026-11-12)

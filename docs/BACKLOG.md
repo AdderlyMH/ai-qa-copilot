@@ -1361,6 +1361,11 @@ of this backlog.
 - **Deliverable:** Stable read-only project plus documented reset/seed command.
 - **Acceptance:** Guest cannot mutate or create spend.
 - **Scope note (2026-10-13):** the INFRA-004 dependency is deferred; the stable read-only demo is the INFRA-011 snapshot published by the local script, and the reset process is the documented re-publish procedure.
+- **Note (2026-11-21):** a draft is written in `docs/DEMO_SCENARIO.md`. It covers a five-minute guest script, an optional owner-only segment, a reset checklist, what not to show, known limits and sources.
+  - **Reset:** guest demo by re-publishing per the runbook; owner app by archiving the demo project and creating a new one. Archive is one-way, and no delete or unarchive route exists. A second publication and a rollback were never exercised live.
+  - **Acceptance basis:** "guest cannot mutate or create spend" is supported by the static guest viewer, which sends no data, and by the API rejecting owner routes without a token (401, observed 2026-11-07 to 2026-11-09). No new test was added.
+  - **Owner-reported:** `demo/fixture/requirements.md` was observed parsed in production on 2026-11-21.
+  - **Status:** owner review is pending; PORT-004 is **NOT Accepted**.
 
 #### PORT-005 — Record 3–5 minute demo video
 

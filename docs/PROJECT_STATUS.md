@@ -1,5 +1,34 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## PORT-004 demo scenario draft — 2026-11-21
+
+**Status:** docs on branch `docs/port-004-demo-scenario`; **NOT accepted**:
+owner review pending. No code, infra, workflow, fixture, test or `demo/` file
+changed, and no AWS or network call or deploy was made.
+
+- **New doc:** `docs/DEMO_SCENARIO.md`, with every step citing a committed
+  doc or source file. It contains:
+  - a five-minute guest script on the public guest demo;
+  - an optional owner-only segment;
+  - prerequisites;
+  - a reset checklist, what not to show, known limits and a sources table.
+- **Reset:**
+  - Guest demo: the documented re-publish procedure.
+  - Owner app: archive the demo project and create a new one. Archive is
+    one-way, and no delete or unarchive route exists.
+  - A second publication and a rollback were never exercised live, and the
+    rollback's Cloudflare deletion step is unverified.
+- **Stated plainly:**
+  - The demo's execution results come from an offline in-process mock, not
+    the disabled production executor.
+  - The provenance reads "This is not a model result."
+- **Owner-reported (2026-11-21):** `demo/fixture/requirements.md`, uploaded
+  to an existing project, reached parsed with parser: accepted. Section and
+  requirement counts were not observed.
+- **Acceptance basis:** "guest cannot mutate or create spend" rests on the
+  static viewer and on the API's 401 without a token, not on a new test.
+- **Links:** one line added to the README Links section.
+
 ## Evaluation report wording corrected after acceptance — 2026-11-21
 
 **Status:** docs on branch `docs/evaluation-report-leftovers`. Wording only,

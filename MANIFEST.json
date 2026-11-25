@@ -82,8 +82,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 13218,
-      "sha256": "88cd5ed463be4e69170014d3df7655ebb92fac3e1e2dc5def55745814bb24a5f"
+      "bytes": 13285,
+      "sha256": "23b8f8bad2b2cf5b21c2036526926b254679e02f9690dfb7999c07d7b4f9772a"
     },
     {
       "path": "docs/ARCHITECTURE.md",
@@ -102,8 +102,8 @@
     },
     {
       "path": "docs/BACKLOG.md",
-      "bytes": 152841,
-      "sha256": "638792dea17aa5c4167b8eb1cda8d52920e8425ca0f5408e1f38ebd87e10ffd5"
+      "bytes": 153714,
+      "sha256": "ccd2083f072d60a9ea70b454e2fb60ab8268361c59664f0964a524fb77cc08b9"
     },
     {
       "path": "docs/C1_EVALUATION_RUNBOOK.md",
@@ -114,6 +114,11 @@
       "path": "docs/CONTROL_TRACEABILITY_MATRIX.md",
       "bytes": 34872,
       "sha256": "1f3021939d27c99629b28039591bdc52c8ce9bc361fc5c3b4939c9da2d5904c2"
+    },
+    {
+      "path": "docs/DEMO_SCENARIO.md",
+      "bytes": 13382,
+      "sha256": "c0a562382ca94c932b8b42bcc56dcc908993d4d6f6c88ba57ea347c9742aac6b"
     },
     {
       "path": "docs/EVALUATION_PLAN.md",
@@ -167,8 +172,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 270526,
-      "sha256": "c13c2c005ab3f12a2097311f75e94c5b7a0595dbd1e0ab8697d64f52b38d900b"
+      "bytes": 271993,
+      "sha256": "a31f12ae81de478820fe2b2d0e21d6ea35797f1d15d2192be449f5cfd20506d4"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
