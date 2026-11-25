@@ -1,5 +1,30 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Lambda base digest refresh — 2026-11-25
+
+**Status:** pin changed on branch `build/base-refresh-2026-11-25`; the new base
+is **NOT yet built, scanned or verified**. No build, push, deploy, AWS or
+network call was made here.
+
+- **Owner's read (2026-11-25, not re-checked here):** the `3.13-arm64` tag is
+  at `sha256:50ce5712…`, a fourth digest: neither the pinned 2026-11-09 base
+  (`sha256:00632c00…`) nor the rejected `add56ac7…` and `ed82e3ff…` bases. The
+  2026-11-23 weekly check was missed; this read is the next one.
+- **Change:** only the `sha256:` value of the `ARG LAMBDA_PYTHON_BASE=` line
+  and the header comment date (now 2026-11-25) in `apps/api/Dockerfile.lambda`.
+- **SG-07 item 2:** stays **OPEN**; the risk acceptance still runs until
+  2026-12-04. Next is the owner's build and scan, with **one ECR push only**,
+  then a comparison by CVE name with CVE-2026-76781, CVE-2026-114406, the
+  rejected bases' CVE-2026-95520, CVE-2026-95521 and `sqlite-libs` findings,
+  and anything new. Deploy only if both old MEDIUM findings are gone and
+  nothing HIGH or new appears. Nothing here shows the new base fixes anything.
+- **HARD-002:** if the new images are deployed, the evidence must be rerun
+  before the 2026-12-06 freeze.
+
+**Open:** SG-07 item 2 and the 2026-11-30 base-digest check; SG-07 item 11;
+Dependabot pull requests for after the freeze; PORT-004 to PORT-008; the first
+monthly bill and Cognito charge; the deploy freeze on 2026-12-06.
+
 ## PORT-004 demo scenario draft — 2026-11-21
 
 **Status:** docs on branch `docs/port-004-demo-scenario`; **NOT accepted**:
