@@ -142,8 +142,8 @@
     },
     {
       "path": "docs/INFRASTRUCTURE.md",
-      "bytes": 282644,
-      "sha256": "f60b1f004d090dc1e62a35ff708bc8fc6f4463de146f454961c10da738218601"
+      "bytes": 284941,
+      "sha256": "77fcaeb796c383c8dcd6303c3698afacfb3469755ce7faf6313a07c517ed241e"
     },
     {
       "path": "docs/LOCAL_DEVELOPMENT.md",
@@ -172,8 +172,8 @@
     },
     {
       "path": "docs/PROJECT_STATUS.md",
-      "bytes": 271993,
-      "sha256": "a31f12ae81de478820fe2b2d0e21d6ea35797f1d15d2192be449f5cfd20506d4"
+      "bytes": 273470,
+      "sha256": "64ec7fe0f9157026a80a6830c3adf5efc4163116c95e35d43f021fd9d74d504f"
     },
     {
       "path": "docs/REPOSITORY_GOVERNANCE.md",
