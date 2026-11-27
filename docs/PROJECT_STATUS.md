@@ -1,5 +1,21 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## HARD-002 rerun rule clarified — 2026-11-25
+
+**Status:** docs on branch `docs/hard-002-rerun-rule`. No code, infra,
+workflow, fixture, test or evidence file changed.
+
+- **OWNER DECISION (2026-11-25):** the rerun rule and the ECR push rule are
+  clarified in [BACKLOG](BACKLOG.md), HARD-002, under the 2026-11-21
+  acceptance.
+  - A change to application source, dependencies or the running images
+    requires a rerun before the 2026-12-06 freeze. A change only to the
+    pinned base-image digest does not by itself.
+  - Deploying images built on a new base does require a rerun.
+  - The ECR push rule of 2026-11-18 is superseded: one push, and deploy only
+    if the scan is clean.
+- The 2026-11-21 entry below is kept as history and is not edited.
+
 ## Lambda base digest refresh — 2026-11-25
 
 **Status:** pin changed on branch `build/base-refresh-2026-11-25`; the new base

@@ -1259,6 +1259,11 @@ of this backlog.
   - **Rerun:** the evidence must be rerun if code on `main` or the running images change before the 2026-12-06 freeze.
 
   The "NOT run" and "NOT accepted" status lines above are kept as history.
+- **OWNER DECISION (2026-11-25), clarifies the Rerun line of 2026-11-21, which is kept as history:**
+  - **Rerun required:** the evidence must be rerun before the 2026-12-06 freeze if application source, dependencies (`pyproject.toml`, `uv.lock`, `package-lock.json`) or the running images change.
+  - **Not by itself:** a change only to the pinned base-image digest in `apps/api/Dockerfile.lambda` does not by itself require a rerun, because the evidence tests source and tests, not the pin. For the pin, `test_lambda_images.py` checks only the image name, tag and digest format, not the digest value.
+  - **Deploying:** deploying images built on a new base does require a rerun, since the running images change.
+  - **ECR push rule:** the rule of 2026-11-18 ("no push unless a deploy replaces the running set") is superseded by the 2026-11-25 decision: one push, and deploy only if the scan is clean.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
