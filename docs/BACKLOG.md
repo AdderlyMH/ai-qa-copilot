@@ -1264,6 +1264,7 @@ of this backlog.
   - **Not by itself:** a change only to the pinned base-image digest in `apps/api/Dockerfile.lambda` does not by itself require a rerun, because the evidence tests source and tests, not the pin. For the pin, `test_lambda_images.py` checks only the image name, tag and digest format, not the digest value.
   - **Deploying:** deploying images built on a new base does require a rerun, since the running images change.
   - **ECR push rule:** the rule of 2026-11-18 ("no push unless a deploy replaces the running set") is superseded by the 2026-11-25 decision: one push, and deploy only if the scan is clean.
+- **Note (2026-11-27):** the 2026-11-25 rerun clarification above applies unchanged; the 2026-11-27 revert of the base pin needs no rerun by itself, and any deploy of new images needs one.
 
 #### HARD-003 — Configure alarms, quotas, budgets, and circuit breakers
 
@@ -1371,6 +1372,10 @@ of this backlog.
   - **Acceptance basis:** "guest cannot mutate or create spend" is supported by the static guest viewer, which sends no data, and by the API rejecting owner routes without a token (401, observed 2026-11-07 to 2026-11-09). No new test was added.
   - **Owner-reported:** `demo/fixture/requirements.md` was observed parsed in production on 2026-11-21.
   - **Status:** owner review is pending; PORT-004 is **NOT Accepted**.
+- **OWNER DECISION (recorded 2026-11-27, decided 2026-11-25): PORT-004 ACCEPTED** on `docs/DEMO_SCENARIO.md`, with these limits. The 2026-11-21 status line above is kept as history.
+  - **Basis:** "guest cannot mutate or create spend" rests on the static guest viewer plus the 401 for owner routes without a token; no new test was added.
+  - **Not exercised:** a second publication and a rollback were never exercised live.
+  - **Reset:** re-publish for the guest demo, and archive-then-new-project for the owner app; there is no delete command.
 
 #### PORT-005 — Record 3–5 minute demo video
 
