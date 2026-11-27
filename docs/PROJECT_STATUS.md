@@ -1,5 +1,55 @@
 # Project Status â€” AI Quality Engineering Copilot
 
+## Base pin reverted, SG-07 item 2 acceptance extended, PORT-004 accepted — 2026-11-27
+
+**Status:** Dockerfile pin and docs on branch
+`build/revert-base-pin-2026-11-27`. No build, push, deploy, AWS or network
+call was made here; no code, infra, workflow, fixture or evidence file changed.
+
+- **Scan of the `50ce5712…` base (owner-run, 2026-11-25 to 2026-11-27; not
+  re-checked here):** five images built from `main` at `0f9e225`, with certifi
+  2026.10.19 and pypdf 6.21.4 in all five, Mako 1.4.3 in `migrate`, and the
+  preflight and archived-upload code in `api`. Pushed once (single OCI
+  manifests, ECR digest equal to local); scans `COMPLETE` for all five, with
+  identical findings by name. **Gone:** CVE-2026-76781 (`libxml2`) and
+  CVE-2026-114406 (`ca-certificates`). **Present:** HIGH CVE-2026-95520 and
+  CVE-2026-95521 (`rpm`, `rpm-libs`); MEDIUM CVE-2026-119371, -119372,
+  -119373, -119375, -119376, -119378 and LOW CVE-2026-119377 (`sqlite-libs`).
+  The same list as the rejected `add56ac7…` and `ed82e3ff…` bases: three bases
+  in a row. Whether the Lambda runtime uses `rpm`, and whether fixed packages
+  exist, is **NOT verified**.
+- **Not deployed:** `production.tfvars` still holds the 2026-11-07 digests.
+- **Change:** `apps/api/Dockerfile.lambda` pin set back to the 2026-11-09 base
+  `sha256:00632c00…`; header comment date 2026-11-27. No test pins the value
+  or date.
+- **ECR (owner, 2026-11-27, `api` repository only):** six images (2026-10-22,
+  2026-11-07 deployed, 2026-11-09, 2026-11-13, 2026-11-16, 2026-11-27); not yet
+  pruned. **No further push:** the next one would remove the deployed
+  2026-11-07 image and the rollback target.
+- **OWNER DECISION (2026-11-27):** the SG-07 item 2 risk acceptance (MEDIUM
+  CVE-2026-76781 and CVE-2026-114406 on the running 2026-11-07 images) is
+  **extended from 2026-12-04 to 2026-12-18**. Weekly digest checks continue on
+  2026-11-30, 2026-12-07 and 2026-12-14; only a fifth digest (not `00632c00…`,
+  `add56ac7…`, `ed82e3ff…` or `50ce5712…`) is worth building; any deploy of
+  new images needs a HARD-002 evidence rerun; the package-update fallback
+  remains **NOT decided and NOT verified**. SG-07 stays **UNMET**, and an
+  accepted risk still blocks release until closed. The 2026-12-06 freeze is
+  unchanged. Details: [INFRASTRUCTURE](INFRASTRUCTURE.md), SG-07 register
+  item 2 and "Refresh the base image digest".
+- **OWNER DECISION (2026-11-25), recorded 2026-11-27: PORT-004 ACCEPTED** on
+  `docs/DEMO_SCENARIO.md` ([BACKLOG](BACKLOG.md), PORT-004), with limits: the
+  basis for "guest cannot mutate or create spend" is the static viewer plus the
+  401 without a token, no new test; a second publication and a rollback were
+  never exercised live; reset means re-publish (guest) and
+  archive-then-new-project (owner app), not a delete command.
+- **HARD-002:** the 2026-11-25 rerun clarification applies unchanged.
+- Earlier entries below are kept as history.
+
+**Open:** weekly base-digest checks on 2026-11-30, 2026-12-07 and 2026-12-14;
+SG-07 item 2, decision date now 2026-12-18; SG-07 item 11; Dependabot pull
+requests for after the freeze; PORT-005 to PORT-008; the first monthly bill
+and Cognito charge; the deploy freeze on 2026-12-06.
+
 ## HARD-002 rerun rule clarified — 2026-11-25
 
 **Status:** docs on branch `docs/hard-002-rerun-rule`. No code, infra,
